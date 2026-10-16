@@ -4,19 +4,55 @@ export const DISTRICT_CONFIGS = [
     id: 'tariq_road',
     name: 'Tariq Road & PECHS',
     urdu: 'طرق روڈ و پی ای سی ایچ ایس',
-    tagline: 'Street Snatchers & Overflowing Khaddas',
+    tagline: 'Water Tanker Crisis & Street Snatchers',
     heroTitle: 'Mohalla Gutter (محلہ گٹر)',
     unlockedTitle: 'Street Vigilante (گلی محافظ)',
     holeRadius: 1.6,
     baseSpeed: 9.5,
     timeBonus: 50,
     bonusScore: 2500,
-    description: 'Devour Mobile Snatchers robbing citizens, Shady Gutka peddlers, and road potholes!',
+    description: 'Devour the illegal Water Tanker Mafia stealing tap water from PECHS homes, catch mobile snatchers, and repair road potholes!',
     targets: [
+      { type: 'tanker', icon: '🚰', name: 'Water Tanker Mafia', count: 1, xp: 1400 },
       { type: 'robber', icon: '🔫', name: 'Mobile Snatchers', count: 2, xp: 850 },
       { type: 'gutka', icon: '🛑', name: 'Gutka Peddlers', count: 3, xp: 400 },
       { type: 'pothole', icon: '🕳️', name: 'Broken Road Khaddas', count: 3, xp: 80 },
       { type: 'trash', icon: '🗑️', name: 'Trash & Sewer Pests', count: 6, xp: 25 }
+    ],
+    challenges: [
+      {
+        id: 'tanker_water',
+        title: 'Water Tanker Extortion & Dry Homes',
+        urdu: 'پانی بحران و ٹینکر مافیا کا خاتمہ',
+        icon: '🚰',
+        evilType: 'tanker',
+        targetCount: 1,
+        xpReward: 1400,
+        description: 'Devour the Water Tanker Mafia siphoning water from PECHS residential homes!',
+        benefitText: '🏠 2 Homes Hydrated with Overflowing Taps!'
+      },
+      {
+        id: 'mobile_snatchers',
+        title: 'Armed Mobile Snatchers Standoff',
+        urdu: 'اسٹریٹ کرائم و ڈکیتی کا خاتمہ',
+        icon: '📱',
+        evilType: 'robber',
+        targetCount: 2,
+        xpReward: 900,
+        description: 'Devour armed thugs cornering innocent students to save phones!',
+        benefitText: '📱 Phones Saved + Street Peace Restored!'
+      },
+      {
+        id: 'road_potholes',
+        title: 'Lethal Road Potholes',
+        urdu: 'خطرناک گڑھوں کی مرمت',
+        icon: '🕳️',
+        evilType: 'pothole',
+        targetCount: 3,
+        xpReward: 500,
+        description: 'Devour open broken asphalt craters to repave into carpet roads!',
+        benefitText: '🛣️ Smooth Carpet Roads Repaired!'
+      }
     ]
   },
   {
@@ -38,6 +74,41 @@ export const DISTRICT_CONFIGS = [
       { type: 'bhatta', icon: '📜', name: 'Bhatta Parchi Extortion', count: 3, xp: 700 },
       { type: 'onewheeler', icon: '🏍️', name: 'Reckless One-Wheelers', count: 3, xp: 500 },
       { type: 'trash', icon: '🗑️', name: 'Market Debris', count: 4, xp: 25 }
+    ],
+    challenges: [
+      {
+        id: 'vip_ambulance',
+        title: 'VIP Protocol Gridlock & Ambulance',
+        urdu: 'وی آئی پی پروٹوکول و ایمبولینس راستہ',
+        icon: '🚑',
+        evilType: 'vip',
+        targetCount: 2,
+        xpReward: 2000,
+        description: 'Devour VIP Land Cruisers blocking the road for Edhi Ambulance!',
+        benefitText: '🚑 Edhi Ambulance Reaches Civil Hospital Safely!'
+      },
+      {
+        id: 'bhatta_bazaar',
+        title: 'Bhatta Extortion Gang at Market',
+        urdu: 'بھتہ خوروں سے بازار کی آزادی',
+        icon: '📜',
+        evilType: 'bhatta',
+        targetCount: 3,
+        xpReward: 1200,
+        description: 'Devour extortion thugs waving parchi slips at shopkeepers!',
+        benefitText: '🕊️ Peaceful Aman Bazaar Reopened!'
+      },
+      {
+        id: 'onewheeler_racers',
+        title: 'Reckless Silencer-less Racers',
+        urdu: 'خطرناک ون ویلنگ کا خاتمہ',
+        icon: '🏍️',
+        evilType: 'onewheeler',
+        targetCount: 3,
+        xpReward: 900,
+        description: 'Devour speeding one-wheelers endangering pedestrians!',
+        benefitText: '🚸 Safe Pedestrian Transit Zone Restored!'
+      }
     ]
   },
   {
@@ -59,6 +130,41 @@ export const DISTRICT_CONFIGS = [
       { type: 'chinacutting', icon: '📐', name: 'China-Cutting Encroachers', count: 2, xp: 650 },
       { type: 'vip', icon: '🚨', name: 'VIP Protocol Escorts', count: 2, xp: 1600 },
       { type: 'robber', icon: '🔫', name: 'Street Robbers', count: 2, xp: 850 }
+    ],
+    challenges: [
+      {
+        id: 'tanker_gulshan',
+        title: 'Water Tanker Cartel & Dry Blocks',
+        urdu: 'ٹینکر مافیا سے گلشن کے نلکے بحال',
+        icon: '💧',
+        evilType: 'tanker',
+        targetCount: 3,
+        xpReward: 2500,
+        description: 'Devour 3 illegal water tankers to restore municipal water lines!',
+        benefitText: '🌊 6 Homes Hydrated with Freshwater Fountains!'
+      },
+      {
+        id: 'ke_kundas',
+        title: 'High-Voltage K-Electric Kundas',
+        urdu: 'کنڈہ مافیا و لوڈ شیڈنگ کا خاتمہ',
+        icon: '⚡',
+        evilType: 'ke',
+        targetCount: 3,
+        xpReward: 1500,
+        description: 'Devour dangerous illegal kundas causing sparks & load shedding!',
+        benefitText: '💡 Clean Solar Microgrid Restores Electricity!'
+      },
+      {
+        id: 'chinacutting_footpath',
+        title: 'China-Cutting Encroachment Walls',
+        urdu: 'چائنا کٹنگ سے عوامی راستے آزاد',
+        icon: '📐',
+        evilType: 'chinacutting',
+        targetCount: 2,
+        xpReward: 1200,
+        description: 'Demolish illegal walls built over public footpaths!',
+        benefitText: '🌳 Public Green Promenade Restored!'
+      }
     ]
   },
   {
@@ -80,6 +186,41 @@ export const DISTRICT_CONFIGS = [
       { type: 'tanker', icon: '💧', name: 'Illegal Coastal Tankers', count: 2, xp: 1400 },
       { type: 'chinacutting', icon: '📐', name: 'Beachfront Land Grabbers', count: 3, xp: 650 },
       { type: 'ke', icon: '⚡', name: 'Overloaded High-Tension Kundas', count: 2, xp: 750 }
+    ],
+    challenges: [
+      {
+        id: 'politicians_loot',
+        title: 'Corrupt Politicians Offshore Loot',
+        urdu: 'کرپٹ سیاستدانوں کا احتساب',
+        icon: '💰',
+        evilType: 'politician',
+        targetCount: 4,
+        xpReward: 3000,
+        description: 'Catch corrupt VIPs fleeing with public money briefcases!',
+        benefitText: '🏛️ Millions Recovered for Public Welfare!'
+      },
+      {
+        id: 'vip_convoy_coast',
+        title: 'Beachfront VIP Motorcades',
+        urdu: 'ساحل پر پروٹوکول کلچر کا خاتمہ',
+        icon: '🚨',
+        evilType: 'vip',
+        targetCount: 2,
+        xpReward: 2200,
+        description: 'Clear VIP escorts blocking access to Sea View beach!',
+        benefitText: '🏖️ Free Unrestricted Beach Promenade!'
+      },
+      {
+        id: 'beach_encroachment',
+        title: 'Coastal Land Grabbers',
+        urdu: 'ساحلی چائنا کٹنگ کا خاتمہ',
+        icon: '📐',
+        evilType: 'chinacutting',
+        targetCount: 3,
+        xpReward: 1800,
+        description: 'Devour coastal encroachment cartels occupying mangroves!',
+        benefitText: '🌊 Protected Coastal Mangrove Ecosystem!'
+      }
     ]
   },
   {
@@ -101,6 +242,19 @@ export const DISTRICT_CONFIGS = [
       { type: 'tanker', icon: '💧', name: 'Water Tanker Cartels', count: 3, xp: 1400 },
       { type: 'bhatta', icon: '📜', name: 'Bhatta Extortion Kings', count: 3, xp: 700 },
       { type: 'robber', icon: '🔫', name: 'Last Armed Snatchers', count: 3, xp: 850 }
+    ],
+    challenges: [
+      {
+        id: 'mega_cleansing',
+        title: 'Metropolis Mafia Eradication',
+        urdu: 'قائد اعظم کے پرامن کراچی کی بحالی',
+        icon: '⭐',
+        evilType: 'politician',
+        targetCount: 6,
+        xpReward: 5000,
+        description: 'Cleanse all remaining corrupt VIPs and cartels to fulfill Quaid’s dream!',
+        benefitText: '🌟 Quaid’s Dream City of Lights Realized!'
+      }
     ]
   }
 ];

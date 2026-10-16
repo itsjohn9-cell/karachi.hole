@@ -38,6 +38,7 @@ class Game {
     this.initScene();
     this.initHoles();
     this.initJoystick();
+    this.initDistrictChallenges(getDistrictConfig(1));
     this.initUI();
     this.initAudioTriggers();
 
@@ -288,7 +289,47 @@ class Game {
       this.cleanedMonuments = [];
     }
     this.recentCleaned = [];
+    this.initDistrictChallenges(getDistrictConfig(1));
     if (this.ui) this.ui.hideDistrictClearedModal();
+  }
+
+  initDistrictChallenges(config) {
+    if (config && config.challenges && config.challenges.length > 0) {
+      this.crisisChallenges = config.challenges.map(c => ({
+        ...c,
+        current: 0,
+        completed: false
+      }));
+      this.currentCrisisIndex = 0;
+    } else {
+      this.crisisChallenges = [];
+      this.currentCrisisIndex = 0;
+    }
+  }
+
+  handleCrisisProgress(evilType) {
+    if (!this.crisisChallenges || this.crisisChallenges.length === 0) return;
+    const active = this.crisisChallenges[this.currentCrisisIndex];
+    if (active && !active.completed) {
+      if (active.evilType === evilType || (evilType === 'trash' && active.evilType === 'pothole')) {
+        active.current++;
+        if (active.current >= active.targetCount) {
+          active.completed = true;
+          audio.playChallengeSuccess();
+          if (this.player) this.player.addXP(active.xpReward || 1000);
+          this.ui.showCrisisCompleteBanner(active);
+          this.timeLeft += 25;
+
+          setTimeout(() => {
+            if (this.currentCrisisIndex < this.crisisChallenges.length - 1) {
+              this.currentCrisisIndex++;
+              const nextCrisis = this.crisisChallenges[this.currentCrisisIndex];
+              this.ui.showAnnouncement(`🚨 NEW CRISIS: ${nextCrisis.title}!`, '#ff9800');
+            }
+          }, 1400);
+        }
+      }
+    }
   }
 
   onWindowResize() {
@@ -382,6 +423,7 @@ class Game {
     this.particles.createCelebrationConfetti(this.player.position, 50);
 
     const cfg = getDistrictConfig(this.currentDistrictLevel);
+    this.initDistrictChallenges(cfg);
     audio.playLevelUp();
     this.ui.showAnnouncement(
       `🚀 ENTERED DISTRICT ${cfg.level}: ${cfg.name.toUpperCase()} (${cfg.urdu})!`,
@@ -1026,12 +1068,49 @@ class Game {
               audio.playOneWheelerImpound();
               this.ui.showAnnouncement(`🏍️ RECKLESS ONE-WHEELER IMPOUNDED! STREETS SAFE! (+${points} XP)`, '#00e5ff');
             } else if (obj.evilType === 'tanker') {
-              this.particles.createFreshwaterGeyser(hole.position, 48);
-              this.particles.createCelebrationConfetti(hole.position, 35);
+              this.particles.createFreshwaterGeyser(hole.position, 55);
+              this.particles.createCelebrationConfetti(hole.position, 40);
               audio.playWaterTankerDevour();
               audio.playFreshwaterEruption();
 
-              // Trigger Joyous Thirsty Residents with full water drums!
+              // 1. Remove illegal suction hoses & booster motor
+              const hoseGroup = obj.mesh.userData?.hoseGroup;
+              if (hoseGroup && hoseGroup.parent) {
+                hoseGroup.parent.remove(hoseGroup);
+              }
+
+              // 2. Animate Water Streams rushing to nearby dry homes & restore water!
+              const dryHomes = obj.mesh.userData?.dryHomes;
+              if (dryHomes && dryHomes.length > 0) {
+                dryHomes.forEach((home, hIdx) => {
+                  home.userData.isRestored = true;
+                  if (home.userData.updateWaterBillboard) {
+                    home.userData.updateWaterBillboard(true);
+                  }
+
+                  // Water pipeline stream flowing from hole to house
+                  this.particles.createWaterFlowStream(hole.position, home.position, 32);
+
+                  // Cascading overflow from rooftop water tank
+                  if (home.userData.rooftopTank) {
+                    const tankWorldPos = new THREE.Vector3();
+                    home.userData.rooftopTank.getWorldPosition(tankWorldPos);
+                    setTimeout(() => {
+                      this.particles.createRooftopWaterOverflow(tankWorldPos, 45);
+                      this.particles.createHeartBurst(tankWorldPos, 16);
+                    }, 250);
+                  }
+
+                  // Resident on balcony celebrates
+                  const res = home.userData.resident;
+                  if (res && res.userData && res.userData.drawBubble) {
+                    res.userData.drawBubble("🌊 پانی آگیا! نلکے بھر گئے! شکریہ گٹر ہیرو!", true);
+                    this.particles.createHeartBurst(res.position, 14);
+                  }
+                });
+              }
+
+              // 3. Trigger Joyous Thirsty Residents with full water drums!
               const residents = obj.mesh.userData?.thirstyResidents;
               if (residents && residents.length > 0) {
                 residents.forEach((r, rIdx) => {
@@ -1047,7 +1126,7 @@ class Game {
                   this.particles.createCelebrationConfetti(r.position, 20);
                 });
               }
-              this.ui.showAnnouncement(`🚰 TANKER MAFIA BUSTED! FRESH WATER FLOWS FOR RESIDENTS! (+${points} XP)`, '#00e5ff');
+              this.ui.showAnnouncement(`🚰 TANKER MAFIA BUSTED! TAP WATER RESTORED TO HOMES! (+${points} XP)`, '#00e5ff');
             } else if (obj.evilType === 'vip') {
               this.particles.createCelebrationConfetti(hole.position, 45);
               this.particles.createSwallowBurst(hole.position, 4, 30);
@@ -1115,6 +1194,9 @@ class Game {
               audio.playGutterSplash();
               audio.playSwallow(1);
             }
+
+            // Advance active Civic Crisis Challenge!
+            this.handleCrisisProgress(obj.evilType);
           } else {
             this.particles.createSwallowBurst(hole.position, obj.tier);
             if (hole.isPlayer) {
@@ -1494,8 +1576,9 @@ class Game {
     }));
 
     const districtConfig = getDistrictConfig(this.currentDistrictLevel);
+    const activeCrisis = this.crisisChallenges ? this.crisisChallenges[this.currentCrisisIndex] : null;
 
-    // Update HUD with Civic Cleanser progress, Hero Frenzy status, District Mission & Live Crime Radar
+    // Update HUD with Civic Cleanser progress, Hero Frenzy status, District Mission, Active Crisis & Live Radar
     const ranked = [...this.holes].sort((a, b) => b.score - a.score);
     const civicPct = (this.civicCleansed / Math.max(1, this.civicTotal)) * 100;
     this.ui.updateHUD({
@@ -1511,7 +1594,8 @@ class Game {
       districtTotal: this.districtTotal,
       targetBreakdown,
       districtEvils: this.districtEvils,
-      recentCleaned: this.recentCleaned
+      recentCleaned: this.recentCleaned,
+      activeCrisis
     });
 
     this.renderer.render(this.scene, this.camera);

@@ -352,6 +352,44 @@ class AudioManager {
     this.vibrate([25, 20, 45]);
   }
 
+  // Triumphant Karachi Civic Crisis Resolved Fanfare!
+  playChallengeSuccess() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Majestic bright arpeggio: C5 (523), E5 (659), G5 (784), C6 (1046)
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const noteTime = t + idx * 0.09;
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, noteTime);
+      gain.gain.setValueAtTime(0.35, noteTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.45);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(noteTime);
+      osc.stop(noteTime + 0.45);
+    });
+
+    // Shimmering bell top
+    const topBell = this.ctx.createOscillator();
+    const topGain = this.ctx.createGain();
+    topBell.type = 'sine';
+    topBell.frequency.setValueAtTime(1318.51, t + 0.36); // E6
+    topGain.gain.setValueAtTime(0.4, t + 0.36);
+    topGain.gain.exponentialRampToValueAtTime(0.001, t + 0.85);
+    topBell.connect(topGain);
+    topGain.connect(this.ctx.destination);
+    topBell.start(t + 0.36);
+    topBell.stop(t + 0.85);
+
+    this.vibrate([40, 30, 60, 30, 120]);
+  }
+
   // Crowd Cheering & Whistling ("Karachi Zindabad!")
   playCrowdCheer() {
     if (!this.soundEnabled) return;

@@ -207,6 +207,74 @@ export class ParticleSystem {
     }
   }
 
+  // Flowing pipeline water stream surging from hole towards restored residential homes!
+  createWaterFlowStream(fromPos, toPos, count = 28) {
+    const dx = toPos.x - fromPos.x;
+    const dz = toPos.z - fromPos.z;
+    const dist = Math.sqrt(dx * dx + dz * dz) || 1;
+    const normX = dx / dist;
+    const normZ = dz / dist;
+
+    for (let i = 0; i < count; i++) {
+      const mat = Math.random() > 0.3 ? this.waterMat : this.foamMat;
+      const mesh = new THREE.Mesh(this.waterDropletGeo, mat);
+      const progress = Math.random() * 0.35;
+      mesh.position.set(
+        fromPos.x + dx * progress + (Math.random() - 0.5) * 0.8,
+        0.3 + Math.random() * 0.4,
+        fromPos.z + dz * progress + (Math.random() - 0.5) * 0.8
+      );
+
+      const speed = 12 + Math.random() * 10;
+      const vel = new THREE.Vector3(
+        normX * speed + (Math.random() - 0.5) * 2,
+        3.5 + Math.random() * 4.5,
+        normZ * speed + (Math.random() - 0.5) * 2
+      );
+
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -10,
+        life: 0.9 + Math.random() * 0.4,
+        maxLife: 1.3,
+        scale: 1.1 + Math.random() * 0.5
+      });
+    }
+  }
+
+  // Cascading water overflow from residential rooftop tank when water is restored!
+  createRooftopWaterOverflow(tankPos, count = 35) {
+    for (let i = 0; i < count; i++) {
+      const mat = Math.random() > 0.4 ? this.waterMat : this.foamMat;
+      const mesh = new THREE.Mesh(this.waterDropletGeo, mat);
+      mesh.position.set(
+        tankPos.x + (Math.random() - 0.5) * 1.2,
+        tankPos.y + 0.6,
+        tankPos.z + (Math.random() - 0.5) * 1.2
+      );
+
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.2 + Math.random() * 3.0;
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        2.5 + Math.random() * 3.5,
+        Math.sin(angle) * speed
+      );
+
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -14,
+        life: 1.2 + Math.random() * 0.5,
+        maxLife: 1.7,
+        scale: 1.0 + Math.random() * 0.6
+      });
+    }
+  }
+
   // Burst when an object is swallowed
   createSwallowBurst(pos, tier = 1, count = 12) {
     const burstCount = count * Math.min(3, tier);

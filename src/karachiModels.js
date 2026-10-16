@@ -1863,26 +1863,162 @@ export const KarachiModels = {
     };
   },
 
-  // 26D. Water Tanker Extortion Scene (Tanker Mafia + Thirsty Karachi Residents!)
+  // Karachi Residential Home with Rooftop Tank & Interactive Water Supply Status
+  createDryResidentialHome(homeName = "PECHS House #4") {
+    const group = new THREE.Group();
+    group.name = `Residential-Home-${homeName}`;
+
+    // Villa Body
+    const houseGeo = new THREE.BoxGeometry(6.4, 5.2, 6.4);
+    const houseMat = new THREE.MeshStandardMaterial({ color: 0xefede6, roughness: 0.5 });
+    const house = new THREE.Mesh(houseGeo, houseMat);
+    house.position.set(0, 2.6, 0);
+    house.castShadow = true;
+    house.receiveShadow = true;
+    group.add(house);
+
+    // Front Balcony
+    const balconyGeo = new THREE.BoxGeometry(4.4, 0.6, 1.2);
+    const balcony = new THREE.Mesh(balconyGeo, materials.sandstone);
+    balcony.position.set(0, 3.6, 3.3);
+    group.add(balcony);
+
+    // Compound Gate
+    const gate = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.4, 0.1), materials.curbBlack);
+    gate.position.set(0, 0.7, 3.8);
+    group.add(gate);
+
+    // Black Rooftop Water Tank (Iconic Karachi overhead tank)
+    const tankGeo = new THREE.CylinderGeometry(0.75, 0.75, 1.35, 12);
+    const tankMat = new THREE.MeshStandardMaterial({ color: 0x212121, roughness: 0.7 });
+    const rooftopTank = new THREE.Mesh(tankGeo, tankMat);
+    rooftopTank.position.set(1.6, 5.85, -1.2);
+    group.add(rooftopTank);
+
+    // Rooftop Tank Lid
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.78, 0.1, 12), materials.curbBlack);
+    lid.position.set(1.6, 6.55, -1.2);
+    group.add(lid);
+
+    // Rooftop Water Status Billboard Sprite
+    const canvas = document.createElement('canvas');
+    canvas.width = 460;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const tex = new THREE.CanvasTexture(canvas);
+
+    const updateWaterBillboard = (isRestored = false) => {
+      ctx.clearRect(0, 0, 460, 110);
+      ctx.fillStyle = isRestored ? 'rgba(0, 230, 118, 0.95)' : 'rgba(255, 23, 68, 0.92)';
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 444, 94, 20);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 24px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (isRestored) {
+        ctx.fillText('🚰 WATER RESTORED! 100% 🌊', 230, 38);
+        ctx.font = 'bold 20px "Noto Nastaliq Urdu", sans-serif';
+        ctx.fillText('نلکے میں پانی بحال ہو گیا!', 230, 76);
+      } else {
+        ctx.fillText('🚱 NO WATER / 0% DRY TANK!', 230, 38);
+        ctx.font = 'bold 20px "Noto Nastaliq Urdu", sans-serif';
+        ctx.fillText('پانی بند ہے - لائن کٹ گئی!', 230, 76);
+      }
+      tex.needsUpdate = true;
+    };
+    updateWaterBillboard(false);
+
+    const billboard = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+    billboard.scale.set(4.6, 1.1, 1);
+    billboard.position.set(1.6, 7.8, -1.2);
+    group.add(billboard);
+
+    // Distressed Balcony Resident
+    const resident = this.createPleadingResident("نلکے میں پانی نہیں! ٹینکر چوری بند کرو!");
+    resident.position.set(0, 3.8, 3.3);
+    group.add(resident);
+
+    group.userData = {
+      isDryHome: true,
+      homeName,
+      rooftopTank,
+      billboard,
+      resident,
+      isRestored: false,
+      updateWaterBillboard
+    };
+
+    return group;
+  },
+
+  // 26D. Water Tanker Extortion Scene (Tanker Mafia + Thirsty Karachi Residents + Dry Homes!)
   createWaterTankerExtortionScene() {
     const tanker = this.createWaterTankerMafia();
     const targetDecal = this.createEvilTargetDecal('tanker', '💧 TANKER MAFIA • DEVOUR!');
     tanker.add(targetDecal);
 
-    // 2 Thirsty Residents with water drums
+    // 2 Street residents with water drums
     const resident1 = this.createPleadingResident("15,000 ka tanker?! Zulm band karo!");
-    resident1.position.set(-3.4, 0, 1.2);
+    resident1.position.set(-3.4, 0, 1.8);
 
     const resident2 = this.createPleadingResident("Pani do! Bache pyase hain!");
-    resident2.position.set(3.4, 0, 1.2);
+    resident2.position.set(3.4, 0, 1.8);
+
+    // 2 Nearby Residential Homes experiencing dry taps
+    const homeLeft = this.createDryResidentialHome("Mohalla House #1");
+    homeLeft.position.set(-9.5, 0, -2.5);
+
+    const homeRight = this.createDryResidentialHome("Mohalla House #2");
+    homeRight.position.set(9.5, 0, -2.5);
+
+    // Illegal Suction Hose (corrugated black hose running from houses into the tanker)
+    const hoseGroup = new THREE.Group();
+    hoseGroup.name = "Illegal-Suction-Hose";
+    const hoseMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
+    const hoseCurve1 = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-9.5, 0.2, 0),
+      new THREE.Vector3(-4.5, 0.15, 0.8),
+      new THREE.Vector3(0, 0.8, -0.6)
+    ]);
+    const hoseMesh1 = new THREE.Mesh(new THREE.TubeGeometry(hoseCurve1, 20, 0.12, 8, false), hoseMat);
+    hoseGroup.add(hoseMesh1);
+
+    const hoseCurve2 = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(9.5, 0.2, 0),
+      new THREE.Vector3(4.5, 0.15, 0.8),
+      new THREE.Vector3(0, 0.8, -0.6)
+    ]);
+    const hoseMesh2 = new THREE.Mesh(new THREE.TubeGeometry(hoseCurve2, 20, 0.12, 8, false), hoseMat);
+    hoseGroup.add(hoseMesh2);
+
+    // Illegal Booster Pump Generator on the road
+    const pumpGeo = new THREE.BoxGeometry(0.8, 0.6, 0.6);
+    const pumpMat = new THREE.MeshStandardMaterial({ color: 0xe65100 });
+    const pump = new THREE.Mesh(pumpGeo, pumpMat);
+    pump.position.set(-1.6, 0.3, 0.4);
+    hoseGroup.add(pump);
+
+    tanker.add(hoseGroup);
 
     const thirstyResidents = [resident1, resident2];
+    const dryHomes = [homeLeft, homeRight];
+
     tanker.userData.thirstyResidents = thirstyResidents;
+    tanker.userData.dryHomes = dryHomes;
+    tanker.userData.hoseGroup = hoseGroup;
     tanker.userData.targetDecal = targetDecal;
 
     return {
       tankerTarget: tanker,
-      thirstyResidents
+      thirstyResidents,
+      dryHomes,
+      hoseGroup
     };
   },
 

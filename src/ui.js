@@ -111,6 +111,31 @@ export class UIManager {
         </div>
       </div>
 
+      <!-- Active Civic Crisis Challenge Card -->
+      <div class="active-crisis-card" id="hud-active-crisis" style="display: none;">
+        <div class="crisis-badge-row">
+          <span class="crisis-tag-pill">🚨 ACTIVE CIVIC CRISIS / موجودہ بحران</span>
+          <span class="crisis-reward-pill" id="crisis-reward-text">+1,400 XP REWARD</span>
+        </div>
+        <div class="crisis-main-row">
+          <div class="crisis-icon-box" id="crisis-icon">🚰</div>
+          <div class="crisis-text-box">
+            <div class="crisis-title-row">
+              <span class="crisis-title" id="crisis-title">Water Tanker Extortion &amp; Dry Homes</span>
+              <span class="crisis-urdu" id="crisis-urdu">پانی بحران و ٹینکر مافیا کا خاتمہ</span>
+            </div>
+            <div class="crisis-desc" id="crisis-desc">Devour the Water Tanker Mafia siphoning water from PECHS residential homes!</div>
+            <div class="crisis-progress-bar-wrap">
+              <div class="crisis-progress-fill" id="crisis-progress-fill" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="crisis-status-box">
+            <span class="crisis-count" id="crisis-count">0/1</span>
+            <span class="crisis-sub">RESOLVED</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Before ➔ After Civic Transformation Toast -->
       <div class="before-after-toast" id="hud-before-after-toast" style="opacity: 0">
         <div class="ba-badge">✨ CIVIC TRANSFORMATION / شہری بحالی ✨</div>
@@ -646,8 +671,36 @@ export class UIManager {
     districtTotal = 0,
     targetBreakdown = [],
     districtEvils = [],
-    recentCleaned = []
+    recentCleaned = [],
+    activeCrisis = null
   }) {
+    // Active Civic Crisis Challenge Card
+    const crisisCard = document.getElementById('hud-active-crisis');
+    if (crisisCard) {
+      if (activeCrisis) {
+        crisisCard.style.display = 'flex';
+        const iconEl = document.getElementById('crisis-icon');
+        const titleEl = document.getElementById('crisis-title');
+        const urduEl = document.getElementById('crisis-urdu');
+        const descEl = document.getElementById('crisis-desc');
+        const rewardEl = document.getElementById('crisis-reward-text');
+        const countEl = document.getElementById('crisis-count');
+        const fillEl = document.getElementById('crisis-progress-fill');
+
+        if (iconEl) iconEl.textContent = activeCrisis.icon || '🚨';
+        if (titleEl) titleEl.textContent = activeCrisis.title;
+        if (urduEl) urduEl.textContent = activeCrisis.urdu || '';
+        if (descEl) descEl.textContent = activeCrisis.description;
+        if (rewardEl) rewardEl.textContent = `+${activeCrisis.xpReward} XP REWARD`;
+        if (countEl) countEl.textContent = `${activeCrisis.current || 0}/${activeCrisis.targetCount || 1}`;
+        if (fillEl) {
+          const pct = Math.min(100, Math.round(((activeCrisis.current || 0) / Math.max(1, activeCrisis.targetCount || 1)) * 100));
+          fillEl.style.width = `${pct}%`;
+        }
+      } else {
+        crisisCard.style.display = 'none';
+      }
+    }
     // District Mission Banner & Remaining Targets
     if (districtConfig) {
       const badgeEl = document.getElementById('hud-district-badge');
@@ -1170,6 +1223,15 @@ export class UIManager {
     };
 
     this.districtClearedModal.style.display = 'flex';
+  }
+
+  showCrisisCompleteBanner(challenge) {
+    this.showAnnouncement(`🌟 CRISIS RESOLVED: ${challenge.title}! ${challenge.benefitText} (+${challenge.xpReward} XP) 🌟`, '#00e676');
+    const card = document.getElementById('hud-active-crisis');
+    if (card) {
+      card.classList.add('crisis-cleared-anim');
+      setTimeout(() => card.classList.remove('crisis-cleared-anim'), 1400);
+    }
   }
 
   hideDistrictClearedModal() {

@@ -480,9 +480,9 @@ export class CityGenerator {
     this.registerEdible(vipTarget, 3, 1600, "VIP Protocol Prado Convoy", 4.2, { isBadGuy: true, evilType: 'vip', isDistrictEvil: true });
   }
 
-  // Interactive Water Tanker Extortion Scene with Thirsty Karachi Residents!
+  // Interactive Water Tanker Extortion Scene with Thirsty Karachi Residents & Dry Homes!
   addWaterTankerScene(posX, posZ) {
-    const { tankerTarget, thirstyResidents } = KarachiModels.createWaterTankerExtortionScene();
+    const { tankerTarget, thirstyResidents, dryHomes, hoseGroup } = KarachiModels.createWaterTankerExtortionScene();
     tankerTarget.position.set(posX, 0, posZ);
     thirstyResidents.forEach(r => {
       const rx = posX + r.position.x;
@@ -491,6 +491,18 @@ export class CityGenerator {
       this.scene.add(r);
       this.interactiveResidents.push(r);
     });
+
+    if (dryHomes) {
+      this.interactiveHomes = this.interactiveHomes || [];
+      dryHomes.forEach(h => {
+        const hx = posX + h.position.x;
+        const hz = posZ + h.position.z;
+        h.position.set(hx, 0, hz);
+        this.scene.add(h);
+        this.interactiveHomes.push(h);
+      });
+    }
+
     this.registerEdible(tankerTarget, 3, 1400, "Water Tanker Mafia Truck", 3.8, { isBadGuy: true, evilType: 'tanker', isDistrictEvil: true });
   }
 
@@ -510,7 +522,7 @@ export class CityGenerator {
     }
     this.currentDistrictEvils = [];
 
-    // Clear previous interactive victims, traffic, and residents if any
+    // Clear previous interactive victims, traffic, homes, and residents if any
     if (this.interactiveVictims) {
       this.interactiveVictims.forEach(v => {
         if (v.parent) v.parent.remove(v);
@@ -529,15 +541,22 @@ export class CityGenerator {
       });
       this.interactiveResidents = [];
     }
+    if (this.interactiveHomes) {
+      this.interactiveHomes.forEach(h => {
+        if (h.parent) h.parent.remove(h);
+      });
+      this.interactiveHomes = [];
+    }
 
     const trashColors = [0x1565c0, 0x212121, 0x43a047, 0xe53935];
 
     if (districtLevel === 1) {
       // =========================================================
       // DISTRICT 1: TARIQ ROAD & PECHS (Level 1)
-      // Focus: Street Snatchers, Shady Gutka Peddlers, Potholes & Trash
+      // Focus: Street Snatchers, Water Tanker Mafia & Dry Homes, Potholes & Trash
       // Immediate 5-25m proximity for clear, dramatic visibility!
       // =========================================================
+      this.addWaterTankerScene(16.0, -14.0);
       this.addRobberyScene(6.5, -8.0);
       this.addRobberyScene(-10.5, 9.5);
 

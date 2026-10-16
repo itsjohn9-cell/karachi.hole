@@ -1624,4 +1624,162 @@ html, body {
   box-shadow: 0 6px 24px rgba(0, 230, 118, 0.6) !important;
 }
 
+/* ==============================================================
+   ACTIVE CIVIC CRISIS CHALLENGE CARD
+   ============================================================== */
+.active-crisis-card {
+  position: absolute;
+  top: 138px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  min-width: 380px;
+  max-width: 580px;
+  background: rgba(10, 16, 28, 0.92);
+  border: 1.5px solid rgba(0, 229, 255, 0.45);
+  border-radius: 14px;
+  padding: 6px 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 14px rgba(0, 229, 255, 0.25);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 25;
+  transition: all 0.3s ease;
+}
+
+.crisis-badge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.crisis-tag-pill {
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: #ff3d00;
+  background: rgba(255, 61, 0, 0.18);
+  border: 1px solid rgba(255, 61, 0, 0.4);
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+  animation: pulseCrisis 1.8s infinite ease-in-out;
+}
+
+@keyframes pulseCrisis {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; text-shadow: 0 0 8px #ff3d00; }
+}
+
+.crisis-reward-pill {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.crisis-main-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.crisis-icon-box {
+  font-size: 1.8rem;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.crisis-text-box {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 2px;
+}
+
+.crisis-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.crisis-title {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.crisis-urdu {
+  font-size: 0.75rem;
+  color: #80deea;
+  font-family: 'Noto Nastaliq Urdu', sans-serif;
+}
+
+.crisis-desc {
+  font-size: 0.72rem;
+  color: #b0bec5;
+  line-height: 1.25;
+}
+
+.crisis-progress-bar-wrap {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+.crisis-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00e5ff 0%, #00e676 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px #00e5ff;
+}
+
+.crisis-status-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  padding: 4px 10px;
+  border-radius: 10px;
+  min-width: 50px;
+}
+
+.crisis-count {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #00e5ff;
+  line-height: 1;
+}
+
+.crisis-sub {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #80deea;
+  letter-spacing: 0.5px;
+}
+
+.crisis-cleared-anim {
+  animation: crisisFlash 1.2s ease-out;
+}
+
+@keyframes crisisFlash {
+  0% { transform: translateX(-50%) scale(1); }
+  30% { transform: translateX(-50%) scale(1.08); border-color: #00e676; box-shadow: 0 0 35px #00e676; }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
 
