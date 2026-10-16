@@ -707,6 +707,80 @@ class AudioManager {
     }, stepIntervalMs);
   }
 
+  // Coastal Arabian Sea Wave Splash & Spray (Triggered at water corners & seawall)
+  playWaterSplash() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+
+    // 1. White Noise Wave Crash & Spray
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.45);
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    const whiteNoise = this.ctx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1600, t);
+    filter.frequency.exponentialRampToValueAtTime(250, t + 0.45);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.35, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+
+    whiteNoise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.ctx.destination);
+    whiteNoise.start(t);
+    whiteNoise.stop(t + 0.46);
+
+    // 2. Water Droplet Plops & Bubbles
+    [
+      { f1: 320, f2: 640, delay: 0.02, dur: 0.12, vol: 0.28 },
+      { f1: 460, f2: 880, delay: 0.08, dur: 0.14, vol: 0.22 }
+    ].forEach(plop => {
+      const pOsc = this.ctx.createOscillator();
+      const pGain = this.ctx.createGain();
+      const pt = t + plop.delay;
+
+      pOsc.type = 'sine';
+      pOsc.frequency.setValueAtTime(plop.f1, pt);
+      pOsc.frequency.exponentialRampToValueAtTime(plop.f2, pt + plop.dur);
+
+      pGain.gain.setValueAtTime(plop.vol, pt);
+      pGain.gain.exponentialRampToValueAtTime(0.001, pt + plop.dur);
+
+      pOsc.connect(pGain);
+      pGain.connect(this.ctx.destination);
+      pOsc.start(pt);
+      pOsc.stop(pt + plop.dur + 0.01);
+    });
+
+    // 3. Deep Ocean Swell Rumble
+    const subOsc = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(95, t);
+    subOsc.frequency.exponentialRampToValueAtTime(40, t + 0.35);
+
+    subGain.gain.setValueAtTime(0.3, t);
+    subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+    subOsc.connect(subGain);
+    subGain.connect(this.ctx.destination);
+    subOsc.start(t);
+    subOsc.stop(t + 0.36);
+
+    // Haptics: Double wave splash pulse
+    this.vibrate([40, 25, 60]);
+  }
+
   stopMusic() {
     this.isPlayingMusic = false;
     if (this.musicInterval) {

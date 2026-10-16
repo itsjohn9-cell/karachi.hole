@@ -297,9 +297,58 @@ class Game {
       }
     }
 
-    // Move Player
+    // Move Player across expanded 200m map
     if (this.moveVector.x !== 0 || this.moveVector.y !== 0) {
-      this.player.move(this.moveVector.x, this.moveVector.y, dt, 70.0);
+      this.player.move(this.moveVector.x, this.moveVector.y, dt, 96.0);
+    }
+
+    // =============================================================
+    // COASTAL WATER CORNERS & BOUNDARY SPLASH DETECTION
+    // =============================================================
+    if (this.player && this.player.isAlive) {
+      if (this.player.splashCooldown > 0) this.player.splashCooldown -= dt;
+      if (this.player.boundaryNoticeCooldown > 0) this.player.boundaryNoticeCooldown -= dt;
+
+      const pPos = this.player.position;
+      const distToManoraSW = Math.hypot(pPos.x - (-94), pPos.z - 94);
+      const distToDoDaryaSE = Math.hypot(pPos.x - 94, pPos.z - 94);
+      const isAtSouthCoast = pPos.z >= 92.0;
+      const isAtWaterCorner = distToManoraSW < 18.0 || distToDoDaryaSE < 18.0 || isAtSouthCoast;
+
+      if (isAtWaterCorner && (!this.player.splashCooldown || this.player.splashCooldown <= 0)) {
+        this.player.splashCooldown = 0.85; // 850ms debounce
+        audio.playWaterSplash();
+        this.particles.createWaterSplash(pPos, 32);
+
+        // Gentle Arabian Sea wave surge pushback
+        this.player.position.z -= 0.35;
+        this.player.group.position.copy(this.player.position);
+
+        if (distToManoraSW < 18.0) {
+          this.ui.showAnnouncement("🌊 SPLASH! MANORA POINT & ARABIAN SEA! Coastal Corner! ⚓", "#00e5ff");
+        } else if (distToDoDaryaSE < 18.0) {
+          this.ui.showAnnouncement("🌊 SPLASH! DO DARYA WATERFRONT! Coastal Pier Waves! 🦞", "#00e5ff");
+        } else {
+          this.ui.showAnnouncement("🌊 SPLASH! CLIFTON SEA VIEW! Arabian Sea Coastline! 🏖️", "#00e5ff");
+        }
+      } else if (!isAtWaterCorner) {
+        // Northern, Eastern, and Western Land Barriers
+        const isNearNorth = pPos.z <= -94.0;
+        const isNearEast = pPos.x >= 94.0;
+        const isNearWest = pPos.x <= -94.0;
+
+        if ((isNearNorth || isNearEast || isNearWest) && (!this.player.boundaryNoticeCooldown || this.player.boundaryNoticeCooldown <= 0)) {
+          this.player.boundaryNoticeCooldown = 1.4;
+          audio.vibrate([30, 20]);
+          if (isNearNorth) {
+            this.ui.showAnnouncement("🏛️ BAB-E-KARACHI PORTAL! Northern City Boundary! 🇵🇰", "#ffd700");
+          } else if (isNearEast) {
+            this.ui.showAnnouncement("🚧 KMC HAZARD BARRIERS! Eastern Boundary Reached! ⚠️", "#ff9100");
+          } else {
+            this.ui.showAnnouncement("🧱 SADDAR HERITAGE WALL! Western Boundary Reached! 🏛️", "#ffd700");
+          }
+        }
+      }
     }
 
     // Update Player & Bots
@@ -347,8 +396,8 @@ class Game {
             }
 
             // Safe respawn position on a random open road within active district
-            const safeX = (Math.random() - 0.5) * 60;
-            const safeZ = (Math.random() - 0.5) * 60;
+            const safeX = (Math.random() - 0.5) * 88;
+            const safeZ = (Math.random() - 0.5) * 88;
             victim.killAndRespawn({ x: safeX, z: safeZ });
           }
         }
@@ -437,8 +486,8 @@ class Game {
             }
           }
 
-          bgPos.x = THREE.MathUtils.clamp(bgPos.x, -68, 68);
-          bgPos.z = THREE.MathUtils.clamp(bgPos.z, -68, 68);
+          bgPos.x = THREE.MathUtils.clamp(bgPos.x, -94, 94);
+          bgPos.z = THREE.MathUtils.clamp(bgPos.z, -94, 94);
         }
       }
     }
@@ -523,8 +572,8 @@ class Game {
         }
       }
 
-      aPos.x = THREE.MathUtils.clamp(aPos.x, -68, 68);
-      aPos.z = THREE.MathUtils.clamp(aPos.z, -68, 68);
+      aPos.x = THREE.MathUtils.clamp(aPos.x, -94, 94);
+      aPos.z = THREE.MathUtils.clamp(aPos.z, -94, 94);
     }
 
     // Edible Objects Suction & Collision (Ultra-fast Bounding Box check for 60 FPS)
@@ -982,6 +1031,31 @@ class Game {
     if (!this.isGameOver) {
       this.updatePhysics(dt);
       this.updateMatchTimer(dt);
+    }
+
+    // Dynamic Arabian Sea wave motion and coastal bay buoy bobbing
+    const elapsedTime = this.clock.getElapsedTime();
+    if (this.cityGen && this.cityGen.seaMesh) {
+      this.cityGen.seaMesh.position.y = -0.32 + Math.sin(elapsedTime * 1.5) * 0.05;
+    }
+    if (this.cityGen && this.cityGen.coastalBays) {
+      this.cityGen.coastalBays.forEach((bay, idx) => {
+        const ud = bay.userData;
+        if (ud) {
+          if (ud.waterMesh) {
+            ud.waterMesh.position.y = 0.05 + Math.sin(elapsedTime * 1.6 + idx * 1.3) * 0.03;
+          }
+          if (ud.foam) {
+            const s = 1.0 + Math.sin(elapsedTime * 2.1 + idx) * 0.04;
+            ud.foam.scale.set(s, s, s);
+          }
+          if (ud.buoyGroup) {
+            ud.buoyGroup.position.y = 0.4 + Math.sin(elapsedTime * 2.3 + idx) * 0.12;
+            ud.buoyGroup.rotation.z = Math.sin(elapsedTime * 1.7 + idx) * 0.08;
+            ud.buoyGroup.rotation.x = Math.cos(elapsedTime * 1.5 + idx) * 0.06;
+          }
+        }
+      });
     }
 
     this.updateCamera(dt);

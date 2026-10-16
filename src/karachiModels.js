@@ -2608,6 +2608,155 @@ export const KarachiModels = {
     }
 
     return group;
+  },
+
+  // 42. Karachi Coastal Concrete Tetrapod Breakwater (Clifton & Manora Sea-breaks)
+  createTetrapodBreakwater() {
+    const group = new THREE.Group();
+    group.name = "Tetrapod-Breakwater";
+
+    const tetraMat = new THREE.MeshStandardMaterial({
+      color: 0x78909c, // Weathered marine concrete
+      roughness: 0.85
+    });
+
+    const createSingleTetra = () => {
+      const tg = new THREE.Group();
+      const legGeo = new THREE.CylinderGeometry(0.35, 0.6, 2.2, 8);
+      // 4 legs radiating in tetrahedral angles
+      const angles = [
+        [0, 0, 0],
+        [Math.PI * 0.6, 0, 0],
+        [Math.PI * 0.6, (2 * Math.PI) / 3, 0],
+        [Math.PI * 0.6, (4 * Math.PI) / 3, 0]
+      ];
+      angles.forEach(ang => {
+        const leg = new THREE.Mesh(legGeo, tetraMat);
+        leg.rotation.set(ang[0], ang[1], ang[2]);
+        leg.position.y = 0.6;
+        tg.add(leg);
+      });
+      return tg;
+    };
+
+    // Cluster of 3 interlocking tetrapods
+    [-1.2, 0, 1.2].forEach((x, idx) => {
+      const tetra = createSingleTetra();
+      tetra.position.set(x, 0.6, (idx % 2 === 0 ? 0.3 : -0.3));
+      tetra.rotation.y = idx * 1.1;
+      group.add(tetra);
+    });
+
+    return group;
+  },
+
+  // 43. Coastal Corner Water Bay (Azure Arabian Sea water inlet with breaking waves, foam, and warning buoy)
+  createCoastalWaterBay({ title = "🌊 ARABIAN SEA BAY", subtitle = "MANORA COASTAL WATER" } = {}) {
+    const group = new THREE.Group();
+    group.name = "Coastal-Water-Bay";
+
+    // 1. Water Inlet Plane with rich ocean shader material
+    const waterGeo = new THREE.PlaneGeometry(36, 36, 16, 16);
+    waterGeo.rotateX(-Math.PI / 2);
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x00838f,
+      roughness: 0.1,
+      metalness: 0.65,
+      transparent: true,
+      opacity: 0.88
+    });
+    const waterMesh = new THREE.Mesh(waterGeo, waterMat);
+    waterMesh.position.set(0, 0.05, 0);
+    group.add(waterMesh);
+
+    // 2. White Surf Foam Band along the shoreline edge
+    const foamGeo = new THREE.RingGeometry(15, 17.5, 32);
+    foamGeo.rotateX(-Math.PI / 2);
+    const foamMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.75,
+      side: THREE.DoubleSide
+    });
+    const foam = new THREE.Mesh(foamGeo, foamMat);
+    foam.position.set(0, 0.07, 0);
+    group.add(foam);
+
+    // 3. Floating Marine Channel Navigation Buoy
+    const buoyGroup = new THREE.Group();
+    buoyGroup.position.set(4, 0.4, 4);
+
+    const buoyHull = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.9, 0.5, 1.2, 12),
+      new THREE.MeshStandardMaterial({ color: 0xe65100, roughness: 0.3 }) // High-vis marine orange
+    );
+    buoyGroup.add(buoyHull);
+
+    const buoyCage = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.4, 0.7, 1.6, 6, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x212121, wireframe: true })
+    );
+    buoyCage.position.y = 1.3;
+    buoyGroup.add(buoyCage);
+
+    const buoyLight = new THREE.Mesh(
+      new THREE.SphereGeometry(0.25, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x00e676 }) // Green navigational strobe
+    );
+    buoyLight.position.y = 2.2;
+    buoyGroup.add(buoyLight);
+
+    group.add(buoyGroup);
+
+    // 4. Granite Boulders & Tetrapods along the inner shore curve
+    const rockGeo = new THREE.DodecahedronGeometry(1.2);
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x455a64, roughness: 0.9 });
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 0.6;
+      const rx = Math.cos(a) * 14 - 2;
+      const rz = Math.sin(a) * 14 - 2;
+      const rock = new THREE.Mesh(rockGeo, rockMat);
+      rock.position.set(rx, 0.6, rz);
+      rock.scale.set(1.2 + Math.random() * 0.6, 0.8 + Math.random() * 0.5, 1.2 + Math.random() * 0.6);
+      rock.rotation.set(Math.random(), Math.random(), Math.random());
+      group.add(rock);
+    }
+
+    // 5. Corner Floating Banner
+    const bannerCanvas = document.createElement('canvas');
+    bannerCanvas.width = 440;
+    bannerCanvas.height = 100;
+    const bctx = bannerCanvas.getContext('2d');
+    bctx.fillStyle = 'rgba(0, 77, 64, 0.9)';
+    bctx.beginPath();
+    bctx.roundRect(6, 6, 428, 88, 18);
+    bctx.fill();
+    bctx.strokeStyle = '#00e5ff';
+    bctx.lineWidth = 4;
+    bctx.stroke();
+    bctx.fillStyle = '#00e5ff';
+    bctx.font = 'bold 24px "Outfit", sans-serif';
+    bctx.textAlign = 'center';
+    bctx.textBaseline = 'middle';
+    bctx.fillText(title, 220, 36);
+    bctx.fillStyle = '#ffffff';
+    bctx.font = 'bold 18px "Outfit", sans-serif';
+    bctx.fillText(subtitle, 220, 72);
+
+    const bTex = new THREE.CanvasTexture(bannerCanvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    sprite.scale.set(5.2, 1.2, 1);
+    sprite.position.set(0, 4.8, 0);
+    group.add(sprite);
+
+    group.userData = {
+      waterMesh,
+      foam,
+      buoyGroup,
+      buoyLight
+    };
+
+    return group;
   }
 };
 

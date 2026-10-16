@@ -13,7 +13,8 @@ export class CityGenerator {
     this.foodStalls = [];
     this.buildings = [];
     this.citizens = [];
-    this.mapSize = 240; // 240m x 240m map
+    this.coastalBays = [];
+    this.mapSize = 320; // Expanded Karachi Metropolis Map
   }
 
   generateCity() {
@@ -30,13 +31,14 @@ export class CityGenerator {
       badGuys: this.badGuys,
       foodStalls: this.foodStalls,
       buildings: this.buildings,
-      citizens: this.citizens
+      citizens: this.citizens,
+      coastalBays: this.coastalBays
     };
   }
 
   createGround() {
-    // 1. Expansive Vast Ground Foundation (1200m x 1200m) - eliminates empty voids/cut-offs!
-    const groundGeo = new THREE.PlaneGeometry(1200, 1200);
+    // 1. Expansive Vast Ground Foundation (1600m x 1600m) - eliminates empty voids/cut-offs!
+    const groundGeo = new THREE.PlaneGeometry(1600, 1600);
     groundGeo.rotateX(-Math.PI / 2);
     const groundMat = new THREE.MeshLambertMaterial({
       color: 0xbdb39a // Warm coastal Karachi sand/dust earth tone
@@ -46,9 +48,9 @@ export class CityGenerator {
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    // 2. Active Playable District Plaza Base (148m x 148m, centered at x: 0, z: 0)
+    // 2. Active Playable District Plaza Base (208m x 208m, centered at x: 0, z: 0)
     // Dark urban pavement underneath roads and blocks so the devour area is crisp and rich
-    const plazaGeo = new THREE.PlaneGeometry(148, 148);
+    const plazaGeo = new THREE.PlaneGeometry(208, 208);
     plazaGeo.rotateX(-Math.PI / 2);
     const plazaMat = new THREE.MeshLambertMaterial({
       color: 0x242830 // Deep urban asphalt tone
@@ -58,8 +60,19 @@ export class CityGenerator {
     plaza.receiveShadow = true;
     this.scene.add(plaza);
 
-    // 3. Vast Arabian Sea Water Plane (1200m x 600m south of the Clifton seawall at z = 74)
-    const seaGeo = new THREE.PlaneGeometry(1200, 600);
+    // 3. Clifton Sea View Beach Strip (208m x 22m golden wet sand meeting the ocean waves)
+    const beachGeo = new THREE.PlaneGeometry(208, 22);
+    beachGeo.rotateX(-Math.PI / 2);
+    const beachMat = new THREE.MeshLambertMaterial({
+      color: 0xd7c29e // Warm wet golden beach sand
+    });
+    const beach = new THREE.Mesh(beachGeo, beachMat);
+    beach.position.set(0, 0.01, 94);
+    beach.receiveShadow = true;
+    this.scene.add(beach);
+
+    // 4. Vast Arabian Sea Water Plane (1600m x 800m south of the Clifton seawall at z = 98)
+    const seaGeo = new THREE.PlaneGeometry(1600, 800, 32, 32);
     seaGeo.rotateX(-Math.PI / 2);
     const seaMat = new THREE.MeshStandardMaterial({
       color: 0x006688,
@@ -67,8 +80,9 @@ export class CityGenerator {
       metalness: 0.55
     });
     const sea = new THREE.Mesh(seaGeo, seaMat);
-    sea.position.set(0, -0.35, 374); // Extends from z = 74 to z = 674 seamlessly into horizon fog!
+    sea.position.set(0, -0.32, 500); // Extends south from z = 100 to z = 900
     this.scene.add(sea);
+    this.seaMesh = sea;
   }
 
   createRoadNetwork() {
@@ -79,8 +93,9 @@ export class CityGenerator {
     });
 
     const roadWidth = 14;
-    const roadGrid = [-70, 0, 70]; // Main 3x3 arterial avenues forming the district grid and outer loop
-    const districtLength = 144; // Roads span cleanly from -72 to +72 inside the perimeter boundaries
+    // 5x5 Arterial Avenue and Boulevard Network across 200m district
+    const roadGrid = [-96, -48, 0, 48, 96];
+    const districtLength = 200; // Roads span cleanly from -100 to +100 inside perimeter boundaries
 
     // North-South Avenues
     roadGrid.forEach(x => {
@@ -123,45 +138,85 @@ export class CityGenerator {
 
   createPerimeterBoundaries() {
     // =============================================================
-    // 1. FOUR ICONIC CORNER ANCHORS (NW, NE, SW, SE)
+    // 1. FOUR ICONIC CORNER ANCHORS WITH AUTHENTIC COASTAL WATER BAYS
     // =============================================================
-    // North-West Corner: Saddar Victorian Clock Tower
+    // --- North-West Corner: Saddar Victorian Clock Tower ---
     const saddarClock = KarachiModels.createSaddarClockTower();
-    saddarClock.position.set(-70, 0, -70);
+    saddarClock.position.set(-96, 0, -96);
     this.registerEdible(saddarClock, 5, 2500, "Saddar Clock Tower", 8.0, { isBuilding: true, isBadGuy: false });
 
-    // North-East Corner: Chundrigar Illuminated Billboard Tower
+    // --- North-East Corner: Chundrigar Illuminated Billboard Tower ---
     const chundrigarBB = KarachiModels.createChundrigarBillboardTower();
-    chundrigarBB.position.set(70, 0, -70);
+    chundrigarBB.position.set(96, 0, -96);
     this.registerEdible(chundrigarBB, 5, 2500, "Chundrigar Billboard Tower", 8.0, { isBuilding: true, isBadGuy: false });
 
-    // South-West Corner: Clifton Marine Lighthouse
-    const lighthouse = KarachiModels.createCliftonLighthouse();
-    lighthouse.position.set(-70, 0, 70);
-    this.registerEdible(lighthouse, 5, 2500, "Clifton Marine Lighthouse", 8.0, { isBuilding: true, isBadGuy: false });
+    // --- South-West Corner: Manora Point Coastal Water Bay & Lighthouse ---
+    // Genuine coastal water bay with turquoise Arabian Sea water inlet, foam, rocks & navigation buoy
+    const swBay = KarachiModels.createCoastalWaterBay({
+      title: "🌊 MANORA COASTAL BAY",
+      subtitle: "ARABIAN SEA NAVAL POINT"
+    });
+    swBay.position.set(-96, 0, 96);
+    this.scene.add(swBay);
 
-    // South-East Corner: Do Darya Coastal Pavilion Pier
+    const lighthouse = KarachiModels.createCliftonLighthouse();
+    lighthouse.position.set(-94, 0, 94);
+    this.registerEdible(lighthouse, 5, 2500, "Manora Point Lighthouse", 8.0, { isBuilding: true, isBadGuy: false });
+
+    const swTetra1 = KarachiModels.createTetrapodBreakwater();
+    swTetra1.position.set(-84, 0, 98);
+    this.scene.add(swTetra1);
+
+    const swTetra2 = KarachiModels.createTetrapodBreakwater();
+    swTetra2.position.set(-98, 0, 84);
+    this.scene.add(swTetra2);
+
+    // --- South-East Corner: Do Darya Arabian Sea Waterfront Pier ---
+    // Genuine coastal dining bay over the ocean with water inlet, buoy, and breakwaters
+    const seBay = KarachiModels.createCoastalWaterBay({
+      title: "🌊 DO DARYA WATERFRONT",
+      subtitle: "ARABIAN SEA DINING PIER"
+    });
+    seBay.position.set(96, 0, 96);
+    this.scene.add(seBay);
+    this.coastalBays = [swBay, seBay];
+
     const doDarya = KarachiModels.createDoDaryaPavilion();
-    doDarya.position.set(70, 0, 70);
+    doDarya.position.set(94, 0, 94);
     this.registerEdible(doDarya, 5, 2500, "Do Darya Coastal Pavilion", 8.0, { isBuilding: true, isBadGuy: false });
 
+    const seTetra1 = KarachiModels.createTetrapodBreakwater();
+    seTetra1.position.set(84, 0, 98);
+    this.scene.add(seTetra1);
+
+    const seTetra2 = KarachiModels.createTetrapodBreakwater();
+    seTetra2.position.set(98, 0, 84);
+    this.scene.add(seTetra2);
+
     // =============================================================
-    // 2. SOUTH BOUNDARY: Clifton Seawall overlooking Arabian Sea (z = 74)
+    // 2. SOUTH BOUNDARY: Clifton Seawall overlooking Arabian Sea (z = 100)
     // =============================================================
-    for (let x = -58; x <= 58; x += 23.5) {
+    for (let x = -80; x <= 80; x += 23.5) {
       const seawall = KarachiModels.createSeawallSegment(24);
-      seawall.position.set(x, 0, 74);
+      seawall.position.set(x, 0, 100);
       this.scene.add(seawall);
     }
 
+    // Coastal breakwater tetrapods scattered along the ocean edge
+    for (let x = -75; x <= 75; x += 28) {
+      const tetra = KarachiModels.createTetrapodBreakwater();
+      tetra.position.set(x + 5, 0, 102);
+      this.scene.add(tetra);
+    }
+
     // =============================================================
-    // 3. NORTH BOUNDARY: Marble Balustrade Wall & Bab-e-Karachi Arch (z = -74)
+    // 3. NORTH BOUNDARY: Marble Balustrade Wall & Bab-e-Karachi Arch (z = -100)
     // =============================================================
-    for (let x = -60; x <= 60; x += 15) {
+    for (let x = -85; x <= 85; x += 15) {
       if (Math.abs(x) < 8) {
         // Grand Central Portal Arch at x = 0 ("BAB-E-KARACHI")
         const gateGroup = new THREE.Group();
-        gateGroup.position.set(0, 0, -74);
+        gateGroup.position.set(0, 0, -100);
 
         // Twin Marble Pylons
         const pylonL = new THREE.Mesh(new THREE.BoxGeometry(2.4, 7.5, 2.4), KarachiModels.materials.whiteMarble);
@@ -203,46 +258,46 @@ export class CityGenerator {
         // Balustrade Wall Segment
         const wallGeo = new THREE.BoxGeometry(14.0, 2.2, 1.2);
         const wall = new THREE.Mesh(wallGeo, KarachiModels.materials.whiteMarble);
-        wall.position.set(x, 1.1, -74);
+        wall.position.set(x, 1.1, -100);
         wall.receiveShadow = true;
         this.scene.add(wall);
 
         // Decorative Marble Pillars
         const col = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.8, 1.6), KarachiModels.materials.sandstone);
-        col.position.set(x + 7.0, 1.4, -74);
+        col.position.set(x + 7.0, 1.4, -100);
         this.scene.add(col);
       }
     }
 
     // =============================================================
-    // 4. EAST BOUNDARY: KMC Concrete Hazard Barriers with flashing amber strobes (x = 74)
+    // 4. EAST BOUNDARY: KMC Concrete Hazard Barriers with flashing amber strobes (x = 100)
     // =============================================================
-    for (let z = -62; z <= 62; z += 3.5) {
+    for (let z = -90; z <= 90; z += 3.5) {
       const barrier = KarachiModels.createKMCBarrier();
-      barrier.position.set(74, 0, z);
+      barrier.position.set(100, 0, z);
       barrier.rotation.y = Math.PI / 2;
       this.scene.add(barrier);
     }
 
     // =============================================================
-    // 5. WEST BOUNDARY: Saddar Colonial Heritage Red-Brick Wall (x = -74)
+    // 5. WEST BOUNDARY: Saddar Colonial Heritage Red-Brick Wall (x = -100)
     // =============================================================
-    for (let z = -60; z <= 60; z += 12) {
+    for (let z = -88; z <= 88; z += 12) {
       const wallGeo = new THREE.BoxGeometry(1.2, 2.4, 11.0);
       const wall = new THREE.Mesh(wallGeo, KarachiModels.materials.redBrick);
-      wall.position.set(-74, 1.2, z);
+      wall.position.set(-100, 1.2, z);
       wall.receiveShadow = true;
       this.scene.add(wall);
 
       // Iron pillar
       const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 3.2, 8), KarachiModels.materials.curbBlack);
-      pil.position.set(-74, 1.6, z + 5.5);
+      pil.position.set(-100, 1.6, z + 5.5);
       this.scene.add(pil);
     }
   }
 
   createDistantCitySkyline() {
-    // 1. Distant Urban Silhouette Buildings outside North, East, and West boundaries (radius 85m to 160m)
+    // 1. Distant Urban Silhouette Buildings outside North, East, and West boundaries (radius 115m to 220m)
     const facadeMaterials = [
       new THREE.MeshLambertMaterial({ color: 0x8d7b68 }), // Warm sandstone
       new THREE.MeshLambertMaterial({ color: 0x546e7a }), // Modern slate
@@ -251,7 +306,7 @@ export class CityGenerator {
       new THREE.MeshLambertMaterial({ color: 0x37474f })  // Tinted glass
     ];
 
-    const buildingCount = 65;
+    const buildingCount = 75;
     for (let i = 0; i < buildingCount; i++) {
       // Angle around perimeter, avoiding pure south which is the open Arabian Sea
       const angle = (i / buildingCount) * Math.PI * 2;
@@ -260,13 +315,13 @@ export class CityGenerator {
       const isSouthSea = angle > Math.PI * 0.32 && angle < Math.PI * 0.68;
       if (isSouthSea) continue;
 
-      const dist = 90 + (Math.sin(i * 13) * 0.5 + 0.5) * 65;
+      const dist = 118 + (Math.sin(i * 13) * 0.5 + 0.5) * 85;
       const bx = Math.cos(angle) * dist;
       const bz = Math.sin(angle) * dist;
 
-      const w = 12 + ((i * 7) % 14);
-      const d = 12 + ((i * 11) % 14);
-      const h = 25 + ((i * 17) % 65); // Heights up to 90m in distant backdrop!
+      const w = 14 + ((i * 7) % 16);
+      const d = 14 + ((i * 11) % 16);
+      const h = 28 + ((i * 17) % 75); // Heights up to 100m in distant backdrop!
 
       const mat = facadeMaterials[i % facadeMaterials.length];
       const bMesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -274,23 +329,23 @@ export class CityGenerator {
       this.scene.add(bMesh);
 
       // Rooftop antenna / beacon on taller buildings
-      if (h > 45) {
+      if (h > 50) {
         const antenna = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.15, 0.35, 12, 6),
+          new THREE.CylinderGeometry(0.15, 0.35, 14, 6),
           new THREE.MeshBasicMaterial({ color: 0xe53935 })
         );
-        antenna.position.set(bx, h + 6, bz);
+        antenna.position.set(bx, h + 7, bz);
         this.scene.add(antenna);
       }
     }
 
-    // 2. Distant Arabian Sea Cargo Vessels / Container Ships on the South Horizon (z = 150 to 280)
+    // 2. Distant Arabian Sea Cargo Vessels / Container Ships on the South Horizon (z = 200 to 450)
     const shipConfigs = [
-      { x: -140, z: 160, rot: 0.15, scale: 1.4 },
-      { x: -50, z: 210, rot: -0.2, scale: 1.8 },
-      { x: 45, z: 175, rot: 0.1, scale: 1.3 },
-      { x: 130, z: 230, rot: -0.3, scale: 1.6 },
-      { x: 0, z: 270, rot: 0.05, scale: 2.0 }
+      { x: -180, z: 220, rot: 0.15, scale: 1.6 },
+      { x: -70, z: 280, rot: -0.2, scale: 2.0 },
+      { x: 55, z: 240, rot: 0.1, scale: 1.5 },
+      { x: 170, z: 310, rot: -0.3, scale: 1.8 },
+      { x: 0, z: 360, rot: 0.05, scale: 2.2 }
     ];
 
     shipConfigs.forEach(sc => {
@@ -698,160 +753,160 @@ export class CityGenerator {
     // 8. FOUR DEDICATED CORNER ACTION CLUSTERS (NW, NE, SW, SE)
     // Ensures every single corner is bursting with bad guys, civic evils, and rewards!
     // =============================================================
-    // --- NW Corner: Saddar Clock Tower Plaza (around x: -65, z: -65) ---
+    // --- NW Corner: Saddar Clock Tower Plaza (around x: -88, z: -88) ---
     const nwGutka = KarachiModels.createGutkaPeddler();
-    nwGutka.position.set(-62, 0, -62);
+    nwGutka.position.set(-86, 0, -86);
     this.registerEdible(nwGutka, 1, 400, "Saddar Gutka Peddler", 1.5, { isBadGuy: true, evilType: 'gutka' });
 
     const nwTanker = KarachiModels.createWaterTankerMafia();
-    nwTanker.position.set(-65, 0, -58);
+    nwTanker.position.set(-88, 0, -82);
     this.registerEdible(nwTanker, 3, 900, "Saddar Water Tanker Mafia", 3.4, { isBadGuy: true, evilType: 'tanker' });
 
     const nwRob = KarachiModels.createRobberyScene();
-    nwRob.position.set(-58, 0, -64);
+    nwRob.position.set(-82, 0, -88);
     this.registerEdible(nwRob, 1, 750, "Saddar Mobile Snatcher", 2.4, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
 
     const nwRacer = KarachiModels.createOneWheelerRacer();
-    nwRacer.position.set(-60, 0, -60);
+    nwRacer.position.set(-84, 0, -84);
     this.registerEdible(nwRacer, 1, 500, "Saddar One-Wheeler Racer", 1.8, { isBadGuy: true, evilType: 'onewheeler' });
 
     const nwPot1 = KarachiModels.createBrokenRoadPatch();
-    nwPot1.position.set(-64, 0, -62);
+    nwPot1.position.set(-87, 0, -85);
     this.registerEdible(nwPot1, 1, 80, "Saddar Broken Pipeline Khadda", 1.4, { isBadGuy: true, evilType: 'pothole' });
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 14; i++) {
       const bag = KarachiModels.createTrashBag(trashColors[i % trashColors.length]);
-      bag.position.set(-66 + Math.random() * 8, 0, -66 + Math.random() * 8);
+      bag.position.set(-90 + Math.random() * 10, 0, -90 + Math.random() * 10);
       this.registerEdible(bag, 1, 25, "Saddar Trash Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
     }
 
-    // --- NE Corner: Chundrigar Billboard Plaza (around x: 65, z: -65) ---
+    // --- NE Corner: Chundrigar Billboard Plaza (around x: 88, z: -88) ---
     const nePol1 = KarachiModels.createPolitician({ name: "Senator Farooq", quote: "Offshore bank account freeze na karo!" });
-    nePol1.position.set(62, 0, -62);
+    nePol1.position.set(86, 0, -86);
     this.registerEdible(nePol1, 1, 650, "Senator Farooq", 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician' });
 
     const neBhatta = KarachiModels.createBhattaParchiMafia();
-    neBhatta.position.set(60, 0, -64);
+    neBhatta.position.set(84, 0, -88);
     this.registerEdible(neBhatta, 1, 700, "Chundrigar Bhatta Gangster", 1.5, { isBadGuy: true, evilType: 'bhatta' });
 
     const neVip = KarachiModels.createSpeedingVIPConvoy();
-    neVip.position.set(58, 0, -60);
+    neVip.position.set(82, 0, -84);
     this.registerEdible(neVip, 3, 850, "Chundrigar VIP Escort", 3.2, { isBadGuy: true, evilType: 'vip' });
 
     const neKe = KarachiModels.createKElectricTransformer();
-    neKe.position.set(64, 0, -58);
+    neKe.position.set(88, 0, -82);
     this.registerEdible(neKe, 2, 750, "Chundrigar Sparking Kunda", 2.5, { isBadGuy: true, evilType: 'ke' });
 
     const nePot1 = KarachiModels.createBrokenRoadPatch();
-    nePot1.position.set(62, 0, -65);
+    nePot1.position.set(85, 0, -89);
     this.registerEdible(nePot1, 1, 80, "Chundrigar Pothole", 1.4, { isBadGuy: true, evilType: 'pothole' });
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 14; i++) {
       const can = Math.random() > 0.5 ? KarachiModels.createSodaCan() : KarachiModels.createWaterBottle();
-      can.position.set(58 + Math.random() * 8, 0, -66 + Math.random() * 8);
+      can.position.set(82 + Math.random() * 10, 0, -90 + Math.random() * 10);
       this.registerEdible(can, 1, 15, "Corporate Cans Debris", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
     }
 
-    // --- SW Corner: Clifton Lighthouse Coastal Plaza (around x: -65, z: 65) ---
+    // --- SW Corner: Manora Coastal Water Bay (around x: -88, z: 88) ---
     const swChina = KarachiModels.createChinaCuttingMafia();
-    swChina.position.set(-62, 0, 62);
-    this.registerEdible(swChina, 1, 650, "Clifton Land Grabber", 1.5, { isBadGuy: true, evilType: 'chinacutting' });
+    swChina.position.set(-86, 0, 86);
+    this.registerEdible(swChina, 1, 650, "Manora Beach Land Grabber", 1.5, { isBadGuy: true, evilType: 'chinacutting' });
 
     const swRob = KarachiModels.createRobberyScene();
-    swRob.position.set(-64, 0, 58);
-    this.registerEdible(swRob, 1, 750, "Sea View Snatcher", 2.4, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
+    swRob.position.set(-88, 0, 82);
+    this.registerEdible(swRob, 1, 750, "Manora Harbor Snatcher", 2.4, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
 
     const swTanker = KarachiModels.createWaterTankerMafia();
-    swTanker.position.set(-58, 0, 64);
+    swTanker.position.set(-82, 0, 88);
     this.registerEdible(swTanker, 3, 900, "Coastal Water Tanker", 3.4, { isBadGuy: true, evilType: 'tanker' });
 
     const swPot = KarachiModels.createBrokenRoadPatch();
-    swPot.position.set(-60, 0, 60);
-    this.registerEdible(swPot, 1, 80, "Seawall Pothole", 1.4, { isBadGuy: true, evilType: 'pothole' });
+    swPot.position.set(-85, 0, 84);
+    this.registerEdible(swPot, 1, 80, "Beach Causeway Pothole", 1.4, { isBadGuy: true, evilType: 'pothole' });
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 14; i++) {
       const bag = KarachiModels.createTrashBag(trashColors[i % trashColors.length]);
-      bag.position.set(-66 + Math.random() * 8, 0, 58 + Math.random() * 8);
+      bag.position.set(-90 + Math.random() * 10, 0, 82 + Math.random() * 10);
       this.registerEdible(bag, 1, 25, "Coastal Plastic Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
     }
 
-    // --- SE Corner: Do Darya Pavilion Coastal Plaza (around x: 65, z: 65) ---
+    // --- SE Corner: Do Darya Arabian Sea Waterfront Pier (around x: 88, z: 88) ---
     const seVip = KarachiModels.createSpeedingVIPConvoy();
-    seVip.position.set(65, 0, 58);
+    seVip.position.set(88, 0, 82);
     this.registerEdible(seVip, 3, 850, "Do Darya VIP Protocol", 3.2, { isBadGuy: true, evilType: 'vip' });
 
     const sePol = KarachiModels.createPolitician({ name: "Advisor Khurshid", quote: "Do Darya ka fish dinner shandaar hai!" });
-    sePol.position.set(60, 0, 62);
+    sePol.position.set(84, 0, 86);
     this.registerEdible(sePol, 1, 650, "Advisor Khurshid", 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician' });
 
     const seBhatta = KarachiModels.createBhattaParchiMafia();
-    seBhatta.position.set(58, 0, 64);
+    seBhatta.position.set(82, 0, 88);
     this.registerEdible(seBhatta, 1, 700, "Do Darya Parchi Collector", 1.5, { isBadGuy: true, evilType: 'bhatta' });
 
     const seDump = KarachiModels.createKachraDump();
-    seDump.position.set(62, 0, 60);
+    seDump.position.set(86, 0, 84);
     this.registerEdible(seDump, 1, 100, "Do Darya Kachra Kundi", 1.8, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 14; i++) {
       const item = Math.random() > 0.5 ? KarachiModels.createSodaCan() : KarachiModels.createWaterBottle();
-      item.position.set(58 + Math.random() * 8, 0, 58 + Math.random() * 8);
-      this.registerEdible(item, 1, 15, "Do Darya Litter", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
+      item.position.set(82 + Math.random() * 10, 0, 82 + Math.random() * 10);
+      this.registerEdible(item, 1, 15, "Do Darya Seaside Litter", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
     }
 
     // =============================================================
-    // 9. GENERAL RUBBISH, GARBAGE BAGS & KACHRA DUMPS (Strictly within [-62, 62])
+    // 9. GENERAL RUBBISH, GARBAGE BAGS & KACHRA DUMPS (Strictly within [-88, 88])
     // =============================================================
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 24; i++) {
       const dump = KarachiModels.createKachraDump();
-      const dx = (Math.random() - 0.5) * 120;
-      const dz = (Math.random() - 0.5) * 120;
+      const dx = (Math.random() - 0.5) * 175;
+      const dz = (Math.random() - 0.5) * 175;
       dump.position.set(dx, 0, dz);
       dump.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(dump, 1, 100, "Kachra Kundi Heap", 1.8, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
     }
 
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 110; i++) {
       const col = trashColors[i % trashColors.length];
       const bag = KarachiModels.createTrashBag(col);
-      const bx = (Math.random() - 0.5) * 122;
-      const bz = (Math.random() - 0.5) * 122;
+      const bx = (Math.random() - 0.5) * 176;
+      const bz = (Math.random() - 0.5) * 176;
       bag.position.set(bx, 0, bz);
       this.registerEdible(bag, 1, 25, "Trash Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
     }
 
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 90; i++) {
       const item = Math.random() > 0.5 ? KarachiModels.createSodaCan() : KarachiModels.createWaterBottle();
-      const ix = (Math.random() - 0.5) * 122;
-      const iz = (Math.random() - 0.5) * 122;
+      const ix = (Math.random() - 0.5) * 176;
+      const iz = (Math.random() - 0.5) * 176;
       item.position.set(ix, 0, iz);
       this.registerEdible(item, 1, 15, "Street Debris", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
     }
 
     // =============================================================
-    // 10. ANIMALS (Stray Dogs, Cats, Sewer Rats within [-62, 62])
+    // 10. ANIMALS (Stray Dogs, Cats, Sewer Rats within [-88, 88])
     // =============================================================
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 28; i++) {
       const dog = KarachiModels.createStrayDog();
-      const x = (Math.random() - 0.5) * 120;
-      const z = (Math.random() - 0.5) * 120;
+      const x = (Math.random() - 0.5) * 175;
+      const z = (Math.random() - 0.5) * 175;
       dog.position.set(x, 0, z);
       dog.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(dog, 1, 45, "Stray Dog (کتا)", 0.8, { isAnimal: true, isBadGuy: false });
     }
 
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 24; i++) {
       const cat = KarachiModels.createStreetCat();
-      const x = (Math.random() - 0.5) * 120;
-      const z = (Math.random() - 0.5) * 120;
+      const x = (Math.random() - 0.5) * 175;
+      const z = (Math.random() - 0.5) * 175;
       cat.position.set(x, 0, z);
       cat.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(cat, 1, 35, "Street Cat (بلی)", 0.6, { isAnimal: true, isBadGuy: false });
     }
 
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 40; i++) {
       const rat = KarachiModels.createSewerRat();
-      const x = (Math.random() - 0.5) * 120;
-      const z = (Math.random() - 0.5) * 120;
+      const x = (Math.random() - 0.5) * 175;
+      const z = (Math.random() - 0.5) * 175;
       rat.position.set(x, 0, z);
       rat.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(rat, 1, 20, "Sewer Rat (چوہا)", 0.45, { isAnimal: true, isBadGuy: true, evilType: 'trash' });
@@ -860,18 +915,18 @@ export class CityGenerator {
     // =============================================================
     // 11. LANDMARKS & BIGGER DISTRICT OBJECTS (Safely Positioned in Background!)
     // =============================================================
-    // Mazar-e-Quaid: Positioned in northern backdrop at z = -85 right behind Bab-e-Karachi gate
+    // Mazar-e-Quaid: Northern backdrop at z = -115 right behind Bab-e-Karachi gate
     const mazar = KarachiModels.createMazarEQuaid();
-    mazar.position.set(0, 0, -85);
+    mazar.position.set(0, 0, -115);
     this.registerEdible(mazar, 5, 3000, "Mazar-e-Quaid", 14.0, { isBuilding: true, isBadGuy: false });
 
     // Empress Market in northwestern district
     const empress = KarachiModels.createEmpressMarket();
-    empress.position.set(-52, 0, -52);
+    empress.position.set(-48, 0, -48);
     this.registerEdible(empress, 4, 1500, "Empress Market Saddar", 10.0, { isBuilding: true, isBadGuy: false });
 
     // Chundrigar Skyscrapers in northeastern district
-    const towerCoords = [[52, -52], [66, -52], [52, -66]];
+    const towerCoords = [[48, -48], [72, -48], [48, -72], [72, -72]];
     towerCoords.forEach(([tx, tz], idx) => {
       const tower = KarachiModels.createChundrigarSkyscraper();
       tower.position.set(tx, 0, tz);
@@ -880,10 +935,10 @@ export class CityGenerator {
 
     // Commercial Plazas on outer avenue blocks
     const plazas = [
-      { pos: [52, -20], name: "Habib Bank Plaza", sign: "HABIB BANK PLAZA", sub: "HEAD OFFICE KARACHI" },
-      { pos: [52, 25], name: "Kababjees Commercial", sign: "KABABJEES HIGHWAY", sub: "EXPRESS DINING" },
-      { pos: [-52, -20], name: "Jahangir Autos", sign: "JAHANGIR AUTOS", sub: "CHUNDRIGAR ROAD" },
-      { pos: [-52, 25], name: "Burns Road Super Mart", sign: "BURNS ROAD SUPER MART", sub: "AUTHENTIC KARACHI" }
+      { pos: [48, -20], name: "Habib Bank Plaza", sign: "HABIB BANK PLAZA", sub: "HEAD OFFICE KARACHI" },
+      { pos: [48, 48], name: "Kababjees Commercial", sign: "KABABJEES HIGHWAY", sub: "EXPRESS DINING" },
+      { pos: [-48, -20], name: "Jahangir Autos", sign: "JAHANGIR AUTOS", sub: "CHUNDRIGAR ROAD" },
+      { pos: [-48, 48], name: "Burns Road Super Mart", sign: "BURNS ROAD SUPER MART", sub: "AUTHENTIC KARACHI" }
     ];
     plazas.forEach(p => {
       const plaza = KarachiModels.createCommercialPlaza(p.sign, p.sub);
@@ -892,19 +947,20 @@ export class CityGenerator {
     });
 
     // Clifton Villas in southeast residential quadrant
-    for (let bx = 30; bx <= 54; bx += 14) {
-      for (let bz = 30; bz <= 54; bz += 14) {
+    for (let bx = 32; bx <= 76; bx += 15) {
+      for (let bz = 32; bz <= 76; bz += 15) {
         const bungalow = KarachiModels.createResidentialBungalow();
         bungalow.position.set(bx, 0, bz);
         this.registerEdible(bungalow, 3, 380, "Clifton Villa", 5.0, { isBuilding: true, isBadGuy: false });
       }
     }
 
-    // 12 Truck-Art Bedford Trucks & 8 W-11 Mini-Buses (Karachi Transport Heritage)
+    // 14 Truck-Art Bedford Trucks & 10 W-11 Mini-Buses (Karachi Transport Heritage)
     const truckPositions = [
-      [-65, 0, -10], [-65, 0, 20], [0, 0, -65], [0, 0, 65],
-      [65, 0, 15], [65, 0, -25], [-20, 0, 65], [30, 0, 65],
-      [-45, 0, 0], [45, 0, 0], [0, 0, 45], [0, 0, -45]
+      [-75, 0, -20], [-75, 0, 30], [0, 0, -75], [0, 0, 75],
+      [75, 0, 20], [75, 0, -30], [-25, 0, 75], [35, 0, 75],
+      [-48, 0, 0], [48, 0, 0], [0, 0, 48], [0, 0, -48],
+      [-75, 0, 60], [75, 0, 60]
     ];
     truckPositions.forEach((tp, idx) => {
       const truck = KarachiModels.createBedfordTruck();
@@ -914,8 +970,9 @@ export class CityGenerator {
     });
 
     const busPositions = [
-      [-68, 0, -40], [-68, 0, 35], [68, 0, -35], [68, 0, 40],
-      [-35, 0, -68], [35, 0, 68], [-15, 0, 68], [15, 0, -68]
+      [-90, 0, -48], [-90, 0, 48], [90, 0, -48], [90, 0, 48],
+      [-48, 0, -90], [48, 0, 90], [-20, 0, 90], [20, 0, -90],
+      [-48, 0, 48], [48, 0, -48]
     ];
     busPositions.forEach((bp, idx) => {
       const bus = KarachiModels.createW11MiniBus();
@@ -924,49 +981,49 @@ export class CityGenerator {
       this.registerEdible(bus, 3, 210, `W-11 Mini-Bus #${idx + 1}`, 3.4, { isTransport: true, isBadGuy: false });
     });
 
-    // 35 Auto-Rickshaws
-    for (let i = 0; i < 35; i++) {
+    // 45 Auto-Rickshaws
+    for (let i = 0; i < 45; i++) {
       const rickshaw = KarachiModels.createAutoRickshaw();
-      const rx = (Math.random() - 0.5) * 120;
-      const rz = (Math.random() - 0.5) * 120;
+      const rx = (Math.random() - 0.5) * 175;
+      const rz = (Math.random() - 0.5) * 175;
       rickshaw.position.set(rx, 0, rz);
       rickshaw.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(rickshaw, 2, 90, "Auto-Rickshaw", 1.8, { isTransport: true, isBadGuy: false });
     }
 
-    // 45 CD-70 Bikes
-    for (let i = 0; i < 45; i++) {
+    // 55 CD-70 Bikes
+    for (let i = 0; i < 55; i++) {
       const bike = KarachiModels.createMotorbike();
-      const bx = (Math.random() - 0.5) * 120;
-      const bz = (Math.random() - 0.5) * 120;
+      const bx = (Math.random() - 0.5) * 175;
+      const bz = (Math.random() - 0.5) * 175;
       bike.position.set(bx, 0, bz);
       bike.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(bike, 1, 35, "CD-70 Motorbike", 1.1, { isTransport: true, isBadGuy: false });
     }
 
-    // 35 Pedestrians (Innocent Karachi Citizens)
-    for (let i = 0; i < 35; i++) {
+    // 45 Pedestrians (Innocent Karachi Citizens)
+    for (let i = 0; i < 45; i++) {
       const ped = KarachiModels.createPedestrian();
-      const px = (Math.random() - 0.5) * 120;
-      const pz = (Math.random() - 0.5) * 120;
+      const px = (Math.random() - 0.5) * 175;
+      const pz = (Math.random() - 0.5) * 175;
       ped.position.set(px, 0, pz);
       ped.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(ped, 1, 30, "Citizen", 0.65, { isCitizen: true, isBadGuy: false });
     }
 
     // Street Lamps along North-South Avenues
-    [-63, -3, 3, 63].forEach(rx => {
-      for (let rz = -65; rz <= 65; rz += 22) {
+    [-90, -42, 42, 90].forEach(rx => {
+      for (let rz = -88; rz <= 88; rz += 22) {
         const lamp = KarachiModels.createStreetLamp();
         lamp.position.set(rx, 0, rz);
         this.registerEdible(lamp, 1, 35, "Street Lamp", 0.9, { isBadGuy: false });
       }
     });
 
-    // Coastal Palm Trees along Clifton Seawall Promenade (z = 70.5, right before the seawall at z = 74)
-    for (let px = -65; px <= 65; px += 7.5) {
+    // Coastal Coconut Palm Trees along Clifton Beach Promenade (z = 91, meeting the sea)
+    for (let px = -85; px <= 85; px += 7.5) {
       const palm = KarachiModels.createPalmTree(7.5 + Math.random() * 2);
-      palm.position.set(px, 0, 70.5);
+      palm.position.set(px, 0, 91);
       this.registerEdible(palm, 2, 70, "Clifton Seawall Palm", 1.8, { isBadGuy: false });
     }
   }

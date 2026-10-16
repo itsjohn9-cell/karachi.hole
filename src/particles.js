@@ -22,6 +22,57 @@ export class ParticleSystem {
     this.moneyGeo = new THREE.PlaneGeometry(0.35, 0.18);
     this.moneyMat = new THREE.MeshBasicMaterial({ color: 0x2e7d32, side: THREE.DoubleSide });
     this.goldMoneyMat = new THREE.MeshBasicMaterial({ color: 0xffd700, side: THREE.DoubleSide });
+
+    // Water splash droplet geometry & materials
+    this.waterDropletGeo = new THREE.DodecahedronGeometry(0.18);
+    this.waterMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    this.foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  }
+
+  // Coastal Arabian Sea Water Splash & Foam Spray
+  createWaterSplash(pos, count = 28) {
+    for (let i = 0; i < count; i++) {
+      const mat = Math.random() > 0.4 ? this.waterMat : this.foamMat;
+      const mesh = new THREE.Mesh(this.waterDropletGeo, mat);
+      mesh.position.set(pos.x + (Math.random() - 0.5) * 1.5, 0.2, pos.z + (Math.random() - 0.5) * 1.5);
+
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2.5 + Math.random() * 5.5;
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        4.5 + Math.random() * 6.5,
+        Math.sin(angle) * speed
+      );
+
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -18,
+        life: 0.7 + Math.random() * 0.4,
+        maxLife: 0.9,
+        scale: 0.9 + Math.random() * 0.7
+      });
+    }
+
+    // Expanding water ripple ring
+    const ringGeo = new THREE.RingGeometry(0.5, 0.9, 24);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x80deea,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.85
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.set(pos.x, 0.08, pos.z);
+    this.scene.add(ring);
+    this.rings.push({
+      mesh: ring,
+      scale: 1,
+      opacity: 0.85,
+      speed: 6.0
+    });
   }
 
   // Burst of currency / rupee notes when a corrupt politician is devoured!

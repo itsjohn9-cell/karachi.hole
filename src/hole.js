@@ -245,7 +245,7 @@ export class Hole {
     }
   }
 
-  move(dx, dz, dt, mapBound = 70.0) {
+  move(dx, dz, dt, mapBound = 96.0) {
     if (!this.isAlive) return;
 
     const speed = this.isBoosting ? this.currentSpeed * 1.5 : this.currentSpeed;
@@ -254,7 +254,7 @@ export class Hole {
 
     // Firmly confine the hole within the active devour district
     // Subtract radius margin so neither hole center nor outer rim can ever penetrate boundary walls or enter empty void
-    const maxCoord = Math.max(12.0, mapBound - this.radius * 0.45);
+    const maxCoord = Math.max(14.0, mapBound - this.radius * 0.45);
     this.position.x = THREE.MathUtils.clamp(this.position.x, -maxCoord, maxCoord);
     this.position.z = THREE.MathUtils.clamp(this.position.z, -maxCoord, maxCoord);
 
@@ -335,7 +335,7 @@ export class Hole {
     }
 
     // Move bot
-    this.move(moveDir.x, moveDir.y, dt, 68.0);
+    this.move(moveDir.x, moveDir.y, dt, 94.0);
   }
 
   // Handle Respawn when swallowed by another hole
