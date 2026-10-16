@@ -38,7 +38,8 @@ export class CityGenerator {
       coastalBays: this.coastalBays,
       interactiveVictims: this.interactiveVictims,
       interactiveTraffic: this.interactiveTraffic,
-      interactiveResidents: this.interactiveResidents
+      interactiveResidents: this.interactiveResidents,
+      currentDistrictEvils: this.currentDistrictEvils || []
     };
   }
 
@@ -403,6 +404,7 @@ export class CityGenerator {
     isRubbish = false,
     isBadGuy = false,
     evilType = null,
+    isDistrictEvil = false,
     isFoodStall = false,
     isBuilding = false,
     isCitizen = false,
@@ -430,6 +432,7 @@ export class CityGenerator {
       isRubbish,
       isBadGuy: calculatedIsBadGuy,
       evilType: calculatedEvilType,
+      isDistrictEvil: Boolean(isDistrictEvil || calculatedIsBadGuy),
       isFoodStall,
       isBuilding,
       isCitizen,
@@ -485,6 +488,217 @@ export class CityGenerator {
     this.registerEdible(tankerTarget, 3, 1400, "Water Tanker Mafia Truck", 3.8, { isBadGuy: true, evilType: 'tanker' });
   }
 
+  // Curated District Level Generator
+  populateDistrict(districtLevel = 1) {
+    // 1. Purge previous dynamic district evils from scene and tracking arrays
+    if (this.currentDistrictEvils) {
+      this.currentDistrictEvils.forEach(obj => {
+        if (obj.mesh && obj.mesh.parent) {
+          obj.mesh.parent.remove(obj.mesh);
+        }
+        const idx = this.edibleObjects.indexOf(obj);
+        if (idx !== -1) this.edibleObjects.splice(idx, 1);
+        const bgIdx = this.badGuys.indexOf(obj);
+        if (bgIdx !== -1) this.badGuys.splice(bgIdx, 1);
+      });
+    }
+    this.currentDistrictEvils = [];
+
+    // Clear previous interactive victims, traffic, and residents if any
+    if (this.interactiveVictims) {
+      this.interactiveVictims.forEach(v => {
+        if (v.parent) v.parent.remove(v);
+      });
+      this.interactiveVictims = [];
+    }
+    if (this.interactiveTraffic) {
+      this.interactiveTraffic.forEach(v => {
+        if (v.parent) v.parent.remove(v);
+      });
+      this.interactiveTraffic = [];
+    }
+    if (this.interactiveResidents) {
+      this.interactiveResidents.forEach(v => {
+        if (v.parent) v.parent.remove(v);
+      });
+      this.interactiveResidents = [];
+    }
+
+    const trashColors = [0x1565c0, 0x212121, 0x43a047, 0xe53935];
+
+    if (districtLevel === 1) {
+      // =========================================================
+      // DISTRICT 1: TARIQ ROAD & PECHS (Level 1)
+      // Focus: Street Snatchers, Shady Gutka Peddlers, Potholes & Trash
+      // Immediate 5-25m proximity for clear, dramatic visibility!
+      // =========================================================
+      this.addRobberyScene(6.5, -8.0);
+      this.addRobberyScene(-10.5, 9.5);
+
+      const gutkaSpots = [[-6.0, -6.5], [12.0, 6.0], [-12.0, -12.0]];
+      gutkaSpots.forEach(([gx, gz], idx) => {
+        const gutka = KarachiModels.createGutkaPeddler();
+        gutka.position.set(gx, 0, gz);
+        this.registerEdible(gutka, 1, 400, `Gutka Peddler #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'gutka', isDistrictEvil: true });
+      });
+
+      const potholeSpots = [[-3.5, -4.5], [3.5, -4.5], [7.5, -14.0]];
+      potholeSpots.forEach(([px, pz], idx) => {
+        const pot = KarachiModels.createBrokenRoadPatch();
+        pot.position.set(px, 0, pz);
+        this.registerEdible(pot, 1, 80, `Road Pothole #${idx + 1}`, 1.4, { isBadGuy: true, evilType: 'pothole', isDistrictEvil: true });
+      });
+
+      const trashSpots = [[-5, -2], [5, -2], [-2, 4], [3, 5]];
+      trashSpots.forEach(([tx, tz], idx) => {
+        const bag = KarachiModels.createTrashBag(trashColors[idx % trashColors.length]);
+        bag.position.set(tx, 0, tz);
+        this.registerEdible(bag, 1, 25, "Trash Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash', isDistrictEvil: true });
+      });
+
+      [[-2.5, 2], [1.5, -3]].forEach(([rx, rz], idx) => {
+        const rat = KarachiModels.createSewerRat();
+        rat.position.set(rx, 0, rz);
+        rat.rotation.y = Math.random() * Math.PI * 2;
+        this.registerEdible(rat, 1, 20, "Sewer Rat (چوہا)", 0.45, { isAnimal: true, isBadGuy: true, evilType: 'trash', isDistrictEvil: true });
+      });
+    } else if (districtLevel === 2) {
+      // =========================================================
+      // DISTRICT 2: SADDAR & EMPRESS MARKET (Level 2)
+      // Focus: VIP Traffic Jams (freed traffic!), Bhatta Mafias & Racers
+      // =========================================================
+      this.addVIPTrafficJamScene(-8.0, -14.0, Math.PI / 2);
+      this.addVIPTrafficJamScene(14.0, 12.0, 0);
+
+      this.addRobberyScene(15.0, -15.0);
+      this.addRobberyScene(-16.0, -6.0);
+
+      const bhattaSpots = [[-8.5, -4.5], [8.5, 4.5], [-14.0, 18.0]];
+      bhattaSpots.forEach(([bx, bz], idx) => {
+        const bhatta = KarachiModels.createBhattaParchiMafia();
+        bhatta.position.set(bx, 0, bz);
+        this.registerEdible(bhatta, 1, 700, `Bhatta Mafia #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'bhatta', isDistrictEvil: true });
+      });
+
+      const racerSpots = [[0, 8.5], [-18.0, 0], [18.0, -10.0]];
+      racerSpots.forEach(([rx, rz], idx) => {
+        const racer = KarachiModels.createOneWheelerRacer();
+        racer.position.set(rx, 0, rz);
+        this.registerEdible(racer, 1, 500, `Reckless Racer #${idx + 1}`, 1.8, { isBadGuy: true, evilType: 'onewheeler', isDistrictEvil: true });
+      });
+
+      [[-6, 12], [6, 12], [-12, -8], [12, -8]].forEach(([tx, tz], idx) => {
+        const bag = KarachiModels.createTrashBag(trashColors[idx % trashColors.length]);
+        bag.position.set(tx, 0, tz);
+        this.registerEdible(bag, 1, 25, "Market Debris", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash', isDistrictEvil: true });
+      });
+    } else if (districtLevel === 3) {
+      // =========================================================
+      // DISTRICT 3: WATER PUMP & GULSHAN-E-IQBAL (Level 3)
+      // Focus: Water Tanker Mafias (freshwater geysers!), K-Electric Kundas, China Cutters
+      // =========================================================
+      this.addWaterTankerScene(8.0, -16.0);
+      this.addWaterTankerScene(-18.0, 14.0);
+      this.addWaterTankerScene(22.0, -20.0);
+
+      [[-8.5, 4.5], [16.0, 6.0], [-20.0, -18.0]].forEach(([kx, kz], idx) => {
+        const ke = KarachiModels.createKElectricTransformer();
+        ke.position.set(kx, 0, kz);
+        this.registerEdible(ke, 2, 750, `K-Electric Kunda #${idx + 1}`, 2.5, { isBadGuy: true, evilType: 'ke', isDistrictEvil: true });
+      });
+
+      [[8.5, 4.5], [-14.0, 24.0]].forEach(([cx, cz], idx) => {
+        const china = KarachiModels.createChinaCuttingMafia();
+        china.position.set(cx, 0, cz);
+        this.registerEdible(china, 1, 650, `China Cutting Mafia #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'chinacutting', isDistrictEvil: true });
+      });
+
+      this.addVIPTrafficJamScene(0, -28.0, Math.PI / 2);
+      this.addVIPTrafficJamScene(-24.0, 0, 0);
+
+      this.addRobberyScene(-10.0, -25.0);
+      this.addRobberyScene(20.0, 20.0);
+    } else if (districtLevel === 4) {
+      // =========================================================
+      // DISTRICT 4: CLIFTON & SEA VIEW COAST (Level 4)
+      // Focus: Corrupt VIP Politicians with offshore briefcases, Coastal Land Grabbers
+      // =========================================================
+      const polQuotes = [
+        "London flats mere nahi hain!",
+        "Mujhe kyun nikala?!",
+        "Offshore account freeze mat karo!",
+        "VIP Protocol squad alert!"
+      ];
+      [[0, -12.0], [-14.0, -25.0], [14.0, 30.0], [-25.0, 35.0]].forEach(([px, pz], idx) => {
+        const pol = KarachiModels.createPolitician({ name: `Senator #${idx + 1}`, quote: polQuotes[idx % polQuotes.length] });
+        pol.position.set(px, 0, pz);
+        this.registerEdible(pol, 1, 600, `VIP Politician #${idx + 1}`, 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician', isDistrictEvil: true });
+      });
+
+      this.addVIPTrafficJamScene(0, 35.0, 0);
+      this.addVIPTrafficJamScene(-30.0, -20.0, Math.PI / 2);
+
+      this.addWaterTankerScene(-22.0, 42.0);
+      this.addWaterTankerScene(25.0, 45.0);
+
+      [[-15.0, 55.0], [15.0, 55.0], [0, 60.0]].forEach(([cx, cz], idx) => {
+        const china = KarachiModels.createChinaCuttingMafia();
+        china.position.set(cx, 0, cz);
+        this.registerEdible(china, 1, 650, `Beachfront Encroacher #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'chinacutting', isDistrictEvil: true });
+      });
+
+      [[28.0, 10.0], [-28.0, 10.0]].forEach(([kx, kz], idx) => {
+        const ke = KarachiModels.createKElectricTransformer();
+        ke.position.set(kx, 0, kz);
+        this.registerEdible(ke, 2, 750, `High-Tension Kunda #${idx + 1}`, 2.5, { isBadGuy: true, evilType: 'ke', isDistrictEvil: true });
+      });
+    } else {
+      // =========================================================
+      // DISTRICT 5: MAZAR-E-QUAID MEGA METROPOLIS (Level 5)
+      // Master Cleanse: Final showdown against corruption
+      // =========================================================
+      const polQuotes = [
+        "Dollar sasta ho jayega!",
+        "Tabdeeli aa chuki hai!",
+        "Security escort kahan hai?!",
+        "Swiss account ka password bhool gaya!",
+        "Ghabrana nahi hai bilkul!",
+        "Parliament session late hai!"
+      ];
+      [[0, -30.0], [-20.0, -45.0], [20.0, -45.0], [-35.0, -20.0], [35.0, -20.0], [0, -60.0]].forEach(([px, pz], idx) => {
+        const pol = KarachiModels.createPolitician({ name: `Federal VIP #${idx + 1}`, quote: polQuotes[idx % polQuotes.length] });
+        pol.position.set(px, 0, pz);
+        this.registerEdible(pol, 1, 600, `Federal VIP #${idx + 1}`, 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician', isDistrictEvil: true });
+      });
+
+      this.addVIPTrafficJamScene(0, -18.0, 0);
+      this.addVIPTrafficJamScene(-25.0, -35.0, Math.PI / 2);
+      this.addVIPTrafficJamScene(25.0, -35.0, -Math.PI / 2);
+
+      this.addWaterTankerScene(-15.0, -50.0);
+      this.addWaterTankerScene(15.0, -50.0);
+      this.addWaterTankerScene(0, 15.0);
+
+      [[-10.0, -25.0], [10.0, -25.0], [0, -40.0]].forEach(([bx, bz], idx) => {
+        const bhatta = KarachiModels.createBhattaParchiMafia();
+        bhatta.position.set(bx, 0, bz);
+        this.registerEdible(bhatta, 1, 700, `Bhatta Don #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'bhatta', isDistrictEvil: true });
+      });
+
+      this.addRobberyScene(-20.0, -15.0);
+      this.addRobberyScene(20.0, -15.0);
+      this.addRobberyScene(0, -5.0);
+    }
+
+    this.currentDistrictEvils = this.badGuys.filter(b => b.isDistrictEvil);
+    return {
+      districtEvils: this.currentDistrictEvils,
+      interactiveVictims: this.interactiveVictims,
+      interactiveTraffic: this.interactiveTraffic,
+      interactiveResidents: this.interactiveResidents
+    };
+  }
+
   populateZones() {
     const trashColors = [0x1565c0, 0x212121, 0x43a047, 0xe53935];
 
@@ -503,450 +717,8 @@ export class CityGenerator {
     dhaba1.position.set(-5.5, 0, 3.5);
     this.registerEdible(dhaba1, 2, 200, "Quetta Alamgir Chai", 2.2, { isFoodStall: true });
 
-    // 2 Broken Road Potholes with leaking water right in front of start
-    const pothole1 = KarachiModels.createBrokenRoadPatch();
-    pothole1.position.set(-3.2, 0, -4.5);
-    this.registerEdible(pothole1, 1, 80, "Road Pothole (کھڈا)", 1.4, { isBadGuy: true, evilType: 'pothole' });
-
-    const pothole2 = KarachiModels.createBrokenRoadPatch();
-    pothole2.position.set(3.2, 0, -4.5);
-    this.registerEdible(pothole2, 1, 80, "Road Pothole (کھڈا)", 1.4, { isBadGuy: true, evilType: 'pothole' });
-
-    // Shady Gutka / Chalia peddler with red spit stains
-    const gutka1 = KarachiModels.createGutkaPeddler();
-    gutka1.position.set(-6.0, 0, -6.5);
-    this.registerEdible(gutka1, 1, 400, "Gutka Mafia Peddler", 1.5, { isBadGuy: true, evilType: 'gutka' });
-
-    // Street Robbery Scene right near start (Armed Mugger vs Terrified Rescuable Citizen)
-    this.addRobberyScene(6.5, -8.0);
-
-    // 3 Fleeing VIP Politicians right down the road with briefcases
-    const startPoliticians = [
-      { pos: [0, -10.0], name: "Senator Mukhtar", quote: "Mujhe kyun nikala?!" },
-      { pos: [-4, -12.0], name: "VIP Chaudhry", quote: "VIP Protocol kidhar hai?!" },
-      { pos: [4, -12.0], name: "MNA Jamali", quote: "Tabdeeli aa gayi hai!" }
-    ];
-    startPoliticians.forEach(sp => {
-      const pol = KarachiModels.createPolitician({ name: sp.name, quote: sp.quote });
-      pol.position.set(sp.pos[0], 0, sp.pos[1]);
-      this.registerEdible(pol, 1, 600, sp.name, 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician' });
-    });
-
-    // Speeding VIP Protocol SUV Traffic Jam Scene (Blocks innocent traffic that get freed!)
-    this.addVIPTrafficJamScene(-8, -14, Math.PI / 2);
-
-    // Water Tanker Mafia Truck Extortion Scene (Thirsty citizens begging for water!)
-    this.addWaterTankerScene(8, -16);
-
-    // K-Electric Sparking Kunda Transformer Pole right near spawn
-    const ke1 = KarachiModels.createKElectricTransformer();
-    ke1.position.set(-8.5, 0, 4.5);
-    this.registerEdible(ke1, 2, 750, "K-Electric Kunda (14h Load Shedding)", 2.5, { isBadGuy: true, evilType: 'ke' });
-
-    // China Cutting Land Grabber carving illegal footpath plot
-    const china1 = KarachiModels.createChinaCuttingMafia();
-    china1.position.set(8.5, 0, 4.5);
-    this.registerEdible(china1, 1, 650, "China Cutting Land Grabber", 1.5, { isBadGuy: true, evilType: 'chinacutting' });
-
-    // Bhatta / Parchi Extortion Mafia Thug
-    const bhatta1 = KarachiModels.createBhattaParchiMafia();
-    bhatta1.position.set(-8.5, 0, -4.5);
-    this.registerEdible(bhatta1, 1, 700, "Bhatta Parchi Mafia", 1.5, { isBadGuy: true, evilType: 'bhatta' });
-
-    // Reckless One-Wheeling Silencer-less Racer
-    const racer1 = KarachiModels.createOneWheelerRacer();
-    racer1.position.set(0, 0, 8.5);
-    this.registerEdible(racer1, 1, 500, "Reckless One-Wheeler", 1.8, { isBadGuy: true, evilType: 'onewheeler' });
-
-    // 15 Plastic trash bags scattered right around the hole
-    for (let i = 0; i < 15; i++) {
-      const col = trashColors[i % trashColors.length];
-      const bag = KarachiModels.createTrashBag(col);
-      bag.position.set(-5 + Math.random() * 10, 0, -1.5 - Math.random() * 8);
-      this.registerEdible(bag, 1, 25, "Trash Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-
-    // 12 Soda cans & water bottles
-    for (let i = 0; i < 8; i++) {
-      const can = KarachiModels.createSodaCan();
-      can.position.set(-4 + Math.random() * 8, 0, -1.0 - Math.random() * 7);
-      this.registerEdible(can, 1, 15, "Soda Can", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-    for (let i = 0; i < 8; i++) {
-      const bottle = KarachiModels.createWaterBottle();
-      bottle.position.set(-4 + Math.random() * 8, 0, -2.0 - Math.random() * 7);
-      this.registerEdible(bottle, 1, 15, "Water Bottle", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-
-    // 6 Sewer rats scurrying around trash (Cleaned up as pests)
-    for (let i = 0; i < 6; i++) {
-      const rat = KarachiModels.createSewerRat();
-      rat.position.set(-3 + Math.random() * 6, 0, -2.5 - Math.random() * 6);
-      rat.rotation.y = Math.random() * Math.PI * 2;
-      this.registerEdible(rat, 1, 20, "Sewer Rat (چوہا)", 0.45, { isAnimal: true, isBadGuy: true, evilType: 'trash' });
-    }
-
-    // 2 Barking Desi Stray Dogs (Innocent street friends)
-    const dog1 = KarachiModels.createStrayDog();
-    dog1.position.set(-4.5, 0, -5.5);
-    this.registerEdible(dog1, 1, 45, "Stray Dog (کتا)", 0.8, { isAnimal: true, isBadGuy: false });
-
-    const dog2 = KarachiModels.createStrayDog();
-    dog2.position.set(4.5, 0, -5.5);
-    this.registerEdible(dog2, 1, 45, "Stray Dog (کتا)", 0.8, { isAnimal: true, isBadGuy: false });
-
-    // 2 Street Cats roaming curbs (Innocent)
-    const cat1 = KarachiModels.createStreetCat();
-    cat1.position.set(-5, 0, -2.5);
-    this.registerEdible(cat1, 1, 35, "Street Cat (بلی)", 0.6, { isAnimal: true, isBadGuy: false });
-
-    // Plastic Traffic Cones
-    for (let x = -3; x <= 3; x += 1.5) {
-      const cone = KarachiModels.createTrafficCone();
-      cone.position.set(x, 0, -1.8);
-      this.registerEdible(cone, 1, 20, "Traffic Cone", 0.6, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-    const thela1 = KarachiModels.createFruitThela();
-    thela1.position.set(-6, 0, 1.5);
-    this.registerEdible(thela1, 1, 50, "Mango Thela", 1.2, { isFoodStall: true, isBadGuy: false });
-
-    // =============================================================
-    // 1. WATER TANKER MAFIA TRUCKS (10 Trucks Across City!)
-    // =============================================================
-    // 1. WATER TANKER MAFIA SCENES (Extortion Trucks + Thirsty Residents!)
-    // =============================================================
-    const tankerSpots = [
-      [-30, -35], [35, -35], [-45, -60], [45, -60],
-      [-25, 25], [30, 25], [-45, 50], [45, 50], [0, 45], [0, -45]
-    ];
-    tankerSpots.forEach((spot, idx) => {
-      if (idx < 6) {
-        this.addWaterTankerScene(spot[0], spot[1]);
-      } else {
-        const tanker = KarachiModels.createWaterTankerMafia();
-        tanker.position.set(spot[0], 0, spot[1]);
-        tanker.rotation.y = idx % 2 === 0 ? 0 : Math.PI / 2;
-        const decal = KarachiModels.createEvilTargetDecal('tanker', '💧 TANKER MAFIA • DEVOUR!');
-        tanker.add(decal);
-        this.registerEdible(tanker, 3, 900, `Water Tanker Mafia #${idx + 2}`, 3.4, { isBadGuy: true, evilType: 'tanker' });
-      }
-    });
-
-    // =============================================================
-    // 2. SPEEDING VIP PROTOCOL ESCORTS & TRAFFIC JAMS (VIPs + Stuck Traffic!)
-    // =============================================================
-    const vipSpots = [
-      [-20, -25], [20, -25], [-35, -45], [35, -45],
-      [-20, 35], [20, 35], [-35, 60], [35, 60], [10, 65], [-10, -65]
-    ];
-    vipSpots.forEach((spot, idx) => {
-      if (idx < 6) {
-        this.addVIPTrafficJamScene(spot[0], spot[1], idx % 2 === 0 ? 0 : Math.PI / 2);
-      } else {
-        const vip = KarachiModels.createSpeedingVIPConvoy();
-        vip.position.set(spot[0], 0, spot[1]);
-        vip.rotation.y = idx % 2 === 0 ? Math.PI : 0;
-        const decal = KarachiModels.createEvilTargetDecal('vip', '🚨 VIP PROTOCOL • DEVOUR!');
-        vip.add(decal);
-        this.registerEdible(vip, 3, 850, `VIP Protocol Escort #${idx + 2}`, 3.2, { isBadGuy: true, evilType: 'vip' });
-      }
-    });
-
-    // =============================================================
-    // 3. SHADY GUTKA / MAWA PEDDLERS (12 Peddlers with Red Spit Stains!)
-    // =============================================================
-    const gutkaSpots = [
-      [-25, -15], [25, -15], [-40, -30], [40, -30],
-      [-25, 15], [25, 15], [-40, 40], [40, 40],
-      [-15, 55], [15, 55], [-55, 15], [55, 15]
-    ];
-    gutkaSpots.forEach((spot, idx) => {
-      const gutka = KarachiModels.createGutkaPeddler();
-      gutka.position.set(spot[0], 0, spot[1]);
-      this.registerEdible(gutka, 1, 400, `Gutka Peddler #${idx + 2}`, 1.5, { isBadGuy: true, evilType: 'gutka' });
-    });
-
-    // =============================================================
-    // 4. BROKEN ROADS & POTHOLES (16 Pothole / Leak Patches!)
-    // =============================================================
-    const potholeSpots = [
-      [-15, -20], [15, -20], [-30, -40], [30, -40],
-      [-15, 20], [15, 20], [-30, 40], [30, 40],
-      [0, -30], [0, 30], [-50, -10], [50, -10],
-      [-50, 20], [50, 20], [-10, -50], [10, 50]
-    ];
-    potholeSpots.forEach((spot, idx) => {
-      const pot = KarachiModels.createBrokenRoadPatch();
-      pot.position.set(spot[0], 0, spot[1]);
-      this.registerEdible(pot, 1, 80, `Broken Road #${idx + 3}`, 1.4, { isBadGuy: true, evilType: 'pothole' });
-    });
-
-    // =============================================================
-    // 5. KARACHI STREET ROBBERY SCENES (10 Interactive Mugging Scenes!)
-    // =============================================================
-    const robberySpots = [
-      [-35, -20], [-45, -45], [30, -25], [45, -45],
-      [-30, 30], [-55, 50], [25, 30], [50, 45],
-      [-15, -55], [15, 55]
-    ];
-    robberySpots.forEach(spot => {
-      this.addRobberyScene(spot[0], spot[1]);
-    });
-
-    // =============================================================
-    // 6. VIP PAKISTANI POLITICIANS ACROSS THE CITY (18 Politicians)
-    // =============================================================
-    const politicalQuotes = [
-      "Khata hai toh lagata bhi hai!",
-      "London flats mere nahi hain!",
-      "Bijli ka bill maaf karo!",
-      "Ghabrana nahi hai bilkul!",
-      "Main nahi janta yeh kaun hai!",
-      "VIP Protocol squad alert!",
-      "Kaun hain yeh log?!",
-      "Parliament session late hai!",
-      "Dollar sasta ho jayega!",
-      "Mera briefcase kidhar gaya?!",
-      "Security escort kahan hai?!",
-      "K-IV project ka budget kidhar gaya?!"
-    ];
-
-    const politicianSpots = [
-      [-30, -30], [-25, -45], [-50, -25], [25, -25], [45, -30],
-      [30, -50], [-35, 25], [-45, 45], [-20, 35], [25, 25],
-      [45, 35], [30, 50], [0, 25], [15, 60], [-15, 60],
-      [-40, -60], [40, -60], [0, -60]
-    ];
-
-    politicianSpots.forEach((spot, idx) => {
-      const q = politicalQuotes[idx % politicalQuotes.length];
-      const pName = `Politician #${idx + 1}`;
-      const pol = KarachiModels.createPolitician({ name: pName, quote: q });
-      pol.position.set(spot[0], 0, spot[1]);
-      this.registerEdible(pol, 1, 600, pName, 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician' });
-    });
-
-    // =============================================================
-    // 7. BURNS ROAD BUN KABAB STALLS & CHAI DHABAS ACROSS CITY (8 Each!)
-    // =============================================================
-    const foodSpots = [
-      [-45, -15], [45, -15], [-45, 15], [45, 15],
-      [-25, -50], [25, -50], [-25, 50], [25, 50]
-    ];
-    foodSpots.forEach((spot, idx) => {
-      const bk = KarachiModels.createBurnsRoadBunKababStall();
-      bk.position.set(spot[0], 0, spot[1]);
-      this.registerEdible(bk, 2, 250, `Burns Road Bun Kabab #${idx + 2}`, 2.2, { isFoodStall: true, isBadGuy: false });
-
-      const dh = KarachiModels.createChaiDhaba();
-      dh.position.set(spot[0] + 5, 0, spot[1]);
-      this.registerEdible(dh, 2, 200, `Quetta Chai Dhaba #${idx + 2}`, 2.2, { isFoodStall: true, isBadGuy: false });
-    });
-
-    // =============================================================
-    // 7b. K-ELECTRIC SPARKING KUNDA TRANSFORMERS (12 Poles Across City!)
-    // =============================================================
-    const keSpots = [
-      [-20, -50], [20, -50], [-50, -35], [50, -35],
-      [-20, 50], [20, 50], [-50, 35], [50, 35],
-      [-65, 0], [65, 0], [0, -35], [0, 35]
-    ];
-    keSpots.forEach((spot, idx) => {
-      const ke = KarachiModels.createKElectricTransformer();
-      ke.position.set(spot[0], 0, spot[1]);
-      this.registerEdible(ke, 2, 750, `K-Electric Kunda #${idx + 2}`, 2.5, { isBadGuy: true, evilType: 'ke' });
-    });
-
-    // =============================================================
-    // 7c. CHINA CUTTING LAND GRABBER MAFIA (12 Syndicates on Footpaths!)
-    // =============================================================
-    const chinaSpots = [
-      [-35, -15], [35, -15], [-45, 20], [45, 20],
-      [-15, -40], [15, -40], [-15, 40], [15, 40],
-      [-60, -25], [60, -25], [-25, -60], [25, 60]
-    ];
-    chinaSpots.forEach((spot, idx) => {
-      const china = KarachiModels.createChinaCuttingMafia();
-      china.position.set(spot[0], 0, spot[1]);
-      this.registerEdible(china, 1, 650, `China Cutting Mafia #${idx + 2}`, 1.5, { isBadGuy: true, evilType: 'chinacutting' });
-    });
-
-    // =============================================================
-    // 7d. BHATTA / PARCHI EXTORTION MAFIA (10 Gangsters in Markets!)
-    // =============================================================
-    const bhattaSpots = [
-      [-40, -10], [40, -10], [-30, 20], [30, 20],
-      [-25, -35], [25, -35], [-25, 45], [25, 45],
-      [10, -25], [-10, 25]
-    ];
-    bhattaSpots.forEach((spot, idx) => {
-      const bhatta = KarachiModels.createBhattaParchiMafia();
-      bhatta.position.set(spot[0], 0, spot[1]);
-      this.registerEdible(bhatta, 1, 700, `Bhatta Mafia #${idx + 2}`, 1.5, { isBadGuy: true, evilType: 'bhatta' });
-    });
-
-    // =============================================================
-    // 7e. RECKLESS ONE-WHEELING RACERS (12 Racers Zooming Streets!)
-    // =============================================================
-    const racerSpots = [
-      [-10, -25], [10, -25], [-35, -55], [35, -55],
-      [-10, 35], [10, 35], [-35, 55], [35, 55],
-      [-5, 60], [5, -60], [-55, 10], [55, -10]
-    ];
-    racerSpots.forEach((spot, idx) => {
-      const racer = KarachiModels.createOneWheelerRacer();
-      racer.position.set(spot[0], 0, spot[1]);
-      this.registerEdible(racer, 1, 500, `One-Wheeler Racer #${idx + 2}`, 1.8, { isBadGuy: true, evilType: 'onewheeler' });
-    });
-
-    // =============================================================
-    // 8. FOUR DEDICATED CORNER ACTION CLUSTERS (NW, NE, SW, SE)
-    // Ensures every single corner is bursting with bad guys, civic evils, and rewards!
-    // =============================================================
-    // --- NW Corner: Saddar Clock Tower Plaza (around x: -88, z: -88) ---
-    const nwGutka = KarachiModels.createGutkaPeddler();
-    nwGutka.position.set(-86, 0, -86);
-    this.registerEdible(nwGutka, 1, 400, "Saddar Gutka Peddler", 1.5, { isBadGuy: true, evilType: 'gutka' });
-
-    this.addWaterTankerScene(-88, -82);
-    this.addRobberyScene(-82, -88);
-
-    const nwRacer = KarachiModels.createOneWheelerRacer();
-    nwRacer.position.set(-84, 0, -84);
-    this.registerEdible(nwRacer, 1, 500, "Saddar One-Wheeler Racer", 1.8, { isBadGuy: true, evilType: 'onewheeler' });
-
-    const nwPot1 = KarachiModels.createBrokenRoadPatch();
-    nwPot1.position.set(-87, 0, -85);
-    this.registerEdible(nwPot1, 1, 80, "Saddar Broken Pipeline Khadda", 1.4, { isBadGuy: true, evilType: 'pothole' });
-
-    for (let i = 0; i < 14; i++) {
-      const bag = KarachiModels.createTrashBag(trashColors[i % trashColors.length]);
-      bag.position.set(-90 + Math.random() * 10, 0, -90 + Math.random() * 10);
-      this.registerEdible(bag, 1, 25, "Saddar Trash Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-
-    // --- NE Corner: Chundrigar Billboard Plaza (around x: 88, z: -88) ---
-    const nePol1 = KarachiModels.createPolitician({ name: "Senator Farooq", quote: "Offshore bank account freeze na karo!" });
-    nePol1.position.set(86, 0, -86);
-    this.registerEdible(nePol1, 1, 650, "Senator Farooq", 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician' });
-
-    const neBhatta = KarachiModels.createBhattaParchiMafia();
-    neBhatta.position.set(84, 0, -88);
-    this.registerEdible(neBhatta, 1, 700, "Chundrigar Bhatta Gangster", 1.5, { isBadGuy: true, evilType: 'bhatta' });
-
-    this.addVIPTrafficJamScene(82, -84, -Math.PI / 2);
-
-    const neKe = KarachiModels.createKElectricTransformer();
-    neKe.position.set(88, 0, -82);
-    this.registerEdible(neKe, 2, 750, "Chundrigar Sparking Kunda", 2.5, { isBadGuy: true, evilType: 'ke' });
-
-    const nePot1 = KarachiModels.createBrokenRoadPatch();
-    nePot1.position.set(85, 0, -89);
-    this.registerEdible(nePot1, 1, 80, "Chundrigar Pothole", 1.4, { isBadGuy: true, evilType: 'pothole' });
-
-    for (let i = 0; i < 14; i++) {
-      const can = Math.random() > 0.5 ? KarachiModels.createSodaCan() : KarachiModels.createWaterBottle();
-      can.position.set(82 + Math.random() * 10, 0, -90 + Math.random() * 10);
-      this.registerEdible(can, 1, 15, "Corporate Cans Debris", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-
-    // --- SW Corner: Manora Coastal Water Bay (around x: -88, z: 88) ---
-    const swChina = KarachiModels.createChinaCuttingMafia();
-    swChina.position.set(-86, 0, 86);
-    this.registerEdible(swChina, 1, 650, "Manora Beach Land Grabber", 1.5, { isBadGuy: true, evilType: 'chinacutting' });
-
-    this.addRobberyScene(-88, 82);
-    this.addWaterTankerScene(-82, 88);
-
-    const swPot = KarachiModels.createBrokenRoadPatch();
-    swPot.position.set(-85, 0, 84);
-    this.registerEdible(swPot, 1, 80, "Beach Causeway Pothole", 1.4, { isBadGuy: true, evilType: 'pothole' });
-
-    for (let i = 0; i < 14; i++) {
-      const bag = KarachiModels.createTrashBag(trashColors[i % trashColors.length]);
-      bag.position.set(-90 + Math.random() * 10, 0, 82 + Math.random() * 10);
-      this.registerEdible(bag, 1, 25, "Coastal Plastic Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-
-    // --- SE Corner: Do Darya Arabian Sea Waterfront Pier (around x: 88, z: 88) ---
-    this.addVIPTrafficJamScene(88, 82, Math.PI);
-
-    const sePol = KarachiModels.createPolitician({ name: "Advisor Khurshid", quote: "Do Darya ka fish dinner shandaar hai!" });
-    sePol.position.set(84, 0, 86);
-    this.registerEdible(sePol, 1, 650, "Advisor Khurshid", 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician' });
-
-    const seBhatta = KarachiModels.createBhattaParchiMafia();
-    seBhatta.position.set(82, 0, 88);
-    this.registerEdible(seBhatta, 1, 700, "Do Darya Parchi Collector", 1.5, { isBadGuy: true, evilType: 'bhatta' });
-
-    const seDump = KarachiModels.createKachraDump();
-    seDump.position.set(86, 0, 84);
-    this.registerEdible(seDump, 1, 100, "Do Darya Kachra Kundi", 1.8, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-
-    for (let i = 0; i < 14; i++) {
-      const item = Math.random() > 0.5 ? KarachiModels.createSodaCan() : KarachiModels.createWaterBottle();
-      item.position.set(82 + Math.random() * 10, 0, 82 + Math.random() * 10);
-      this.registerEdible(item, 1, 15, "Do Darya Seaside Litter", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-
-    // =============================================================
-    // 9. GENERAL RUBBISH, GARBAGE BAGS & KACHRA DUMPS (Strictly within [-88, 88])
-    // =============================================================
-    for (let i = 0; i < 24; i++) {
-      const dump = KarachiModels.createKachraDump();
-      const dx = (Math.random() - 0.5) * 175;
-      const dz = (Math.random() - 0.5) * 175;
-      dump.position.set(dx, 0, dz);
-      dump.rotation.y = Math.random() * Math.PI * 2;
-      this.registerEdible(dump, 1, 100, "Kachra Kundi Heap", 1.8, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-
-    for (let i = 0; i < 110; i++) {
-      const col = trashColors[i % trashColors.length];
-      const bag = KarachiModels.createTrashBag(col);
-      const bx = (Math.random() - 0.5) * 176;
-      const bz = (Math.random() - 0.5) * 176;
-      bag.position.set(bx, 0, bz);
-      this.registerEdible(bag, 1, 25, "Trash Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-
-    for (let i = 0; i < 90; i++) {
-      const item = Math.random() > 0.5 ? KarachiModels.createSodaCan() : KarachiModels.createWaterBottle();
-      const ix = (Math.random() - 0.5) * 176;
-      const iz = (Math.random() - 0.5) * 176;
-      item.position.set(ix, 0, iz);
-      this.registerEdible(item, 1, 15, "Street Debris", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
-    }
-
-    // =============================================================
-    // 10. ANIMALS (Stray Dogs, Cats, Sewer Rats within [-88, 88])
-    // =============================================================
-    for (let i = 0; i < 28; i++) {
-      const dog = KarachiModels.createStrayDog();
-      const x = (Math.random() - 0.5) * 175;
-      const z = (Math.random() - 0.5) * 175;
-      dog.position.set(x, 0, z);
-      dog.rotation.y = Math.random() * Math.PI * 2;
-      this.registerEdible(dog, 1, 45, "Stray Dog (کتا)", 0.8, { isAnimal: true, isBadGuy: false });
-    }
-
-    for (let i = 0; i < 24; i++) {
-      const cat = KarachiModels.createStreetCat();
-      const x = (Math.random() - 0.5) * 175;
-      const z = (Math.random() - 0.5) * 175;
-      cat.position.set(x, 0, z);
-      cat.rotation.y = Math.random() * Math.PI * 2;
-      this.registerEdible(cat, 1, 35, "Street Cat (بلی)", 0.6, { isAnimal: true, isBadGuy: false });
-    }
-
-    for (let i = 0; i < 40; i++) {
-      const rat = KarachiModels.createSewerRat();
-      const x = (Math.random() - 0.5) * 175;
-      const z = (Math.random() - 0.5) * 175;
-      rat.position.set(x, 0, z);
-      rat.rotation.y = Math.random() * Math.PI * 2;
-      this.registerEdible(rat, 1, 20, "Sewer Rat (چوہا)", 0.45, { isAnimal: true, isBadGuy: true, evilType: 'trash' });
-    }
+    // Populate Initial District 1 Curated Evils
+    this.populateDistrict(1);
 
     // =============================================================
     // 11. LANDMARKS & BIGGER DISTRICT OBJECTS (Safely Positioned in Background!)

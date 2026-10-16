@@ -558,6 +558,43 @@ class AudioManager {
     this.vibrate([60, 40, 80, 40, 120]);
   }
 
+  // Grand District Cleared Victory Fanfare & Anthem
+  playDistrictClearedFanfare() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Triumphant royal brass chords: C4, G4, C5, E5, G5, C6 with sustain & flourish
+    const chords = [
+      { f: [261.63, 392.00, 523.25], d: 0.28, delay: 0 },
+      { f: [293.66, 440.00, 587.33], d: 0.28, delay: 0.24 },
+      { f: [329.63, 493.88, 659.25], d: 0.35, delay: 0.48 },
+      { f: [523.25, 659.25, 783.99, 1046.50], d: 0.95, delay: 0.80 }
+    ];
+
+    chords.forEach(c => {
+      const startTime = t + c.delay;
+      c.f.forEach(freq => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.22, startTime + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + c.d);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + c.d);
+      });
+    });
+
+    this.vibrate([100, 50, 100, 50, 250]);
+  }
+
   // Combo burst sound
   playCombo(comboCount = 2) {
     if (!this.soundEnabled) return;

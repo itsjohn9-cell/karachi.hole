@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CityGenerator } from './cityGenerator.js';
 import { Hole, LEVEL_CONFIG } from './hole.js';
+import { DISTRICT_CONFIGS, getDistrictConfig } from './districts.js';
 import { VirtualJoystick } from './joystick.js';
 import { ParticleSystem } from './particles.js';
 import { UIManager } from './ui.js';
@@ -16,6 +17,13 @@ class Game {
     this.matchDuration = 120; // 2 minutes
     this.timeLeft = this.matchDuration;
     this.isGameOver = false;
+
+    // Karachi Civic District Progression System (Leveling up via Civic Cleanse!)
+    this.currentDistrictLevel = 1;
+    this.districtClearing = false;
+    this.districtEvils = [];
+    this.districtTotal = 0;
+    this.districtRemaining = 0;
 
     // Movement vectors
     this.moveVector = { x: 0, y: 0 };
@@ -101,7 +109,10 @@ class Game {
     this.interactiveVictims = generated.interactiveVictims || [];
     this.interactiveTraffic = generated.interactiveTraffic || [];
     this.interactiveResidents = generated.interactiveResidents || [];
-    this.civicTotal = Math.max(1, this.badGuys.length);
+    this.districtEvils = generated.currentDistrictEvils || this.badGuys.filter(b => b.isDistrictEvil);
+    this.districtTotal = Math.max(1, this.districtEvils.length);
+    this.districtRemaining = this.districtTotal;
+    this.civicTotal = this.districtTotal;
     this.civicCleansed = 0;
     this.frenzyTimer = 0;
     this.frenzyTriggered = false;
@@ -257,11 +268,17 @@ class Game {
     this.interactiveVictims = generated.interactiveVictims || [];
     this.interactiveTraffic = generated.interactiveTraffic || [];
     this.interactiveResidents = generated.interactiveResidents || [];
-    this.civicTotal = Math.max(1, this.badGuys.length);
+    this.currentDistrictLevel = 1;
+    this.districtClearing = false;
+    this.districtEvils = generated.currentDistrictEvils || this.badGuys.filter(b => b.isDistrictEvil);
+    this.districtTotal = Math.max(1, this.districtEvils.length);
+    this.districtRemaining = this.districtTotal;
+    this.civicTotal = this.districtTotal;
     this.civicCleansed = 0;
     this.frenzyTimer = 0;
     this.frenzyTriggered = false;
     this.particles.clear();
+    if (this.ui) this.ui.hideDistrictClearedModal();
   }
 
   onWindowResize() {
@@ -276,6 +293,83 @@ class Game {
     this.ui.showAnnouncement(
       `🎉 LEVEL UP! ${LEVEL_CONFIG[hole.level - 1].title.toUpperCase()}!`,
       '#00ffff'
+    );
+  }
+
+  handleDistrictCleared() {
+    if (this.districtClearing) return;
+    this.districtClearing = true;
+
+    audio.playDistrictClearedFanfare();
+    this.particles.createCelebrationConfetti(this.player.position, 65);
+    this.particles.createLevelUpShockwave(this.player.position, 16);
+
+    const cfg = getDistrictConfig(this.currentDistrictLevel);
+    const isFinalDistrict = this.currentDistrictLevel >= DISTRICT_CONFIGS.length;
+    const nextCfg = getDistrictConfig(this.currentDistrictLevel + 1);
+
+    // Apply District Rewards to Player
+    this.player.addXP(cfg.bonusScore, (h) => {
+      if (h.isPlayer) this.handlePlayerLevelUp(h);
+    });
+    this.timeLeft += cfg.timeBonus;
+    this.player.targetRadius += cfg.holeRadiusBonus;
+    this.player.baseSpeed += cfg.speedBonus;
+    this.player.currentSpeed = this.player.baseSpeed;
+
+    this.ui.showAnnouncement(
+      `🏆 DISTRICT ${cfg.level} CLEARED! ${cfg.name.toUpperCase()} IS SAFE! (+${cfg.bonusScore} XP, +${cfg.timeBonus}s)`,
+      '#ffd700'
+    );
+
+    this.ui.showDistrictClearedModal({
+      level: cfg.level,
+      districtName: cfg.name,
+      districtUrdu: cfg.urdu,
+      heroTitle: cfg.heroTitle,
+      bonusScore: cfg.bonusScore,
+      timeBonus: cfg.timeBonus,
+      nextDistrictName: nextCfg.name,
+      nextDistrictUrdu: nextCfg.urdu,
+      isFinalDistrict,
+      onNextDistrict: () => {
+        if (isFinalDistrict) {
+          this.endMatch();
+        } else {
+          this.advanceToNextDistrict();
+        }
+      }
+    });
+  }
+
+  advanceToNextDistrict() {
+    this.currentDistrictLevel++;
+    this.districtClearing = false;
+
+    // Repopulate dynamic district evils for the new level
+    const result = this.cityGen.populateDistrict(this.currentDistrictLevel);
+    this.edibleObjects = this.cityGen.edibleObjects;
+    this.badGuys = this.cityGen.badGuys;
+    this.interactiveVictims = result.interactiveVictims || [];
+    this.interactiveTraffic = result.interactiveTraffic || [];
+    this.interactiveResidents = result.interactiveResidents || [];
+    this.districtEvils = result.districtEvils || [];
+    this.districtTotal = Math.max(1, this.districtEvils.length);
+    this.districtRemaining = this.districtTotal;
+    this.civicTotal = this.districtTotal;
+    this.civicCleansed = 0;
+
+    // Reset player position smoothly back to center crossroads and blast celebration
+    this.player.position.set(0, 0, 0);
+    this.player.group.position.copy(this.player.position);
+    this.particles.createLevelUpShockwave(this.player.position, 18);
+    this.particles.createCelebrationConfetti(this.player.position, 50);
+
+    const cfg = getDistrictConfig(this.currentDistrictLevel);
+    audio.playLevelUp();
+    this.ui.showAnnouncement(
+      `🚀 ENTERED DISTRICT ${cfg.level}: ${cfg.name.toUpperCase()} (${cfg.urdu})!`,
+      '#00e5ff'
     );
   }
 
@@ -660,6 +754,17 @@ class Game {
         if (badge) {
           badge.position.y = 3.8 + Math.sin(currentTime * 2.5 + i) * 0.15;
         }
+        const beacon = decal.userData.beacon;
+        if (beacon) {
+          const showBeacon = this.districtRemaining <= 4 && this.districtRemaining > 0;
+          beacon.visible = showBeacon;
+          if (showBeacon) {
+            beacon.rotation.y += dt * 1.5;
+            if (beacon.userData && beacon.userData.chevron) {
+              beacon.userData.chevron.position.y = 8.5 + Math.sin(currentTime * 3.5 + i) * 0.45;
+            }
+          }
+        }
       }
     }
 
@@ -788,6 +893,12 @@ class Game {
           // Civic Cleanser System: Devouring Karachi evils and mafias!
           if (hole.isPlayer && obj.isBadGuy) {
             this.civicCleansed++;
+            this.districtRemaining = this.districtEvils.filter(b => b.state !== 'swallowed').length;
+
+            if (this.districtRemaining === 0 && !this.districtClearing) {
+              this.handleDistrictCleared();
+            }
+
             const pct = Math.min(100, Math.round((this.civicCleansed / Math.max(1, this.civicTotal)) * 100));
 
             // Trigger Frenzy Mode when 100% cleansed
@@ -1230,7 +1341,40 @@ class Game {
       .sort((a, b) => a.dist - b.dist)
       .slice(0, 3);
 
-    // Update HUD with Civic Cleanser progress, Hero Frenzy status, and Live Crime Radar
+    // Calculate active district targets and breakdown chips
+    const activeEvils = this.districtEvils.filter(b => b.state !== 'swallowed');
+    this.districtRemaining = activeEvils.length;
+
+    const evilMeta = {
+      robber: { label: 'Chor / Dakoo', icon: '🔫' },
+      gutka: { label: 'Gutka Mafia', icon: '🛑' },
+      pothole: { label: 'Pothole', icon: '🕳️' },
+      trash: { label: 'Trash Pile', icon: '🗑️' },
+      vip: { label: 'VIP Protocol', icon: '🚨' },
+      bhatta: { label: 'Bhatta Parchi', icon: '📜' },
+      onewheeler: { label: 'One-Wheeler', icon: '🏍️' },
+      tanker: { label: 'Water Tanker', icon: '💧' },
+      ke: { label: 'K-Electric Kunda', icon: '⚡' },
+      chinacutting: { label: 'China Cutting', icon: '📐' },
+      politician: { label: 'Corrupt Neta', icon: '💰' }
+    };
+
+    const typeCountMap = {};
+    activeEvils.forEach(e => {
+      const t = e.evilType || 'evil';
+      typeCountMap[t] = (typeCountMap[t] || 0) + 1;
+    });
+
+    const targetBreakdown = Object.keys(typeCountMap).map(type => ({
+      type,
+      count: typeCountMap[type],
+      label: evilMeta[type]?.label || type,
+      icon: evilMeta[type]?.icon || '⚠️'
+    }));
+
+    const districtConfig = getDistrictConfig(this.currentDistrictLevel);
+
+    // Update HUD with Civic Cleanser progress, Hero Frenzy status, District Mission & Live Crime Radar
     const ranked = [...this.holes].sort((a, b) => b.score - a.score);
     const civicPct = (this.civicCleansed / Math.max(1, this.civicTotal)) * 100;
     this.ui.updateHUD({
@@ -1240,7 +1384,11 @@ class Game {
       gameMode: this.gameMode,
       civicPercent: civicPct,
       frenzyActive: this.frenzyTimer > 0,
-      nearestEvils
+      nearestEvils,
+      districtConfig,
+      districtRemaining: this.districtRemaining,
+      districtTotal: this.districtTotal,
+      targetBreakdown
     });
 
     this.renderer.render(this.scene, this.camera);

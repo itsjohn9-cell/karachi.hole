@@ -960,6 +960,35 @@ export const KarachiModels = {
     return group;
   },
 
+  // 12m Skyward Light Beacon for hunting remaining district criminals
+  createDistrictBeaconPillar(color = 0xffd700) {
+    const group = new THREE.Group();
+    group.name = "District-Target-Beacon";
+
+    // Translucent light cylinder reaching into the sky
+    const cylGeo = new THREE.CylinderGeometry(0.35, 0.8, 14.0, 16, 1, true);
+    const cylMat = new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.5,
+      side: THREE.DoubleSide
+    });
+    const cyl = new THREE.Mesh(cylGeo, cylMat);
+    cyl.position.y = 7.0;
+    group.add(cyl);
+
+    // Downward target chevron arrow
+    const arrowGeo = new THREE.ConeGeometry(0.55, 1.1, 8);
+    arrowGeo.rotateX(Math.PI);
+    const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+    arrow.position.y = 14.6;
+    group.add(arrow);
+
+    group.userData = { cyl, arrow, timer: 0 };
+    return group;
+  },
+
   // The Terrified Victim Citizen who gets RESCUED and dances with pure happiness!
   createTerrifiedVictimCitizen() {
     const group = new THREE.Group();
@@ -1176,6 +1205,10 @@ export const KarachiModels = {
     bubbleSprite.scale.set(3.8, 1.1, 1);
     bubbleSprite.position.y = 2.4;
     group.add(bubbleSprite);
+
+    // Glowing Neon Target Decal & Billboard
+    const targetDecal = this.createEvilTargetDecal('politician', '💰 CORRUPT VIP • DEVOUR!');
+    group.add(targetDecal);
 
     group.userData = {
       legL, legR, armL, armR,
@@ -2279,6 +2312,10 @@ export const KarachiModels = {
     bubble.position.set(0, 7.8, 0);
     group.add(bubble);
 
+    // Glowing Neon Target Decal & Billboard
+    const targetDecal = this.createEvilTargetDecal('ke', '⚡ K-ELECTRIC KUNDA • DEVOUR!');
+    group.add(targetDecal);
+
     group.userData = {
       isBadGuy: true,
       evilType: 'ke',
@@ -2417,6 +2454,10 @@ export const KarachiModels = {
     bubble.position.set(0, 2.5, 0);
     group.add(bubble);
 
+    // Glowing Neon Target Decal & Billboard
+    const targetDecal = this.createEvilTargetDecal('chinacutting', '📐 CHINA CUTTER • DEVOUR!');
+    group.add(targetDecal);
+
     group.userData = {
       isBadGuy: true,
       evilType: 'chinacutting',
@@ -2524,6 +2565,10 @@ export const KarachiModels = {
     bubble.position.set(0, 2.5, 0);
     group.add(bubble);
 
+    // Glowing Neon Target Decal & Billboard
+    const targetDecal = this.createEvilTargetDecal('bhatta', '📜 BHATTA MAFIA • DEVOUR!');
+    group.add(targetDecal);
+
     group.userData = {
       isBadGuy: true,
       evilType: 'bhatta',
@@ -2606,6 +2651,10 @@ export const KarachiModels = {
     bubble.scale.set(4.2, 1.05, 1);
     bubble.position.set(0, 2.6, 0);
     group.add(bubble);
+
+    // Glowing Neon Target Decal & Billboard
+    const targetDecal = this.createEvilTargetDecal('onewheeler', '🏍️ RECKLESS RACER • DEVOUR!');
+    group.add(targetDecal);
 
     group.userData = {
       isBadGuy: true,

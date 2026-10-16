@@ -15,6 +15,7 @@ export class UIManager {
     this.createHUD();
     this.createSkinModal();
     this.createGameOverModal();
+    this.createDistrictClearedModal();
     this.bindEvents();
   }
 
@@ -77,10 +78,25 @@ export class UIManager {
       <!-- Live Crime Radar Compass Bar (Instantly guides player to active crimes/evils!) -->
       <div class="crime-radar-bar" id="hud-crime-radar"></div>
 
-      <!-- Mission Guidance Bar -->
-      <div class="mission-guidance-bar" id="mission-guidance-bar">
-        <span class="mission-icon">🎯</span>
-        <span class="mission-text"><b>CLEANSE KARACHI:</b> Devour <b>Water Tankers, VIP SUVs, K-Electric Kundas, Robbers, China Cutters & Trash</b>! 🍔 <i>Food stalls give Turbo Boost!</i></span>
+      <!-- District Mission Objective Banner -->
+      <div class="district-mission-banner" id="district-mission-banner">
+        <div class="district-meta-left">
+          <span class="district-badge-pill" id="hud-district-badge">DISTRICT 1</span>
+          <span class="district-name-text" id="hud-district-title">Tariq Road & PECHS (طرق روڈ)</span>
+        </div>
+        <div class="district-counter-center">
+          <div class="district-counter-pill" id="hud-district-counter">
+            <span class="counter-icon">🎯</span>
+            <span class="counter-num" id="hud-district-remaining-num">14</span>
+            <span class="counter-text">EVILS REMAINING</span>
+          </div>
+          <div class="district-progress-track">
+            <div class="district-progress-fill" id="hud-district-progress" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="district-targets-right" id="hud-district-breakdown">
+          <!-- Dynamic remaining targets breakdown chips -->
+        </div>
       </div>
 
       <!-- Center Announcement Overlay -->
@@ -220,6 +236,54 @@ export class UIManager {
     document.body.appendChild(this.gameOverModal);
   }
 
+  createDistrictClearedModal() {
+    this.districtClearedModal = document.createElement('div');
+    this.districtClearedModal.className = 'modal-backdrop district-cleared-modal-backdrop';
+    this.districtClearedModal.id = 'modal-district-cleared';
+    this.districtClearedModal.style.display = 'none';
+
+    this.districtClearedModal.innerHTML = `
+      <div class="modal-card district-cleared-card">
+        <div class="trophy-glow-icon">🏆</div>
+        <div class="dc-title" id="dc-modal-title">DISTRICT 1 CLEARED!</div>
+        <div class="dc-urdu" id="dc-modal-urdu">طرق روڈ مکمل صاف!</div>
+        <div class="dc-desc" id="dc-modal-desc">
+          You devoured all criminals & cleansed the neighborhood! Citizens are rejoicing!
+        </div>
+
+        <div class="dc-rewards-grid">
+          <div class="dc-reward-box highlight-box">
+            <span class="dc-reward-label">NEW CIVIC RANK</span>
+            <span class="dc-reward-val" id="dc-modal-herotitle">Street Vigilante (گلی محافظ)</span>
+          </div>
+          <div class="dc-reward-box">
+            <span class="dc-reward-label">BONUS SCORE</span>
+            <span class="dc-reward-val gold-text" id="dc-modal-bonus">+2,500 XP</span>
+          </div>
+          <div class="dc-reward-box">
+            <span class="dc-reward-label">BONUS TIME</span>
+            <span class="dc-reward-val cyan-text" id="dc-modal-time">+50 SEC</span>
+          </div>
+          <div class="dc-reward-box">
+            <span class="dc-reward-label">HOLE RADIUS</span>
+            <span class="dc-reward-val green-text" id="dc-modal-radius">EXPANDED 🌀</span>
+          </div>
+        </div>
+
+        <div class="dc-next-preview">
+          <span class="next-label">NEXT LEVEL:</span>
+          <span class="next-name" id="dc-modal-nextname">District 2: Saddar & Empress Market (صدر و ایمپریس مارکیٹ)</span>
+        </div>
+
+        <button class="primary-btn ui-interactive dc-advance-btn" id="btn-next-district">
+          🚀 ENTER NEXT DISTRICT / آگے بڑھیں
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(this.districtClearedModal);
+  }
+
   bindEvents() {
     // Sound & Music
     const btnSound = document.getElementById('btn-toggle-sound');
@@ -316,7 +380,55 @@ export class UIManager {
     });
   }
 
-  updateHUD({ player, timeLeft, rankedHoles, gameMode, civicPercent = 0, frenzyActive = false }) {
+  updateHUD({
+    player,
+    timeLeft,
+    rankedHoles,
+    gameMode,
+    civicPercent = 0,
+    frenzyActive = false,
+    nearestEvils = [],
+    districtConfig = null,
+    districtRemaining = 0,
+    districtTotal = 0,
+    targetBreakdown = []
+  }) {
+    // District Mission Banner & Remaining Targets
+    if (districtConfig) {
+      const badgeEl = document.getElementById('hud-district-badge');
+      const titleEl = document.getElementById('hud-district-title');
+      const remNumEl = document.getElementById('hud-district-remaining-num');
+      const counterEl = document.getElementById('hud-district-counter');
+      const progressEl = document.getElementById('hud-district-progress');
+      const breakdownEl = document.getElementById('hud-district-breakdown');
+
+      if (badgeEl) badgeEl.textContent = `DISTRICT ${districtConfig.level}`;
+      if (titleEl) titleEl.textContent = `${districtConfig.name} (${districtConfig.urdu})`;
+      if (remNumEl) remNumEl.textContent = districtRemaining;
+
+      const pct = districtTotal > 0 ? Math.min(100, Math.round(((districtTotal - districtRemaining) / districtTotal) * 100)) : 0;
+      if (progressEl) progressEl.style.width = `${pct}%`;
+
+      if (counterEl) {
+        if (districtRemaining <= 3 && districtRemaining > 0) {
+          counterEl.classList.add('final-hunt');
+        } else {
+          counterEl.classList.remove('final-hunt');
+        }
+      }
+
+      if (breakdownEl && targetBreakdown) {
+        breakdownEl.innerHTML = '';
+        targetBreakdown.forEach(tb => {
+          if (tb.count <= 0) return;
+          const chip = document.createElement('span');
+          chip.className = `target-chip chip-${tb.type}`;
+          chip.innerHTML = `${tb.icon} ${tb.count} ${tb.name.split(' ')[0]}`;
+          breakdownEl.appendChild(chip);
+        });
+      }
+    }
+
     // Score & Politician VIP Count
     document.getElementById('hud-score').textContent = player.score.toLocaleString();
     const polCountEl = document.getElementById('hud-politicians');
@@ -473,5 +585,54 @@ export class UIManager {
     });
 
     modal.style.display = 'flex';
+  }
+
+  showDistrictClearedModal({
+    level,
+    districtName,
+    districtUrdu,
+    heroTitle,
+    bonusScore,
+    timeBonus,
+    nextDistrictName,
+    nextDistrictUrdu,
+    isFinalDistrict = false,
+    onNextDistrict
+  }) {
+    document.getElementById('dc-modal-title').textContent = isFinalDistrict
+      ? `🌟 ULTIMATE VICTORY! ALL DISTRICTS SAVED! 🌟`
+      : `DISTRICT ${level} CLEARED!`;
+    document.getElementById('dc-modal-urdu').textContent = isFinalDistrict
+      ? `شہرِ قائد مکمل آزاد و محفوظ!`
+      : `${districtName} (${districtUrdu}) مکمل صاف!`;
+    document.getElementById('dc-modal-desc').textContent = isFinalDistrict
+      ? `Congratulations! You fulfilled Quaid-e-Azam's vision! Karachi is 100% clean, peaceful, and glorious!`
+      : `You eliminated all mobile snatchers, mafias & rubbish! Rescued citizens are dancing with joy!`;
+
+    document.getElementById('dc-modal-herotitle').textContent = heroTitle;
+    document.getElementById('dc-modal-bonus').textContent = `+${bonusScore.toLocaleString()} XP`;
+    document.getElementById('dc-modal-time').textContent = `+${timeBonus} SEC`;
+    document.getElementById('dc-modal-nextname').textContent = isFinalDistrict
+      ? `Karachi Civic Grand Champion`
+      : `${nextDistrictName} (${nextDistrictUrdu})`;
+
+    const nextBtn = document.getElementById('btn-next-district');
+    nextBtn.textContent = isFinalDistrict
+      ? `👑 CELEBRATE VICTORY / جشن منائیں`
+      : `🚀 ENTER NEXT DISTRICT / اگلے ضلع میں داخل ہوں`;
+
+    nextBtn.onclick = () => {
+      audio.playClick();
+      this.hideDistrictClearedModal();
+      if (onNextDistrict) onNextDistrict();
+    };
+
+    this.districtClearedModal.style.display = 'flex';
+  }
+
+  hideDistrictClearedModal() {
+    if (this.districtClearedModal) {
+      this.districtClearedModal.style.display = 'none';
+    }
   }
 }

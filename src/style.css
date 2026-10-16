@@ -871,3 +871,301 @@ html, body {
 .primary-btn:active {
   transform: scale(0.97);
 }
+
+/* =========================================================
+   DISTRICT MISSION BANNER & OBJECTIVE COUNTER
+   ========================================================= */
+.district-mission-banner {
+  position: absolute;
+  top: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 18px;
+  background: rgba(10, 16, 28, 0.88);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 16px rgba(0, 229, 255, 0.2);
+  z-index: 50;
+  pointer-events: none;
+  max-width: 92vw;
+  animation: slideDownBanner 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes slideDownBanner {
+  0% { transform: translate(-50%, -20px); opacity: 0; }
+  100% { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.district-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.district-badge-pill {
+  background: linear-gradient(135deg, #00e5ff, #0091ea);
+  color: #001f2e;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+}
+
+.district-name-text {
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.district-counter-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.district-counter-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 3px 10px;
+  border-radius: 999px;
+  transition: all 0.25s ease;
+}
+
+.district-counter-pill .counter-icon {
+  font-size: 0.9rem;
+}
+
+.district-counter-pill .counter-num {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+.district-counter-pill .counter-text {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #e2e8f0;
+  letter-spacing: 0.5px;
+}
+
+.district-counter-pill.final-hunt {
+  background: rgba(255, 23, 68, 0.25);
+  border-color: #ff1744;
+  animation: finalHuntPulse 0.9s infinite alternate;
+}
+
+.district-counter-pill.final-hunt .counter-num {
+  color: #ff1744;
+  text-shadow: 0 0 12px #ff1744;
+}
+
+@keyframes finalHuntPulse {
+  0% { transform: scale(1); box-shadow: 0 0 8px rgba(255, 23, 68, 0.4); }
+  100% { transform: scale(1.08); box-shadow: 0 0 20px rgba(255, 23, 68, 0.9); }
+}
+
+.district-progress-track {
+  width: 90px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.district-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00e5ff, #00e676);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.district-targets-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  max-width: 320px;
+}
+
+.target-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  white-space: nowrap;
+}
+
+.target-chip.chip-robber { border-color: rgba(255, 23, 68, 0.5); color: #ff5252; }
+.target-chip.chip-vip { border-color: rgba(255, 23, 68, 0.5); color: #ff5252; }
+.target-chip.chip-tanker { border-color: rgba(0, 229, 255, 0.5); color: #00e5ff; }
+.target-chip.chip-gutka { border-color: rgba(224, 64, 251, 0.5); color: #e040fb; }
+.target-chip.chip-ke { border-color: rgba(255, 234, 0, 0.5); color: #ffea00; }
+.target-chip.chip-chinacutting { border-color: rgba(255, 145, 0, 0.5); color: #ff9100; }
+.target-chip.chip-bhatta { border-color: rgba(118, 255, 3, 0.5); color: #76ff03; }
+.target-chip.chip-onewheeler { border-color: rgba(0, 229, 255, 0.5); color: #00e5ff; }
+.target-chip.chip-politician { border-color: rgba(255, 215, 0, 0.5); color: #ffd700; }
+
+/* =========================================================
+   DISTRICT CLEARED CELEBRATION MODAL
+   ========================================================= */
+.district-cleared-modal-backdrop {
+  z-index: 1000;
+  background: rgba(4, 8, 16, 0.85);
+  backdrop-filter: blur(16px);
+  animation: fadeInModal 0.35s ease;
+}
+
+.district-cleared-card {
+  max-width: 480px;
+  width: 90%;
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 50px rgba(255, 215, 0, 0.35), 0 20px 45px rgba(0, 0, 0, 0.7);
+  background: linear-gradient(180deg, #121c2e, #090e18);
+  padding: 30px;
+  border-radius: 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  animation: scaleUpCard 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes scaleUpCard {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.trophy-glow-icon {
+  font-size: 3.8rem;
+  margin-bottom: 6px;
+  animation: trophyFloat 2s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));
+}
+
+@keyframes trophyFloat {
+  0% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(-8px) scale(1.08); }
+}
+
+.dc-title {
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: #ffd700;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+  margin-bottom: 2px;
+}
+
+.dc-urdu {
+  font-family: var(--font-urdu);
+  font-size: 1.4rem;
+  color: #00e676;
+  direction: rtl;
+  margin-bottom: 10px;
+}
+
+.dc-desc {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  margin-bottom: 22px;
+  line-height: 1.4;
+}
+
+.dc-rewards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.dc-reward-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 10px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.dc-reward-box.highlight-box {
+  grid-column: span 2;
+  background: rgba(0, 229, 255, 0.1);
+  border-color: rgba(0, 229, 255, 0.4);
+}
+
+.dc-reward-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.dc-reward-val {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.dc-reward-val.gold-text { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+.dc-reward-val.cyan-text { color: #00e5ff; text-shadow: 0 0 10px rgba(0, 229, 255, 0.5); }
+.dc-reward-val.green-text { color: #00e676; text-shadow: 0 0 10px rgba(0, 230, 118, 0.5); }
+
+.dc-next-preview {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px;
+  border-radius: 12px;
+  margin-bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dc-next-preview .next-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #00e5ff;
+}
+
+.dc-next-preview .next-name {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #f8fafc;
+}
+
+.dc-advance-btn {
+  background: linear-gradient(135deg, #00e676, #00b0ff);
+  color: #03171f;
+  font-size: 1.15rem;
+  font-weight: 900;
+  padding: 16px;
+  border-radius: 999px;
+  box-shadow: 0 0 25px rgba(0, 230, 118, 0.45);
+  animation: pulseNextBtn 1.5s infinite alternate;
+}
+
+@keyframes pulseNextBtn {
+  0% { transform: scale(1); box-shadow: 0 0 15px rgba(0, 230, 118, 0.4); }
+  100% { transform: scale(1.03); box-shadow: 0 0 30px rgba(0, 230, 118, 0.8); }
+}
+
