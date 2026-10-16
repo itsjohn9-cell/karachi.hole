@@ -15,8 +15,9 @@ class Game {
 
     // Game Mode & State
     this.gameMode = 'battleRoyale'; // 'battleRoyale' or 'sandbox'
-    this.matchDuration = 120; // 2 minutes
+    this.matchDuration = 240; // 4 minutes match duration
     this.timeLeft = this.matchDuration;
+    this.isGameStarted = false;
     this.isGameOver = false;
     this.isPaused = false;
 
@@ -57,15 +58,15 @@ class Game {
     this.scene.background = new THREE.Color(0xd2c6b2);
     this.scene.fog = new THREE.FogExp2(0xd2c6b2, 0.0065);
 
-    // Camera - closer framing for intimate Karachi street view
+    // Camera - Subway Surfers / GTA street-level chase perspective
     this.camera = new THREE.PerspectiveCamera(
-      45,
+      52,
       window.innerWidth / window.innerHeight,
-      0.5,
+      0.3,
       500
     );
-    this.camera.position.set(0, 6.5, 7.2);
-    this.camera.lookAt(0, 1.2, -4.5);
+    this.camera.position.set(0, 2.7, 4.8);
+    this.camera.lookAt(0, 1.35, -8.5);
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -184,6 +185,20 @@ class Game {
 
   initUI() {
     this.ui = new UIManager({
+      onStartGame: ({ playerName, ageTier }) => {
+        if (this.player) {
+          this.player.name = playerName || "Karachi Hero";
+          this.player.updateNameTag();
+        }
+        this.difficulty = ageTier === 'kids' ? 'kidsEasy' : 'classic';
+        this.isGameStarted = true;
+        this.clock.getDelta();
+        audio.startMusic();
+        this.ui.showAnnouncement(`🚀 PATROL STARTED: WELCOME ${this.player.name.toUpperCase()}!`, '#00e5ff');
+      },
+      onNextLevel: () => {
+        this.advanceToNextDistrict();
+      },
       onSelectSkin: (skinName) => {
         this.player.setSkin(skinName);
       },
@@ -206,8 +221,8 @@ class Game {
           this.player.addXP(challenge.rewardXP || 500);
           this.particles.createCelebrationConfetti(this.player.position, 45);
         }
-        this.timeLeft += (challenge.rewardTime || 20);
-        this.ui.showAnnouncement(`🌟 CIVIC HERO: +${challenge.rewardXP} XP & +${challenge.rewardTime}s BONUS!`, '#00e676');
+        this.timeLeft += (challenge.rewardTime || 25);
+        this.ui.showAnnouncement(`🌟 CIVIC HERO: +${challenge.rewardXP} XP & +${challenge.rewardTime || 25}s BONUS!`, '#00e676');
       },
       onResumeGame: () => {
         this.resumeGame();
@@ -682,16 +697,16 @@ class Game {
           if (minHoleDist < 14 && !bg.hasPanickedEscape) {
             bg.hasPanickedEscape = true;
             const escapeLines = {
-              politician: "Bhago! Anti-Corruption aa gaya!",
-              robber: "Abey bhaago, Gutter Hero aa gaya!",
-              gutka: "Mera mawa chhalia gir gaya!",
-              chinacutting: "Footpath chorr ke bhaago!",
-              bhatta: "Extortion parchi bacha lo!",
-              tanker: "15,000 ka tanker bhaag raha hai!",
-              vip: "VIP Protocol ko rasta do!",
-              onewheeler: "One-wheeling se bhaago!"
+              politician: "Run! Anti-Corruption Patrol is here!",
+              robber: "Run away! The Hero is coming!",
+              gutka: "My gutka stash dropped! Run!",
+              chinacutting: "Abandon the sidewalk! Flee!",
+              bhatta: "Save the extortion slips!",
+              tanker: "The 15,000 rupee tanker is escaping!",
+              vip: "Clear the way for VIP Protocol!",
+              onewheeler: "Speed away from the hole!"
             };
-            const line = escapeLines[bg.evilType] || "Bhaago! Gutter aa gaya!";
+            const line = escapeLines[bg.evilType] || "Run! The patrol hole is coming!";
             if (ud && ud.drawBubble) {
               ud.drawBubble(line);
             }
@@ -1153,7 +1168,7 @@ class Game {
                   // Resident on balcony celebrates
                   const res = home.userData.resident;
                   if (res && res.userData && res.userData.drawBubble) {
-                    res.userData.drawBubble("🌊 پانی آگیا! نلکے بھر گئے! شکریہ گٹر ہیرو!", true);
+                    res.userData.drawBubble("🌊 Tap water is back! Taps are full! Thank you Hero!", true);
                     this.particles.createHeartBurst(res.position, 14);
                   }
                 });
@@ -1222,7 +1237,7 @@ class Game {
               if (victim) {
                 victim.userData.isRescued = true;
                 if (victim.userData.drawBubble) {
-                  victim.userData.drawBubble("🎉 ALLAH KA SHUKAR! Mera mobile bach gaya! Hero zindabad!", true);
+                  victim.userData.drawBubble("🎉 PRAISE BE! My phone is saved! Hero zindabad!", true);
                 }
                 this.particles.createCelebrationConfetti(victim.position, 35);
                 this.particles.createHeartBurst(victim.position, 16);
@@ -1236,8 +1251,7 @@ class Game {
               audio.playRescuedCitizenCheer();
               this.player.politiciansDevoured = (this.player.politiciansDevoured || 0) + 1;
               const pName = obj.mesh.userData?.name || "VIP Politician";
-              const quote = obj.mesh.userData?.quote || "Mujhe kyun nikala?!";
-              this.ui.showAnnouncement(`💰 DEVOURED ${pName.toUpperCase()}! AWAM KA PAISA WAPIS! (+${points} XP)`, '#ffd700');
+              this.ui.showAnnouncement(`💰 DEVOURED ${pName.toUpperCase()}! PUBLIC FUNDS RECOVERED! (+${points} XP)`, '#ffd700');
             } else if (obj.evilType === 'trash') {
               this.particles.createSwallowBurst(hole.position, 1, 10);
               audio.playGutterSplash();
@@ -1286,62 +1300,62 @@ class Game {
 
     const screams = {
       politician: [
-        "Nahi! Mere Offshore Swiss Accounts!",
-        "Mujhe kyun nikala?! Resign karta hoon!",
-        "Tum jantay nahi mera baap MNA hai!",
-        "VIP Protocol doob gaya! Bachao!"
+        "No! My offshore secret accounts!",
+        "I resign! Spare my briefcases!",
+        "My VIP protocol is sinking! Help!",
+        "You can't devour an MNA!"
       ],
       robber: [
-        "Aray bhai mobile wapis le lo!",
-        "Mera chori ka CD-70 chorr do!",
-        "Pistol nakli tha sarkar! Maaf kardo!",
-        "Ghalti ho gayi sarkar! Tauba!"
+        "Take the phone back! Don't devour me!",
+        "I surrender! The gun was fake!",
+        "Spare my bike! I will be good!",
+        "Mercy! I will never steal again!"
       ],
       tanker: [
-        "15 hazar ka bill maaf kar dunga!",
-        "Karachi ka sara pani free!",
-        "Tanker gutter mein doob raha hai!"
+        "I will forgive the water bill!",
+        "Free tap water for Karachi!",
+        "The water tanker is sinking into the hole!"
       ],
       vip: [
-        "HATO HATO! VIP gutter mein gir raha hai!",
-        "Sirens band kar do! Bachao!",
-        "Protocol security squad kidhar hai?!"
+        "MOVE ASIDE! VIP convoy is falling in!",
+        "Turn off the sirens! Help us!",
+        "Where is our security escort?!"
       ],
       gutka: [
-        "Mawa thook raha hoon bacha lo!",
-        "Aainda chhalia nahi bechunga!",
-        "Deewaron pe laal rang nahi thookunga!"
+        "My gutka bags spilled! Run!",
+        "I will never sell harmful betel again!",
+        "I promise spotless clean walls!"
       ],
       ke: [
-        "ZZZZT! 14 ghantay load shedding maaf!",
-        "Transformer phat gaya! Sparking band!",
-        "Kunda taar cut gayi! Light aa gayi!"
+        "ZZZZT! Load shedding cancelled!",
+        "Live wires chopped! Sparks stopped!",
+        "Illegal kunda line removed!"
       ],
       chinacutting: [
-        "Footpath ka plot le lo free mein!",
-        "Registry farzi thi meri bhai!",
-        "Gutter mein china cutting nahi hoti!"
+        "Take the footpath back! Free public walkway!",
+        "The illegal land registry was fake!",
+        "Public sidewalks reclaimed!"
       ],
       bhatta: [
-        "Bhatta ki 50,000 parchi wapis le lo!",
-        "Shopkeeper bhai maaf kar do!",
-        "Aainda bhatta nahi mangunga!"
+        "Take the extortion slips back!",
+        "Shopkeepers forgive me! Mercy!",
+        "I will never demand extortion money again!"
       ],
       onewheeler: [
-        "Mera 70cc silencer doob gaya!",
-        "One-wheeling band bhai!",
-        "Brake nahi lag rahi thi!"
+        "My racing bike is sinking!",
+        "No more dangerous one-wheeling!",
+        "Brakes failed! Save me!"
       ],
       pothole: [
-        "Khadda saaf! Smooth road ban gayi!",
-        "KW&SB leak pipeline band!"
+        "Pothole filled! Smooth road paved!",
+        "Underground pipeline leak sealed!"
       ],
       trash: [
-        "Kachra saaf! Clean Karachi!"
+        "Trash cleared! Clean green city!"
       ]
     };
 
-    const list = screams[type] || ["Bachaooo! Gutter mein gir gaya!"];
+    const list = screams[type] || ["Help! Sinking into the patrol hole!"];
     scream = list[Math.floor(Math.random() * list.length)];
 
     if (ud && ud.drawBubble) {
@@ -1409,31 +1423,41 @@ class Game {
   updateCamera(dt) {
     if (!this.player) return;
 
-    // Panoramic Karachi action camera: hole and victims remain crystal clear,
-    // while the majestic Karachi skyline (Teen Talwar, Mazar-e-Quaid, Empress Market, Shan Biryani Bridge)
-    // is revealed in breathtaking third-person glory!
-    const targetHeight = 6.2 + this.player.radius * 1.15;
-    const targetDistZ = 6.8 + this.player.radius * 1.15;
+    // Subway Surfers / GTA Style Street-Level 3rd-Person Chase Camera
+    // Positioned low behind player looking forward along the avenue with deep perspective!
+    const baseHeight = 2.65 + this.player.radius * 0.62;
+    const baseDistZ = 4.65 + this.player.radius * 0.72;
 
-    const targetCamX = this.player.position.x;
-    const targetCamY = targetHeight;
-    const targetCamZ = this.player.position.z + targetDistZ;
+    // Camera sway based on player steering input
+    const steerSway = (this.moveVector?.x || 0) * 0.85;
+    const targetCamX = this.player.position.x + steerSway;
+    const targetCamY = Math.max(1.85, baseHeight);
+    const targetCamZ = this.player.position.z + baseDistZ;
 
-    // Responsive smooth camera follow
-    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, dt * 6.0);
-    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, dt * 5.0);
-    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, dt * 6.0);
+    // Smooth responsive follow
+    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, dt * 7.5);
+    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, dt * 6.0);
+    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, dt * 7.5);
 
+    // Look target forward down the Karachi street corridor
+    const lookAheadDist = 8.5 + this.player.radius * 0.8;
     const lookTarget = new THREE.Vector3(
-      this.player.position.x,
-      1.5,
-      this.player.position.z - 4.5
+      this.player.position.x + steerSway * 0.35,
+      1.35,
+      this.player.position.z - lookAheadDist
     );
     this.camera.lookAt(lookTarget);
 
+    // Subtle bank tilt when turning corners
+    this.camera.rotation.z = THREE.MathUtils.lerp(
+      this.camera.rotation.z,
+      -(this.moveVector?.x || 0) * 0.045,
+      dt * 5.0
+    );
+
     // =========================================================
-    // Dynamic Building Transparency: Never let any building hide the hole!
-    // Buildings between the camera and player become translucent ghost silhouettes
+    // Dynamic Building Transparency: Never let tall buildings occlude the hole!
+    // Any building between camera and hole becomes a translucent ghost silhouette
     // =========================================================
     if (this.buildings && this.buildings.length > 0) {
       const camPos = this.camera.position;
@@ -1456,14 +1480,14 @@ class Game {
           const t = (bx * segX + bz * segZ) / segLenSq;
 
           let isOccluding = false;
-          if (t > 0.05 && t < 0.95) {
+          if (t > -0.15 && t < 1.15) {
             const projX = camPos.x + segX * t;
             const projZ = camPos.z + segZ * t;
             const dX = bPos.x - projX;
             const dZ = bPos.z - projZ;
             const distToPath = Math.sqrt(dX * dX + dZ * dZ);
 
-            if (distToPath < (bld.radius * 0.9 || 5.0)) {
+            if (distToPath < (bld.radius * 1.15 || 7.0)) {
               isOccluding = true;
             }
           }
@@ -1473,10 +1497,10 @@ class Game {
             bMesh.traverse(child => {
               if (child.isMesh && child.material) {
                 if (Array.isArray(child.material)) {
-                  child.material.forEach(m => { m.transparent = true; m.opacity = 0.28; });
+                  child.material.forEach(m => { m.transparent = true; m.opacity = 0.15; });
                 } else {
                   child.material.transparent = true;
-                  child.material.opacity = 0.28;
+                  child.material.opacity = 0.15;
                 }
               }
             });
@@ -1510,7 +1534,7 @@ class Game {
   }
 
   updateMatchTimer(dt) {
-    if (this.gameMode === 'battleRoyale' && !this.isGameOver) {
+    if (this.gameMode === 'battleRoyale' && this.isGameStarted && !this.isGameOver) {
       this.timeLeft -= dt;
       if (this.timeLeft <= 0) {
         this.timeLeft = 0;
@@ -1522,9 +1546,11 @@ class Game {
   endMatch() {
     this.isGameOver = true;
     const ranked = [...this.holes].sort((a, b) => b.score - a.score);
+    const canAdvanceNext = (this.districtRemaining <= 4) || (this.player && this.player.score >= 2000);
     this.ui.showGameOver({
       rankedHoles: ranked,
-      player: this.player
+      player: this.player,
+      canAdvanceNext
     });
   }
 

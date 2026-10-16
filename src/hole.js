@@ -257,14 +257,29 @@ export class Hole {
     if (!this.isAlive) return;
 
     const speed = this.isBoosting ? this.currentSpeed * 1.5 : this.currentSpeed;
-    this.position.x += dx * speed * dt;
-    this.position.z += dz * speed * dt;
-
-    // Firmly confine the hole within the active devour district
-    // Subtract radius margin so neither hole center nor outer rim can ever penetrate boundary walls or enter empty void
     const maxCoord = Math.max(14.0, mapBound - this.radius * 0.45);
-    this.position.x = THREE.MathUtils.clamp(this.position.x, -maxCoord, maxCoord);
-    this.position.z = THREE.MathUtils.clamp(this.position.z, -maxCoord, maxCoord);
+
+    // Calculate tentative next coordinates
+    let nextX = this.position.x + dx * speed * dt;
+    let nextZ = this.position.z + dz * speed * dt;
+
+    // Corner anti-sticking buffer: if approaching a corner (both near boundaries),
+    // redirect motion along the less-constrained axis so player smoothly glides out!
+    const cornerMargin = 4.0;
+    const isNearXBound = Math.abs(nextX) > (maxCoord - cornerMargin);
+    const isNearZBound = Math.abs(nextZ) > (maxCoord - cornerMargin);
+
+    if (isNearXBound && isNearZBound) {
+      // Corner detected: prioritize sliding along the axis with stronger directional intent
+      if (Math.abs(dx) > Math.abs(dz)) {
+        nextZ -= Math.sign(nextZ) * speed * dt * 0.4;
+      } else {
+        nextX -= Math.sign(nextX) * speed * dt * 0.4;
+      }
+    }
+
+    this.position.x = THREE.MathUtils.clamp(nextX, -maxCoord, maxCoord);
+    this.position.z = THREE.MathUtils.clamp(nextZ, -maxCoord, maxCoord);
 
     this.group.position.copy(this.position);
   }

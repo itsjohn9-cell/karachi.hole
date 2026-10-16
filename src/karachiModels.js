@@ -861,13 +861,13 @@ export const KarachiModels = {
     group.add(legR);
 
     // Radiant Emerald Green Ground Halo & Floating Friendly Badge
-    const friendlyDecal = this.createFriendlyDecal('citizen', '💚 FRIEND • کراچی شہری');
+    const friendlyDecal = this.createFriendlyDecal('citizen', '💚 FRIEND • INNOCENT CITIZEN');
     group.add(friendlyDecal);
 
     group.userData = {
       isFriendly: true,
       friendlyType: 'citizen',
-      name: "Innocent Citizen (شہری)",
+      name: "Innocent Citizen",
       friendlyDecal
     };
 
@@ -976,8 +976,8 @@ export const KarachiModels = {
     ctx.fillText(`❌ ${label.toUpperCase()} ❌`, 220, 34);
 
     ctx.fillStyle = '#ffd700';
-    ctx.font = '900 17px "Outfit", sans-serif';
-    ctx.fillText(`😈 DEVOUR THIS BAD GUY! / کھاؤ اسے`, 220, 68);
+    ctx.font = '900 18px "Outfit", sans-serif';
+    ctx.fillText(`😈 DEVOUR THIS BAD GUY!`, 220, 68);
 
     const bTex = new THREE.CanvasTexture(canvas);
     const badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
@@ -1011,7 +1011,7 @@ export const KarachiModels = {
   },
 
   // Friendly Protector Decal for Innocent Citizens, Food Stalls, Pets
-  createFriendlyDecal(type = 'citizen', label = "💚 FRIEND / دوست") {
+  createFriendlyDecal(type = 'citizen', label = "💚 FRIEND • PROTECT!") {
     const group = new THREE.Group();
     group.name = `Friendly-Decal-${type}`;
 

@@ -4,13 +4,14 @@ import {
   AGE_TIERS,
   CIVIC_BADGES,
   EDUCATIONAL_CHALLENGES,
-  getChallengesByTier,
+  getChallengesByAge,
   getChallengeByCategoryAndTier,
   getRandomChallenge
 } from './educationalChallenges.js';
 
 export class UIManager {
   constructor({
+    onStartGame,
     onSelectSkin,
     onRestartGame,
     onSelectMode,
@@ -18,8 +19,10 @@ export class UIManager {
     onOpenEducationalQuiz,
     onResolveEducationalQuiz,
     onResumeGame,
-    onPauseGame
+    onPauseGame,
+    onNextLevel
   }) {
+    this.onStartGame = onStartGame;
     this.onSelectSkin = onSelectSkin;
     this.onRestartGame = onRestartGame;
     this.onSelectMode = onSelectMode;
@@ -28,39 +31,115 @@ export class UIManager {
     this.onResolveEducationalQuiz = onResolveEducationalQuiz;
     this.onResumeGame = onResumeGame;
     this.onPauseGame = onPauseGame;
+    this.onNextLevel = onNextLevel;
 
+    this.playerName = 'Karachi Hero';
     this.currentSkin = 'gutter';
     this.gameMode = 'battleRoyale'; // 'battleRoyale' or 'sandbox'
     this.difficulty = 'kidsEasy'; // 'kidsEasy' or 'classic'
-    this.currentAgeTier = 'junior'; // 'junior', 'ranger', 'champion'
+    this.currentAgeTier = 'kids'; // 'kids', 'junior', 'senior'
     this.unlockedBadges = new Set(['water_guardian']);
     this.completedQuizIds = new Set();
     this.activeQuizChallenge = null;
+    this.isAutoPaused = false;
 
+    this.createStartMissionModal();
     this.createHUD();
     this.createSkinModal();
     this.createGoodVsBadModal();
     this.createEducationalQuizModal();
+    this.createAutoPauseModal();
     this.createGameOverModal();
     this.createDistrictClearedModal();
     this.bindEvents();
   }
 
+  // 1. Initial Start Screen / Onboarding Modal
+  createStartMissionModal() {
+    this.startModal = document.createElement('div');
+    this.startModal.className = 'modal-backdrop start-mission-backdrop';
+    this.startModal.id = 'modal-start-mission';
+    this.startModal.style.display = 'flex'; // Visible on initial load
+
+    this.startModal.innerHTML = `
+      <div class="modal-card start-mission-card">
+        <div class="start-hero-header">
+          <div class="city-crest">🌟</div>
+          <h1 class="start-title">KARACHI HOLE.IO</h1>
+          <p class="start-tagline">3D Third-Person Street Patrol &amp; Civic Hero Mission</p>
+        </div>
+
+        <div class="start-form-section">
+          <!-- Player / Game Name Input -->
+          <div class="form-group">
+            <label class="form-label" for="player-name-input">👤 PLAYER / HERO NAME:</label>
+            <div class="input-with-icon">
+              <span class="input-icon">👑</span>
+              <input type="text" id="player-name-input" class="text-input" value="Karachi Hero" maxlength="18" placeholder="Enter your player name..." />
+            </div>
+          </div>
+
+          <!-- Age Group Selection -->
+          <div class="form-group">
+            <label class="form-label">👶 SELECT YOUR AGE GROUP:</label>
+            <div class="age-selection-grid" id="start-age-grid">
+              <div class="age-card active ui-interactive" data-age="kids">
+                <span class="age-card-icon">🐣</span>
+                <span class="age-card-title">Kids</span>
+                <span class="age-card-sub">Ages 5–8</span>
+                <span class="age-card-desc">Visual picture cues &amp; gentle hints</span>
+              </div>
+              <div class="age-card ui-interactive" data-age="junior">
+                <span class="age-card-icon">🎒</span>
+                <span class="age-card-title">Junior</span>
+                <span class="age-card-sub">Ages 9–12</span>
+                <span class="age-card-desc">Street safety &amp; civic awareness</span>
+              </div>
+              <div class="age-card ui-interactive" data-age="senior">
+                <span class="age-card-icon">🏆</span>
+                <span class="age-card-title">Teens &amp; Adults</span>
+                <span class="age-card-sub">Ages 13+</span>
+                <span class="age-card-desc">City leadership &amp; public ethics</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Mission Briefing -->
+          <div class="mission-brief-box">
+            <div class="brief-title">🎯 MISSION OBJECTIVE:</div>
+            <div class="brief-points">
+              <span>🧹 <strong>Devour red-ringed bad guys:</strong> Mobile snatchers, water tanker mafia, VIP convoys &amp; road potholes!</span>
+              <span>💚 <strong>Protect innocent citizens, cats &amp; puppies:</strong> Do not harm good friends!</span>
+              <span>🧠 <strong>Answer pictorial civic questions:</strong> Gain XP, extra time, and unlock medals!</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="primary-btn ui-interactive start-mission-btn" id="btn-start-patrol">
+          🚀 START PATROL ➔
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(this.startModal);
+  }
+
+  // 2. Dedicated Game Tracking HUD & Scoreboard
   createHUD() {
     this.hud = document.createElement('div');
     this.hud.id = 'game-hud';
     this.hud.innerHTML = `
-      <!-- Top Status Bar -->
+      <!-- Top Status & Scoreboard Tracking Bar -->
       <div class="hud-top-bar">
         <div class="hud-left">
           <div class="karachi-badge">
-            <span class="urdu-title">کراچی</span>
-            <span class="game-title">HOLE.IO</span>
+            <span class="game-logo-icon">🌀</span>
+            <span class="game-title">KARACHI PATROL</span>
           </div>
           <div class="level-indicator">
             <span class="level-badge" id="hud-level-badge">LV 1</span>
             <div class="level-info">
-              <span class="level-name" id="hud-level-title">Gali Vacuum</span>
+              <span class="level-name" id="hud-level-title">Street Vacuum</span>
               <div class="xp-bar-track">
                 <div class="xp-bar-fill" id="hud-xp-fill" style="width: 0%"></div>
               </div>
@@ -69,16 +148,12 @@ export class UIManager {
         </div>
 
         <div class="hud-center">
-          <div class="timer-pill" id="hud-timer">02:00</div>
+          <div class="timer-pill" id="hud-timer">04:00</div>
           <div class="score-pill">
             <span class="score-label">SCORE</span>
             <span class="score-val" id="hud-score">0</span>
           </div>
-          <div class="politician-pill" title="Pakistani Politicians Devoured">
-            <span>💰 VIPs:</span>
-            <span id="hud-politicians" class="pol-count">0</span>
-          </div>
-          <div class="civic-pill" id="hud-civic-pill" title="Karachi Cleansed from Evils & Mafia">
+          <div class="civic-pill" id="hud-civic-pill" title="District Evils Cleansed">
             <span class="civic-icon">🧹</span>
             <span class="civic-label">CLEANSED:</span>
             <span id="hud-civic-pct" class="civic-val">0%</span>
@@ -95,17 +170,20 @@ export class UIManager {
           <!-- Interactive Karachi Civic Mini-Map (Radar HUD) -->
           <div class="minimap-card" id="hud-minimap-card">
             <div class="minimap-header">
-              <span class="minimap-title">🗺️ RADAR / نقشہ</span>
+              <span class="minimap-title">🗺️ RADAR</span>
               <span class="minimap-badge" id="minimap-target-badge">14 LEFT</span>
             </div>
             <div class="minimap-canvas-wrapper">
-              <canvas id="minimap-canvas" width="144" height="144"></canvas>
+              <canvas id="minimap-canvas" width="130" height="130"></canvas>
             </div>
           </div>
 
-          <!-- Realtime Leaderboard -->
-          <div class="leaderboard-card">
-            <div class="leaderboard-header">LEADERBOARD</div>
+          <!-- Dedicated Live Scoreboard & Leaderboard -->
+          <div class="leaderboard-card" id="hud-scoreboard-card">
+            <div class="leaderboard-header">
+              <span>🏆 SCOREBOARD</span>
+              <span class="rank-tag" id="hud-player-rank">RANK #1</span>
+            </div>
             <div class="leaderboard-list" id="hud-leaderboard">
               <!-- Dynamically populated -->
             </div>
@@ -113,14 +191,14 @@ export class UIManager {
         </div>
       </div>
 
-      <!-- Live Crime Radar Compass Bar (Instantly guides player to active crimes/evils!) -->
+      <!-- Live Crime Radar Compass Bar -->
       <div class="crime-radar-bar" id="hud-crime-radar"></div>
 
       <!-- District Mission Objective Banner -->
       <div class="district-mission-banner" id="district-mission-banner">
         <div class="district-meta-left">
           <span class="district-badge-pill" id="hud-district-badge">DISTRICT 1</span>
-          <span class="district-name-text" id="hud-district-title">Tariq Road & PECHS (طرق روڈ)</span>
+          <span class="district-name-text" id="hud-district-title">Tariq Road &amp; PECHS</span>
         </div>
         <div class="district-counter-center">
           <div class="district-counter-pill" id="hud-district-counter">
@@ -140,7 +218,7 @@ export class UIManager {
       <!-- Active Civic Crisis Challenge Card -->
       <div class="active-crisis-card" id="hud-active-crisis" style="display: none;">
         <div class="crisis-badge-row">
-          <span class="crisis-tag-pill">🚨 ACTIVE CIVIC CRISIS / موجودہ بحران</span>
+          <span class="crisis-tag-pill">🚨 ACTIVE CIVIC CRISIS</span>
           <span class="crisis-reward-pill" id="crisis-reward-text">+1,400 XP REWARD</span>
         </div>
         <div class="crisis-main-row">
@@ -148,9 +226,8 @@ export class UIManager {
           <div class="crisis-text-box">
             <div class="crisis-title-row">
               <span class="crisis-title" id="crisis-title">Water Tanker Extortion &amp; Dry Homes</span>
-              <span class="crisis-urdu" id="crisis-urdu">پانی بحران و ٹینکر مافیا کا خاتمہ</span>
             </div>
-            <div class="crisis-desc" id="crisis-desc">Devour the Water Tanker Mafia siphoning water from PECHS residential homes!</div>
+            <div class="crisis-desc" id="crisis-desc">Devour the Water Tanker Mafia siphoning water from residential homes!</div>
             <div class="crisis-progress-bar-wrap">
               <div class="crisis-progress-fill" id="crisis-progress-fill" style="width: 0%"></div>
             </div>
@@ -164,7 +241,7 @@ export class UIManager {
 
       <!-- Before ➔ After Civic Transformation Toast -->
       <div class="before-after-toast" id="hud-before-after-toast" style="opacity: 0">
-        <div class="ba-badge">✨ CIVIC TRANSFORMATION / شہری بحالی ✨</div>
+        <div class="ba-badge">✨ CIVIC TRANSFORMATION ✨</div>
         <div class="ba-row">
           <div class="ba-side ba-before">
             <span class="ba-tag">BEFORE:</span>
@@ -189,15 +266,15 @@ export class UIManager {
         <div class="bottom-left-controls">
           <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
-          <button class="icon-btn ui-interactive" id="btn-open-skins" title="Change Skin">🎨 Skins</button>
-          <button class="pill-btn ui-interactive quiz-btn-pulse" id="btn-open-quiz" title="Kids Civic Learning Challenge / بچوں کا تعلیمی چیلنج">🧠 Kids Quiz / تعلیمی چیلنج 🌟</button>
-          <button class="pill-btn ui-interactive guide-btn-pulse" id="btn-open-guide" title="Good vs Bad Guide / اچھے اور برے کی پہچان">👶 ❓ What to Eat? / اچھے برے کی پہچان</button>
+          <button class="pill-btn ui-interactive" id="btn-open-skins" title="Change Hole Skin">🎨 Skins</button>
+          <button class="pill-btn ui-interactive quiz-btn-pulse" id="btn-open-quiz" title="Civic Learning Challenge">🧠 Civic Quiz 🌟</button>
+          <button class="pill-btn ui-interactive guide-btn-pulse" id="btn-open-guide" title="Good vs Bad Targets Guide">❓ What to Devour?</button>
           <button class="pill-btn ui-interactive highlight-btn" id="btn-diff-toggle" title="Toggle Difficulty">🎈 Easy (Kids)</button>
-          <button class="pill-btn ui-interactive" id="btn-mode-toggle">Mode: 2 Min</button>
+          <button class="icon-btn ui-interactive" id="btn-manual-pause" title="Pause Game">⏸️</button>
         </div>
 
         <div class="bottom-right-controls">
-          <button class="boost-btn ui-interactive" id="btn-boost" title="Turbo Boost">
+          <button class="boost-btn ui-interactive" id="btn-boost" title="Turbo Speed Boost">
             ⚡ TURBO
           </button>
         </div>
@@ -207,6 +284,28 @@ export class UIManager {
     document.body.appendChild(this.hud);
   }
 
+  // 3. Auto-Pause Overlay Modal
+  createAutoPauseModal() {
+    this.autoPauseModal = document.createElement('div');
+    this.autoPauseModal.className = 'modal-backdrop auto-pause-backdrop';
+    this.autoPauseModal.id = 'modal-auto-pause';
+    this.autoPauseModal.style.display = 'none';
+
+    this.autoPauseModal.innerHTML = `
+      <div class="modal-card pause-card">
+        <div class="pause-icon">⏸️</div>
+        <h2 class="pause-title">GAME PAUSED</h2>
+        <p class="pause-desc">You switched tabs or moved away from the screen. Karachi patrol is safely on hold.</p>
+        <button class="primary-btn ui-interactive resume-patrol-btn" id="btn-auto-resume">
+          ▶ RESUME PATROL
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(this.autoPauseModal);
+  }
+
+  // 4. Hole Skin Selection Modal
   createSkinModal() {
     this.skinModal = document.createElement('div');
     this.skinModal.className = 'modal-backdrop';
@@ -216,15 +315,15 @@ export class UIManager {
     this.skinModal.innerHTML = `
       <div class="modal-card">
         <div class="modal-header">
-          <h2>Select Hole Skin / رنگ منتخب کریں</h2>
+          <h2>Select Hole Skin</h2>
           <button class="close-btn ui-interactive" id="btn-close-skins">&times;</button>
         </div>
         <div class="skin-grid">
           <div class="skin-card ui-interactive active" data-skin="gutter">
             <div class="skin-preview skin-gutter"></div>
             <div class="skin-info">
-              <h3>KMC Open Gutter (کھلا گٹر)</h3>
-              <p>Authentic Karachi sewer manhole with iron cleats & murky sludge</p>
+              <h3>KMC Open Gutter</h3>
+              <p>Authentic Karachi sewer manhole with iron cleats &amp; murky sludge</p>
             </div>
           </div>
 
@@ -240,7 +339,7 @@ export class UIManager {
             <div class="skin-preview skin-ajrak"></div>
             <div class="skin-info">
               <h3>Sindh Ajrak</h3>
-              <p>Royal indigo & crimson traditional Sindhi star block print</p>
+              <p>Royal indigo &amp; crimson traditional Sindhi star block print</p>
             </div>
           </div>
 
@@ -255,7 +354,7 @@ export class UIManager {
           <div class="skin-card ui-interactive" data-skin="quaid">
             <div class="skin-preview skin-quaid"></div>
             <div class="skin-info">
-              <h3>Mazar White & Gold</h3>
+              <h3>Mazar White &amp; Gold</h3>
               <p>Majestic white marble and golden calligraphy rim</p>
             </div>
           </div>
@@ -264,7 +363,7 @@ export class UIManager {
             <div class="skin-preview skin-neon"></div>
             <div class="skin-info">
               <h3>Chundrigar Cyber Neon</h3>
-              <p>Electric cyberpunk pink & cyan glow</p>
+              <p>Electric cyberpunk pink &amp; cyan glow</p>
             </div>
           </div>
         </div>
@@ -273,98 +372,102 @@ export class UIManager {
     document.body.appendChild(this.skinModal);
   }
 
-  createGameOverModal() {
-    this.gameOverModal = document.createElement('div');
-    this.gameOverModal.className = 'modal-backdrop';
-    this.gameOverModal.id = 'modal-game-over';
-    this.gameOverModal.style.display = 'none';
+  // 5. Educational Quiz Modal (Pictorial, Non-skippable, Auto-resume on correct answer)
+  createEducationalQuizModal() {
+    this.quizModal = document.createElement('div');
+    this.quizModal.className = 'modal-backdrop quiz-modal-backdrop';
+    this.quizModal.id = 'modal-quiz';
+    this.quizModal.style.display = 'none';
 
-    this.gameOverModal.innerHTML = `
-      <div class="modal-card results-card">
-        <div class="results-header">
-          <h1 id="results-headline">VICTORY! / مبارک ہو</h1>
-          <div class="results-sub" id="results-sub">Karachi Match Finished</div>
+    this.quizModal.innerHTML = `
+      <div class="modal-card quiz-modal-card">
+        <!-- Header: No close button until answered correctly! -->
+        <div class="modal-header quiz-modal-header">
+          <div class="quiz-title-block">
+            <div class="quiz-title-top">
+              <span class="quiz-school-badge">🏫 KARACHI JUNIOR CIVIC ACADEMY</span>
+              <span class="quiz-edu-pill">📖 LEARN &amp; WIN</span>
+            </div>
+            <h2 class="quiz-title">🌟 City Hero Dilemma</h2>
+          </div>
+          <!-- Notice: Close button removed to make questions non-skippable as requested! -->
         </div>
 
-        <div class="podium-section" id="results-podium">
-          <!-- 2nd, 1st, 3rd podium -->
-        </div>
-
-        <div class="stats-grid">
-          <div class="stat-box">
-            <span class="stat-label">FINAL SCORE</span>
-            <span class="stat-num" id="stat-score">0</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-label">MAX LEVEL</span>
-            <span class="stat-num" id="stat-level">Lv 1</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-label">OBJECTS SWALLOWED</span>
-            <span class="stat-num" id="stat-swallowed">0</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-label">HOLE KILLS</span>
-            <span class="stat-num" id="stat-kills">0</span>
+        <!-- Age Tier Selector Bar -->
+        <div class="quiz-age-bar">
+          <span class="quiz-age-label">👶 AGE GROUP:</span>
+          <div class="quiz-age-tabs" id="quiz-age-tabs">
+            <button class="age-tab active ui-interactive" data-age="kids">🐣 Kids (5–8)</button>
+            <button class="age-tab ui-interactive" data-age="junior">🎒 Junior (9–12)</button>
+            <button class="age-tab ui-interactive" data-age="senior">🏆 Teens &amp; Adults (13+)</button>
           </div>
         </div>
 
-        <button class="primary-btn ui-interactive" id="btn-play-again">
-          PLAY AGAIN / دوبارہ کھیلیں
-        </button>
+        <!-- Dilemma Challenge Card -->
+        <div class="quiz-dilemma-card" id="quiz-dilemma-card">
+          <div class="dilemma-topic-row">
+            <span class="dilemma-topic-badge" id="quiz-topic-badge">🚰 Water Conservation</span>
+            <span class="dilemma-reward-badge" id="quiz-reward-badge">🎁 +500 XP &amp; +25s TIME BONUS</span>
+          </div>
+
+          <!-- Scenario Presentation with Pictorial Header -->
+          <div class="dilemma-scenario-box">
+            <div class="dilemma-icon-large" id="quiz-scenario-icon">🚰</div>
+            <div class="dilemma-scenario-texts">
+              <div class="scenario-text" id="quiz-scenario-en">Loading scenario...</div>
+              <div class="scenario-visual-pill" id="quiz-scenario-visual">💧 🚰 Visual picture cue</div>
+            </div>
+          </div>
+
+          <!-- Question Prompt -->
+          <div class="dilemma-question-box">
+            <h3 class="question-en" id="quiz-question-en">Which picture shows the right choice?</h3>
+          </div>
+
+          <!-- Interactive Choices Container (Large Pictorial Cards) -->
+          <div class="quiz-options-container" id="quiz-options-container">
+            <!-- Populated dynamically with pictorial cards -->
+          </div>
+
+          <!-- Positive Reinforcement / Feedback Box (Celebration before auto-resume) -->
+          <div class="quiz-feedback-box" id="quiz-feedback-box" style="display: none;">
+            <div class="feedback-badge" id="feedback-badge">🌟 EXCELLENT CIVIC HERO! CORRECT! 🌟</div>
+            <div class="feedback-badge-unlocked" id="feedback-badge-unlocked">
+              <span class="badge-icon" id="feedback-badge-icon">🚰</span>
+              <span class="badge-text" id="feedback-badge-text">New Medal Unlocked: Water Guardian</span>
+            </div>
+            <div class="feedback-text-wrap">
+              <p class="feedback-desc" id="feedback-desc"></p>
+            </div>
+            <div class="auto-resume-notice">
+              <span>🚀 Returning to game in 1 second...</span>
+            </div>
+          </div>
+
+          <!-- Gentle Encouragement Note for incorrect tap -->
+          <div class="quiz-encouragement-toast" id="quiz-encouragement-toast" style="display: none;">
+            <span class="enc-icon">💡</span>
+            <div class="enc-txt">
+              <strong>Try again!</strong>
+              <span id="quiz-enc-text">Look closely at the pictures and tap the correct civic choice to continue!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Earned Civic Badges Ribbon -->
+        <div class="quiz-badges-ribbon">
+          <div class="ribbon-title">🏅 YOUR EARNED CIVIC MEDALS:</div>
+          <div class="badges-row" id="quiz-badges-row">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
       </div>
     `;
-    document.body.appendChild(this.gameOverModal);
+
+    document.body.appendChild(this.quizModal);
   }
 
-  createDistrictClearedModal() {
-    this.districtClearedModal = document.createElement('div');
-    this.districtClearedModal.className = 'modal-backdrop district-cleared-modal-backdrop';
-    this.districtClearedModal.id = 'modal-district-cleared';
-    this.districtClearedModal.style.display = 'none';
-
-    this.districtClearedModal.innerHTML = `
-      <div class="modal-card district-cleared-card">
-        <div class="trophy-glow-icon">🏆</div>
-        <div class="dc-title" id="dc-modal-title">DISTRICT 1 CLEARED!</div>
-        <div class="dc-urdu" id="dc-modal-urdu">طرق روڈ مکمل صاف!</div>
-        <div class="dc-desc" id="dc-modal-desc">
-          You devoured all criminals & cleansed the neighborhood! Citizens are rejoicing!
-        </div>
-
-        <div class="dc-rewards-grid">
-          <div class="dc-reward-box highlight-box">
-            <span class="dc-reward-label">NEW CIVIC RANK</span>
-            <span class="dc-reward-val" id="dc-modal-herotitle">Street Vigilante (گلی محافظ)</span>
-          </div>
-          <div class="dc-reward-box">
-            <span class="dc-reward-label">BONUS SCORE</span>
-            <span class="dc-reward-val gold-text" id="dc-modal-bonus">+2,500 XP</span>
-          </div>
-          <div class="dc-reward-box">
-            <span class="dc-reward-label">BONUS TIME</span>
-            <span class="dc-reward-val cyan-text" id="dc-modal-time">+50 SEC</span>
-          </div>
-          <div class="dc-reward-box">
-            <span class="dc-reward-label">HOLE RADIUS</span>
-            <span class="dc-reward-val green-text" id="dc-modal-radius">EXPANDED 🌀</span>
-          </div>
-        </div>
-
-        <div class="dc-next-preview">
-          <span class="next-label">NEXT LEVEL:</span>
-          <span class="next-name" id="dc-modal-nextname">District 2: Saddar & Empress Market (صدر و ایمپریس مارکیٹ)</span>
-        </div>
-
-        <button class="primary-btn ui-interactive dc-advance-btn" id="btn-next-district">
-          🚀 ENTER NEXT DISTRICT / آگے بڑھیں
-        </button>
-      </div>
-    `;
-
-    document.body.appendChild(this.districtClearedModal);
-  }
-
+  // 6. Good vs Bad Guide Modal
   createGoodVsBadModal() {
     this.guideModal = document.createElement('div');
     this.guideModal.className = 'modal-backdrop';
@@ -375,8 +478,8 @@ export class UIManager {
       <div class="modal-card guide-modal-card">
         <div class="modal-header guide-modal-header">
           <div class="guide-title-block">
-            <h2 class="guide-title">👶 WHAT TO EAT? / اچھے اور برے کی پہچان</h2>
-            <p class="guide-subtitle">A Kid-Friendly Guide to Karachi Hole.io: Only Devour the Bad Guys!</p>
+            <h2 class="guide-title">👶 WHAT TO DEVOUR?</h2>
+            <p class="guide-subtitle">A Visual Guide to Karachi Hole.io: Only Devour the Bad Guys!</p>
           </div>
           <button class="close-btn ui-interactive" id="btn-close-guide">&times;</button>
         </div>
@@ -407,14 +510,14 @@ export class UIManager {
               <span class="col-icon">😈</span>
               <div class="col-title-wrap">
                 <h3>🔴 BAD GUYS (DEVOUR THEM!)</h3>
-                <span class="urdu-sub">ان برائیوں کو ختم کریں اور کراچی بچائیں</span>
+                <span class="urdu-sub">Eliminate these evils to save Karachi</span>
               </div>
             </div>
             <div class="guide-list">
               <div class="guide-item item-bad">
                 <div class="item-icon">📱</div>
                 <div class="item-info">
-                  <h4>Mobile Snatchers (موبائل چھیننے والا)</h4>
+                  <h4>Mobile Snatchers</h4>
                   <p>Armed thugs on 70cc motorbikes stealing phones from citizens. Devour them to restore street peace!</p>
                   <span class="item-tag tag-bad">Devour for +120 XP</span>
                 </div>
@@ -423,7 +526,7 @@ export class UIManager {
               <div class="guide-item item-bad">
                 <div class="item-icon">🚨</div>
                 <div class="item-info">
-                  <h4>VIP Protocol Convoy (وی آئی پی پروٹوکول)</h4>
+                  <h4>VIP Protocol Convoy</h4>
                   <p>Heavy black SUVs with flashing red-blue police beacons causing 2-hour traffic jams. Devour them to free traffic!</p>
                   <span class="item-tag tag-bad">Devour for +350 XP</span>
                 </div>
@@ -432,8 +535,8 @@ export class UIManager {
               <div class="guide-item item-bad">
                 <div class="item-icon">🛢️</div>
                 <div class="item-info">
-                  <h4>Water Tanker Mafia (ٹینکر مافیا)</h4>
-                  <p>Giant blue tankers stealing tap water and selling it at high prices. Devour them to erupt free water for citizens!</p>
+                  <h4>Water Tanker Mafia</h4>
+                  <p>Giant blue tankers stealing tap water and selling it at extortionate rates. Devour them to erupt free tap water!</p>
                   <span class="item-tag tag-bad">Devour for +450 XP &amp; Geyser</span>
                 </div>
               </div>
@@ -441,8 +544,8 @@ export class UIManager {
               <div class="guide-item item-bad">
                 <div class="item-icon">📜</div>
                 <div class="item-info">
-                  <h4>Bhatta Extortion Gang (بھتہ خور)</h4>
-                  <p>Criminals waving brown extortion chits demanding money from honest shopkeepers. Swallowing them brings peace!</p>
+                  <h4>Bhatta Extortion Gang</h4>
+                  <p>Criminals waving extortion slips demanding money from honest shopkeepers. Swallowing them brings peace!</p>
                   <span class="item-tag tag-bad">Devour for +180 XP</span>
                 </div>
               </div>
@@ -450,7 +553,7 @@ export class UIManager {
               <div class="guide-item item-bad">
                 <div class="item-icon">🏍️</div>
                 <div class="item-info">
-                  <h4>Reckless One-Wheelers (ون ویلنگ ریسر)</h4>
+                  <h4>Reckless One-Wheelers</h4>
                   <p>Speeding bikes without silencers doing stunts in public streets. Swallowing them secures pedestrians!</p>
                   <span class="item-tag tag-bad">Devour for +140 XP</span>
                 </div>
@@ -459,7 +562,7 @@ export class UIManager {
               <div class="guide-item item-bad">
                 <div class="item-icon">🕳️</div>
                 <div class="item-info">
-                  <h4>Broken Road Potholes (خطرناک گڑھے)</h4>
+                  <h4>Broken Road Potholes</h4>
                   <p>Deep craters in asphalt damaging cars. Devour them to transform them into smooth carpet roads!</p>
                   <span class="item-tag tag-bad">Devour for +60 XP</span>
                 </div>
@@ -468,18 +571,9 @@ export class UIManager {
               <div class="guide-item item-bad">
                 <div class="item-icon">🗑️</div>
                 <div class="item-info">
-                  <h4>Overflowing Garbage (کچرے کا ڈھیر)</h4>
-                  <p>Smelly trash bags and plastic piles blocking footpaths. Devour them to plant fresh flowers!</p>
+                  <h4>Overflowing Garbage</h4>
+                  <p>Smelly trash bags and plastic piles blocking footpaths. Devour them to plant fresh green flora!</p>
                   <span class="item-tag tag-bad">Devour for +50 XP</span>
-                </div>
-              </div>
-
-              <div class="guide-item item-bad">
-                <div class="item-icon">🍂</div>
-                <div class="item-info">
-                  <h4>Gutka &amp; Chalia Peddlers (گٹکا مافیا)</h4>
-                  <p>Shady vendors selling harmful betel concoctions staining walls red. Clear them for clean streets!</p>
-                  <span class="item-tag tag-bad">Devour for +80 XP</span>
                 </div>
               </div>
             </div>
@@ -491,14 +585,14 @@ export class UIManager {
               <span class="col-icon">😇</span>
               <div class="col-title-wrap">
                 <h3>🟢 GOOD FRIENDS (PROTECT THEM!)</h3>
-                <span class="urdu-sub">یہ کراچی کے دوست ہیں، ان کو نقصان مت پہنچائیں</span>
+                <span class="urdu-sub">These are Karachi's beloved friends</span>
               </div>
             </div>
             <div class="guide-list">
               <div class="guide-item item-good">
                 <div class="item-icon">💚</div>
                 <div class="item-info">
-                  <h4>Innocent Citizens (شہری)</h4>
+                  <h4>Innocent Citizens</h4>
                   <p>Everyday people in shalwar kameez. <strong>Your hole cannot eat them!</strong> Touch them to hear blessings &amp; green love hearts!</p>
                   <span class="item-tag tag-good">Blessings &amp; Hearts Burst 💚</span>
                 </div>
@@ -507,8 +601,8 @@ export class UIManager {
               <div class="guide-item item-good">
                 <div class="item-icon">🍔</div>
                 <div class="item-info">
-                  <h4>Burns Road Bun Kabab (بن کباب اسٹال)</h4>
-                  <p>Karachi's legendary egg-shami burger cart. <strong>Touch it for a FREE Turbo Speed Boost</strong> with spicy green chutney!</p>
+                  <h4>Burns Road Bun Kabab Cart</h4>
+                  <p>Legendary Karachi egg-shami burger cart. <strong>Touch it for a FREE Turbo Speed Boost</strong> with spicy chutney!</p>
                   <span class="item-tag tag-good">⚡ Gives Instant Turbo Boost!</span>
                 </div>
               </div>
@@ -516,8 +610,8 @@ export class UIManager {
               <div class="guide-item item-good">
                 <div class="item-icon">☕</div>
                 <div class="item-info">
-                  <h4>Quetta Karak Chai Dhaba (چائے کا ڈھابہ)</h4>
-                  <p>Traditional tea stall with silver samovar and charpais. <strong>Touch it for Dudh Patti recharge</strong> and shockwave!</p>
+                  <h4>Quetta Karak Chai Dhaba</h4>
+                  <p>Traditional tea stall with silver samovar and charpais. <strong>Touch it for Dudh Patti energy recharge!</strong></p>
                   <span class="item-tag tag-good">⚡ Gives Chai Energy Recharge!</span>
                 </div>
               </div>
@@ -525,7 +619,7 @@ export class UIManager {
               <div class="guide-item item-good">
                 <div class="item-icon">🐕</div>
                 <div class="item-info">
-                  <h4>Friendly Stray Puppies (پیارے کتے)</h4>
+                  <h4>Friendly Stray Puppies</h4>
                   <p>Desi street dogs wagging their tails. <strong>Touch them to pet them!</strong> They woof happily and shower you with heart sparkles!</p>
                   <span class="item-tag tag-good">🐕 Pet for Happy Tail Wags!</span>
                 </div>
@@ -534,28 +628,18 @@ export class UIManager {
               <div class="guide-item item-good">
                 <div class="item-icon">🐈</div>
                 <div class="item-info">
-                  <h4>Street Cats (پیاری بلیاں)</h4>
+                  <h4>Street Kittens</h4>
                   <p>Playful orange tabby kittens roaming Karachi footpaths. <strong>Touch to pet them</strong> for affectionate purrs!</p>
                   <span class="item-tag tag-good">🐈 Pet for Purrs &amp; Hearts!</span>
-                </div>
-              </div>
-
-              <div class="guide-item item-good">
-                <div class="item-icon">🛺</div>
-                <div class="item-info">
-                  <h4>Rickshaws &amp; Public Buses (شہری ٹرانسپورٹ)</h4>
-                  <p>Honest drivers working hard from morning to night. They safely drive through your neighborhood.</p>
-                  <span class="item-tag tag-good">Safe &amp; Protected Commuters</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Footer Button to Close -->
         <div class="guide-modal-footer">
           <button class="pill-btn ui-interactive guide-play-btn" id="btn-close-guide-footer">
-            🚀 Got It! Let's Clean Karachi! / چلو کھیلیں
+            🚀 Got It! Let's Clean Karachi!
           </button>
         </div>
       </div>
@@ -564,108 +648,106 @@ export class UIManager {
     document.body.appendChild(this.guideModal);
   }
 
-  createEducationalQuizModal() {
-    this.quizModal = document.createElement('div');
-    this.quizModal.className = 'modal-backdrop quiz-modal-backdrop';
-    this.quizModal.id = 'modal-quiz';
-    this.quizModal.style.display = 'none';
+  // 7. District Cleared Modal with Unmissable "GO TO NEXT LEVEL ➔" Button
+  createDistrictClearedModal() {
+    this.districtClearedModal = document.createElement('div');
+    this.districtClearedModal.className = 'modal-backdrop district-cleared-modal-backdrop';
+    this.districtClearedModal.id = 'modal-district-cleared';
+    this.districtClearedModal.style.display = 'none';
 
-    this.quizModal.innerHTML = `
-      <div class="modal-card quiz-modal-card">
-        <!-- Header -->
-        <div class="modal-header quiz-modal-header">
-          <div class="quiz-title-block">
-            <div class="quiz-title-top">
-              <span class="quiz-school-badge">🏫 KARACHI JUNIOR CIVIC ACADEMY</span>
-              <span class="quiz-edu-pill">📖 LEARN &amp; WIN / سیکھو اور انعام پاؤ</span>
-            </div>
-            <h2 class="quiz-title">🌟 City Hero Dilemma / شہری ہیرو چیلنج</h2>
-          </div>
-          <button class="close-btn ui-interactive" id="btn-close-quiz" title="Close and Resume">&times;</button>
+    this.districtClearedModal.innerHTML = `
+      <div class="modal-card district-cleared-card">
+        <div class="trophy-glow-icon">🏆</div>
+        <div class="dc-title" id="dc-modal-title">DISTRICT 1 CLEARED!</div>
+        <div class="dc-desc" id="dc-modal-desc">
+          You eliminated all street criminals, mafias &amp; debris! Karachi citizens are celebrating!
         </div>
 
-        <!-- Age Tier Selector Bar -->
-        <div class="quiz-age-bar">
-          <span class="quiz-age-label">👶 KID'S AGE / عمر منتخب کریں:</span>
-          <div class="quiz-age-tabs" id="quiz-age-tabs">
-            <button class="age-tab active ui-interactive" data-age="junior">🐣 Ages 4–7 (چھوٹے بچّے)</button>
-            <button class="age-tab ui-interactive" data-age="ranger">🎒 Ages 8–11 (اسکول کیڈٹس)</button>
-            <button class="age-tab ui-interactive" data-age="champion">🏆 Ages 12+ (شہری ہیرو)</button>
+        <div class="dc-rewards-grid">
+          <div class="dc-reward-box highlight-box">
+            <span class="dc-reward-label">NEW CIVIC RANK</span>
+            <span class="dc-reward-val" id="dc-modal-herotitle">Street Vigilante</span>
           </div>
-        </div>
-
-        <!-- Dilemma Challenge Card -->
-        <div class="quiz-dilemma-card" id="quiz-dilemma-card">
-          <div class="dilemma-topic-row">
-            <span class="dilemma-topic-badge" id="quiz-topic-badge">🚰 Water Conservation / پانی کی بچت</span>
-            <span class="dilemma-reward-badge" id="quiz-reward-badge">🎁 +500 XP &amp; +20s TIME BONUS</span>
+          <div class="dc-reward-box">
+            <span class="dc-reward-label">BONUS SCORE</span>
+            <span class="dc-reward-val gold-text" id="dc-modal-bonus">+2,500 XP</span>
           </div>
-
-          <!-- Scenario Presentation -->
-          <div class="dilemma-scenario-box">
-            <div class="dilemma-icon-large" id="quiz-scenario-icon">🚰</div>
-            <div class="dilemma-scenario-texts">
-              <div class="scenario-text" id="quiz-scenario-en">Loading scenario...</div>
-              <div class="scenario-urdu" id="quiz-scenario-ur">لوڈ ہو رہا ہے...</div>
-            </div>
+          <div class="dc-reward-box">
+            <span class="dc-reward-label">BONUS TIME</span>
+            <span class="dc-reward-val cyan-text" id="dc-modal-time">+60 SEC</span>
           </div>
-
-          <!-- Question Prompt -->
-          <div class="dilemma-question-box">
-            <h3 class="question-en" id="quiz-question-en">What should you do?</h3>
-            <h4 class="question-ur" id="quiz-question-ur">آپ کیا کریں گے؟</h4>
-          </div>
-
-          <!-- Interactive Choices Container -->
-          <div class="quiz-options-container" id="quiz-options-container">
-            <!-- Populated dynamically -->
-          </div>
-
-          <!-- Positive Reinforcement / Feedback Box -->
-          <div class="quiz-feedback-box" id="quiz-feedback-box" style="display: none;">
-            <div class="feedback-badge" id="feedback-badge">🌟 EXCELLENT CIVIC HERO! / شاباش!</div>
-            <div class="feedback-badge-unlocked" id="feedback-badge-unlocked">
-              <span class="badge-icon" id="feedback-badge-icon">🚰</span>
-              <span class="badge-text" id="feedback-badge-text">New Medal Unlocked: Water Guardian / محافظِ آب</span>
-            </div>
-            <div class="feedback-text-wrap">
-              <p class="feedback-desc" id="feedback-desc"></p>
-              <p class="feedback-desc-ur" id="feedback-desc-ur"></p>
-            </div>
-            
-            <div class="feedback-actions">
-              <button class="pill-btn highlight-btn ui-interactive resume-game-btn" id="btn-quiz-resume">
-                🚀 RESUME GAME / کھیلنا جاری رکھیں (+Rewards Added!)
-              </button>
-              <button class="pill-btn ui-interactive next-quiz-btn" id="btn-quiz-next">
-                ✨ Next Challenge / اگلا سوال
-              </button>
-            </div>
-          </div>
-
-          <!-- Gentle Encouragement Note for incorrect tap -->
-          <div class="quiz-encouragement-toast" id="quiz-encouragement-toast" style="display: none;">
-            <span class="enc-icon">💡</span>
-            <div class="enc-txt">
-              <strong>Think carefully! / سوچیں ذرا:</strong>
-              <span id="quiz-enc-text">If everyone does that, our city suffers. Tap the other option to save the day!</span>
-            </div>
+          <div class="dc-reward-box">
+            <span class="dc-reward-label">HOLE SIZE</span>
+            <span class="dc-reward-val green-text" id="dc-modal-radius">EXPANDED 🌀</span>
           </div>
         </div>
 
-        <!-- Earned Civic Badges Ribbon -->
-        <div class="quiz-badges-ribbon">
-          <div class="ribbon-title">🏅 YOUR CIVIC BADGES / آپ کے میڈلز:</div>
-          <div class="badges-row" id="quiz-badges-row">
-            <!-- Dynamically populated -->
-          </div>
+        <div class="dc-next-preview">
+          <span class="next-label">NEXT LEVEL DESTINATION:</span>
+          <span class="next-name" id="dc-modal-nextname">District 2: Saddar &amp; Empress Market</span>
         </div>
+
+        <!-- The Prominent Next Level Button requested by user -->
+        <button class="primary-btn ui-interactive dc-advance-btn pulse-glow" id="btn-next-district">
+          🚀 GO TO NEXT LEVEL ➔
+        </button>
       </div>
     `;
 
-    document.body.appendChild(this.quizModal);
+    document.body.appendChild(this.districtClearedModal);
   }
 
+  // 8. Game Over / Match Results Modal
+  createGameOverModal() {
+    this.gameOverModal = document.createElement('div');
+    this.gameOverModal.className = 'modal-backdrop';
+    this.gameOverModal.id = 'modal-game-over';
+    this.gameOverModal.style.display = 'none';
+
+    this.gameOverModal.innerHTML = `
+      <div class="modal-card results-card">
+        <div class="results-header">
+          <h1 id="results-headline">MISSION FINISHED!</h1>
+          <div class="results-sub" id="results-sub">Karachi Street Patrol Complete</div>
+        </div>
+
+        <div class="podium-section" id="results-podium">
+          <!-- 2nd, 1st, 3rd podium -->
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">FINAL SCORE</span>
+            <span class="stat-num" id="stat-score">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">MAX LEVEL</span>
+            <span class="stat-num" id="stat-level">Lv 1</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">OBJECTS SWALLOWED</span>
+            <span class="stat-num" id="stat-swallowed">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">HOLE KILLS</span>
+            <span class="stat-num" id="stat-kills">0</span>
+          </div>
+        </div>
+
+        <div class="results-button-row">
+          <button class="primary-btn ui-interactive dc-advance-btn" id="btn-results-next" style="display: none;">
+            🚀 PROCEED TO NEXT LEVEL ➔
+          </button>
+          <button class="secondary-btn ui-interactive" id="btn-play-again">
+            🔄 REPLAY DISTRICT
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(this.gameOverModal);
+  }
+
+  // Handle Opening Quiz
   openEducationalQuiz(category = null) {
     if (this.onPauseGame) this.onPauseGame();
 
@@ -692,14 +774,11 @@ export class UIManager {
     const scenarioEn = document.getElementById('quiz-scenario-en');
     if (scenarioEn) scenarioEn.textContent = challenge.scenario;
 
-    const scenarioUr = document.getElementById('quiz-scenario-ur');
-    if (scenarioUr) scenarioUr.textContent = challenge.scenarioUrdu;
+    const visualPill = document.getElementById('quiz-scenario-visual');
+    if (visualPill) visualPill.textContent = challenge.pictureEmoji || `${challenge.icon} Look at the pictures below!`;
 
     const qEn = document.getElementById('quiz-question-en');
     if (qEn) qEn.textContent = challenge.question;
-
-    const qUr = document.getElementById('quiz-question-ur');
-    if (qUr) qUr.textContent = challenge.questionUrdu;
 
     // Reset feedback, toast & answered card state
     const dilemmaCard = document.getElementById('quiz-dilemma-card');
@@ -710,19 +789,19 @@ export class UIManager {
     if (feedbackBox) feedbackBox.style.display = 'none';
     if (encToast) encToast.style.display = 'none';
 
-    // Populate options
+    // Populate large pictorial options
     const container = document.getElementById('quiz-options-container');
     if (container) {
       container.innerHTML = '';
       challenge.options.forEach((opt) => {
         const btn = document.createElement('button');
-        btn.className = 'quiz-option-btn ui-interactive';
+        btn.className = 'quiz-option-btn pictorial-option-card ui-interactive';
         btn.dataset.id = opt.id;
         btn.innerHTML = `
-          <span class="opt-icon">${opt.icon}</span>
-          <div class="opt-texts">
-            <div class="opt-en">${opt.text}</div>
-            <div class="opt-ur">${opt.textUrdu}</div>
+          <div class="pictorial-icon-box">${opt.icon}</div>
+          <div class="pictorial-texts">
+            <div class="pictorial-label">${opt.picture || ''}</div>
+            <div class="pictorial-desc">${opt.text}</div>
           </div>
         `;
 
@@ -737,6 +816,7 @@ export class UIManager {
     this.updateBadgesRibbon();
   }
 
+  // Handle Quiz Option Selection
   handleQuizOption(option, btnElement, challenge) {
     const encToast = document.getElementById('quiz-encouragement-toast');
     const feedbackBox = document.getElementById('quiz-feedback-box');
@@ -760,7 +840,7 @@ export class UIManager {
       }
       this.completedQuizIds.add(challenge.id);
 
-      // Populate feedback
+      // Populate celebration feedback
       if (encToast) encToast.style.display = 'none';
       if (feedbackBox) {
         feedbackBox.style.display = 'flex';
@@ -774,7 +854,7 @@ export class UIManager {
         const iconEl = document.getElementById('feedback-badge-icon');
         if (iconEl) iconEl.textContent = badgeObj.icon;
         const textEl = document.getElementById('feedback-badge-text');
-        if (textEl) textEl.textContent = `New Medal: ${badgeObj.name} (${badgeObj.urdu})`;
+        if (textEl) textEl.textContent = `New Medal: ${badgeObj.name}`;
       } else if (unlockedEl) {
         unlockedEl.style.display = 'none';
       }
@@ -782,17 +862,21 @@ export class UIManager {
       const descEl = document.getElementById('feedback-desc');
       if (descEl) descEl.textContent = challenge.explanation;
 
-      const descUrEl = document.getElementById('feedback-desc-ur');
-      if (descUrEl) descUrEl.textContent = challenge.explanationUrdu;
-
       this.updateBadgesRibbon();
 
       // Trigger callback to reward player
       if (this.onResolveEducationalQuiz) {
         this.onResolveEducationalQuiz(challenge);
       }
+
+      // CRITICAL REQUIREMENT: Automatic return to game after 1.2s on correct answer!
+      clearTimeout(this.quizAutoResumeTimeout);
+      this.quizAutoResumeTimeout = setTimeout(() => {
+        this.closeEducationalQuiz();
+      }, 1200);
+
     } else {
-      // Gentle encouragement without penalty
+      // Gentle encouragement without closing or skipping
       audio.playQuizTryAgain();
       btnElement.classList.add('option-wrong');
       setTimeout(() => btnElement.classList.remove('option-wrong'), 500);
@@ -806,6 +890,7 @@ export class UIManager {
   }
 
   closeEducationalQuiz() {
+    clearTimeout(this.quizAutoResumeTimeout);
     if (this.quizModal) {
       this.quizModal.style.display = 'none';
     }
@@ -823,7 +908,7 @@ export class UIManager {
       const isUnlocked = this.unlockedBadges.has(badge.id);
       const chip = document.createElement('div');
       chip.className = `badge-chip ${isUnlocked ? 'unlocked' : 'locked'}`;
-      chip.title = `${badge.name} (${badge.urdu}): ${badge.desc}`;
+      chip.title = `${badge.name}: ${badge.desc}`;
       chip.innerHTML = `
         <span class="badge-chip-icon">${badge.icon}</span>
         <span class="badge-chip-name">${badge.name}</span>
@@ -833,8 +918,46 @@ export class UIManager {
     });
   }
 
+  // Bind All Event Listeners
   bindEvents() {
-    // Sound & Music
+    // 1. Start Mission Button
+    const btnStartPatrol = document.getElementById('btn-start-patrol');
+    if (btnStartPatrol) {
+      btnStartPatrol.addEventListener('click', () => {
+        audio.playClick();
+        const input = document.getElementById('player-name-input');
+        if (input && input.value.trim()) {
+          this.playerName = input.value.trim().slice(0, 18);
+        }
+        this.startModal.style.display = 'none';
+        if (this.onStartGame) {
+          this.onStartGame({
+            playerName: this.playerName,
+            ageTier: this.currentAgeTier
+          });
+        }
+      });
+    }
+
+    // Age cards selection on start modal
+    const startAgeCards = document.querySelectorAll('#start-age-grid .age-card');
+    startAgeCards.forEach(card => {
+      card.addEventListener('click', () => {
+        audio.playClick();
+        startAgeCards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        this.currentAgeTier = card.dataset.age;
+
+        // Sync tab on quiz modal
+        const quizTabs = document.querySelectorAll('.age-tab');
+        quizTabs.forEach(t => {
+          if (t.dataset.age === this.currentAgeTier) t.classList.add('active');
+          else t.classList.remove('active');
+        });
+      });
+    });
+
+    // 2. Sound & Music
     const btnSound = document.getElementById('btn-toggle-sound');
     btnSound.addEventListener('click', () => {
       const enabled = audio.toggleSound();
@@ -847,7 +970,7 @@ export class UIManager {
       btnMusic.textContent = enabled ? '🎵' : '⏹';
     });
 
-    // Skins Modal
+    // 3. Skins Modal
     const btnSkins = document.getElementById('btn-open-skins');
     btnSkins.addEventListener('click', () => {
       audio.playClick();
@@ -862,7 +985,7 @@ export class UIManager {
       if (this.onResumeGame) this.onResumeGame();
     });
 
-    // Good vs Bad Guide Modal
+    // 4. Good vs Bad Guide Modal
     const btnOpenGuide = document.getElementById('btn-open-guide');
     if (btnOpenGuide) {
       btnOpenGuide.addEventListener('click', () => {
@@ -890,7 +1013,7 @@ export class UIManager {
       });
     }
 
-    // Educational Quiz Modal Buttons
+    // 5. Educational Quiz Modal Buttons
     const btnOpenQuiz = document.getElementById('btn-open-quiz');
     if (btnOpenQuiz) {
       btnOpenQuiz.addEventListener('click', () => {
@@ -899,32 +1022,7 @@ export class UIManager {
       });
     }
 
-    const btnCloseQuiz = document.getElementById('btn-close-quiz');
-    if (btnCloseQuiz) {
-      btnCloseQuiz.addEventListener('click', () => {
-        audio.playClick();
-        this.closeEducationalQuiz();
-      });
-    }
-
-    const btnQuizResume = document.getElementById('btn-quiz-resume');
-    if (btnQuizResume) {
-      btnQuizResume.addEventListener('click', () => {
-        audio.playClick();
-        this.closeEducationalQuiz();
-      });
-    }
-
-    const btnQuizNext = document.getElementById('btn-quiz-next');
-    if (btnQuizNext) {
-      btnQuizNext.addEventListener('click', () => {
-        audio.playClick();
-        const nextChallenge = getRandomChallenge(this.currentAgeTier, Array.from(this.completedQuizIds));
-        this.renderQuizChallenge(nextChallenge);
-      });
-    }
-
-    // Age Tier Tab Selection
+    // Age Tier Tab Selection in Quiz Modal
     const ageTabs = document.querySelectorAll('.age-tab');
     ageTabs.forEach(tab => {
       tab.addEventListener('click', () => {
@@ -932,7 +1030,7 @@ export class UIManager {
         ageTabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         this.currentAgeTier = tab.dataset.age;
-        const newChallenge = getRandomChallenge(this.currentAgeTier, Array.from(this.completedQuizIds));
+        const newChallenge = getRandomChallenge(this.currentAgeTier);
         this.renderQuizChallenge(newChallenge);
       });
     });
@@ -949,6 +1047,7 @@ export class UIManager {
         if (this.onSelectSkin) this.onSelectSkin(skinName);
         setTimeout(() => {
           this.skinModal.style.display = 'none';
+          if (this.onResumeGame) this.onResumeGame();
         }, 150);
       });
     });
@@ -969,21 +1068,22 @@ export class UIManager {
       if (this.onSelectDifficulty) this.onSelectDifficulty(this.difficulty);
     });
 
-    // Mode Toggle
-    const btnMode = document.getElementById('btn-mode-toggle');
-    btnMode.addEventListener('click', () => {
-      audio.playClick();
-      if (this.gameMode === 'battleRoyale') {
-        this.gameMode = 'sandbox';
-        btnMode.textContent = 'Mode: Sandbox';
-        document.getElementById('hud-timer').textContent = '∞ FREE ROAM';
-      } else {
-        this.gameMode = 'battleRoyale';
-        btnMode.textContent = 'Mode: 2 Min';
-        document.getElementById('hud-timer').textContent = '02:00';
-      }
-      if (this.onSelectMode) this.onSelectMode(this.gameMode);
-    });
+    // Manual Pause button on HUD
+    const btnManualPause = document.getElementById('btn-manual-pause');
+    if (btnManualPause) {
+      btnManualPause.addEventListener('click', () => {
+        audio.playClick();
+        this.showAutoPauseModal();
+      });
+    }
+
+    // Auto-Resume button on pause modal
+    const btnAutoResume = document.getElementById('btn-auto-resume');
+    if (btnAutoResume) {
+      btnAutoResume.addEventListener('click', () => {
+        this.hideAutoPauseModal();
+      });
+    }
 
     // Boost button
     const btnBoost = document.getElementById('btn-boost');
@@ -1004,6 +1104,50 @@ export class UIManager {
       this.gameOverModal.style.display = 'none';
       if (this.onRestartGame) this.onRestartGame();
     });
+
+    // Next Level button on Game Over
+    const btnResultsNext = document.getElementById('btn-results-next');
+    if (btnResultsNext) {
+      btnResultsNext.addEventListener('click', () => {
+        audio.playClick();
+        this.gameOverModal.style.display = 'none';
+        if (this.onNextLevel) this.onNextLevel();
+      });
+    }
+
+    // CRITICAL REQUIREMENT: Auto-pause when user switches tabs or moves away
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.showAutoPauseModal();
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      this.showAutoPauseModal();
+    });
+  }
+
+  showAutoPauseModal() {
+    // Don't auto pause if already on start modal or game over
+    if (this.startModal && this.startModal.style.display !== 'none') return;
+    if (this.gameOverModal && this.gameOverModal.style.display !== 'none') return;
+    if (this.districtClearedModal && this.districtClearedModal.style.display !== 'none') return;
+
+    this.isAutoPaused = true;
+    if (this.onPauseGame) this.onPauseGame();
+    if (this.autoPauseModal) {
+      this.autoPauseModal.style.display = 'flex';
+    }
+  }
+
+  hideAutoPauseModal() {
+    this.isAutoPaused = false;
+    if (this.autoPauseModal) {
+      this.autoPauseModal.style.display = 'none';
+    }
+    if (this.onResumeGame) {
+      this.onResumeGame();
+    }
   }
 
   updateHUD({
@@ -1029,7 +1173,6 @@ export class UIManager {
         crisisCard.style.display = 'flex';
         const iconEl = document.getElementById('crisis-icon');
         const titleEl = document.getElementById('crisis-title');
-        const urduEl = document.getElementById('crisis-urdu');
         const descEl = document.getElementById('crisis-desc');
         const rewardEl = document.getElementById('crisis-reward-text');
         const countEl = document.getElementById('crisis-count');
@@ -1037,7 +1180,6 @@ export class UIManager {
 
         if (iconEl) iconEl.textContent = activeCrisis.icon || '🚨';
         if (titleEl) titleEl.textContent = activeCrisis.title;
-        if (urduEl) urduEl.textContent = activeCrisis.urdu || '';
         if (descEl) descEl.textContent = activeCrisis.description;
         if (rewardEl) rewardEl.textContent = `+${activeCrisis.xpReward} XP REWARD`;
         if (countEl) countEl.textContent = `${activeCrisis.current || 0}/${activeCrisis.targetCount || 1}`;
@@ -1049,6 +1191,7 @@ export class UIManager {
         crisisCard.style.display = 'none';
       }
     }
+
     // District Mission Banner & Remaining Targets
     if (districtConfig) {
       const badgeEl = document.getElementById('hud-district-badge');
@@ -1059,7 +1202,7 @@ export class UIManager {
       const breakdownEl = document.getElementById('hud-district-breakdown');
 
       if (badgeEl) badgeEl.textContent = `DISTRICT ${districtConfig.level}`;
-      if (titleEl) titleEl.textContent = `${districtConfig.name} (${districtConfig.urdu})`;
+      if (titleEl) titleEl.textContent = districtConfig.name;
       if (remNumEl) remNumEl.textContent = districtRemaining;
 
       const pct = districtTotal > 0 ? Math.min(100, Math.round(((districtTotal - districtRemaining) / districtTotal) * 100)) : 0;
@@ -1086,12 +1229,8 @@ export class UIManager {
       }
     }
 
-    // Score & Politician VIP Count
+    // Score & Level
     document.getElementById('hud-score').textContent = player.score.toLocaleString();
-    const polCountEl = document.getElementById('hud-politicians');
-    if (polCountEl) {
-      polCountEl.textContent = player.politiciansDevoured || 0;
-    }
 
     // Civic Cleanser Meter
     const civicPctEl = document.getElementById('hud-civic-pct');
@@ -1120,7 +1259,7 @@ export class UIManager {
     const progress = Math.min(100, Math.max(0, ((player.xp - prevXP) / (nextXP - prevXP)) * 100));
     document.getElementById('hud-xp-fill').style.width = `${progress}%`;
 
-    // Timer
+    // Timer (Standard 4 Minutes Match)
     if (gameMode === 'battleRoyale') {
       const minutes = Math.floor(Math.max(0, timeLeft) / 60);
       const seconds = Math.floor(Math.max(0, timeLeft) % 60);
@@ -1139,22 +1278,30 @@ export class UIManager {
       comboEl.style.display = 'none';
     }
 
-    // Leaderboard
+    // Dedicated Realtime Scoreboard
     const lbContainer = document.getElementById('hud-leaderboard');
-    lbContainer.innerHTML = '';
-    const topHoles = rankedHoles.slice(0, 5);
-    topHoles.forEach((hole, idx) => {
-      const row = document.createElement('div');
-      row.className = `leaderboard-item ${hole.isPlayer ? 'is-player' : ''}`;
-      row.innerHTML = `
-        <span class="lb-rank">${idx === 0 ? '👑 1' : idx + 1}</span>
-        <span class="lb-name">${hole.name}</span>
-        <span class="lb-score">${hole.score}</span>
-      `;
-      lbContainer.appendChild(row);
-    });
+    if (lbContainer) {
+      lbContainer.innerHTML = '';
+      const topHoles = rankedHoles.slice(0, 5);
+      const playerRankIdx = rankedHoles.findIndex(h => h.isPlayer);
+      const rankTag = document.getElementById('hud-player-rank');
+      if (rankTag) {
+        rankTag.textContent = playerRankIdx >= 0 ? `RANK #${playerRankIdx + 1}` : 'RANK #1';
+      }
 
-    // Live Crime Radar Compass Bar (Instantly guides player to crimes happening nearby!)
+      topHoles.forEach((hole, idx) => {
+        const row = document.createElement('div');
+        row.className = `leaderboard-item ${hole.isPlayer ? 'is-player' : ''}`;
+        row.innerHTML = `
+          <span class="lb-rank">${idx === 0 ? '👑 1' : idx + 1}</span>
+          <span class="lb-name">${hole.name} [Lv.${hole.level}]</span>
+          <span class="lb-score">${hole.score}</span>
+        `;
+        lbContainer.appendChild(row);
+      });
+    }
+
+    // Live Crime Radar Compass Bar
     const radarContainer = document.getElementById('hud-crime-radar');
     if (radarContainer && nearestEvils) {
       radarContainer.innerHTML = '';
@@ -1186,7 +1333,7 @@ export class UIManager {
     });
   }
 
-  // Interactive High-Tech Karachi Civic Mini-Map (Radar HUD)
+  // Interactive Mini-Map (Radar HUD)
   drawMiniMap({
     player,
     districtEvils = [],
@@ -1202,7 +1349,7 @@ export class UIManager {
     const height = canvas.height;
     const cx = width / 2;
     const cy = height / 2;
-    const R = (width / 2) - 6; // Radar circle radius
+    const R = (width / 2) - 5;
     const maxRadarDist = 65; // 65 meters radius coverage
     const scale = R / maxRadarDist;
     const now = performance.now();
@@ -1215,25 +1362,12 @@ export class UIManager {
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
     ctx.clip();
 
-    // Dark high-tech sci-fi glass gradient
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
     grad.addColorStop(0, 'rgba(12, 22, 36, 0.94)');
     grad.addColorStop(0.7, 'rgba(8, 16, 26, 0.96)');
     grad.addColorStop(1, 'rgba(3, 8, 14, 0.98)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-
-    // Subtle Coastal Arabian Sea indicator in the south (z > 80 in world)
-    const seaWorldZ = 85;
-    const seaRelZ = (seaWorldZ - player.position.z) * scale;
-    if (cy + seaRelZ < height) {
-      ctx.fillStyle = 'rgba(0, 229, 255, 0.22)';
-      ctx.fillRect(0, Math.max(0, cy + seaRelZ), width, height);
-      ctx.fillStyle = 'rgba(0, 229, 255, 0.75)';
-      ctx.font = 'bold 8px "Outfit", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('🌊 ARABIAN SEA', cx, Math.min(height - 4, cy + seaRelZ + 10));
-    }
 
     // Concentric Range Rings (20m and 45m)
     ctx.strokeStyle = 'rgba(0, 229, 255, 0.2)';
@@ -1273,7 +1407,7 @@ export class UIManager {
     ctx.closePath();
     ctx.fill();
 
-    // 3. Recently Cleaned Locations (Sparkling green checkmarks fading out)
+    // 3. Recently Cleaned Locations
     if (recentCleaned && recentCleaned.length > 0) {
       recentCleaned.forEach(item => {
         const age = (now - item.time) / 1000;
@@ -1293,7 +1427,7 @@ export class UIManager {
       });
     }
 
-    // 4. Other AI Holes (small subtle amber dots)
+    // 4. Other AI Holes
     holes.forEach(h => {
       if (h.isPlayer || !h.isAlive) return;
       const hdx = (h.position.x - player.position.x) * scale;
@@ -1307,7 +1441,7 @@ export class UIManager {
       }
     });
 
-    // 5. Active District Evils (Target Pips & Off-Screen Edge Pointers!)
+    // 5. Active District Evils
     const activeEvils = districtEvils.filter(b => b.state !== 'swallowed');
     const evilPalette = {
       robber: { color: '#ff1744', icon: '🔫' },
@@ -1335,11 +1469,9 @@ export class UIManager {
       const pipDist = worldDist * scale;
 
       if (pipDist <= R - 8) {
-        // Within radar circle: draw glowing pip and icon!
         const px = cx + edx * scale;
         const py = cy + edz * scale;
 
-        // Glowing outer halo
         ctx.fillStyle = meta.color;
         ctx.globalAlpha = 0.35 + Math.sin(now * 0.006) * 0.2;
         ctx.beginPath();
@@ -1347,19 +1479,16 @@ export class UIManager {
         ctx.fill();
         ctx.globalAlpha = 1.0;
 
-        // Pip dot
         ctx.fillStyle = meta.color;
         ctx.beginPath();
         ctx.arc(px, py, 3.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Target Emoji
         ctx.font = '9px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(meta.icon, px, py - 7);
       } else {
-        // OFF-SCREEN / FAR TARGET: Clamped to radar perimeter with directional arrow & meters!
         const clampR = R - 8;
         const px = cx + Math.cos(angle) * clampR;
         const py = cy + Math.sin(angle) * clampR;
@@ -1369,7 +1498,6 @@ export class UIManager {
         ctx.arc(px, py, 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Directional arrowhead
         ctx.save();
         ctx.translate(px, py);
         ctx.rotate(angle);
@@ -1382,7 +1510,6 @@ export class UIManager {
         ctx.fill();
         ctx.restore();
 
-        // Distance text
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 8px "Outfit", sans-serif';
         ctx.textAlign = 'center';
@@ -1408,24 +1535,7 @@ export class UIManager {
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // Player Directional Heading Chevron (based on movement vector)
-    const moveLen = Math.hypot(player.moveVector?.x || 0, player.moveVector?.y || 0);
-    if (moveLen > 0.05) {
-      const headingAngle = Math.atan2(player.moveVector.y, player.moveVector.x);
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(headingAngle);
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(9, 0);
-      ctx.lineTo(4, -3.5);
-      ctx.lineTo(4, 3.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
-
-    ctx.restore(); // End clipping
+    ctx.restore();
 
     // 7. Outer Radar Bezel
     ctx.strokeStyle = 'rgba(0, 229, 255, 0.75)';
@@ -1434,7 +1544,6 @@ export class UIManager {
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Update target count badge
     const badgeEl = document.getElementById('minimap-target-badge');
     if (badgeEl) {
       badgeEl.textContent = `${activeEvils.length} LEFT`;
@@ -1491,16 +1600,16 @@ export class UIManager {
     }, 1000);
   }
 
-  showGameOver({ rankedHoles, player }) {
+  showGameOver({ rankedHoles, player, canAdvanceNext = false }) {
     const modal = this.gameOverModal;
     const playerRank = rankedHoles.findIndex(h => h.isPlayer) + 1;
 
     const headline = playerRank === 1 ? '👑 1ST PLACE CHAMPION! 👑' :
-                     playerRank === 2 ? '🥈 2ND PLACE! SHABASH!' :
+                     playerRank === 2 ? '🥈 2ND PLACE! GREAT JOB!' :
                      playerRank === 3 ? '🥉 3RD PLACE!' : 'MATCH COMPLETED';
 
     document.getElementById('results-headline').textContent = headline;
-    document.getElementById('results-sub').textContent = `Ranked #${playerRank} in Karachi City Battle`;
+    document.getElementById('results-sub').textContent = `Ranked #${playerRank} in Karachi Street Patrol`;
 
     document.getElementById('stat-score').textContent = player.score.toLocaleString();
     document.getElementById('stat-level').textContent = `Lv ${player.level} (${LEVEL_CONFIG[player.level - 1].title})`;
@@ -1510,7 +1619,7 @@ export class UIManager {
     // Podium HTML
     const podiumEl = document.getElementById('results-podium');
     podiumEl.innerHTML = '';
-    const top3 = [rankedHoles[1], rankedHoles[0], rankedHoles[2]]; // 2nd, 1st, 3rd arrangement
+    const top3 = [rankedHoles[1], rankedHoles[0], rankedHoles[2]];
     const ranks = [2, 1, 3];
 
     top3.forEach((hole, idx) => {
@@ -1527,42 +1636,42 @@ export class UIManager {
       podiumEl.appendChild(pCol);
     });
 
+    const nextBtn = document.getElementById('btn-results-next');
+    if (nextBtn) {
+      nextBtn.style.display = canAdvanceNext ? 'inline-block' : 'none';
+    }
+
     modal.style.display = 'flex';
   }
 
   showDistrictClearedModal({
     level,
     districtName,
-    districtUrdu,
     heroTitle,
     bonusScore,
     timeBonus,
     nextDistrictName,
-    nextDistrictUrdu,
     isFinalDistrict = false,
     onNextDistrict
   }) {
     document.getElementById('dc-modal-title').textContent = isFinalDistrict
       ? `🌟 ULTIMATE VICTORY! ALL DISTRICTS SAVED! 🌟`
       : `DISTRICT ${level} CLEARED!`;
-    document.getElementById('dc-modal-urdu').textContent = isFinalDistrict
-      ? `شہرِ قائد مکمل آزاد و محفوظ!`
-      : `${districtName} (${districtUrdu}) مکمل صاف!`;
     document.getElementById('dc-modal-desc').textContent = isFinalDistrict
-      ? `Congratulations! You fulfilled Quaid-e-Azam's vision! Karachi is 100% clean, peaceful, and glorious!`
-      : `You eliminated all mobile snatchers, mafias & rubbish! Rescued citizens are dancing with joy!`;
+      ? `Congratulations! You fulfilled the vision for a clean Karachi! The city is safe, peaceful, and glorious!`
+      : `You eliminated all mobile snatchers, mafias & rubbish in ${districtName}! Citizens are celebrating!`;
 
     document.getElementById('dc-modal-herotitle').textContent = heroTitle;
     document.getElementById('dc-modal-bonus').textContent = `+${bonusScore.toLocaleString()} XP`;
     document.getElementById('dc-modal-time').textContent = `+${timeBonus} SEC`;
     document.getElementById('dc-modal-nextname').textContent = isFinalDistrict
-      ? `Karachi Civic Grand Champion`
-      : `${nextDistrictName} (${nextDistrictUrdu})`;
+      ? `Grand Champion Ceremony`
+      : `${nextDistrictName}`;
 
     const nextBtn = document.getElementById('btn-next-district');
     nextBtn.textContent = isFinalDistrict
-      ? `👑 CELEBRATE VICTORY / جشن منائیں`
-      : `🚀 ENTER NEXT DISTRICT / اگلے ضلع میں داخل ہوں`;
+      ? `👑 CELEBRATE VICTORY ➔`
+      : `🚀 GO TO NEXT LEVEL ➔`;
 
     nextBtn.onclick = () => {
       audio.playClick();
