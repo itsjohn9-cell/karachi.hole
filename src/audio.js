@@ -268,6 +268,135 @@ class AudioManager {
     osc.stop(t + 0.16);
   }
 
+  // Water Tanker Mafia Devoured: Huge rushing water splash & air horn explosion
+  playWaterTankerDevour() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+
+    // Air horn blare cut off
+    const horn = this.ctx.createOscillator();
+    const hGain = this.ctx.createGain();
+    horn.type = 'sawtooth';
+    horn.frequency.setValueAtTime(320, t);
+    horn.frequency.exponentialRampToValueAtTime(70, t + 0.35);
+    hGain.gain.setValueAtTime(0.4, t);
+    hGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    horn.connect(hGain);
+    hGain.connect(this.ctx.destination);
+    horn.start(t);
+    horn.stop(t + 0.35);
+
+    // Deep water flood crash
+    const splash = this.ctx.createOscillator();
+    const sGain = this.ctx.createGain();
+    splash.type = 'triangle';
+    splash.frequency.setValueAtTime(160, t + 0.1);
+    splash.frequency.exponentialRampToValueAtTime(35, t + 0.55);
+    sGain.gain.setValueAtTime(0.5, t + 0.1);
+    sGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    splash.connect(sGain);
+    sGain.connect(this.ctx.destination);
+    splash.start(t + 0.1);
+    splash.stop(t + 0.55);
+
+    this.vibrate([70, 30, 90, 30, 140]);
+  }
+
+  // VIP Protocol Hooter Siren (PAAN-PAAN!)
+  playVIPHooter() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    [0, 0.18].forEach(offset => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const st = t + offset;
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(750, st);
+      osc.frequency.linearRampToValueAtTime(450, st + 0.12);
+      gain.gain.setValueAtTime(0.35, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.12);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.12);
+    });
+  }
+
+  // Burns Road Bun Kabab Tawa Sizzle & Chutney Turbo Boost chime
+  playBunKababSizzle() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Pleasant bright upbeat chimes (G4, C5, E5, G5)
+    [392.00, 523.25, 659.25, 783.99].forEach((f, idx) => {
+      const bell = this.ctx.createOscillator();
+      const bGain = this.ctx.createGain();
+      const bellTime = t + idx * 0.07;
+      bell.type = 'sine';
+      bell.frequency.setValueAtTime(f, bellTime);
+      bGain.gain.setValueAtTime(0.3, bellTime);
+      bGain.gain.exponentialRampToValueAtTime(0.001, bellTime + 0.22);
+      bell.connect(bGain);
+      bGain.connect(this.ctx.destination);
+      bell.start(bellTime);
+      bell.stop(bellTime + 0.22);
+    });
+    this.vibrate([25, 20, 45]);
+  }
+
+  // Crowd Cheering & Whistling ("Karachi Zindabad!")
+  playCrowdCheer() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // High happy crowd whistles
+    [1200, 1600, 1900].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const st = t + idx * 0.09;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, st);
+      osc.frequency.linearRampToValueAtTime(freq * 1.3, st + 0.15);
+      gain.gain.setValueAtTime(0.2, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.25);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.25);
+    });
+  }
+
+  // Pothole / Broken Road Repaired Crushing Sound
+  playPotholeDevour() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(220, t);
+    osc.frequency.exponentialRampToValueAtTime(55, t + 0.25);
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.25);
+    this.vibrate(35);
+  }
+
   // Level up fanfare sound
   playLevelUp() {
     if (!this.soundEnabled) return;

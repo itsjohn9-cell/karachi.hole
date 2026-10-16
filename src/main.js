@@ -49,7 +49,7 @@ class Game {
       0.5,
       500
     );
-    this.camera.position.set(0, 11, -5);
+    this.camera.position.set(0, 11, 9.5);
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -94,6 +94,13 @@ class Game {
     this.politicians = generated.politicians || [];
     this.animals = generated.animals || [];
     this.robberies = generated.robberies || [];
+    this.badGuys = generated.badGuys || [];
+    this.foodStalls = generated.foodStalls || [];
+    this.buildings = generated.buildings || [];
+    this.civicTotal = Math.max(1, this.badGuys.length);
+    this.civicCleansed = 0;
+    this.frenzyTimer = 0;
+    this.frenzyTriggered = false;
   }
 
   initHoles() {
@@ -105,11 +112,12 @@ class Game {
       name: "You (Karachi King)",
       isPlayer: true,
       skin: 'gutter',
-      initialPos: { x: 0, z: -15 },
+      initialPos: { x: 0, z: 0 },
       color: 0x00e5ff,
       difficulty: this.difficulty || 'kidsEasy'
     });
     this.player.politiciansDevoured = 0;
+    this.player.turboTimer = 0;
     this.holes.push(this.player);
 
     // 5 AI Bots with Kid-Friendly tuning (Slow, Non-aggressive)
@@ -187,7 +195,7 @@ class Game {
 
     // Reset Player
     const diff = DIFFICULTY_CONFIG[this.difficulty || 'kidsEasy'] || DIFFICULTY_CONFIG.kidsEasy;
-    this.player.position.set(0, 0, -15);
+    this.player.position.set(0, 0, 0);
     this.player.group.position.copy(this.player.position);
     this.player.level = 1;
     this.player.xp = 0;
@@ -196,6 +204,7 @@ class Game {
     this.player.targetRadius = this.player.radius;
     this.player.swallowedCount = 0;
     this.player.politiciansDevoured = 0;
+    this.player.turboTimer = 0;
     this.player.kills = 0;
     this.player.isAlive = true;
     this.player.group.visible = true;
@@ -222,7 +231,7 @@ class Game {
       h.updateNameTag();
     });
 
-    // Re-generate city objects & politicians
+    // Re-generate city objects, civic evils, and food stalls
     this.edibleObjects.forEach(obj => {
       this.scene.remove(obj.mesh);
     });
@@ -231,6 +240,13 @@ class Game {
     this.politicians = generated.politicians || [];
     this.animals = generated.animals || [];
     this.robberies = generated.robberies || [];
+    this.badGuys = generated.badGuys || [];
+    this.foodStalls = generated.foodStalls || [];
+    this.buildings = generated.buildings || [];
+    this.civicTotal = Math.max(1, this.badGuys.length);
+    this.civicCleansed = 0;
+    this.frenzyTimer = 0;
+    this.frenzyTriggered = false;
     this.particles.clear();
   }
 
@@ -250,8 +266,32 @@ class Game {
   }
 
   updatePhysics(dt) {
-    // Check Turbo boost
-    this.player.isBoosting = this.isBoosting || window.isBoostPressed;
+    // Check Turbo boost (Button or Bun Kabab Spicy Chutney turbo boost)
+    this.player.isBoosting = this.isBoosting || window.isBoostPressed || (this.player.turboTimer > 0);
+    if (this.player.turboTimer > 0) {
+      this.player.turboTimer -= dt;
+    }
+    if (this.frenzyTimer > 0) {
+      this.frenzyTimer -= dt;
+    }
+
+    // Check Bun Kabab Stalls for Spicy Chutney Turbo Boost
+    for (let i = 0; i < this.foodStalls.length; i++) {
+      const stall = this.foodStalls[i];
+      if (stall.state === 'swallowed') continue;
+
+      const sPos = stall.mesh.position;
+      const distToPlayer = this.player.position.distanceTo(sPos);
+
+      // Proximity gives Spicy Chutney Turbo Boost!
+      if (stall.name.includes('Bun Kabab') && distToPlayer < 4.2 && !stall.mesh.userData.hasGivenBoost) {
+        stall.mesh.userData.hasGivenBoost = true;
+        this.player.turboTimer = 5.0; // 5 seconds of super speed!
+        audio.playBunKababSizzle();
+        this.particles.createSwallowBurst(sPos, 2, 20);
+        this.ui.showAnnouncement("🍔 BURNS ROAD BUN KABAB: SPICY CHUTNEY TURBO BOOST! ⚡", "#ff9100");
+      }
+    }
 
     // Move Player
     if (this.moveVector.x !== 0 || this.moveVector.y !== 0) {
@@ -512,8 +552,11 @@ class Game {
           obj.state = 'swallowed';
           this.scene.remove(obj.mesh);
 
-          // Calculate points with combo multiplier
+          // Calculate points with combo multiplier & Hero Frenzy bonus
           let points = obj.points;
+          if (this.frenzyTimer > 0) {
+            points = points * 2; // 2X Score during Hero Frenzy!
+          }
           if (hole.comboCount > 1) {
             points = Math.round(points * (1 + hole.comboCount * 0.25));
           }
@@ -522,24 +565,56 @@ class Game {
             if (h.isPlayer) this.handlePlayerLevelUp(h);
           });
 
-          // Special Devour Effects
-          if (obj.isPolitician) {
-            this.particles.createMoneyBurst(hole.position, 45);
-            if (hole.isPlayer) {
-              this.player.politiciansDevoured = (this.player.politiciansDevoured || 0) + 1;
+          // Civic Cleanser System: Devouring Karachi evils and mafias!
+          if (hole.isPlayer && obj.isBadGuy) {
+            this.civicCleansed++;
+            const pct = Math.min(100, Math.round((this.civicCleansed / Math.max(1, this.civicTotal)) * 100));
+
+            // Trigger Frenzy Mode when 100% cleansed
+            if (pct >= 100 && !this.frenzyTriggered) {
+              this.frenzyTriggered = true;
+              this.frenzyTimer = 18.0;
+              audio.playCrowdCheer();
+              this.particles.createLevelUpShockwave(hole.position, 12);
+              this.ui.showAnnouncement("🌟 KARACHI HERO FRENZY! قائد کا خواب پورا ہو گیا! 2X SCORE! 🌟", "#ffd700");
+            }
+
+            // Specialized audio & announcements per evil type
+            if (obj.evilType === 'tanker') {
+              this.particles.createSwallowBurst(hole.position, 4, 30);
+              audio.playWaterTankerDevour();
+              this.ui.showAnnouncement(`🚰 WATER TANKER MAFIA BUSTED! KARACHI WATER FREED! (+${points} XP)`, '#00e5ff');
+            } else if (obj.evilType === 'vip') {
+              this.particles.createSwallowBurst(hole.position, 3, 25);
+              audio.playVIPHooter();
+              audio.playGutterSplash();
+              this.ui.showAnnouncement(`🚨 VIP PROTOCOL CONVOY DEVOURED! NO VIP RULES! (+${points} XP)`, '#ff1744');
+            } else if (obj.evilType === 'gutka') {
+              this.particles.createSwallowBurst(hole.position, 2, 20);
+              audio.playGutterSplash();
+              this.ui.showAnnouncement(`🛑 GUTKA MAFIA CLEARED! STREETS CLEANSED! (+${points} XP)`, '#e040fb');
+            } else if (obj.evilType === 'pothole') {
+              this.particles.createSwallowBurst(hole.position, 1, 15);
+              audio.playPotholeDevour();
+              this.ui.showAnnouncement(`🛠️ ROAD POTHOLE REPAIRED! (+${points} XP)`, '#ff9100');
+            } else if (obj.evilType === 'robber') {
+              this.particles.createMoneyBurst(hole.position, 35);
+              this.particles.createSwallowBurst(hole.position, 3, 25);
+              audio.playRobberDevour();
+              audio.playGutterSplash();
+              this.ui.showAnnouncement(`🚨 STREET DAKOO DEVOURED! CITIZEN SAVED! (+${points} XP)`, '#ffea00');
+            } else if (obj.evilType === 'politician') {
+              this.particles.createMoneyBurst(hole.position, 45);
               audio.playPoliticianSwallow();
               audio.playGutterSplash();
+              this.player.politiciansDevoured = (this.player.politiciansDevoured || 0) + 1;
               const pName = obj.mesh.userData?.name || "VIP Politician";
               const quote = obj.mesh.userData?.quote || "Mujhe kyun nikala?!";
               this.ui.showAnnouncement(`💰 DEVOURED ${pName.toUpperCase()}! "${quote}" (+${points} XP)`, '#ffd700');
-            }
-          } else if (obj.isRobbery) {
-            this.particles.createMoneyBurst(hole.position, 35);
-            this.particles.createSwallowBurst(hole.position, 3, 25);
-            if (hole.isPlayer) {
-              audio.playRobberDevour();
+            } else if (obj.evilType === 'trash') {
+              this.particles.createSwallowBurst(hole.position, 1, 10);
               audio.playGutterSplash();
-              this.ui.showAnnouncement(`🚨 STREET JUSTICE! ROBBER DEVOURED! (+${points} XP)`, '#ffea00');
+              audio.playSwallow(1);
             }
           } else if (obj.isAnimal) {
             this.particles.createSwallowBurst(hole.position, 1, 15);
@@ -548,12 +623,6 @@ class Game {
               if (obj.mesh.name === 'Stray-Dog') audio.playDogBark();
               else if (obj.mesh.name === 'Street-Cat') audio.playCatMeow();
               else if (obj.mesh.name === 'Sewer-Rat') audio.playRatSqueak();
-            }
-          } else if (obj.isRubbish) {
-            this.particles.createSwallowBurst(hole.position, 1, 10);
-            if (hole.isPlayer) {
-              audio.playGutterSplash();
-              audio.playSwallow(1);
             }
           } else {
             this.particles.createSwallowBurst(hole.position, obj.tier);
@@ -612,6 +681,72 @@ class Game {
     );
     this.camera.lookAt(lookTarget);
 
+    // =========================================================
+    // Dynamic Building Transparency: Never let any building hide the hole!
+    // Buildings between the camera and player become translucent ghost silhouettes
+    // =========================================================
+    if (this.buildings && this.buildings.length > 0) {
+      const camPos = this.camera.position;
+      const playerPos = this.player.position;
+
+      const segX = playerPos.x - camPos.x;
+      const segZ = playerPos.z - camPos.z;
+      const segLenSq = segX * segX + segZ * segZ;
+
+      if (segLenSq > 0.01) {
+        for (let b = 0; b < this.buildings.length; b++) {
+          const bld = this.buildings[b];
+          if (bld.state === 'swallowed') continue;
+
+          const bMesh = bld.mesh;
+          const bPos = bMesh.position;
+
+          const bx = bPos.x - camPos.x;
+          const bz = bPos.z - camPos.z;
+          const t = (bx * segX + bz * segZ) / segLenSq;
+
+          let isOccluding = false;
+          if (t > 0.05 && t < 0.95) {
+            const projX = camPos.x + segX * t;
+            const projZ = camPos.z + segZ * t;
+            const dX = bPos.x - projX;
+            const dZ = bPos.z - projZ;
+            const distToPath = Math.sqrt(dX * dX + dZ * dZ);
+
+            if (distToPath < (bld.radius * 0.9 || 5.0)) {
+              isOccluding = true;
+            }
+          }
+
+          if (isOccluding && !bld.isGhost) {
+            bld.isGhost = true;
+            bMesh.traverse(child => {
+              if (child.isMesh && child.material) {
+                if (Array.isArray(child.material)) {
+                  child.material.forEach(m => { m.transparent = true; m.opacity = 0.28; });
+                } else {
+                  child.material.transparent = true;
+                  child.material.opacity = 0.28;
+                }
+              }
+            });
+          } else if (!isOccluding && bld.isGhost) {
+            bld.isGhost = false;
+            bMesh.traverse(child => {
+              if (child.isMesh && child.material) {
+                if (Array.isArray(child.material)) {
+                  child.material.forEach(m => { m.opacity = 1.0; m.transparent = false; });
+                } else {
+                  child.material.opacity = 1.0;
+                  child.material.transparent = false;
+                }
+              }
+            });
+          }
+        }
+      }
+    }
+
     // Keep Directional Sunlight centered around player for sharp shadows
     if (this.dirLight) {
       this.dirLight.position.set(
@@ -655,13 +790,16 @@ class Game {
 
     this.updateCamera(dt);
 
-    // Update HUD
+    // Update HUD with Civic Cleanser progress and Hero Frenzy status
     const ranked = [...this.holes].sort((a, b) => b.score - a.score);
+    const civicPct = (this.civicCleansed / Math.max(1, this.civicTotal)) * 100;
     this.ui.updateHUD({
       player: this.player,
       timeLeft: this.timeLeft,
       rankedHoles: ranked,
-      gameMode: this.gameMode
+      gameMode: this.gameMode,
+      civicPercent: civicPct,
+      frenzyActive: this.frenzyTimer > 0
     });
 
     this.renderer.render(this.scene, this.camera);

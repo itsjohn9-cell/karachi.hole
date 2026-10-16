@@ -50,6 +50,14 @@ export class UIManager {
             <span>💰 VIPs:</span>
             <span id="hud-politicians" class="pol-count">0</span>
           </div>
+          <div class="civic-pill" id="hud-civic-pill" title="Karachi Cleansed from Evils & Mafia">
+            <span class="civic-icon">🧹</span>
+            <span class="civic-label">CLEANSED:</span>
+            <span id="hud-civic-pct" class="civic-val">0%</span>
+            <div class="civic-track">
+              <div class="civic-fill" id="hud-civic-fill" style="width: 0%"></div>
+            </div>
+          </div>
           <div class="combo-pill" id="hud-combo" style="display: none;">
             COMBO x<span id="hud-combo-val">2</span>! 🔥
           </div>
@@ -299,12 +307,29 @@ export class UIManager {
     });
   }
 
-  updateHUD({ player, timeLeft, rankedHoles, gameMode }) {
+  updateHUD({ player, timeLeft, rankedHoles, gameMode, civicPercent = 0, frenzyActive = false }) {
     // Score & Politician VIP Count
     document.getElementById('hud-score').textContent = player.score.toLocaleString();
     const polCountEl = document.getElementById('hud-politicians');
     if (polCountEl) {
       polCountEl.textContent = player.politiciansDevoured || 0;
+    }
+
+    // Civic Cleanser Meter
+    const civicPctEl = document.getElementById('hud-civic-pct');
+    const civicFillEl = document.getElementById('hud-civic-fill');
+    const civicPillEl = document.getElementById('hud-civic-pill');
+    if (civicPctEl && civicFillEl) {
+      const rounded = Math.min(100, Math.round(civicPercent));
+      civicPctEl.textContent = `${rounded}%`;
+      civicFillEl.style.width = `${rounded}%`;
+      if (civicPillEl) {
+        if (frenzyActive) {
+          civicPillEl.classList.add('frenzy-active');
+        } else {
+          civicPillEl.classList.remove('frenzy-active');
+        }
+      }
     }
 
     // Level & XP Bar

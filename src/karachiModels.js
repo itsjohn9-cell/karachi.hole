@@ -1426,6 +1426,332 @@ export const KarachiModels = {
     };
 
     return group;
+  },
+
+  // 27. Burns Road Bun Kabab Stall (برنس روڈ اسٹوڈنٹ بن کباب) - Iconic Karachi Food Cart
+  createBurnsRoadBunKababStall() {
+    const group = new THREE.Group();
+    group.name = "Bun-Kabab-Stall";
+    group.isFoodStall = true;
+
+    // Wooden cart body
+    const cart = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.9, 1.4), materials.woodBench);
+    cart.position.y = 0.55;
+    cart.castShadow = true;
+    group.add(cart);
+
+    // Stainless steel food counter top
+    const counter = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.1, 1.5), materials.chrome);
+    counter.position.y = 1.05;
+    group.add(counter);
+
+    // 4 Cart Wheels
+    const wGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.12, 16);
+    wGeo.rotateZ(Math.PI / 2);
+    [[-1.1, 0.35, 0.65], [1.1, 0.35, 0.65], [-1.1, 0.35, -0.65], [1.1, 0.35, -0.65]].forEach(pos => {
+      const w = new THREE.Mesh(wGeo, materials.rubber);
+      w.position.set(...pos);
+      group.add(w);
+    });
+
+    // Big Sizzling Iron Tawa (Griddle)
+    const tawaGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.08, 20);
+    const tawa = new THREE.Mesh(tawaGeo, materials.curbBlack);
+    tawa.position.set(-0.55, 1.14, 0);
+    group.add(tawa);
+
+    // Frying Shami patties & egg on Tawa
+    const pattyMat = new THREE.MeshLambertMaterial({ color: 0x6d4c41 }); // Fried brown shami
+    const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.05, 12), pattyMat);
+    p1.position.set(-0.65, 1.2, -0.15);
+    group.add(p1);
+
+    const p2 = p1.clone();
+    p2.position.set(-0.45, 1.2, 0.15);
+    group.add(p2);
+
+    const egg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.04, 12), new THREE.MeshBasicMaterial({ color: 0xffeb3b }));
+    egg.position.set(-0.6, 1.2, 0.12);
+    group.add(egg);
+
+    // Stack of Toasted Buns
+    const bunMat = new THREE.MeshLambertMaterial({ color: 0xe0a96d }); // Golden burger bun
+    for (let b = 0; b < 3; b++) {
+      const bun = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.12, 14), bunMat);
+      bun.position.set(0.35, 1.16 + b * 0.13, -0.25);
+      group.add(bun);
+    }
+
+    // Chutney squeezer bottles (Green Mint & Red Imli)
+    const greenChutney = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.32, 10), new THREE.MeshLambertMaterial({ color: 0x43a047 }));
+    greenChutney.position.set(0.55, 1.25, 0.2);
+    group.add(greenChutney);
+
+    const redChutney = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.32, 10), new THREE.MeshLambertMaterial({ color: 0xd32f2f }));
+    redChutney.position.set(0.72, 1.25, 0.2);
+    group.add(redChutney);
+
+    // 4 Corner Canopy Awning Pillars
+    const poleGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.6, 8);
+    [[-1.1, 1.85, 0.65], [1.1, 1.85, 0.65], [-1.1, 1.85, -0.65], [1.1, 1.85, -0.65]].forEach(pos => {
+      const pole = new THREE.Mesh(poleGeo, materials.woodBench);
+      pole.position.set(...pos);
+      group.add(pole);
+    });
+
+    // Red & Yellow Striped Awning Roof
+    const canopy = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 1.6), materials.truckRed);
+    canopy.position.y = 2.65;
+    group.add(canopy);
+
+    // Glowing Yellow Hanging Bulb
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffeb3b }));
+    bulb.position.set(0, 2.45, 0);
+    group.add(bulb);
+
+    // Signboard: Burns Road Bun Kabab
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ff8f00'; // Saffron orange
+    ctx.fillRect(0, 0, 512, 128);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#ffffff';
+    ctx.strokeRect(6, 6, 500, 116);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 36px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('★ BURNS ROAD BUN KABAB ★', 256, 44);
+    ctx.font = 'bold 26px "Outfit", sans-serif';
+    ctx.fillStyle = '#1b1b1b';
+    ctx.fillText('کراچی کا مشہور اسٹوڈنٹ بن کباب', 256, 88);
+
+    const signTexture = new THREE.CanvasTexture(canvas);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: signTexture }));
+    sign.position.set(0, 2.95, 0.81);
+    group.add(sign);
+
+    group.userData = {
+      isBunKabab: true,
+      hasGivenBoost: false,
+      chefQuote: "Karachi ko saaf karo bhai! Ye lo Spicy Chutney Turbo Boost!"
+    };
+
+    return group;
+  },
+
+  // 28. Shady Gutka / Chalia Peddler with Red Spit Stains - Civic Evil Tier 1
+  createGutkaPeddler() {
+    const group = new THREE.Group();
+    group.name = "Gutka-Peddler";
+    group.isBadGuy = true;
+
+    // Shady character body (hooded shawl)
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.9, 8), new THREE.MeshLambertMaterial({ color: 0x4e342e }));
+    body.position.y = 0.9;
+    group.add(body);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), materials.pedestrianSkin);
+    head.position.y = 1.5;
+    group.add(head);
+
+    // Hood / scarf
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), new THREE.MeshLambertMaterial({ color: 0x3e2723 }));
+    hood.position.y = 1.55;
+    group.add(hood);
+
+    // Wooden crate with Gutka sachets
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.5), materials.woodBench);
+    crate.position.set(0.45, 0.35, 0);
+    group.add(crate);
+
+    // Red Paan / Gutka Spit Stains on pavement (Red circles on ground)
+    const stainMat = new THREE.MeshBasicMaterial({ color: 0xb71c1c });
+    for (let s = 0; s < 4; s++) {
+      const stain = new THREE.Mesh(new THREE.CircleGeometry(0.25 + Math.random() * 0.2, 12), stainMat);
+      stain.rotateX(-Math.PI / 2);
+      stain.position.set((Math.random() - 0.5) * 1.5, 0.03, (Math.random() - 0.5) * 1.5);
+      group.add(stain);
+    }
+
+    // Speech bubble
+    const canvas = document.createElement('canvas');
+    canvas.width = 300;
+    canvas.height = 90;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#b71c1c';
+    ctx.beginPath();
+    ctx.roundRect(8, 8, 284, 74, 16);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 22px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🛑 Gutka / Mawa Mafia', 150, 45);
+
+    const bTex = new THREE.CanvasTexture(canvas);
+    const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    bubble.scale.set(3.0, 0.9, 1);
+    bubble.position.set(0, 2.2, 0);
+    group.add(bubble);
+
+    group.userData = {
+      isBadGuy: true,
+      evilType: 'gutka',
+      name: "Gutka Mafia Peddler"
+    };
+
+    return group;
+  },
+
+  // 29. Broken Road Pothole & KW&SB Water Pipeline Leak - Civic Evil Tier 1
+  createBrokenRoadPatch() {
+    const group = new THREE.Group();
+    group.name = "Broken-Road-Pothole";
+    group.isBadGuy = true;
+
+    // Jagged asphalt crater rim (dark grey broken stone)
+    const potholeMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+    const crater = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.8, 16), potholeMat);
+    crater.rotateX(-Math.PI / 2);
+    crater.position.y = 0.03;
+    group.add(crater);
+
+    // Deep muddy brown leaking water puddle in the center
+    const waterPuddle = new THREE.Mesh(
+      new THREE.CircleGeometry(0.9, 16),
+      new THREE.MeshLambertMaterial({ color: 0x5d4037 }) // Murky muddy water
+    );
+    waterPuddle.rotateX(-Math.PI / 2);
+    waterPuddle.position.y = 0.02;
+    group.add(waterPuddle);
+
+    // Authentic Karachi Warning: Bamboo stick with red plastic theli tied on top!
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 6), materials.woodBench);
+    stick.position.set(0.6, 0.9, 0.4);
+    stick.rotation.z = -0.2;
+    group.add(stick);
+
+    const redBag = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), materials.truckRed);
+    redBag.position.set(0.42, 1.75, 0.4);
+    group.add(redBag);
+
+    // Floating text label
+    const canvas = document.createElement('canvas');
+    canvas.width = 320;
+    canvas.height = 80;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ff6f00';
+    ctx.beginPath();
+    ctx.roundRect(6, 6, 308, 68, 14);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚠️ Broken Road / Khadda', 160, 40);
+
+    const lTex = new THREE.CanvasTexture(canvas);
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: lTex, transparent: true }));
+    label.scale.set(3.0, 0.75, 1);
+    label.position.set(0, 2.2, 0);
+    group.add(label);
+
+    group.userData = {
+      isBadGuy: true,
+      evilType: 'pothole',
+      name: "Road Pothole (کھڈا)"
+    };
+
+    return group;
+  },
+
+  // 30. Water Tanker Mafia (واٹر ٹینکر مافیا) - Civic Evil Tier 3
+  createWaterTankerMafia() {
+    const tanker = this.createWaterTanker();
+    tanker.name = "Water-Tanker-Mafia";
+    tanker.isBadGuy = true;
+
+    // Big Slogan Banner on side: "WATER TANKER MAFIA • 12,000 RS / TANKER"
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 120;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#01579b'; // Deep navy
+    ctx.fillRect(0, 0, 512, 120);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#ffd600';
+    ctx.strokeRect(5, 5, 502, 110);
+    ctx.fillStyle = '#ffd600';
+    ctx.font = 'bold 30px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('WATER TANKER MAFIA', 256, 40);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 22px "Outfit", sans-serif';
+    ctx.fillText('12,000 RS • پیاسا کراچی', 256, 85);
+
+    const bTex = new THREE.CanvasTexture(canvas);
+    const bannerL = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 0.9), new THREE.MeshBasicMaterial({ map: bTex }));
+    bannerL.position.set(-1.23, 2.1, -1.1);
+    bannerL.rotation.y = -Math.PI / 2;
+    tanker.add(bannerL);
+
+    const bannerR = bannerL.clone();
+    bannerR.position.x = 1.23;
+    bannerR.rotation.y = Math.PI / 2;
+    tanker.add(bannerR);
+
+    tanker.userData = {
+      isBadGuy: true,
+      evilType: 'tanker',
+      name: "Water Tanker Mafia Truck",
+      speed: 10.5
+    };
+
+    return tanker;
+  },
+
+  // 31. Speeding VIP Protocol Escort Convoy - Civic Evil Tier 3
+  createSpeedingVIPConvoy() {
+    const suv = this.createVIPProtocolSUV();
+    suv.name = "VIP-Protocol-Convoy";
+    suv.isBadGuy = true;
+
+    // Siren Text Bubble
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 90;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#d50000';
+    ctx.beginPath();
+    ctx.roundRect(8, 8, 384, 74, 18);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 22px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🚨 HATO! VIP AA RAHA HAI!', 200, 45);
+
+    const bTex = new THREE.CanvasTexture(canvas);
+    const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    bubble.scale.set(3.8, 0.9, 1);
+    bubble.position.set(0, 3.2, 0);
+    suv.add(bubble);
+
+    suv.userData = {
+      isBadGuy: true,
+      evilType: 'vip',
+      name: "VIP Protocol Speeding SUV",
+      speed: 12.0
+    };
+
+    return suv;
   }
 };
 

@@ -9,6 +9,9 @@ export class CityGenerator {
     this.politicians = [];
     this.animals = [];
     this.robberies = [];
+    this.badGuys = [];
+    this.foodStalls = [];
+    this.buildings = [];
     this.mapSize = 240; // 240m x 240m map
   }
 
@@ -20,7 +23,10 @@ export class CityGenerator {
       edibleObjects: this.edibleObjects,
       politicians: this.politicians,
       animals: this.animals,
-      robberies: this.robberies
+      robberies: this.robberies,
+      badGuys: this.badGuys,
+      foodStalls: this.foodStalls,
+      buildings: this.buildings
     };
   }
 
@@ -96,7 +102,16 @@ export class CityGenerator {
     this.scene.add(sea);
   }
 
-  registerEdible(mesh, tier, points, name, radius, { isPolitician = false, isAnimal = false, isRobbery = false, isRubbish = false } = {}) {
+  registerEdible(mesh, tier, points, name, radius, {
+    isPolitician = false,
+    isAnimal = false,
+    isRobbery = false,
+    isRubbish = false,
+    isBadGuy = false,
+    evilType = null,
+    isFoodStall = false,
+    isBuilding = false
+  } = {}) {
     this.scene.add(mesh);
     const item = {
       mesh,
@@ -113,106 +128,207 @@ export class CityGenerator {
       isPolitician,
       isAnimal,
       isRobbery,
-      isRubbish
+      isRubbish,
+      isBadGuy: isBadGuy || isPolitician || isRobbery || isRubbish || (evilType !== null),
+      evilType: evilType || (isPolitician ? 'politician' : isRobbery ? 'robber' : isRubbish ? 'trash' : null),
+      isFoodStall,
+      isBuilding
     };
     this.edibleObjects.push(item);
     if (isPolitician) this.politicians.push(item);
     if (isAnimal) this.animals.push(item);
     if (isRobbery) this.robberies.push(item);
+    if (item.isBadGuy) this.badGuys.push(item);
+    if (isFoodStall) this.foodStalls.push(item);
+    if (isBuilding) this.buildings.push(item);
     return item;
   }
 
   populateZones() {
-    // =============================================================
-    // 0. IMMEDIATE PLAYER SPAWN FEAST (Around x: 0, z: -15)
-    // Rich feast of rubbish, soda cans, rats, stray dogs, robbers, politicians!
-    // =============================================================
-    // 15 Plastic trash bags scattered right around the hole
     const trashColors = [0x1565c0, 0x212121, 0x43a047, 0xe53935];
-    for (let i = 0; i < 15; i++) {
-      const col = trashColors[i % trashColors.length];
-      const bag = KarachiModels.createTrashBag(col);
-      bag.position.set(-5 + Math.random() * 10, 0, -12 - Math.random() * 12);
-      this.registerEdible(bag, 1, 15, "Trash Bag", 0.5, { isRubbish: true });
-    }
 
-    // 12 Soda cans & water bottles on road
-    for (let i = 0; i < 8; i++) {
-      const can = KarachiModels.createSodaCan();
-      can.position.set(-4 + Math.random() * 8, 0, -10 - Math.random() * 10);
-      this.registerEdible(can, 1, 10, "Soda Can", 0.35, { isRubbish: true });
-    }
-    for (let i = 0; i < 8; i++) {
-      const bottle = KarachiModels.createWaterBottle();
-      bottle.position.set(-4 + Math.random() * 8, 0, -11 - Math.random() * 10);
-      this.registerEdible(bottle, 1, 10, "Water Bottle", 0.35, { isRubbish: true });
-    }
+    // =============================================================
+    // 0. IMMEDIATE PLAYER SPAWN CROSSROADS (Centered around x: 0, z: 0)
+    // 100% Unobstructed view: Mazar-e-Quaid is in the far northern backdrop!
+    // Immediate feast of Bun Kabab stall, Chai Dhaba, Potholes, Gutka, Robbers, Politicians, Tankers & Trash!
+    // =============================================================
+    // Burns Road Bun Kabab Stall right by the starting crossroads
+    const bunKabab1 = KarachiModels.createBurnsRoadBunKababStall();
+    bunKabab1.position.set(5.5, 0, 3.5);
+    this.registerEdible(bunKabab1, 2, 250, "Burns Road Bun Kabab", 2.2, { isFoodStall: true });
 
-    // 6 Sewer rats scurrying around the trash at spawn!
-    for (let i = 0; i < 6; i++) {
-      const rat = KarachiModels.createSewerRat();
-      rat.position.set(-3 + Math.random() * 6, 0, -13 - Math.random() * 8);
-      rat.rotation.y = Math.random() * Math.PI * 2;
-      this.registerEdible(rat, 1, 20, "Sewer Rat (چوہا)", 0.45, { isAnimal: true });
-    }
+    // Quetta Alamgir Chai Dhaba on the opposite curb
+    const dhaba1 = KarachiModels.createChaiDhaba();
+    dhaba1.position.set(-5.5, 0, 3.5);
+    this.registerEdible(dhaba1, 2, 200, "Quetta Alamgir Chai", 2.2, { isFoodStall: true });
 
-    // 2 Barking Desi Stray Dogs right near start!
-    const dog1 = KarachiModels.createStrayDog();
-    dog1.position.set(-5, 0, -18);
-    this.registerEdible(dog1, 1, 45, "Stray Dog (کتا)", 0.8, { isAnimal: true });
+    // 2 Broken Road Potholes with leaking water right in front of start
+    const pothole1 = KarachiModels.createBrokenRoadPatch();
+    pothole1.position.set(-3.2, 0, -4.5);
+    this.registerEdible(pothole1, 1, 80, "Road Pothole (کھڈا)", 1.4, { isBadGuy: true, evilType: 'pothole' });
 
-    const dog2 = KarachiModels.createStrayDog();
-    dog2.position.set(5, 0, -18);
-    this.registerEdible(dog2, 1, 45, "Stray Dog (کتا)", 0.8, { isAnimal: true });
+    const pothole2 = KarachiModels.createBrokenRoadPatch();
+    pothole2.position.set(3.2, 0, -4.5);
+    this.registerEdible(pothole2, 1, 80, "Road Pothole (کھڈا)", 1.4, { isBadGuy: true, evilType: 'pothole' });
 
-    // 2 Street Cats roaming curbs
-    const cat1 = KarachiModels.createStreetCat();
-    cat1.position.set(-6, 0, -12);
-    this.registerEdible(cat1, 1, 35, "Street Cat (بلی)", 0.6, { isAnimal: true });
+    // Shady Gutka / Chalia peddler with red spit stains
+    const gutka1 = KarachiModels.createGutkaPeddler();
+    gutka1.position.set(-6.0, 0, -6.5);
+    this.registerEdible(gutka1, 1, 400, "Gutka Mafia Peddler", 1.5, { isBadGuy: true, evilType: 'gutka' });
 
-    // 1 Full Street Robbery Scene right near start (at x: 8, z: -20)!
+    // Street Robbery Scene right near start
     const rob1 = KarachiModels.createRobberyScene();
-    rob1.position.set(7.5, 0, -22);
-    this.registerEdible(rob1, 1, 750, "Mobile Snatcher Scene (ڈاکو)", 2.4, { isRobbery: true });
+    rob1.position.set(6.5, 0, -8.0);
+    this.registerEdible(rob1, 1, 750, "Mobile Snatcher Scene (ڈاکو)", 2.4, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
 
-    // 3 Hilarious VIP Politicians right at start with briefcases and funny quotes!
+    // 3 Fleeing VIP Politicians right down the road with briefcases
     const startPoliticians = [
-      { pos: [0, -24], name: "Senator Mukhtar", quote: "Mujhe kyun nikala?!" },
-      { pos: [-4, -26], name: "VIP Chaudhry", quote: "VIP Protocol kidhar hai?!" },
-      { pos: [4, -26], name: "MNA Jamali", quote: "Tabdeeli aa gayi hai!" }
+      { pos: [0, -10.0], name: "Senator Mukhtar", quote: "Mujhe kyun nikala?!" },
+      { pos: [-4, -12.0], name: "VIP Chaudhry", quote: "VIP Protocol kidhar hai?!" },
+      { pos: [4, -12.0], name: "MNA Jamali", quote: "Tabdeeli aa gayi hai!" }
     ];
     startPoliticians.forEach(sp => {
       const pol = KarachiModels.createPolitician({ name: sp.name, quote: sp.quote });
       pol.position.set(sp.pos[0], 0, sp.pos[1]);
-      this.registerEdible(pol, 1, 350, sp.name, 1.2, { isPolitician: true });
+      this.registerEdible(pol, 1, 600, sp.name, 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician' });
     });
 
-    // Cones, mango carts & motorbikes at start
+    // Speeding VIP Protocol SUV
+    const vip1 = KarachiModels.createSpeedingVIPConvoy();
+    vip1.position.set(-8, 0, -14);
+    this.registerEdible(vip1, 3, 850, "VIP Protocol Escort", 3.2, { isBadGuy: true, evilType: 'vip' });
+
+    // Water Tanker Mafia Truck
+    const tanker1 = KarachiModels.createWaterTankerMafia();
+    tanker1.position.set(8, 0, -16);
+    this.registerEdible(tanker1, 3, 900, "Water Tanker Mafia", 3.4, { isBadGuy: true, evilType: 'tanker' });
+
+    // 15 Plastic trash bags scattered right around the hole
+    for (let i = 0; i < 15; i++) {
+      const col = trashColors[i % trashColors.length];
+      const bag = KarachiModels.createTrashBag(col);
+      bag.position.set(-5 + Math.random() * 10, 0, -1.5 - Math.random() * 8);
+      this.registerEdible(bag, 1, 25, "Trash Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
+    }
+
+    // 12 Soda cans & water bottles
+    for (let i = 0; i < 8; i++) {
+      const can = KarachiModels.createSodaCan();
+      can.position.set(-4 + Math.random() * 8, 0, -1.0 - Math.random() * 7);
+      this.registerEdible(can, 1, 15, "Soda Can", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
+    }
+    for (let i = 0; i < 8; i++) {
+      const bottle = KarachiModels.createWaterBottle();
+      bottle.position.set(-4 + Math.random() * 8, 0, -2.0 - Math.random() * 7);
+      this.registerEdible(bottle, 1, 15, "Water Bottle", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
+    }
+
+    // 6 Sewer rats scurrying around trash
+    for (let i = 0; i < 6; i++) {
+      const rat = KarachiModels.createSewerRat();
+      rat.position.set(-3 + Math.random() * 6, 0, -2.5 - Math.random() * 6);
+      rat.rotation.y = Math.random() * Math.PI * 2;
+      this.registerEdible(rat, 1, 20, "Sewer Rat (چوہا)", 0.45, { isAnimal: true });
+    }
+
+    // 2 Barking Desi Stray Dogs
+    const dog1 = KarachiModels.createStrayDog();
+    dog1.position.set(-4.5, 0, -5.5);
+    this.registerEdible(dog1, 1, 45, "Stray Dog (کتا)", 0.8, { isAnimal: true });
+
+    const dog2 = KarachiModels.createStrayDog();
+    dog2.position.set(4.5, 0, -5.5);
+    this.registerEdible(dog2, 1, 45, "Stray Dog (کتا)", 0.8, { isAnimal: true });
+
+    // 2 Street Cats roaming curbs
+    const cat1 = KarachiModels.createStreetCat();
+    cat1.position.set(-5, 0, -2.5);
+    this.registerEdible(cat1, 1, 35, "Street Cat (بلی)", 0.6, { isAnimal: true });
+
+    // Traffic Cones & Fruit Cart
     for (let x = -3; x <= 3; x += 1.5) {
       const cone = KarachiModels.createTrafficCone();
-      cone.position.set(x, 0, -10);
+      cone.position.set(x, 0, -1.8);
       this.registerEdible(cone, 1, 20, "Traffic Cone", 0.6);
     }
     const thela1 = KarachiModels.createFruitThela();
-    thela1.position.set(-6, 0, -16);
+    thela1.position.set(-6, 0, 1.5);
     this.registerEdible(thela1, 1, 50, "Mango Thela", 1.2);
 
     // =============================================================
-    // 1. KARACHI STREET ROBBERY SCENES ACROSS THE CITY (8 Robbery Scenes!)
+    // 1. WATER TANKER MAFIA TRUCKS (10 Trucks Across City!)
+    // =============================================================
+    const tankerSpots = [
+      [-30, -35], [35, -35], [-45, -60], [45, -60],
+      [-25, 25], [30, 25], [-45, 50], [45, 50], [0, 45], [0, -45]
+    ];
+    tankerSpots.forEach((spot, idx) => {
+      const tanker = KarachiModels.createWaterTankerMafia();
+      tanker.position.set(spot[0], 0, spot[1]);
+      tanker.rotation.y = idx % 2 === 0 ? 0 : Math.PI / 2;
+      this.registerEdible(tanker, 3, 900, `Water Tanker Mafia #${idx + 2}`, 3.4, { isBadGuy: true, evilType: 'tanker' });
+    });
+
+    // =============================================================
+    // 2. SPEEDING VIP PROTOCOL ESCORTS (10 Convoys Across City!)
+    // =============================================================
+    const vipSpots = [
+      [-20, -25], [20, -25], [-35, -45], [35, -45],
+      [-20, 35], [20, 35], [-35, 60], [35, 60], [10, 65], [-10, -65]
+    ];
+    vipSpots.forEach((spot, idx) => {
+      const vip = KarachiModels.createSpeedingVIPConvoy();
+      vip.position.set(spot[0], 0, spot[1]);
+      vip.rotation.y = idx % 2 === 0 ? Math.PI : 0;
+      this.registerEdible(vip, 3, 850, `VIP Protocol Escort #${idx + 2}`, 3.2, { isBadGuy: true, evilType: 'vip' });
+    });
+
+    // =============================================================
+    // 3. SHADY GUTKA / MAWA PEDDLERS (12 Peddlers with Red Spit Stains!)
+    // =============================================================
+    const gutkaSpots = [
+      [-25, -15], [25, -15], [-40, -30], [40, -30],
+      [-25, 15], [25, 15], [-40, 40], [40, 40],
+      [-15, 55], [15, 55], [-55, 15], [55, 15]
+    ];
+    gutkaSpots.forEach((spot, idx) => {
+      const gutka = KarachiModels.createGutkaPeddler();
+      gutka.position.set(spot[0], 0, spot[1]);
+      this.registerEdible(gutka, 1, 400, `Gutka Peddler #${idx + 2}`, 1.5, { isBadGuy: true, evilType: 'gutka' });
+    });
+
+    // =============================================================
+    // 4. BROKEN ROADS & POTHOLES (16 Pothole / Leak Patches!)
+    // =============================================================
+    const potholeSpots = [
+      [-15, -20], [15, -20], [-30, -40], [30, -40],
+      [-15, 20], [15, 20], [-30, 40], [30, 40],
+      [0, -30], [0, 30], [-50, -10], [50, -10],
+      [-50, 20], [50, 20], [-10, -50], [10, 50]
+    ];
+    potholeSpots.forEach((spot, idx) => {
+      const pot = KarachiModels.createBrokenRoadPatch();
+      pot.position.set(spot[0], 0, spot[1]);
+      this.registerEdible(pot, 1, 80, `Broken Road #${idx + 3}`, 1.4, { isBadGuy: true, evilType: 'pothole' });
+    });
+
+    // =============================================================
+    // 5. KARACHI STREET ROBBERY SCENES (10 Robbery Scenes!)
     // =============================================================
     const robberySpots = [
       [-35, -20], [-45, -45], [30, -25], [45, -45],
-      [-30, 30], [-55, 50], [25, 30], [50, 45]
+      [-30, 30], [-55, 50], [25, 30], [50, 45],
+      [-15, -55], [15, 55]
     ];
     robberySpots.forEach((spot, idx) => {
       const robScene = KarachiModels.createRobberyScene();
       robScene.position.set(spot[0], 0, spot[1]);
       robScene.rotation.y = (Math.random() - 0.5) * 0.8;
-      this.registerEdible(robScene, 1, 750, `Mobile Snatcher #${idx + 2}`, 2.4, { isRobbery: true });
+      this.registerEdible(robScene, 1, 750, `Mobile Snatcher #${idx + 2}`, 2.4, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
     });
 
     // =============================================================
-    // 2. VIP PAKISTANI POLITICIANS ACROSS THE CITY (15 Politicians)
+    // 6. VIP PAKISTANI POLITICIANS ACROSS THE CITY (18 Politicians)
     // =============================================================
     const politicalQuotes = [
       "Khata hai toh lagata bhi hai!",
@@ -226,13 +342,14 @@ export class CityGenerator {
       "Dollar sasta ho jayega!",
       "Mera briefcase kidhar gaya?!",
       "Security escort kahan hai?!",
-      "Save the money bag!"
+      "K-IV project ka budget kidhar gaya?!"
     ];
 
     const politicianSpots = [
       [-30, -30], [-25, -45], [-50, -25], [25, -25], [45, -30],
       [30, -50], [-35, 25], [-45, 45], [-20, 35], [25, 25],
-      [45, 35], [30, 50], [0, 25], [15, 60], [-15, 60]
+      [45, 35], [30, 50], [0, 25], [15, 60], [-15, 60],
+      [-40, -60], [40, -60], [0, -60]
     ];
 
     politicianSpots.forEach((spot, idx) => {
@@ -240,51 +357,58 @@ export class CityGenerator {
       const pName = `Politician #${idx + 1}`;
       const pol = KarachiModels.createPolitician({ name: pName, quote: q });
       pol.position.set(spot[0], 0, spot[1]);
-      this.registerEdible(pol, 1, 350, pName, 1.2, { isPolitician: true });
-
-      if (idx % 3 === 0) {
-        const suv = KarachiModels.createVIPProtocolSUV();
-        suv.position.set(spot[0] + 5, 0, spot[1]);
-        this.registerEdible(suv, 3, 280, "VIP Protocol SUV", 3.2);
-      }
+      this.registerEdible(pol, 1, 600, pName, 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician' });
     });
 
     // =============================================================
-    // 3. RUBBISH, GARBAGE BAGS & KACHRA DUMPS (150+ Rubbish items!)
+    // 7. BURNS ROAD BUN KABAB STALLS & CHAI DHABAS ACROSS CITY (8 Each!)
     // =============================================================
-    // 20 Big Garbage Dumps (Kachra Kundi heaps) along road corners
+    const foodSpots = [
+      [-45, -15], [45, -15], [-45, 15], [45, 15],
+      [-25, -50], [25, -50], [-25, 50], [25, 50]
+    ];
+    foodSpots.forEach((spot, idx) => {
+      const bk = KarachiModels.createBurnsRoadBunKababStall();
+      bk.position.set(spot[0], 0, spot[1]);
+      this.registerEdible(bk, 2, 250, `Burns Road Bun Kabab #${idx + 2}`, 2.2, { isFoodStall: true });
+
+      const dh = KarachiModels.createChaiDhaba();
+      dh.position.set(spot[0] + 5, 0, spot[1]);
+      this.registerEdible(dh, 2, 200, `Quetta Chai Dhaba #${idx + 2}`, 2.2, { isFoodStall: true });
+    });
+
+    // =============================================================
+    // 8. RUBBISH, GARBAGE BAGS & KACHRA DUMPS (150+ Rubbish items!)
+    // =============================================================
     for (let i = 0; i < 20; i++) {
       const dump = KarachiModels.createKachraDump();
       const dx = (Math.random() - 0.5) * 180;
       const dz = (Math.random() - 0.5) * 180;
       dump.position.set(dx, 0, dz);
       dump.rotation.y = Math.random() * Math.PI * 2;
-      this.registerEdible(dump, 1, 85, "Kachra Kundi Heap", 1.8, { isRubbish: true });
+      this.registerEdible(dump, 1, 100, "Kachra Kundi Heap", 1.8, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
     }
 
-    // 100 Trash bags along sidewalks and curbs
     for (let i = 0; i < 100; i++) {
       const col = trashColors[i % trashColors.length];
       const bag = KarachiModels.createTrashBag(col);
       const bx = (Math.random() - 0.5) * 190;
       const bz = (Math.random() - 0.5) * 190;
       bag.position.set(bx, 0, bz);
-      this.registerEdible(bag, 1, 15, "Trash Bag", 0.5, { isRubbish: true });
+      this.registerEdible(bag, 1, 25, "Trash Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
     }
 
-    // 80 Soda Cans & Plastic Bottles
     for (let i = 0; i < 80; i++) {
       const item = Math.random() > 0.5 ? KarachiModels.createSodaCan() : KarachiModels.createWaterBottle();
       const ix = (Math.random() - 0.5) * 190;
       const iz = (Math.random() - 0.5) * 190;
       item.position.set(ix, 0, iz);
-      this.registerEdible(item, 1, 10, "Street Debris", 0.35, { isRubbish: true });
+      this.registerEdible(item, 1, 15, "Street Debris", 0.35, { isRubbish: true, isBadGuy: true, evilType: 'trash' });
     }
 
     // =============================================================
-    // 4. KARACHI ANIMALS: STRAY DOGS, CATS, AND SEWER RATS (70+ Animals)
+    // 9. ANIMALS (Stray Dogs, Cats, Sewer Rats)
     // =============================================================
-    // 25 Stray Dogs (Kuttay)
     for (let i = 0; i < 25; i++) {
       const dog = KarachiModels.createStrayDog();
       const x = (Math.random() - 0.5) * 180;
@@ -294,7 +418,6 @@ export class CityGenerator {
       this.registerEdible(dog, 1, 45, "Stray Dog (کتا)", 0.8, { isAnimal: true });
     }
 
-    // 20 Street Cats (Billiyan)
     for (let i = 0; i < 20; i++) {
       const cat = KarachiModels.createStreetCat();
       const x = (Math.random() - 0.5) * 180;
@@ -304,7 +427,6 @@ export class CityGenerator {
       this.registerEdible(cat, 1, 35, "Street Cat (بلی)", 0.6, { isAnimal: true });
     }
 
-    // 35 Sewer Rats (Choohay) scurrying in groups
     for (let i = 0; i < 35; i++) {
       const rat = KarachiModels.createSewerRat();
       const x = (Math.random() - 0.5) * 180;
@@ -315,65 +437,45 @@ export class CityGenerator {
     }
 
     // =============================================================
-    // 5. LANDMARKS & BIGGER DISTRICT OBJECTS
+    // 10. LANDMARKS & BIGGER DISTRICT OBJECTS (Safely Positioned in Background!)
     // =============================================================
-    // Mazar-e-Quaid
+    // Mazar-e-Quaid: Positioned in the northern backdrop at z = -85 so it never hides the start hole!
     const mazar = KarachiModels.createMazarEQuaid();
-    mazar.position.set(0, 0, 0);
-    this.registerEdible(mazar, 5, 3000, "Mazar-e-Quaid", 14.0);
+    mazar.position.set(0, 0, -85);
+    this.registerEdible(mazar, 5, 3000, "Mazar-e-Quaid", 14.0, { isBuilding: true });
 
-    // Empress Market
+    // Empress Market in the northwestern district
     const empress = KarachiModels.createEmpressMarket();
-    empress.position.set(-38, 0, -38);
-    this.registerEdible(empress, 4, 1500, "Empress Market Saddar", 10.0);
+    empress.position.set(-55, 0, -55);
+    this.registerEdible(empress, 4, 1500, "Empress Market Saddar", 10.0, { isBuilding: true });
 
-    // Chundrigar Skyscrapers
-    const towerCoords = [[36, -38], [55, -35], [38, -55], [58, -58]];
+    // Chundrigar Skyscrapers in the northeastern district
+    const towerCoords = [[55, -55], [75, -55], [55, -75], [75, -75]];
     towerCoords.forEach(([tx, tz], idx) => {
       const tower = KarachiModels.createChundrigarSkyscraper();
       tower.position.set(tx, 0, tz);
-      this.registerEdible(tower, 5, 2200, `Chundrigar Tower #${idx + 1}`, 7.5);
+      this.registerEdible(tower, 5, 2200, `Chundrigar Tower #${idx + 1}`, 7.5, { isBuilding: true });
     });
 
-    // Commercial Plazas
+    // Commercial Plazas on outer avenue corners
     const plazas = [
-      { pos: [38, -18], name: "Habib Bank Plaza", sign: "HABIB BANK PLAZA", sub: "HEAD OFFICE KARACHI" },
-      { pos: [58, -18], name: "Kababjees Commercial", sign: "KABABJEES HIGHWAY", sub: "EXPRESS DINING" },
-      { pos: [-38, -18], name: "Jahangir Autos", sign: "JAHANGIR AUTOS", sub: "CHUNDRIGAR ROAD" },
-      { pos: [-18, -38], name: "Burns Road Super Mart", sign: "BURNS ROAD SUPER MART", sub: "AUTHENTIC KARACHI" }
+      { pos: [55, -20], name: "Habib Bank Plaza", sign: "HABIB BANK PLAZA", sub: "HEAD OFFICE KARACHI" },
+      { pos: [55, 25], name: "Kababjees Commercial", sign: "KABABJEES HIGHWAY", sub: "EXPRESS DINING" },
+      { pos: [-55, -20], name: "Jahangir Autos", sign: "JAHANGIR AUTOS", sub: "CHUNDRIGAR ROAD" },
+      { pos: [-55, 25], name: "Burns Road Super Mart", sign: "BURNS ROAD SUPER MART", sub: "AUTHENTIC KARACHI" }
     ];
     plazas.forEach(p => {
       const plaza = KarachiModels.createCommercialPlaza(p.sign, p.sub);
       plaza.position.set(p.pos[0], 0, p.pos[1]);
-      this.registerEdible(plaza, 4, 900, p.name, 6.5);
+      this.registerEdible(plaza, 4, 900, p.name, 6.5, { isBuilding: true });
     });
 
-    // 8 Water Tankers
-    for (let i = 0; i < 8; i++) {
-      const tanker = KarachiModels.createWaterTanker();
-      tanker.position.set(20 + Math.random() * 50, 0, -20 + (Math.random() - 0.5) * 55);
-      tanker.rotation.y = Math.random() > 0.5 ? 0 : Math.PI / 2;
-      this.registerEdible(tanker, 3, 230, "Water Tanker Truck", 3.2);
-    }
-
-    // Chai Dhabas & Biryani Stalls
-    for (let i = 0; i < 8; i++) {
-      const dhaba = KarachiModels.createChaiDhaba();
-      dhaba.position.set(-60 + i * 8, 0, 32 + (i % 2) * 8);
-      this.registerEdible(dhaba, 2, 120, "Quetta Alamgir Chai", 2.2);
-    }
-    for (let i = 0; i < 8; i++) {
-      const biryani = KarachiModels.createBurnsRoadBiryaniStall();
-      biryani.position.set(-65 + i * 8, 0, 48 + (i % 2) * 7);
-      this.registerEdible(biryani, 2, 100, "Burns Road Biryani Deg", 1.9);
-    }
-
-    // Clifton Villas
-    for (let bx = 26; bx <= 64; bx += 18) {
-      for (let bz = 26; bz <= 64; bz += 18) {
+    // Clifton Villas in southeast residential quadrant
+    for (let bx = 32; bx <= 64; bx += 16) {
+      for (let bz = 32; bz <= 64; bz += 16) {
         const bungalow = KarachiModels.createResidentialBungalow();
         bungalow.position.set(bx, 0, bz);
-        this.registerEdible(bungalow, 3, 380, "Clifton Villa", 5.0);
+        this.registerEdible(bungalow, 3, 380, "Clifton Villa", 5.0, { isBuilding: true });
       }
     }
 
