@@ -27,6 +27,26 @@ export class ParticleSystem {
     this.waterDropletGeo = new THREE.DodecahedronGeometry(0.18);
     this.waterMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
     this.foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    // Confetti geometry & vibrant festival materials
+    this.confettiGeo = new THREE.PlaneGeometry(0.22, 0.14);
+    this.confettiMats = [
+      new THREE.MeshBasicMaterial({ color: 0x00e676, side: THREE.DoubleSide }), // Bright Green
+      new THREE.MeshBasicMaterial({ color: 0xffd700, side: THREE.DoubleSide }), // Gold
+      new THREE.MeshBasicMaterial({ color: 0xff1744, side: THREE.DoubleSide }), // Ruby Red
+      new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide }), // Aqua
+      new THREE.MeshBasicMaterial({ color: 0xe040fb, side: THREE.DoubleSide })  // Magenta
+    ];
+
+    // Heart shape for happy rescued citizens
+    const heartShape = new THREE.Shape();
+    heartShape.moveTo(0, 0.15);
+    heartShape.bezierCurveTo(0, 0.25, -0.15, 0.35, -0.22, 0.25);
+    heartShape.bezierCurveTo(-0.3, 0.12, -0.2, -0.1, 0, -0.25);
+    heartShape.bezierCurveTo(0.2, -0.1, 0.3, 0.12, 0.22, 0.25);
+    heartShape.bezierCurveTo(0.15, 0.35, 0, 0.25, 0, 0.15);
+    this.heartGeo = new THREE.ShapeGeometry(heartShape);
+    this.heartMat = new THREE.MeshBasicMaterial({ color: 0xff4081, side: THREE.DoubleSide });
   }
 
   // Coastal Arabian Sea Water Splash & Foam Spray
@@ -100,6 +120,89 @@ export class ParticleSystem {
         maxLife: 2.0,
         scale: 1.0,
         isMoney: true
+      });
+    }
+  }
+
+  // Confetti explosion for joyful rescued citizens and cleared traffic jams!
+  createCelebrationConfetti(pos, count = 35) {
+    for (let i = 0; i < count; i++) {
+      const mat = this.confettiMats[Math.floor(Math.random() * this.confettiMats.length)];
+      const mesh = new THREE.Mesh(this.confettiGeo, mat);
+      mesh.position.set(pos.x + (Math.random() - 0.5) * 1.2, pos.y + 0.8, pos.z + (Math.random() - 0.5) * 1.2);
+
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2.5 + Math.random() * 4.5;
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        5.5 + Math.random() * 5.0,
+        Math.sin(angle) * speed
+      );
+
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -7, // Gentle air flutter
+        life: 1.6 + Math.random() * 0.7,
+        maxLife: 2.3,
+        scale: 1.0,
+        isConfetti: true
+      });
+    }
+  }
+
+  // Floating love hearts when rescued citizens express heartfelt gratitude!
+  createHeartBurst(pos, count = 14) {
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(this.heartGeo, this.heartMat);
+      mesh.position.set(pos.x + (Math.random() - 0.5) * 1.0, pos.y + 1.2, pos.z + (Math.random() - 0.5) * 1.0);
+      mesh.rotation.x = Math.PI;
+
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.0 + Math.random() * 2.5;
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        2.5 + Math.random() * 3.5,
+        Math.sin(angle) * speed
+      );
+
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -2.5, // Floats gently upwards
+        life: 1.4 + Math.random() * 0.5,
+        maxLife: 1.9,
+        scale: 0.9 + Math.random() * 0.5,
+        isHeart: true
+      });
+    }
+  }
+
+  // Pure crystal freshwater fountain geyser when water tanker mafia is devoured!
+  createFreshwaterGeyser(pos, count = 42) {
+    for (let i = 0; i < count; i++) {
+      const mat = Math.random() > 0.3 ? this.waterMat : this.foamMat;
+      const mesh = new THREE.Mesh(this.waterDropletGeo, mat);
+      mesh.position.set(pos.x + (Math.random() - 0.5) * 1.8, 0.4, pos.z + (Math.random() - 0.5) * 1.8);
+
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.8 + Math.random() * 3.5;
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        8.0 + Math.random() * 6.5, // High skyward jet
+        Math.sin(angle) * speed
+      );
+
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -16,
+        life: 1.1 + Math.random() * 0.4,
+        maxLife: 1.5,
+        scale: 1.2 + Math.random() * 0.6
       });
     }
   }
@@ -196,6 +299,13 @@ export class ParticleSystem {
         p.mesh.rotation.x += dt * 8;
         p.mesh.rotation.z += dt * 5;
         p.mesh.rotation.y += dt * 3;
+      } else if (p.isConfetti) {
+        p.mesh.rotation.x += dt * 9;
+        p.mesh.rotation.y += dt * 7;
+        p.mesh.rotation.z += dt * 4;
+      } else if (p.isHeart) {
+        p.mesh.rotation.y += dt * 3.5;
+        p.mesh.position.x += Math.sin(p.life * 6) * dt * 0.4;
       } else {
         p.mesh.rotation.x += dt * 4;
         p.mesh.rotation.y += dt * 6;

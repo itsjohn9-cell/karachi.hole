@@ -14,6 +14,9 @@ export class CityGenerator {
     this.buildings = [];
     this.citizens = [];
     this.coastalBays = [];
+    this.interactiveVictims = [];
+    this.interactiveTraffic = [];
+    this.interactiveResidents = [];
     this.mapSize = 320; // Expanded Karachi Metropolis Map
   }
 
@@ -32,7 +35,10 @@ export class CityGenerator {
       foodStalls: this.foodStalls,
       buildings: this.buildings,
       citizens: this.citizens,
-      coastalBays: this.coastalBays
+      coastalBays: this.coastalBays,
+      interactiveVictims: this.interactiveVictims,
+      interactiveTraffic: this.interactiveTraffic,
+      interactiveResidents: this.interactiveResidents
     };
   }
 
@@ -440,6 +446,45 @@ export class CityGenerator {
     return item;
   }
 
+  // Interactive Robbery Scene with Decoupled Target vs Rescued Citizen
+  addRobberyScene(posX, posZ) {
+    const { robberTarget, victimCitizen } = KarachiModels.createRobberyScene();
+    robberTarget.position.set(posX, 0, posZ);
+    victimCitizen.position.set(posX, 0, posZ + 2.2);
+    this.scene.add(victimCitizen);
+    this.interactiveVictims.push(victimCitizen);
+    this.registerEdible(robberTarget, 1, 850, "Mobile Snatcher (ڈاکو)", 2.0, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
+  }
+
+  // Interactive VIP Protocol Traffic Jam Scene with Stuck Commuters that get freed!
+  addVIPTrafficJamScene(posX, posZ, rotY = 0) {
+    const { vipTarget, stuckVehicles } = KarachiModels.createVIPTrafficJamScene();
+    vipTarget.position.set(posX, 0, posZ);
+    vipTarget.rotation.y = rotY;
+    stuckVehicles.forEach(v => {
+      const localPos = v.position.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
+      v.position.set(posX + localPos.x, 0, posZ + localPos.z);
+      v.rotation.y = rotY;
+      this.scene.add(v);
+      this.interactiveTraffic.push(v);
+    });
+    this.registerEdible(vipTarget, 3, 1600, "VIP Protocol Prado Convoy", 4.2, { isBadGuy: true, evilType: 'vip' });
+  }
+
+  // Interactive Water Tanker Extortion Scene with Thirsty Karachi Residents!
+  addWaterTankerScene(posX, posZ) {
+    const { tankerTarget, thirstyResidents } = KarachiModels.createWaterTankerExtortionScene();
+    tankerTarget.position.set(posX, 0, posZ);
+    thirstyResidents.forEach(r => {
+      const rx = posX + r.position.x;
+      const rz = posZ + r.position.z;
+      r.position.set(rx, 0, rz);
+      this.scene.add(r);
+      this.interactiveResidents.push(r);
+    });
+    this.registerEdible(tankerTarget, 3, 1400, "Water Tanker Mafia Truck", 3.8, { isBadGuy: true, evilType: 'tanker' });
+  }
+
   populateZones() {
     const trashColors = [0x1565c0, 0x212121, 0x43a047, 0xe53935];
 
@@ -472,10 +517,8 @@ export class CityGenerator {
     gutka1.position.set(-6.0, 0, -6.5);
     this.registerEdible(gutka1, 1, 400, "Gutka Mafia Peddler", 1.5, { isBadGuy: true, evilType: 'gutka' });
 
-    // Street Robbery Scene right near start
-    const rob1 = KarachiModels.createRobberyScene();
-    rob1.position.set(6.5, 0, -8.0);
-    this.registerEdible(rob1, 1, 750, "Mobile Snatcher Scene (ڈاکو)", 2.4, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
+    // Street Robbery Scene right near start (Armed Mugger vs Terrified Rescuable Citizen)
+    this.addRobberyScene(6.5, -8.0);
 
     // 3 Fleeing VIP Politicians right down the road with briefcases
     const startPoliticians = [
@@ -489,15 +532,11 @@ export class CityGenerator {
       this.registerEdible(pol, 1, 600, sp.name, 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician' });
     });
 
-    // Speeding VIP Protocol SUV
-    const vip1 = KarachiModels.createSpeedingVIPConvoy();
-    vip1.position.set(-8, 0, -14);
-    this.registerEdible(vip1, 3, 850, "VIP Protocol Escort", 3.2, { isBadGuy: true, evilType: 'vip' });
+    // Speeding VIP Protocol SUV Traffic Jam Scene (Blocks innocent traffic that get freed!)
+    this.addVIPTrafficJamScene(-8, -14, Math.PI / 2);
 
-    // Water Tanker Mafia Truck
-    const tanker1 = KarachiModels.createWaterTankerMafia();
-    tanker1.position.set(8, 0, -16);
-    this.registerEdible(tanker1, 3, 900, "Water Tanker Mafia", 3.4, { isBadGuy: true, evilType: 'tanker' });
+    // Water Tanker Mafia Truck Extortion Scene (Thirsty citizens begging for water!)
+    this.addWaterTankerScene(8, -16);
 
     // K-Electric Sparking Kunda Transformer Pole right near spawn
     const ke1 = KarachiModels.createKElectricTransformer();
@@ -574,29 +613,43 @@ export class CityGenerator {
     // =============================================================
     // 1. WATER TANKER MAFIA TRUCKS (10 Trucks Across City!)
     // =============================================================
+    // 1. WATER TANKER MAFIA SCENES (Extortion Trucks + Thirsty Residents!)
+    // =============================================================
     const tankerSpots = [
       [-30, -35], [35, -35], [-45, -60], [45, -60],
       [-25, 25], [30, 25], [-45, 50], [45, 50], [0, 45], [0, -45]
     ];
     tankerSpots.forEach((spot, idx) => {
-      const tanker = KarachiModels.createWaterTankerMafia();
-      tanker.position.set(spot[0], 0, spot[1]);
-      tanker.rotation.y = idx % 2 === 0 ? 0 : Math.PI / 2;
-      this.registerEdible(tanker, 3, 900, `Water Tanker Mafia #${idx + 2}`, 3.4, { isBadGuy: true, evilType: 'tanker' });
+      if (idx < 6) {
+        this.addWaterTankerScene(spot[0], spot[1]);
+      } else {
+        const tanker = KarachiModels.createWaterTankerMafia();
+        tanker.position.set(spot[0], 0, spot[1]);
+        tanker.rotation.y = idx % 2 === 0 ? 0 : Math.PI / 2;
+        const decal = KarachiModels.createEvilTargetDecal('tanker', '💧 TANKER MAFIA • DEVOUR!');
+        tanker.add(decal);
+        this.registerEdible(tanker, 3, 900, `Water Tanker Mafia #${idx + 2}`, 3.4, { isBadGuy: true, evilType: 'tanker' });
+      }
     });
 
     // =============================================================
-    // 2. SPEEDING VIP PROTOCOL ESCORTS (10 Convoys Across City!)
+    // 2. SPEEDING VIP PROTOCOL ESCORTS & TRAFFIC JAMS (VIPs + Stuck Traffic!)
     // =============================================================
     const vipSpots = [
       [-20, -25], [20, -25], [-35, -45], [35, -45],
       [-20, 35], [20, 35], [-35, 60], [35, 60], [10, 65], [-10, -65]
     ];
     vipSpots.forEach((spot, idx) => {
-      const vip = KarachiModels.createSpeedingVIPConvoy();
-      vip.position.set(spot[0], 0, spot[1]);
-      vip.rotation.y = idx % 2 === 0 ? Math.PI : 0;
-      this.registerEdible(vip, 3, 850, `VIP Protocol Escort #${idx + 2}`, 3.2, { isBadGuy: true, evilType: 'vip' });
+      if (idx < 6) {
+        this.addVIPTrafficJamScene(spot[0], spot[1], idx % 2 === 0 ? 0 : Math.PI / 2);
+      } else {
+        const vip = KarachiModels.createSpeedingVIPConvoy();
+        vip.position.set(spot[0], 0, spot[1]);
+        vip.rotation.y = idx % 2 === 0 ? Math.PI : 0;
+        const decal = KarachiModels.createEvilTargetDecal('vip', '🚨 VIP PROTOCOL • DEVOUR!');
+        vip.add(decal);
+        this.registerEdible(vip, 3, 850, `VIP Protocol Escort #${idx + 2}`, 3.2, { isBadGuy: true, evilType: 'vip' });
+      }
     });
 
     // =============================================================
@@ -629,18 +682,15 @@ export class CityGenerator {
     });
 
     // =============================================================
-    // 5. KARACHI STREET ROBBERY SCENES (10 Robbery Scenes!)
+    // 5. KARACHI STREET ROBBERY SCENES (10 Interactive Mugging Scenes!)
     // =============================================================
     const robberySpots = [
       [-35, -20], [-45, -45], [30, -25], [45, -45],
       [-30, 30], [-55, 50], [25, 30], [50, 45],
       [-15, -55], [15, 55]
     ];
-    robberySpots.forEach((spot, idx) => {
-      const robScene = KarachiModels.createRobberyScene();
-      robScene.position.set(spot[0], 0, spot[1]);
-      robScene.rotation.y = (Math.random() - 0.5) * 0.8;
-      this.registerEdible(robScene, 1, 750, `Mobile Snatcher #${idx + 2}`, 2.4, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
+    robberySpots.forEach(spot => {
+      this.addRobberyScene(spot[0], spot[1]);
     });
 
     // =============================================================
@@ -758,13 +808,8 @@ export class CityGenerator {
     nwGutka.position.set(-86, 0, -86);
     this.registerEdible(nwGutka, 1, 400, "Saddar Gutka Peddler", 1.5, { isBadGuy: true, evilType: 'gutka' });
 
-    const nwTanker = KarachiModels.createWaterTankerMafia();
-    nwTanker.position.set(-88, 0, -82);
-    this.registerEdible(nwTanker, 3, 900, "Saddar Water Tanker Mafia", 3.4, { isBadGuy: true, evilType: 'tanker' });
-
-    const nwRob = KarachiModels.createRobberyScene();
-    nwRob.position.set(-82, 0, -88);
-    this.registerEdible(nwRob, 1, 750, "Saddar Mobile Snatcher", 2.4, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
+    this.addWaterTankerScene(-88, -82);
+    this.addRobberyScene(-82, -88);
 
     const nwRacer = KarachiModels.createOneWheelerRacer();
     nwRacer.position.set(-84, 0, -84);
@@ -789,9 +834,7 @@ export class CityGenerator {
     neBhatta.position.set(84, 0, -88);
     this.registerEdible(neBhatta, 1, 700, "Chundrigar Bhatta Gangster", 1.5, { isBadGuy: true, evilType: 'bhatta' });
 
-    const neVip = KarachiModels.createSpeedingVIPConvoy();
-    neVip.position.set(82, 0, -84);
-    this.registerEdible(neVip, 3, 850, "Chundrigar VIP Escort", 3.2, { isBadGuy: true, evilType: 'vip' });
+    this.addVIPTrafficJamScene(82, -84, -Math.PI / 2);
 
     const neKe = KarachiModels.createKElectricTransformer();
     neKe.position.set(88, 0, -82);
@@ -812,13 +855,8 @@ export class CityGenerator {
     swChina.position.set(-86, 0, 86);
     this.registerEdible(swChina, 1, 650, "Manora Beach Land Grabber", 1.5, { isBadGuy: true, evilType: 'chinacutting' });
 
-    const swRob = KarachiModels.createRobberyScene();
-    swRob.position.set(-88, 0, 82);
-    this.registerEdible(swRob, 1, 750, "Manora Harbor Snatcher", 2.4, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
-
-    const swTanker = KarachiModels.createWaterTankerMafia();
-    swTanker.position.set(-82, 0, 88);
-    this.registerEdible(swTanker, 3, 900, "Coastal Water Tanker", 3.4, { isBadGuy: true, evilType: 'tanker' });
+    this.addRobberyScene(-88, 82);
+    this.addWaterTankerScene(-82, 88);
 
     const swPot = KarachiModels.createBrokenRoadPatch();
     swPot.position.set(-85, 0, 84);
@@ -831,9 +869,7 @@ export class CityGenerator {
     }
 
     // --- SE Corner: Do Darya Arabian Sea Waterfront Pier (around x: 88, z: 88) ---
-    const seVip = KarachiModels.createSpeedingVIPConvoy();
-    seVip.position.set(88, 0, 82);
-    this.registerEdible(seVip, 3, 850, "Do Darya VIP Protocol", 3.2, { isBadGuy: true, evilType: 'vip' });
+    this.addVIPTrafficJamScene(88, 82, Math.PI);
 
     const sePol = KarachiModels.createPolitician({ name: "Advisor Khurshid", quote: "Do Darya ka fish dinner shandaar hai!" });
     sePol.position.set(84, 0, 86);

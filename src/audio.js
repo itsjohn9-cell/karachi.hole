@@ -781,6 +781,120 @@ class AudioManager {
     this.vibrate([40, 25, 60]);
   }
 
+  // Joyous celebration when a citizen is saved from a robbery!
+  playRescuedCitizenCheer() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Ascending happy fanfare arpeggio (C5 -> E5 -> G5 -> C6)
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.08);
+
+      gain.gain.setValueAtTime(0.001, t + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.28, t + idx * 0.08 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.08 + 0.22);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t + idx * 0.08);
+      osc.stop(t + idx * 0.08 + 0.24);
+    });
+
+    // Joyful crowd cheer noise
+    const bufferSize = this.ctx.sampleRate * 0.6;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.28));
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(950, t);
+    filter.Q.setValueAtTime(3.0, t);
+
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.18, t + 0.15);
+    nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
+
+    noise.connect(filter);
+    filter.connect(nGain);
+    nGain.connect(this.ctx.destination);
+    noise.start(t + 0.15);
+
+    this.vibrate([25, 20, 45]);
+  }
+
+  // Rhythmic celebratory car honking when VIP protocol is crushed and traffic is freed!
+  playTrafficFreedCelebration() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Rhythmic Karachi celebratory horn pattern: "Pip-pip-pi-pip-pip!"
+    const timings = [0, 0.09, 0.20, 0.30, 0.42];
+    const freqs = [466.16, 554.37, 466.16, 554.37, 622.25]; // Dual-tone horn
+
+    timings.forEach((startTime, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freqs[idx % freqs.length], t + startTime);
+
+      gain.gain.setValueAtTime(0.24, t + startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + startTime + 0.07);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t + startTime);
+      osc.stop(t + startTime + 0.08);
+    });
+
+    this.vibrate([20, 30, 20, 30, 40]);
+  }
+
+  // Gushing pressurized freshwater fountain when tanker mafia is devoured!
+  playFreshwaterEruption() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Ascending whoosh
+    const bufferSize = this.ctx.sampleRate * 0.8;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(300, t);
+    filter.frequency.exponentialRampToValueAtTime(2400, t + 0.4);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.75);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    noise.start(t);
+
+    this.vibrate([30, 20, 50]);
+  }
+
   stopMusic() {
     this.isPlayingMusic = false;
     if (this.musicInterval) {

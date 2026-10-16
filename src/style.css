@@ -294,6 +294,81 @@ html, body {
   100% { transform: scale(1.06); filter: drop-shadow(0 0 25px #ff9100); }
 }
 
+/* ==============================================================
+   LIVE CRIME RADAR COMPASS BAR (SUPERHERO SCANNER)
+   ============================================================== */
+.crime-radar-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  pointer-events: none;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.radar-evil-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1.5px solid rgba(255, 23, 68, 0.85);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 23, 68, 0.4);
+  padding: 5px 13px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  backdrop-filter: blur(12px);
+  animation: pulseRadar 1.8s infinite ease-in-out;
+}
+
+@keyframes pulseRadar {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+.radar-evil-badge.evil-robber {
+  border-color: #ff1744;
+  box-shadow: 0 0 14px rgba(255, 23, 68, 0.6);
+}
+.radar-evil-badge.evil-vip {
+  border-color: #00e5ff;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.6);
+}
+.radar-evil-badge.evil-politician {
+  border-color: #ffd700;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.6);
+}
+.radar-evil-badge.evil-tanker {
+  border-color: #00b0ff;
+  box-shadow: 0 0 14px rgba(0, 176, 255, 0.6);
+}
+.radar-evil-badge.evil-gutka {
+  border-color: #e040fb;
+  box-shadow: 0 0 14px rgba(224, 64, 251, 0.6);
+}
+
+.radar-icon {
+  font-size: 1.05rem;
+}
+
+.radar-name {
+  color: #f8fafc;
+  font-weight: 800;
+}
+
+.radar-dist {
+  color: #ffd700;
+  font-weight: 900;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
 .highlight-btn {
   background: linear-gradient(135deg, #00e5ff, #00c853) !important;
   color: #00241b !important;

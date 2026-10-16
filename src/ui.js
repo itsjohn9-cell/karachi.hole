@@ -74,6 +74,9 @@ export class UIManager {
         </div>
       </div>
 
+      <!-- Live Crime Radar Compass Bar (Instantly guides player to active crimes/evils!) -->
+      <div class="crime-radar-bar" id="hud-crime-radar"></div>
+
       <!-- Mission Guidance Bar -->
       <div class="mission-guidance-bar" id="mission-guidance-bar">
         <span class="mission-icon">🎯</span>
@@ -381,6 +384,28 @@ export class UIManager {
       `;
       lbContainer.appendChild(row);
     });
+
+    // Live Crime Radar Compass Bar (Instantly guides player to crimes happening nearby!)
+    const radarContainer = document.getElementById('hud-crime-radar');
+    if (radarContainer && nearestEvils) {
+      radarContainer.innerHTML = '';
+      nearestEvils.forEach(evil => {
+        const item = document.createElement('div');
+        item.className = `radar-evil-badge evil-${evil.evilType}`;
+        let arrow = "➔";
+        if (Math.abs(evil.dx) > Math.abs(evil.dz)) {
+          arrow = evil.dx > 0 ? "➔ Right" : "⬅ Left";
+        } else {
+          arrow = evil.dz < 0 ? "⬆ Ahead" : "⬇ Behind";
+        }
+        item.innerHTML = `
+          <span class="radar-icon">${evil.icon}</span>
+          <span class="radar-name">${evil.name.split('(')[0].trim()}</span>
+          <span class="radar-dist">${evil.dist}m ${arrow}</span>
+        `;
+        radarContainer.appendChild(item);
+      });
+    }
   }
 
   showAnnouncement(text, color = '#ffd700') {

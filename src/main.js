@@ -98,6 +98,9 @@ class Game {
     this.foodStalls = generated.foodStalls || [];
     this.buildings = generated.buildings || [];
     this.citizens = generated.citizens || [];
+    this.interactiveVictims = generated.interactiveVictims || [];
+    this.interactiveTraffic = generated.interactiveTraffic || [];
+    this.interactiveResidents = generated.interactiveResidents || [];
     this.civicTotal = Math.max(1, this.badGuys.length);
     this.civicCleansed = 0;
     this.frenzyTimer = 0;
@@ -238,6 +241,10 @@ class Game {
     this.edibleObjects.forEach(obj => {
       this.scene.remove(obj.mesh);
     });
+    if (this.interactiveVictims) this.interactiveVictims.forEach(v => this.scene.remove(v));
+    if (this.interactiveTraffic) this.interactiveTraffic.forEach(v => this.scene.remove(v));
+    if (this.interactiveResidents) this.interactiveResidents.forEach(v => this.scene.remove(v));
+
     const generated = this.cityGen.generateCity();
     this.edibleObjects = generated.edibleObjects;
     this.politicians = generated.politicians || [];
@@ -247,6 +254,9 @@ class Game {
     this.foodStalls = generated.foodStalls || [];
     this.buildings = generated.buildings || [];
     this.citizens = generated.citizens || [];
+    this.interactiveVictims = generated.interactiveVictims || [];
+    this.interactiveTraffic = generated.interactiveTraffic || [];
+    this.interactiveResidents = generated.interactiveResidents || [];
     this.civicTotal = Math.max(1, this.badGuys.length);
     this.civicCleansed = 0;
     this.frenzyTimer = 0;
@@ -576,6 +586,83 @@ class Game {
       aPos.z = THREE.MathUtils.clamp(aPos.z, -94, 94);
     }
 
+    // =============================================================
+    // ANIMATE INTERACTIVE SCENE ACTORS & EVIL TARGET DECALS
+    // =============================================================
+    const currentTime = this.clock.getElapsedTime();
+
+    // 1. Robbery Victims (Shivering in fear if robber active, jumping & dancing in joy if rescued!)
+    if (this.interactiveVictims) {
+      for (let i = 0; i < this.interactiveVictims.length; i++) {
+        const v = this.interactiveVictims[i];
+        const ud = v.userData;
+        if (!ud) continue;
+
+        if (ud.isRescued) {
+          ud.danceCycle = (ud.danceCycle || 0) + dt * 10;
+          v.position.y = Math.abs(Math.sin(ud.danceCycle)) * 0.45;
+          if (ud.handL && ud.handR) {
+            ud.handL.rotation.z = -1.4 + Math.sin(ud.danceCycle) * 0.4;
+            ud.handR.rotation.z = 1.4 - Math.sin(ud.danceCycle) * 0.4;
+          }
+        } else {
+          // Terrified trembling
+          const tremble = Math.sin(currentTime * 30 + i) * 0.03;
+          if (ud.vBody) ud.vBody.position.x = tremble;
+        }
+      }
+    }
+
+    // 2. Stuck Traffic Vehicles (Impatient honking when blocked, joyous driving when freed!)
+    if (this.interactiveTraffic) {
+      for (let i = 0; i < this.interactiveTraffic.length; i++) {
+        const tr = this.interactiveTraffic[i];
+        const ud = tr.userData;
+        if (!ud) continue;
+
+        if (ud.isFreed) {
+          const speed = ud.freedSpeed || 6.0;
+          const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), tr.rotation.y);
+          tr.position.addScaledVector(forward, dt * speed);
+        } else {
+          tr.position.y = Math.abs(Math.sin(currentTime * 12 + i)) * 0.04;
+        }
+      }
+    }
+
+    // 3. Thirsty Residents (Pleading when dry, dancing with full water drums when tanker is devoured!)
+    if (this.interactiveResidents) {
+      for (let i = 0; i < this.interactiveResidents.length; i++) {
+        const res = this.interactiveResidents[i];
+        const ud = res.userData;
+        if (!ud) continue;
+
+        if (ud.isWaterReceived) {
+          ud.danceCycle = (ud.danceCycle || 0) + dt * 8;
+          res.position.y = Math.abs(Math.sin(ud.danceCycle)) * 0.35;
+          res.rotation.y += dt * 1.5;
+        }
+      }
+    }
+
+    // 4. Animate Glowing Evil Target Decals (Pulse rings and bob overhead billboards)
+    for (let i = 0; i < this.edibleObjects.length; i++) {
+      const obj = this.edibleObjects[i];
+      if (obj.state === 'swallowed') continue;
+      const decal = obj.mesh.userData?.targetDecal;
+      if (decal && decal.userData) {
+        const ring = decal.userData.ring;
+        if (ring) {
+          const s = 1.0 + Math.sin(currentTime * 4.0 + i) * 0.12;
+          ring.scale.set(s, s, s);
+        }
+        const badge = decal.userData.badge;
+        if (badge) {
+          badge.position.y = 3.8 + Math.sin(currentTime * 2.5 + i) * 0.15;
+        }
+      }
+    }
+
     // Edible Objects Suction & Collision (Ultra-fast Bounding Box check for 60 FPS)
     const pullSpeed = isKidsMode ? 10.0 : 7.0;
     for (let i = 0; i < this.edibleObjects.length; i++) {
@@ -730,14 +817,53 @@ class Game {
               audio.playOneWheelerImpound();
               this.ui.showAnnouncement(`🏍️ RECKLESS ONE-WHEELER IMPOUNDED! STREETS SAFE! (+${points} XP)`, '#00e5ff');
             } else if (obj.evilType === 'tanker') {
-              this.particles.createSwallowBurst(hole.position, 4, 30);
+              this.particles.createFreshwaterGeyser(hole.position, 48);
+              this.particles.createCelebrationConfetti(hole.position, 35);
               audio.playWaterTankerDevour();
-              this.ui.showAnnouncement(`🚰 WATER TANKER MAFIA BUSTED! KARACHI WATER FREED! (+${points} XP)`, '#00e5ff');
+              audio.playFreshwaterEruption();
+
+              // Trigger Joyous Thirsty Residents with full water drums!
+              const residents = obj.mesh.userData?.thirstyResidents;
+              if (residents && residents.length > 0) {
+                residents.forEach((r, rIdx) => {
+                  r.userData.isWaterReceived = true;
+                  if (r.userData.drawBubble) {
+                    const waterPhrases = [
+                      "💧 PANI MIL GAYA! Free water for Karachi! Zindabad!",
+                      "🌊 Tanker mafia doob gaya! Karachi ko pani mil gaya!"
+                    ];
+                    r.userData.drawBubble(waterPhrases[rIdx % waterPhrases.length], true);
+                  }
+                  this.particles.createHeartBurst(r.position, 14);
+                  this.particles.createCelebrationConfetti(r.position, 20);
+                });
+              }
+              this.ui.showAnnouncement(`🚰 TANKER MAFIA BUSTED! FRESH WATER FLOWS FOR RESIDENTS! (+${points} XP)`, '#00e5ff');
             } else if (obj.evilType === 'vip') {
-              this.particles.createSwallowBurst(hole.position, 3, 25);
+              this.particles.createCelebrationConfetti(hole.position, 45);
+              this.particles.createSwallowBurst(hole.position, 4, 30);
               audio.playVIPHooter();
               audio.playGutterSplash();
-              this.ui.showAnnouncement(`🚨 VIP PROTOCOL CONVOY DEVOURED! NO VIP RULES! (+${points} XP)`, '#ff1744');
+              audio.playTrafficFreedCelebration();
+
+              // Trigger Joyous Stuck Traffic Celebration!
+              const stuckVehicles = obj.mesh.userData?.stuckVehicles;
+              if (stuckVehicles && stuckVehicles.length > 0) {
+                stuckVehicles.forEach((v, vIdx) => {
+                  v.userData.isFreed = true;
+                  v.userData.freedSpeed = 5.5 + Math.random() * 2.5;
+                  if (v.userData.drawTrafficBubble) {
+                    const happyPhrases = [
+                      "🥳 TRAFFIC FREED! VIP culture murdabad! Shukriya Hero!",
+                      "🏥 Hospital ka rasta khul gaya! Zindabad Gutter Hero!",
+                      "🚗 Wah Gutter Hero wah! Ab hum time pe pohanchengy!"
+                    ];
+                    v.userData.drawTrafficBubble(happyPhrases[vIdx % happyPhrases.length], true);
+                  }
+                  this.particles.createCelebrationConfetti(v.position, 25);
+                });
+              }
+              this.ui.showAnnouncement(`🚨 VIP CONVOY SMASHED! CITIZENS FREED FROM TRAFFIC JAM! (+${points} XP)`, '#00e5ff');
             } else if (obj.evilType === 'gutka') {
               this.particles.createSwallowBurst(hole.position, 2, 20);
               audio.playGutterSplash();
@@ -747,19 +873,34 @@ class Game {
               audio.playPotholeDevour();
               this.ui.showAnnouncement(`🛠️ ROAD POTHOLE REPAIRED! (+${points} XP)`, '#ff9100');
             } else if (obj.evilType === 'robber') {
-              this.particles.createMoneyBurst(hole.position, 35);
+              this.particles.createMoneyBurst(hole.position, 40);
+              this.particles.createCelebrationConfetti(hole.position, 40);
               this.particles.createSwallowBurst(hole.position, 3, 25);
               audio.playRobberDevour();
               audio.playGutterSplash();
-              this.ui.showAnnouncement(`🔫 STREET DAKOO DEVOURED! MOBILE RECOVERED! (+${points} XP)`, '#ffea00');
+              audio.playRescuedCitizenCheer();
+
+              // Trigger Joyous Rescued Citizen Celebration!
+              const victim = obj.mesh.userData?.victimCitizen;
+              if (victim) {
+                victim.userData.isRescued = true;
+                if (victim.userData.drawBubble) {
+                  victim.userData.drawBubble("🎉 ALLAH KA SHUKAR! Mera mobile bach gaya! Hero zindabad!", true);
+                }
+                this.particles.createCelebrationConfetti(victim.position, 35);
+                this.particles.createHeartBurst(victim.position, 16);
+              }
+              this.ui.showAnnouncement(`🔫 DAKOO DEVOURED! CITIZEN RESCUED WITH PHONE! (+${points} XP)`, '#00e676');
             } else if (obj.evilType === 'politician') {
-              this.particles.createMoneyBurst(hole.position, 45);
+              this.particles.createMoneyBurst(hole.position, 55);
+              this.particles.createCelebrationConfetti(hole.position, 35);
               audio.playPoliticianSwallow();
               audio.playGutterSplash();
+              audio.playRescuedCitizenCheer();
               this.player.politiciansDevoured = (this.player.politiciansDevoured || 0) + 1;
               const pName = obj.mesh.userData?.name || "VIP Politician";
               const quote = obj.mesh.userData?.quote || "Mujhe kyun nikala?!";
-              this.ui.showAnnouncement(`💰 DEVOURED ${pName.toUpperCase()}! "${quote}" (+${points} XP)`, '#ffd700');
+              this.ui.showAnnouncement(`💰 DEVOURED ${pName.toUpperCase()}! AWAM KA PAISA WAPIS! (+${points} XP)`, '#ffd700');
             } else if (obj.evilType === 'trash') {
               this.particles.createSwallowBurst(hole.position, 1, 10);
               audio.playGutterSplash();
@@ -905,10 +1046,10 @@ class Game {
   updateCamera(dt) {
     if (!this.player) return;
 
-    // Intimate closer zoom at early levels so politicians, animals, trash, and open gutter are crystal clear!
-    // Smoothly expands outward as the hole levels up and swallows bigger city objects
-    const targetHeight = 8.8 + this.player.radius * 1.5;
-    const targetDistZ = 7.4 + this.player.radius * 1.35;
+    // Dramatic, intimate action camera: characters, crimes, cars, and facial expressions are crystal clear!
+    // Much closer, lower action angle so player sees exactly who is getting devoured and how citizens celebrate
+    const targetHeight = 4.6 + this.player.radius * 1.05;
+    const targetDistZ = 4.8 + this.player.radius * 1.05;
 
     const targetCamX = this.player.position.x;
     const targetCamY = targetHeight;
@@ -921,8 +1062,8 @@ class Game {
 
     const lookTarget = new THREE.Vector3(
       this.player.position.x,
-      0.25,
-      this.player.position.z - 1.6
+      1.15,
+      this.player.position.z - 1.8
     );
     this.camera.lookAt(lookTarget);
 
@@ -1060,7 +1201,36 @@ class Game {
 
     this.updateCamera(dt);
 
-    // Update HUD with Civic Cleanser progress and Hero Frenzy status
+    // Calculate nearest active crimes & evils for HUD Radar Compass
+    const playerPos = this.player ? this.player.position : new THREE.Vector3();
+    const nearestEvils = this.edibleObjects
+      .filter(o => o.isBadGuy && o.state !== 'swallowed')
+      .map(o => {
+        const dx = o.mesh.position.x - playerPos.x;
+        const dz = o.mesh.position.z - playerPos.z;
+        const dist = Math.hypot(dx, dz);
+        let icon = "⚠️";
+        if (o.evilType === 'robber') icon = "🔫";
+        else if (o.evilType === 'vip') icon = "🚨";
+        else if (o.evilType === 'tanker') icon = "💧";
+        else if (o.evilType === 'politician') icon = "💰";
+        else if (o.evilType === 'gutka') icon = "🛑";
+        else if (o.evilType === 'ke') icon = "⚡";
+        else if (o.evilType === 'pothole') icon = "🕳️";
+
+        return {
+          name: o.name,
+          evilType: o.evilType,
+          icon,
+          dist: Math.round(dist),
+          dx,
+          dz
+        };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 3);
+
+    // Update HUD with Civic Cleanser progress, Hero Frenzy status, and Live Crime Radar
     const ranked = [...this.holes].sort((a, b) => b.score - a.score);
     const civicPct = (this.civicCleansed / Math.max(1, this.civicTotal)) * 100;
     this.ui.updateHUD({
@@ -1069,7 +1239,8 @@ class Game {
       rankedHoles: ranked,
       gameMode: this.gameMode,
       civicPercent: civicPct,
-      frenzyActive: this.frenzyTimer > 0
+      frenzyActive: this.frenzyTimer > 0,
+      nearestEvils
     });
 
     this.renderer.render(this.scene, this.camera);

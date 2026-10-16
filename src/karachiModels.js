@@ -871,9 +871,171 @@ export const KarachiModels = {
     cone.castShadow = true;
     group.add(cone);
 
-    const whiteBand = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.14, 8), materials.whiteMarble);
     whiteBand.position.y = 0.32;
     group.add(whiteBand);
+
+    return group;
+  },
+
+  // Dynamic Neon Target Decal & Floating Billboard Badge (Crystal Clear "What to Devour" Visibility!)
+  createEvilTargetDecal(evilType, label = "DEVOUR TARGET") {
+    const group = new THREE.Group();
+    group.name = `Target-Decal-${evilType}`;
+
+    const colorMap = {
+      robber: 0xff1744,      // Neon Crimson
+      vip: 0xff1744,         // Police Red/Blue
+      politician: 0xffd700,  // Gold
+      tanker: 0x00e5ff,      // Cyan
+      gutka: 0xe040fb,       // Magenta
+      ke: 0xffea00,          // Electric Yellow
+      pothole: 0xff9100,     // Hazard Orange
+      chinacutting: 0xff6d00,// Orange
+      bhatta: 0x76ff03,      // Lime
+      onewheeler: 0x00e5ff   // Cyan
+    };
+    const color = colorMap[evilType] || 0xff1744;
+
+    // 1. Ground Pulsing Ring
+    const ringGeo = new THREE.RingGeometry(1.3, 1.7, 32);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: color,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.85
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.y = 0.04;
+    group.add(ring);
+
+    // 2. Crosshair chevrons on ground
+    const barGeo = new THREE.PlaneGeometry(0.18, 0.7);
+    barGeo.rotateX(-Math.PI / 2);
+    const barMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    [
+      [0, 1.7, 0],
+      [0, -1.7, 0],
+      [1.7, 0, Math.PI / 2],
+      [-1.7, 0, Math.PI / 2]
+    ].forEach(([bx, bz, rot]) => {
+      const bar = new THREE.Mesh(barGeo, barMat);
+      bar.position.set(bx, 0.05, bz);
+      bar.rotation.y = rot;
+      group.add(bar);
+    });
+
+    // 3. Floating High-Visibility Billboard Badge
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 96;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(17, 17, 17, 0.94)';
+    ctx.beginPath();
+    ctx.roundRect(6, 6, 388, 84, 18);
+    ctx.fill();
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = `#${color.toString(16).padStart(6, '0')}`;
+    ctx.stroke();
+
+    ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+    ctx.font = '900 24px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, 200, 48);
+
+    const bTex = new THREE.CanvasTexture(canvas);
+    const badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    badge.scale.set(4.4, 1.05, 1);
+    badge.position.set(0, 3.8, 0);
+    group.add(badge);
+
+    group.userData = {
+      ring,
+      badge,
+      color,
+      timer: 0
+    };
+
+    return group;
+  },
+
+  // The Terrified Victim Citizen who gets RESCUED and dances with pure happiness!
+  createTerrifiedVictimCitizen() {
+    const group = new THREE.Group();
+    group.name = "Robbery-Victim-Citizen";
+
+    // Shalwar Kameez body
+    const vBody = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.85, 8), materials.shalwarNavy);
+    vBody.position.y = 0.88;
+    vBody.castShadow = true;
+    group.add(vBody);
+
+    const vHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), materials.pedestrianSkin);
+    vHead.position.y = 1.48;
+    vHead.castShadow = true;
+    group.add(vHead);
+
+    // Terrified hands raised in surrender
+    const armMat = materials.shalwarNavy;
+    const handL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), armMat);
+    handL.position.set(-0.28, 1.45, 0);
+    handL.rotation.z = 0.2;
+    group.add(handL);
+
+    const handR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), armMat);
+    handR.position.set(0.28, 1.45, 0);
+    handR.rotation.z = -0.2;
+    group.add(handR);
+
+    // Dropped glowing smartphone on ground
+    const phone = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.25), new THREE.MeshBasicMaterial({ color: 0x00e5ff }));
+    phone.position.set(0.2, 0.02, 0.5);
+    group.add(phone);
+
+    // Dialogue Bubble
+    const canvas = document.createElement('canvas');
+    canvas.width = 420;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const bubbleTex = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text, isJoy = false) => {
+      ctx.clearRect(0, 0, 420, 110);
+      ctx.fillStyle = isJoy ? '#00c853' : '#d50000'; // Green when rescued, Red when scared
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 404, 76, 18);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 210, 46);
+      bubbleTex.needsUpdate = true;
+    };
+    drawBubble('😱 Bhai phone le lo! Goli mat chalana!');
+
+    const bubbleSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex, transparent: true }));
+    bubbleSprite.scale.set(4.4, 1.15, 1);
+    bubbleSprite.position.set(0, 2.5, 0);
+    group.add(bubbleSprite);
+
+    group.userData = {
+      isVictim: true,
+      isRescued: false,
+      vBody,
+      handL,
+      handR,
+      drawBubble,
+      bubbleSprite,
+      phone,
+      cheerTimer: 0,
+      danceCycle: 0
+    };
 
     return group;
   },
@@ -1323,106 +1485,325 @@ export const KarachiModels = {
     return group;
   },
 
-  // 26. Karachi Street Robbery Scene (Mobile Snatcher Scene) - Tier 2 (Huge Parody Target!)
+  // 26. Karachi Street Robbery Scene (Decoupled: Robber Target vs Rescued Citizen!)
   createRobberyScene() {
-    const group = new THREE.Group();
-    group.name = "Street-Robber-Scene";
-    group.isRobbery = true;
-
-    // 1. The Robber (Wearing cloth mask / helmet, holding pistol)
+    // 1. The Robber Target (The ONLY entity that gets swallowed by the hole!)
     const robberGroup = new THREE.Group();
-    robberGroup.position.set(0, 0, 0);
+    robberGroup.name = "Street-Robber-Target";
+    robberGroup.isBadGuy = true;
+    robberGroup.evilType = 'robber';
 
-    const jacketMat = new THREE.MeshLambertMaterial({ color: 0x212121 }); // Black leather jacket
+    // Leather jacket body
+    const jacketMat = new THREE.MeshLambertMaterial({ color: 0x212121 });
     const rBody = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.26, 0.85, 8), jacketMat);
     rBody.position.y = 0.88;
     robberGroup.add(rBody);
 
-    // Helmet / Mask Head
     const rHead = new THREE.Mesh(new THREE.SphereGeometry(0.19, 8, 8), materials.curbBlack);
     rHead.position.y = 1.48;
     robberGroup.add(rHead);
 
-    // Arm with Pistol pointed forward
-    const armGeo = new THREE.BoxGeometry(0.1, 0.1, 0.6);
-    const arm = new THREE.Mesh(armGeo, jacketMat);
+    // Aimed Arm with Black 9mm Pistol
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.6), jacketMat);
     arm.position.set(0.25, 1.15, 0.35);
     robberGroup.add(arm);
 
-    // Black 9mm Pistol Gun
     const gun = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.25), materials.curbBlack);
     gun.position.set(0.25, 1.18, 0.72);
     robberGroup.add(gun);
 
-    group.add(robberGroup);
-
-    // 2. The Terrified Victim Citizen with hands in air!
-    const victimGroup = new THREE.Group();
-    victimGroup.position.set(0, 0, 1.8);
-    victimGroup.rotation.y = Math.PI; // Facing robber
-
-    const vBody = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.85, 8), materials.shalwarNavy);
-    vBody.position.y = 0.88;
-    victimGroup.add(vBody);
-
-    const vHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), materials.pedestrianSkin);
-    vHead.position.y = 1.48;
-    victimGroup.add(vHead);
-
-    // Hands raised in surrender
-    const handL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 0.08), materials.shalwarNavy);
-    handL.position.set(-0.25, 1.4, 0);
-    victimGroup.add(handL);
-    const handR = handL.clone();
-    handR.position.x = 0.25;
-    victimGroup.add(handR);
-
-    // Dropped Smartphone & Wallet on ground
-    const phone = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.22), new THREE.MeshBasicMaterial({ color: 0x00e5ff }));
-    phone.position.set(0.2, 0.02, 0.8);
-    group.add(phone);
-
-    group.add(victimGroup);
-
-    // 3. Robber's Red CD-70 Getaway Motorbike
+    // Red CD-70 Getaway Bike attached behind robber
     const bike = this.createMotorbike();
-    bike.position.set(-1.4, 0, 0.3);
-    group.add(bike);
+    bike.position.set(-1.4, 0, -0.4);
+    robberGroup.add(bike);
 
-    // 4. Robbery Dialogue Speech Bubble
+    // Glowing Neon Target Decal on Asphalt
+    const targetDecal = this.createEvilTargetDecal('robber', '🔫 ARMED DAKOO • DEVOUR!');
+    robberGroup.add(targetDecal);
+
+    // Robber Threat Speech Bubble
     const canvas = document.createElement('canvas');
-    canvas.width = 384;
+    canvas.width = 400;
     canvas.height = 110;
     const ctx = canvas.getContext('2d');
     const bubbleTexture = new THREE.CanvasTexture(canvas);
 
     const drawRobberBubble = (text) => {
-      ctx.clearRect(0, 0, 384, 110);
-      ctx.fillStyle = '#d50000'; // Alert Red
+      ctx.clearRect(0, 0, 400, 110);
+      ctx.fillStyle = '#b71c1c';
       ctx.beginPath();
-      ctx.roundRect(10, 10, 364, 75, 20);
+      ctx.roundRect(8, 8, 384, 76, 18);
       ctx.fill();
       ctx.lineWidth = 4;
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
 
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 24px "Outfit", sans-serif';
+      ctx.font = 'bold 22px "Outfit", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(text, 192, 48);
+      ctx.fillText(text, 200, 46);
       bubbleTexture.needsUpdate = true;
     };
     drawRobberBubble('🔫 Mobile nikaal! Purse do!');
 
     const bubbleSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture, transparent: true }));
-    bubbleSprite.scale.set(3.8, 1.1, 1);
-    bubbleSprite.position.set(0, 2.4, 0.8);
-    group.add(bubbleSprite);
+    bubbleSprite.scale.set(4.0, 1.1, 1);
+    bubbleSprite.position.set(0, 2.6, 0.4);
+    robberGroup.add(bubbleSprite);
+
+    // 2. The Terrified Victim Citizen (Stands in front, faces robber, gets RESCUED!)
+    const victimCitizen = this.createTerrifiedVictimCitizen();
+    victimCitizen.position.set(0, 0, 2.2);
+    victimCitizen.rotation.y = Math.PI; // Facing robber
+
+    robberGroup.userData = {
+      isBadGuy: true,
+      evilType: 'robber',
+      name: "Street Mobile Snatcher (ڈاکو)",
+      speed: 4.8,
+      drawBubble: drawRobberBubble,
+      bubbleSprite,
+      victimCitizen,
+      targetDecal
+    };
+
+    return {
+      robberTarget: robberGroup,
+      victimCitizen
+    };
+  },
+
+  // 26B. Sedan / Taxi Car for Traffic Scenes
+  createSedanCar(bodyColor = 0xfbc02d) {
+    const group = new THREE.Group();
+    group.name = "Sedan-Taxi";
+
+    const carMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.35, metalness: 0.2 });
+    // Lower body
+    const lower = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.65, 3.6), carMat);
+    lower.position.y = 0.6;
+    lower.castShadow = true;
+    group.add(lower);
+
+    // Cabin
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, 1.9), materials.tintedGlass);
+    cabin.position.set(0, 1.15, -0.15);
+    cabin.castShadow = true;
+    group.add(cabin);
+
+    // Taxi Roof Sign
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.2, 0.3), new THREE.MeshBasicMaterial({ color: 0xffeb3b }));
+    sign.position.set(0, 1.55, -0.15);
+    group.add(sign);
+
+    // 4 Wheels
+    const wGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.22, 12);
+    wGeo.rotateZ(Math.PI / 2);
+    [[-0.95, 0.32, 1.1], [0.95, 0.32, 1.1], [-0.95, 0.32, -1.1], [0.95, 0.32, -1.1]].forEach(p => {
+      const w = new THREE.Mesh(wGeo, materials.rubber);
+      w.position.set(...p);
+      group.add(w);
+    });
+
+    return group;
+  },
+
+  // 26C. VIP Protocol Traffic Jam Scene (VIP Prado + Stuck Karachi Vehicles that get freed!)
+  createVIPTrafficJamScene() {
+    const vipSUV = this.createSpeedingVIPConvoy();
+    vipSUV.name = "VIP-Protocol-SUV";
+    vipSUV.isBadGuy = true;
+    vipSUV.evilType = 'vip';
+
+    const targetDecal = this.createEvilTargetDecal('vip', '🚨 VIP PROTOCOL • DEVOUR!');
+    vipSUV.add(targetDecal);
+
+    // Siren Text Bubble
+    const canvas = document.createElement('canvas');
+    canvas.width = 440;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const bTex = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text) => {
+      ctx.clearRect(0, 0, 440, 110);
+      ctx.fillStyle = '#b71c1c';
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 424, 76, 18);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffd700';
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 220, 46);
+      bTex.needsUpdate = true;
+    };
+    drawBubble('🚨 HATO! VIP AA RAHA HAI! SARKAR!');
+
+    const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    bubble.scale.set(4.5, 1.15, 1);
+    bubble.position.set(0, 3.6, 0);
+    vipSUV.add(bubble);
+
+    // Stuck Traffic Vehicles behind & beside that get FREED!
+    const stuckRickshaw = this.createAutoRickshaw();
+    stuckRickshaw.position.set(-3.2, 0, -3.2);
+    stuckRickshaw.name = "Stuck-Rickshaw";
+    this.attachTrafficBubble(stuckRickshaw, "🚑 Ambulance phansi hui hai! Rasta do!");
+
+    const stuckMehran = this.createSedanCar(0xfbc02d);
+    stuckMehran.position.set(3.2, 0, -3.4);
+    stuckMehran.name = "Stuck-Taxi";
+    this.attachTrafficBubble(stuckMehran, "🏥 Hospital jana hai! VIP culture murdabad!");
+
+    const stuckBike = this.createMotorbike();
+    stuckBike.position.set(0, 0, -5.2);
+    stuckBike.name = "Stuck-Bike";
+    this.attachTrafficBubble(stuckBike, "⏰ Office late ho gaye! Siren band karo!");
+
+    const stuckVehicles = [stuckRickshaw, stuckMehran, stuckBike];
+
+    vipSUV.userData = {
+      isBadGuy: true,
+      evilType: 'vip',
+      name: "VIP Protocol Prado Convoy",
+      speed: 5.6,
+      drawBubble,
+      bubbleSprite: bubble,
+      stuckVehicles,
+      targetDecal
+    };
+
+    return {
+      vipTarget: vipSUV,
+      stuckVehicles
+    };
+  },
+
+  attachTrafficBubble(vehicle, initialText) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 420;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const bTex = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text, isJoy = false) => {
+      ctx.clearRect(0, 0, 420, 110);
+      ctx.fillStyle = isJoy ? '#00c853' : '#e65100'; // Green when freed, Orange when angry
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 404, 76, 18);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 21px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 210, 46);
+      bTex.needsUpdate = true;
+    };
+    drawBubble(initialText, false);
+
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    sprite.scale.set(4.2, 1.1, 1);
+    sprite.position.set(0, 2.6, 0);
+    vehicle.add(sprite);
+
+    vehicle.userData = {
+      ...vehicle.userData,
+      drawTrafficBubble: drawBubble,
+      trafficSprite: sprite,
+      isFreed: false,
+      freedSpeed: 0
+    };
+  },
+
+  // 26D. Water Tanker Extortion Scene (Tanker Mafia + Thirsty Karachi Residents!)
+  createWaterTankerExtortionScene() {
+    const tanker = this.createWaterTankerMafia();
+    const targetDecal = this.createEvilTargetDecal('tanker', '💧 TANKER MAFIA • DEVOUR!');
+    tanker.add(targetDecal);
+
+    // 2 Thirsty Residents with water drums
+    const resident1 = this.createPleadingResident("15,000 ka tanker?! Zulm band karo!");
+    resident1.position.set(-3.4, 0, 1.2);
+
+    const resident2 = this.createPleadingResident("Pani do! Bache pyase hain!");
+    resident2.position.set(3.4, 0, 1.2);
+
+    const thirstyResidents = [resident1, resident2];
+    tanker.userData.thirstyResidents = thirstyResidents;
+    tanker.userData.targetDecal = targetDecal;
+
+    return {
+      tankerTarget: tanker,
+      thirstyResidents
+    };
+  },
+
+  createPleadingResident(initialText) {
+    const group = new THREE.Group();
+    group.name = "Thirsty-Resident";
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.85, 8), materials.shalwarGrey);
+    body.position.y = 0.88;
+    group.add(body);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), materials.pedestrianSkin);
+    head.position.y = 1.48;
+    group.add(head);
+
+    // Blue water bucket / drum held in front
+    const drumGeo = new THREE.CylinderGeometry(0.28, 0.24, 0.6, 12);
+    const drumMat = new THREE.MeshStandardMaterial({ color: 0x0277bd });
+    const drum = new THREE.Mesh(drumGeo, drumMat);
+    drum.position.set(0, 0.45, 0.45);
+    group.add(drum);
+
+    // Bubble
+    const canvas = document.createElement('canvas');
+    canvas.width = 420;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const bTex = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text, isJoy = false) => {
+      ctx.clearRect(0, 0, 420, 110);
+      ctx.fillStyle = isJoy ? '#00c853' : '#01579b';
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 404, 76, 18);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 21px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 210, 46);
+      bTex.needsUpdate = true;
+    };
+    drawBubble(initialText, false);
+
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    sprite.scale.set(4.2, 1.1, 1);
+    sprite.position.set(0, 2.4, 0);
+    group.add(sprite);
 
     group.userData = {
-      robberGroup, victimGroup, bubbleSprite, drawRobberBubble,
-      isResolved: false
+      isResident: true,
+      isWaterReceived: false,
+      drawBubble,
+      bubbleSprite: sprite,
+      drum,
+      danceCycle: 0
     };
 
     return group;
@@ -1606,13 +1987,17 @@ export const KarachiModels = {
     bubble.position.set(0, 2.3, 0);
     group.add(bubble);
 
+    const targetDecal = this.createEvilTargetDecal('gutka', '🛑 GUTKA MAFIA • DEVOUR!');
+    group.add(targetDecal);
+
     group.userData = {
       isBadGuy: true,
       evilType: 'gutka',
       name: "Gutka Mafia Peddler",
       drawBubble,
       bubbleSprite: bubble,
-      runSpeed: 4.2
+      runSpeed: 4.2,
+      targetDecal
     };
 
     return group;
@@ -1650,31 +2035,15 @@ export const KarachiModels = {
     redBag.position.set(0.42, 1.75, 0.4);
     group.add(redBag);
 
-    // Floating text label
-    const canvas = document.createElement('canvas');
-    canvas.width = 320;
-    canvas.height = 80;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ff6f00';
-    ctx.beginPath();
-    ctx.roundRect(6, 6, 308, 68, 14);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 20px "Outfit", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('⚠️ Broken Road / Khadda', 160, 40);
-
-    const lTex = new THREE.CanvasTexture(canvas);
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: lTex, transparent: true }));
-    label.scale.set(3.0, 0.75, 1);
-    label.position.set(0, 2.2, 0);
-    group.add(label);
+    // Glowing Hazard Target Decal
+    const targetDecal = this.createEvilTargetDecal('pothole', '🕳️ ROAD POTHOLE • DEVOUR!');
+    group.add(targetDecal);
 
     group.userData = {
       isBadGuy: true,
       evilType: 'pothole',
-      name: "Road Pothole (کھڈا)"
+      name: "Road Pothole (کھڈا)",
+      targetDecal
     };
 
     return group;
