@@ -185,9 +185,12 @@ class Game {
 
   initUI() {
     this.ui = new UIManager({
-      onStartGame: ({ playerName, ageTier }) => {
+      onStartGame: ({ playerName, ageTier, avatarId }) => {
         if (this.player) {
           this.player.name = playerName || "Karachi Hero";
+          if (avatarId) {
+            this.player.setAvatar(avatarId);
+          }
           this.player.updateNameTag();
         }
         this.difficulty = ageTier === 'kids' ? 'kidsEasy' : 'classic';
@@ -346,53 +349,63 @@ class Game {
   }
 
   initDistrictChallenges(config) {
-    if (config && config.challenges && config.challenges.length > 0) {
-      this.crisisChallenges = config.challenges.map(c => ({
-        ...c,
-        current: 0,
-        completed: false
-      }));
-      this.currentCrisisIndex = 0;
-    } else {
-      this.crisisChallenges = [];
-      this.currentCrisisIndex = 0;
-    }
+    const list = (config && (config.missions || config.challenges)) || [];
+    this.crisisChallenges = list.map(c => ({
+      ...c,
+      current: 0,
+      completed: false
+    }));
+    this.currentCrisisIndex = 0;
   }
 
   handleCrisisProgress(evilType) {
     if (!this.crisisChallenges || this.crisisChallenges.length === 0) return;
-    const active = this.crisisChallenges[this.currentCrisisIndex];
-    if (active && !active.completed) {
-      if (active.evilType === evilType || (evilType === 'trash' && active.evilType === 'pothole')) {
-        active.current++;
-        if (active.current >= active.targetCount) {
-          active.completed = true;
+
+    let anyMissionJustCompleted = false;
+    this.crisisChallenges.forEach(mission => {
+      if (!mission.completed && (mission.evilType === evilType || (evilType === 'trash' && mission.evilType === 'pothole'))) {
+        mission.current = (mission.current || 0) + 1;
+        if (mission.current >= mission.targetCount) {
+          mission.completed = true;
+          anyMissionJustCompleted = true;
           audio.playChallengeSuccess();
-          if (this.player) this.player.addXP(active.xpReward || 1000);
-          this.ui.showCrisisCompleteBanner(active);
+          if (this.player) this.player.addXP(mission.xpReward || 1000);
+          this.ui.showCrisisCompleteBanner(mission);
           this.timeLeft += 25;
 
           // Automatically pause & present educational civic challenge for this crisis
           setTimeout(() => {
-            let quizCategory = 'water';
-            if (active.evilType === 'vip') quizCategory = 'ambulance';
-            else if (active.evilType === 'robber') quizCategory = 'safety';
-            else if (active.evilType === 'tanker') quizCategory = 'water';
-            else if (active.evilType === 'kunda') quizCategory = 'electricity';
-            else if (active.evilType === 'pothole' || active.evilType === 'trash') quizCategory = 'cleanliness';
+            let quizCategory = 'cleanliness';
+            if (mission.evilType === 'vip') quizCategory = 'ambulance';
+            else if (mission.evilType === 'robber') quizCategory = 'safety';
+            else if (mission.evilType === 'tanker') quizCategory = 'water';
+            else if (mission.evilType === 'ke') quizCategory = 'electricity';
+            else if (mission.evilType === 'pothole' || mission.evilType === 'trash') quizCategory = 'cleanliness';
 
             this.ui.openEducationalQuiz(quizCategory);
           }, 1500);
-
-          setTimeout(() => {
-            if (this.currentCrisisIndex < this.crisisChallenges.length - 1) {
-              this.currentCrisisIndex++;
-              const nextCrisis = this.crisisChallenges[this.currentCrisisIndex];
-              this.ui.showAnnouncement(`🚨 NEW CRISIS: ${nextCrisis.title}!`, '#ff9800');
-            }
-          }, 1400);
         }
       }
+    });
+
+    // Advance current crisis pointer for banner
+    while (this.currentCrisisIndex < this.crisisChallenges.length && this.crisisChallenges[this.currentCrisisIndex].completed) {
+      this.currentCrisisIndex++;
+    }
+
+    if (this.currentCrisisIndex < this.crisisChallenges.length && anyMissionJustCompleted) {
+      const nextCrisis = this.crisisChallenges[this.currentCrisisIndex];
+      if (nextCrisis && !nextCrisis.completed) {
+        setTimeout(() => {
+          this.ui.showAnnouncement(`🚨 NEW CRISIS: ${nextCrisis.title}!`, '#ff9800');
+        }, 1400);
+      }
+    }
+
+    // Check if ALL district missions are finished
+    const allDone = this.crisisChallenges.every(m => m.completed);
+    if (allDone && !this.districtClearing) {
+      this.handleDistrictCleared();
     }
   }
 
@@ -523,9 +536,9 @@ class Game {
       }
     }
 
-    // Move Player across expanded 200m map
+    // Move Player across expanded 200m map with solid building obstacle collisions
     if (this.moveVector.x !== 0 || this.moveVector.y !== 0) {
-      this.player.move(this.moveVector.x, this.moveVector.y, dt, 96.0);
+      this.player.move(this.moveVector.x, this.moveVector.y, dt, 96.0, this.cityGen.obstacles || []);
     }
 
     // =============================================================
@@ -581,7 +594,7 @@ class Game {
     this.holes.forEach(hole => {
       hole.update(dt);
       if (!hole.isPlayer) {
-        hole.updateAI(dt, this.edibleObjects, this.holes);
+        hole.updateAI(dt, this.edibleObjects, this.holes, this.cityGen.obstacles || []);
       }
     });
 
@@ -1423,35 +1436,47 @@ class Game {
   updateCamera(dt) {
     if (!this.player) return;
 
-    // Subway Surfers / GTA Style Street-Level 3rd-Person Chase Camera
-    // Positioned low behind player looking forward along the avenue with deep perspective!
-    const baseHeight = 2.65 + this.player.radius * 0.62;
-    const baseDistZ = 4.65 + this.player.radius * 0.72;
+    // GTA Street-Level Third-Person Perspective
+    // Camera is positioned at street eye-level behind avatar, dynamically tracking
+    // the avatar's orientation so turns into side roads and avenues give clear forward view!
+    const camDist = 4.4;
+    const camHeight = 2.35;
 
-    // Camera sway based on player steering input
-    const steerSway = (this.moveVector?.x || 0) * 0.85;
-    const targetCamX = this.player.position.x + steerSway;
-    const targetCamY = Math.max(1.85, baseHeight);
-    const targetCamZ = this.player.position.z + baseDistZ;
+    // Initialize camera tracking angle
+    if (this.camAngle === undefined) {
+      this.camAngle = Math.PI; // Facing north down main boulevard
+    }
 
-    // Smooth responsive follow
+    const isMoving = Math.abs(this.moveVector.x) > 0.05 || Math.abs(this.moveVector.y) > 0.05;
+    if (isMoving && this.player.facingAngle !== undefined) {
+      let angleDiff = this.player.facingAngle - this.camAngle;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      this.camAngle += angleDiff * Math.min(1.0, dt * 5.0);
+    }
+
+    // Camera position behind the character
+    const targetCamX = this.player.position.x - Math.sin(this.camAngle) * camDist;
+    const targetCamY = Math.max(1.85, this.player.position.y + camHeight);
+    const targetCamZ = this.player.position.z - Math.cos(this.camAngle) * camDist;
+
     this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, dt * 7.5);
     this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, dt * 6.0);
     this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, dt * 7.5);
 
-    // Look target forward down the Karachi street corridor
-    const lookAheadDist = 8.5 + this.player.radius * 0.8;
+    // Look target ahead down the street corridor
+    const lookAheadDist = 7.0;
     const lookTarget = new THREE.Vector3(
-      this.player.position.x + steerSway * 0.35,
+      this.player.position.x + Math.sin(this.camAngle) * lookAheadDist,
       1.35,
-      this.player.position.z - lookAheadDist
+      this.player.position.z + Math.cos(this.camAngle) * lookAheadDist
     );
     this.camera.lookAt(lookTarget);
 
     // Subtle bank tilt when turning corners
     this.camera.rotation.z = THREE.MathUtils.lerp(
       this.camera.rotation.z,
-      -(this.moveVector?.x || 0) * 0.045,
+      -(this.moveVector?.x || 0) * 0.035,
       dt * 5.0
     );
 
@@ -1671,7 +1696,8 @@ class Game {
       targetBreakdown,
       districtEvils: this.districtEvils,
       recentCleaned: this.recentCleaned,
-      activeCrisis
+      activeCrisis,
+      missions: this.crisisChallenges
     });
 
     this.renderer.render(this.scene, this.camera);

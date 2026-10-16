@@ -17,6 +17,8 @@ export class CityGenerator {
     this.interactiveVictims = [];
     this.interactiveTraffic = [];
     this.interactiveResidents = [];
+    this.obstacles = [];
+    this.beacons = [];
     this.mapSize = 320; // Expanded Karachi Metropolis Map
   }
 
@@ -39,6 +41,7 @@ export class CityGenerator {
       interactiveVictims: this.interactiveVictims,
       interactiveTraffic: this.interactiveTraffic,
       interactiveResidents: this.interactiveResidents,
+      obstacles: this.obstacles,
       currentDistrictEvils: this.currentDistrictEvils || []
     };
   }
@@ -445,14 +448,61 @@ export class CityGenerator {
     if (isAnimal) this.animals.push(item);
     if (isRobbery) this.robberies.push(item);
     if (item.isBadGuy) this.badGuys.push(item);
-    if (isFoodStall) this.foodStalls.push(item);
-    if (isBuilding) this.buildings.push(item);
+    if (isFoodStall) {
+      this.foodStalls.push(item);
+      this.obstacles.push({ position: mesh.position, radius: 2.2, mesh });
+    }
+    if (isBuilding) {
+      this.buildings.push(item);
+      this.obstacles.push({ position: mesh.position, radius: Math.max(2.4, (radius || 3.0) * 0.75), mesh });
+    }
     if (isCitizen) this.citizens.push(item);
     if (isPet) {
       if (!this.pets) this.pets = [];
       this.pets.push(item);
     }
     return item;
+  }
+
+  // 3D Glowing Waypoint Beacon attached overhead to mission targets
+  addWaypointBeacon(mesh, icon = '🎯') {
+    if (!mesh) return null;
+    const beaconGroup = new THREE.Group();
+    beaconGroup.name = 'WaypointBeacon';
+
+    const diamondGeo = new THREE.OctahedronGeometry(0.48, 0);
+    const diamondMat = new THREE.MeshBasicMaterial({ color: 0xffd700, wireframe: false });
+    const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+    diamond.position.y = 3.6;
+    beaconGroup.add(diamond);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.95)';
+    ctx.beginPath();
+    ctx.arc(64, 64, 56, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+
+    ctx.font = '64px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, 64, 68);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+    sprite.position.y = 4.8;
+    sprite.scale.set(1.4, 1.4, 1);
+    beaconGroup.add(sprite);
+
+    mesh.add(beaconGroup);
+    mesh.userData.beacon = beaconGroup;
+    this.beacons.push({ diamond, sprite, group: beaconGroup });
+    return beaconGroup;
   }
 
   // Interactive Robbery Scene with Decoupled Target vs Rescued Citizen
@@ -463,6 +513,7 @@ export class CityGenerator {
     this.scene.add(victimCitizen);
     this.interactiveVictims.push(victimCitizen);
     this.registerEdible(robberTarget, 1, 850, "Mobile Snatcher (ڈاکو)", 2.0, { isRobbery: true, isBadGuy: true, evilType: 'robber', isDistrictEvil: true });
+    this.addWaypointBeacon(robberTarget, '📱');
   }
 
   // Interactive VIP Protocol Traffic Jam Scene with Stuck Commuters that get freed!
@@ -477,7 +528,9 @@ export class CityGenerator {
       this.scene.add(v);
       this.interactiveTraffic.push(v);
     });
-    this.registerEdible(vipTarget, 3, 1600, "VIP Protocol Prado Convoy", 4.2, { isBadGuy: true, evilType: 'vip', isDistrictEvil: true });
+    // Set to tier 1 so player can immediately interact and free the blocked ambulance!
+    this.registerEdible(vipTarget, 1, 1600, "VIP Protocol Prado Convoy", 3.2, { isBadGuy: true, evilType: 'vip', isDistrictEvil: true });
+    this.addWaypointBeacon(vipTarget, '🚑');
   }
 
   // Interactive Water Tanker Extortion Scene with Thirsty Karachi Residents & Dry Homes!
@@ -503,7 +556,9 @@ export class CityGenerator {
       });
     }
 
-    this.registerEdible(tankerTarget, 3, 1400, "Water Tanker Mafia Truck", 3.8, { isBadGuy: true, evilType: 'tanker', isDistrictEvil: true });
+    // Set to tier 1 so player can immediately interact and restore water!
+    this.registerEdible(tankerTarget, 1, 1400, "Water Tanker Mafia Truck", 3.0, { isBadGuy: true, evilType: 'tanker', isDistrictEvil: true });
+    this.addWaypointBeacon(tankerTarget, '🚰');
   }
 
   // Curated District Level Generator
@@ -565,6 +620,7 @@ export class CityGenerator {
         const gutka = KarachiModels.createGutkaPeddler();
         gutka.position.set(gx, 0, gz);
         this.registerEdible(gutka, 1, 400, `Gutka Peddler #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'gutka', isDistrictEvil: true });
+        this.addWaypointBeacon(gutka, '🛑');
       });
 
       const potholeSpots = [[-3.5, -4.5], [3.5, -4.5], [7.5, -14.0]];
@@ -572,6 +628,7 @@ export class CityGenerator {
         const pot = KarachiModels.createBrokenRoadPatch();
         pot.position.set(px, 0, pz);
         this.registerEdible(pot, 1, 80, `Road Pothole #${idx + 1}`, 1.4, { isBadGuy: true, evilType: 'pothole', isDistrictEvil: true });
+        this.addWaypointBeacon(pot, '🕳️');
       });
 
       const trashSpots = [[-5, -2], [5, -2], [-2, 4], [3, 5]];
@@ -579,6 +636,7 @@ export class CityGenerator {
         const bag = KarachiModels.createTrashBag(trashColors[idx % trashColors.length]);
         bag.position.set(tx, 0, tz);
         this.registerEdible(bag, 1, 25, "Trash Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash', isDistrictEvil: true });
+        this.addWaypointBeacon(bag, '🧹');
       });
 
       [[-2.5, 2], [1.5, -3]].forEach(([rx, rz], idx) => {
@@ -603,6 +661,7 @@ export class CityGenerator {
         const bhatta = KarachiModels.createBhattaParchiMafia();
         bhatta.position.set(bx, 0, bz);
         this.registerEdible(bhatta, 1, 700, `Bhatta Mafia #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'bhatta', isDistrictEvil: true });
+        this.addWaypointBeacon(bhatta, '📜');
       });
 
       const racerSpots = [[0, 8.5], [-18.0, 0], [18.0, -10.0]];
@@ -610,12 +669,14 @@ export class CityGenerator {
         const racer = KarachiModels.createOneWheelerRacer();
         racer.position.set(rx, 0, rz);
         this.registerEdible(racer, 1, 500, `Reckless Racer #${idx + 1}`, 1.8, { isBadGuy: true, evilType: 'onewheeler', isDistrictEvil: true });
+        this.addWaypointBeacon(racer, '🏍️');
       });
 
       [[-6, 12], [6, 12], [-12, -8], [12, -8]].forEach(([tx, tz], idx) => {
         const bag = KarachiModels.createTrashBag(trashColors[idx % trashColors.length]);
         bag.position.set(tx, 0, tz);
         this.registerEdible(bag, 1, 25, "Market Debris", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash', isDistrictEvil: true });
+        this.addWaypointBeacon(bag, '🗑️');
       });
     } else if (districtLevel === 3) {
       // =========================================================

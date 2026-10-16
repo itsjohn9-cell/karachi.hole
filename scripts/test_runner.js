@@ -25,6 +25,9 @@ const rootDir = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 const portArg = args.find(a => a.startsWith('--port='));
 const targetPort = portArg ? portArg.split('=')[1] : '5174';
+const projectDir = targetPort === '5173'
+  ? '/Users/mohammadjhone/Projects/hole-io-android'
+  : rootDir;
 
 const reportDirArg = args.find(a => a.startsWith('--screenshot-dir='));
 const reportDir = reportDirArg 
@@ -64,19 +67,27 @@ function recordTest(id, name, status, durationMs, details = '') {
 }
 
 // Helper to run headless chrome script injection test
-async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800', screenshotName, waitMs = 2800 }) {
-  const indexPath = path.join(rootDir, 'index.html');
+async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800', screenshotName, waitMs = 2800, extraStyle = '' }) {
+  const indexPath = path.join(projectDir, 'index.html');
   const originalHtml = fs.readFileSync(indexPath, 'utf8');
   const screenshotPath = path.join(reportDir, screenshotName || `${testId.toLowerCase()}.png`);
 
   try {
-    const injectedHtml = originalHtml.replace('</body>', `<script>
+    const sanitizedScript = scriptInjection.replace(/window\.addEventListener\('DOMContentLoaded',\s*\(\)\s*=>\s*\{/g, '(() => {');
+    let injectedHtml = originalHtml;
+    if (extraStyle) {
+      injectedHtml = injectedHtml.replace('</head>', `<style>${extraStyle}</style></head>`);
+    }
+    injectedHtml = injectedHtml.replace('</body>', `<script>
       window.__testResult = { status: 'running' };
-      try {
-        ${scriptInjection}
-      } catch (err) {
-        window.__testResult = { status: 'error', error: err.message, stack: err.stack };
+      function __run() {
+        try {
+          ${sanitizedScript}
+        } catch (err) {
+          window.__testResult = { status: 'error', error: err.message, stack: err.stack };
+        }
       }
+      setTimeout(__run, 150);
     </script></body>`);
     fs.writeFileSync(indexPath, injectedHtml);
 
@@ -171,6 +182,7 @@ async function runTestSuite() {
   const res04 = await runChromeTest({
     testId: 'TC-04',
     screenshotName: 'tc04_gta_street_camera.png',
+    extraStyle: '#modal-start-mission { display: none !important; }',
     scriptInjection: `
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
@@ -206,6 +218,7 @@ async function runTestSuite() {
   const res05 = await runChromeTest({
     testId: 'TC-05',
     screenshotName: 'tc05_scoreboard_and_tracking.png',
+    extraStyle: '#modal-start-mission { display: none !important; }',
     scriptInjection: `
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
@@ -236,6 +249,7 @@ async function runTestSuite() {
   const res06 = await runChromeTest({
     testId: 'TC-06',
     screenshotName: 'tc06_pictorial_quiz_auto_resume.png',
+    extraStyle: '#modal-start-mission { display: none !important; } #modal-quiz { display: flex !important; }',
     scriptInjection: `
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
@@ -276,6 +290,7 @@ async function runTestSuite() {
   const res07 = await runChromeTest({
     testId: 'TC-07',
     screenshotName: 'tc07_auto_pause_modal.png',
+    extraStyle: '#modal-start-mission { display: none !important; } #modal-auto-pause { display: flex !important; }',
     scriptInjection: `
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
@@ -312,6 +327,7 @@ async function runTestSuite() {
   const res08 = await runChromeTest({
     testId: 'TC-08',
     screenshotName: 'tc08_building_ghosting_corner_sliding.png',
+    extraStyle: '#modal-start-mission { display: none !important; }',
     scriptInjection: `
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
@@ -342,6 +358,7 @@ async function runTestSuite() {
   const res09 = await runChromeTest({
     testId: 'TC-09',
     screenshotName: 'tc09_district_cleared_advance.png',
+    extraStyle: '#modal-start-mission { display: none !important; } #modal-district-cleared { display: flex !important; }',
     scriptInjection: `
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
@@ -383,6 +400,7 @@ async function runTestSuite() {
     testId: 'TC-10',
     windowSize: '375,667',
     screenshotName: 'tc10_mobile_viewport_responsiveness.png',
+    extraStyle: '#modal-start-mission { display: none !important; }',
     scriptInjection: `
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {

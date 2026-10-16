@@ -4,6 +4,19 @@ All notable changes to the **Karachi Hole.io: The City Savior** project are docu
 
 ---
 
+## [v2.2.0] - 2026-10-17
+
+### 🚀 Highlights
+- **3D Karachi Hero Avatars (Hole View Removed)**: Replaced the dark void hole in the ground with 5 authentic 3D Karachi character avatars (Tariq in Shalwar Kameez, Dr. Ayesha in Ajrak Scarf, Inspector Farooq in Police Uniform, Bilal in Edhi Volunteer Vest, and Zain the Eco Cadet) with procedural limb walk/run cycle skeletal animations, floating name badges, and civic ground auras.
+- **GTA Street-Level Third-Person Perspective**: Camera follows dynamically behind the character avatar, tracking facing angle down avenues, boulevards, and side alleys with deep Karachi street visibility.
+- **Real-Life Solid Obstacle Physics**: Characters cannot walk through solid buildings, colonial monuments, or food stalls; implemented smooth sliding obstacle collision physics.
+- **Zero-Overlap Quadrant HUD**: Eliminated all overlapping cards and banners across all screen sizes (mobile through desktop) using dedicated quadrants (Top bar, Left mission checklist, Right live scoreboard, Bottom-left circular GTA radar, Bottom-right sprint button).
+- **Multi-Mission District Checklists & Level 2 Fix**: Replaced single-evil quotas with structured multi-mission checklists (4–5 civic objectives per district). Fixed Level 2 inaction by making VIP Protocol convoys and water tankers immediately interactable at tier 1 with 3D rotating diamond waypoint beacons.
+- **Dynamic Competitor Bot AI & Scoring**: Fixed bot coordinate initialization bug (`[x, z]` vs `{x, z}`) so AI competitor bots actively roam the streets, collect debris, and accumulate score on the live leaderboard.
+- **Interactive Age-Calibrated Mini-Puzzles**: Expanded educational challenges with hands-on mini-puzzles (Kids Waste Sorter, Junior Water Pipe Connector, Teens Emergency Route Dispatch) that auto-resume upon correct solution.
+
+---
+
 ## [v2.1.0] - 2026-10-17
 
 ### 🚀 Highlights

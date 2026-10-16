@@ -4,27 +4,86 @@ This document provides a comprehensive technical and functional breakdown of all
 
 ---
 
-## 1. 3D Subway Surfers & Grand Theft Auto Street Chase Camera
+## 1. 3D Karachi Hero Character Avatars & Procedural Animations
 
 ### Design Philosophy
-Moving away from generic top-down hole perspectives, Karachi Hole.io adopts a low-angle, street-level chase camera inspired by arcade runners (**Subway Surfers**) and open-world street driving games (**Grand Theft Auto**). This immerses players directly into Karachi's bustling street corridors with rich atmospheric depth.
+Moving completely away from an abstract dark hole in the ground, Karachi Hole.io puts players directly into the shoes of authentic Karachi street heroes. The character moves through streets, avenues, and alleys with skeletal limb animations, floating health/name sprites, and a glowing civic action aura.
 
-### Camera Specifications & Dynamics
-* **Camera Height**: `2.65m + (player.radius * 0.62)`. Keeps the hole rim clearly visible in the foreground while opening up a dramatic street-level horizon view.
-* **Camera Distance Behind**: `4.65m + (player.radius * 0.72)`. Pulls back smoothly as the hole grows from level 1 to level 6.
-* **Forward Horizon Look Target**: Looks down the street axis `(player.x, 1.35, player.z - 8.5m - player.radius * 0.8)`.
-* **Dynamic Steering Sway & Bank Tilt**:
-  * Turning left or right sways the camera horizontally: `steerSway = moveVector.x * 0.85`.
-  * Banks the camera roll axis: `camera.rotation.z = -moveVector.x * 0.045` with smooth interpolation (`THREE.MathUtils.lerp`).
-* **Building Ghosting (Occlusion Transparency)**:
-  * Whenever tall buildings or monument towers are between the camera position and the player hole, an occlusion raycast detects the obstruction.
-  * The building's materials dynamically fade to `opacity: 0.15` (translucent ghost silhouette), guaranteeing the hole and street targets are never occluded.
-* **Corner Anti-Stick Buffer**:
-  * If a player approaches map boundaries or corner angles, parallel velocity deflection glides the hole along walls without sticky corner jamming.
+### 5 Playable Karachi Avatars:
+1. **Tariq (Tariq Road Street Hero)**:
+   * Wears traditional Pakistani green and white Shalwar Kameez with matching brown Peshawari chappals.
+   * Bonus: +10% street patrol run speed.
+2. **Dr. Ayesha (Civil Hospital Crusader)**:
+   * Wears white medical coat, traditional Sindhi Ajrak patterned dupatta/scarf, and stethoscope.
+   * Bonus: +15% civic cleansing interaction reach.
+3. **Inspector Farooq (Karachi Traffic Police)**:
+   * Wears crisp khaki Sindh Police uniform with police peaked cap, duty belt, and aviator sunglasses.
+   * Bonus: Civic shockwave stuns fleeing robbers and reckless racers.
+4. **Bilal (Edhi Ambulance Volunteer)**:
+   * Wears white ambulance uniform and high-visibility red rescue vest with crescent insignia.
+   * Bonus: Double XP payout for VIP clearance and citizen rescue missions.
+5. **Zain (Eco Cadet)**:
+   * Young school cadet wearing navy blazer, grey trousers, backpack, and heroic cape.
+   * Bonus: Rapid waste sorting bonus score in eco cleanup missions.
 
 ---
 
-## 2. Onboarding & Age-Tier Selection System
+## 2. GTA Street-Level Third-Person Perspective Camera
+
+### Camera Specifications & Dynamics
+* **Street-Level Framing**: Third-person perspective positioned at human eye-level ($Y \approx 2.35\text{m}$, distance $\approx 4.4\text{m}$) looking straight forward down the road ($6.5\text{m}$ ahead).
+* **Dynamic Facing Angle Tracking**: Smoothly swings behind the player's movement direction as they turn into side alleys, boulevards, and bazaars with dampened angular interpolation.
+* **Dynamic Steering Sway & Bank Tilt**: Smooth lateral camera sway and subtle banking roll ($3.5^\circ$) when steering into corners.
+* **Building Ghosting**: Raycasting detects tall colonial buildings or skyscrapers between the camera and hero, dynamically rendering them at `opacity: 0.15` to ensure 100% unobstructed street visibility.
+
+---
+
+## 3. Real-Life Solid Obstacle Collisions
+
+### Collision Physics & Boundary Sliding
+* **Solid Buildings, Monuments & Food Stalls**: Player and competitor bots cannot walk through solid buildings, colonial structures, heritage walls, or food stalls.
+* **Wall Sliding Algorithm**: Decomposes character movement velocity into surface-parallel slide vectors when colliding with building boundaries. Characters smoothly glide along building perimeters rather than stopping abruptly or getting stuck.
+* **Map Boundary Buffers**: Smoothly deflects characters along Bab-e-Karachi, Saddar heritage walls, and Arabian Sea waterfronts.
+
+---
+
+## 4. Multi-Mission District Checklists & Level 2 Fix
+
+### Multi-Mission Progression
+Instead of single-evil quotas, each of the 5 Karachi districts features a comprehensive 5-mission checklist:
+* **District 1 (Tariq Road & PECHS)**: Stop Water Tanker Mafia (1), Catch Mobile Snatchers (2), Repair Potholes (3), Bust Gutka Peddlers (3), Clean Up Street Waste (4).
+* **District 2 (Saddar Bazaar & Empress Market)**: Clear VIP Escorts for Ambulance (2), Bust Bhatta Extortionists (3), Catch Reckless Racers (3), Dismantle Dangerous Kundas (2), Clear Market Rubbish (4).
+* **3D Rotating Waypoint Diamond Beacons**: Every active mission target is marked with a 3D rotating diamond octahedron beacon floating above it, glowing brightly with target emoji markers (`🚰`, `🚑`, `📱`, `🕳️`, `📜`).
+* **Level 2 Accessibility Fix**: VIP Prado convoys and illegal water tankers are interactable at Tier 1, allowing players to immediately engage in Level 2 objectives without artificial size gatekeeping.
+
+---
+
+## 5. Interactive Educational Mini-Puzzles
+
+### Age-Calibrated Mini-Puzzles:
+* 🐣 **Kids (Ages 5–8) - Waste Sorter Puzzle**: Drag-and-drop / click to sort recyclable plastic bottles, banana peels, and aluminum cans into designated Green (Organic) and Blue (Recycle) bins.
+* 🎒 **Junior (Ages 9–12) - Water Pipe Flow Connect**: Click to rotate municipal water pipe segments (Straight, Corner, T-Junction) to bridge dry PECHS neighborhood pipes back to the water reservoir.
+* 🏆 **Teens & Adults (Ages 13+) - Emergency Route Dispatch**: Navigate an Edhi Ambulance through gridlocked Karachi streets (Shaheed-e-Millat, M.A. Jinnah Rd, Shahrah-e-Faisal) to Civil Hospital.
+* **Unskippable & Auto-Resume**: Puzzles cannot be bypassed until correctly solved, and gameplay automatically resumes after 1.2s of celebration fanfare upon completion.
+
+---
+
+## 6. Zero-Overlap Dedicated Quadrant HUD
+
+The UI has been engineered into 4 clean, dedicated quadrants with zero overlaps across small mobile phones to 4K desktop screens:
+* **Top Fixed Header**: Player avatar badge, current level, match timer, score pill, and sound/pause icons.
+* **Top-Left Card**: District title, multi-mission checklist, remaining counter, and active crisis indicator.
+* **Top-Right Card**: Live competitor scoreboard with real-time rankings and active player rank tag.
+* **Bottom-Left Card**: Circular GTA Radar mini-map with real-time player, evil, and district boundaries.
+* **Bottom-Right**: Glowing orange ⚡ SPRINT button.
+
+---
+
+## 7. Dynamic Competitor Bot AI & Scoring
+
+* **Active Street Roaming**: Competitor bots patrol Karachi streets, seek collectable debris, and collect items.
+* **Difficulty-Scaled Score Accumulation**: Bots accumulate points organically on the live scoreboard (every 10s in Kids mode, every 6s in Senior mode).
+* **Kid-Friendly Safety**: In Kids/Easy mode, bots never devour the player, keeping the experience empowering and fun.
 
 Upon launching the game, players are greeted by the **Start Mission Modal** before timer and physics begin:
 

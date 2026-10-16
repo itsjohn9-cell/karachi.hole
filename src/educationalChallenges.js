@@ -1,5 +1,5 @@
-// Karachi Civic Junior Academy: Pictorial Educational Challenges
-// English-Only, visual, kid-friendly dilemmas for street civic awareness
+// Karachi Civic Junior Academy: Pictorial & Interactive Puzzle Civic Challenges
+// Multi-age calibrated dilemmas and interactive puzzles for Karachi street patrol
 
 export const AGE_TIERS = {
   kids: {
@@ -79,12 +79,66 @@ export const CIVIC_BADGES = [
 
 export const EDUCATIONAL_CHALLENGES = [
   // ==========================================
-  // KIDS TIER (Ages 5-8) - Visual & Simple
+  // 1. INTERACTIVE MINI-PUZZLES (CALIBRATED BY AGE)
+  // ==========================================
+  {
+    id: 'puzzle_kids_waste_sorter',
+    category: 'cleanliness',
+    ageTier: 'kids',
+    type: 'puzzle_waste_sorter',
+    badgeId: 'clean_green',
+    icon: '🧹',
+    topic: 'Interactive Clean City Puzzle',
+    scenario: 'Sort street waste into the right bins to keep Karachi clean!',
+    question: 'Tap each item to sort into the Blue Recycle Bin or Green Compost Bin!',
+    items: [
+      { id: 'item_1', name: 'Plastic Bottle', icon: '🥤', target: 'recycle' },
+      { id: 'item_2', name: 'Banana Peel', icon: '🍌', target: 'compost' },
+      { id: 'item_3', name: 'Soda Can', icon: '🥫', target: 'recycle' },
+      { id: 'item_4', name: 'Apple Core', icon: '🍎', target: 'compost' }
+    ]
+  },
+  {
+    id: 'puzzle_junior_pipe_connect',
+    category: 'water',
+    ageTier: 'junior',
+    type: 'puzzle_pipe_flow',
+    badgeId: 'water_guardian',
+    icon: '🚰',
+    topic: 'PECHS Pipeline Alignment Puzzle',
+    scenario: 'The water pipeline from the main pump to neighborhood homes is misaligned!',
+    question: 'Tap the misaligned pipe segments to rotate and connect fresh water to homes!',
+    segments: [
+      { id: 'seg_1', icon: '═', initialRotation: 90, targetRotation: 0 },
+      { id: 'seg_2', icon: '═', initialRotation: 0, targetRotation: 0 },
+      { id: 'seg_3', icon: '═', initialRotation: 90, targetRotation: 0 }
+    ]
+  },
+  {
+    id: 'puzzle_senior_ambulance_dispatch',
+    category: 'ambulance',
+    ageTier: 'senior',
+    type: 'puzzle_emergency_dispatch',
+    badgeId: 'lifesaver',
+    icon: '🚑',
+    topic: 'Emergency Route Dispatch Puzzle',
+    scenario: 'An Edhi Ambulance with critical patient is blocked at Empress Market intersection!',
+    question: 'Tap the vehicles in the correct civic priority sequence to clear the corridor!',
+    steps: [
+      { id: 'veh_rickshaw', label: '1. Move Auto-Rickshaw to left curb', icon: '🛺', correctStep: 1 },
+      { id: 'veh_prado', label: '2. Clear VIP Prado from center lane', icon: '🚙', correctStep: 2 },
+      { id: 'veh_bus', label: '3. Advance Mini-Bus into bus stop bay', icon: '🚌', correctStep: 3 }
+    ]
+  },
+
+  // ==========================================
+  // 2. KIDS TIER (Ages 5-8) - Pictorial Questions
   // ==========================================
   {
     id: 'kids_water_tap',
     category: 'water',
     ageTier: 'kids',
+    type: 'quiz',
     badgeId: 'water_guardian',
     icon: '🚰',
     pictureEmoji: '🚰 ➡️ 💧 🚫',
@@ -102,317 +156,239 @@ export const EDUCATIONAL_CHALLENGES = [
       {
         id: 'opt_b',
         icon: '🌊',
-        picture: '💧 Waste Water',
-        text: 'Leave it open and let clean water spill away',
+        picture: '🚿 Let it Run',
+        text: 'Leave it open and waste drinking water',
         isCorrect: false
       }
     ],
-    explanation: 'Awesome job! Turning off the tap saves 6 liters of clean water every time. Karachi needs every drop!',
-    rewardXP: 500,
-    rewardTime: 30
+    feedback: 'Wonderful! Turning off the tap saves up to 8 liters of clean drinking water every day for Karachi homes!'
   },
   {
-    id: 'kids_trash_bin',
+    id: 'kids_trash_peel',
     category: 'cleanliness',
     ageTier: 'kids',
+    type: 'quiz',
     badgeId: 'clean_green',
     icon: '🗑️',
-    pictureEmoji: '🧃 ➡️ 🗑️ ✅',
-    topic: 'Keeping Streets Clean',
-    scenario: 'You finished a snack pack and juice box at the park.',
-    question: 'Where should the empty box go?',
+    pictureEmoji: '🍌 ➡️ 🗑️ ✅',
+    topic: 'Clean Streets & Green Parks',
+    scenario: 'You finish eating a sweet mango at Burns Road park. What do you do with the peel?',
+    question: 'Where does the fruit peel belong?',
     options: [
       {
         id: 'opt_a',
         icon: '🗑️',
-        picture: '♻️ Green Bin',
-        text: 'Toss it into the green trash dustbin!',
+        picture: '🚮 In the Trash Bin',
+        text: 'Put it inside the green municipal bin!',
         isCorrect: true
       },
       {
         id: 'opt_b',
-        icon: '🚯',
-        picture: '🛣️ On the Road',
-        text: 'Drop it onto the street road or sidewalk',
+        icon: '🛣️',
+        picture: '🍂 Drop on Street',
+        text: 'Drop it on the road for someone to slip',
         isCorrect: false
       }
     ],
-    explanation: 'Fantastic! Putting trash in the bin prevents clogged gutters and keeps Karachi healthy!',
-    rewardXP: 500,
-    rewardTime: 30
+    feedback: 'Brilliant! Keeping trash in bins prevents choked storm drains during monsoon rains!'
   },
   {
-    id: 'kids_thirsty_kitten',
-    category: 'animals',
+    id: 'kids_ambulance_siren',
+    category: 'ambulance',
     ageTier: 'kids',
-    badgeId: 'animal_kindness',
-    icon: '🐾',
-    pictureEmoji: '🐱 ☀️ 🥣 💧',
-    topic: 'Kindness to Street Animals',
-    scenario: 'On a hot sunny afternoon, a tiny street kitten looks tired and thirsty.',
-    question: 'How can you help this little friend?',
-    options: [
-      {
-        id: 'opt_a',
-        icon: '🥣',
-        picture: '🥛 Fresh Water Bowl',
-        text: 'Place a clean bowl of water in the shade!',
-        isCorrect: true
-      },
-      {
-        id: 'opt_b',
-        icon: '🏃',
-        picture: '👟 Chase Away',
-        text: 'Scare it or chase it down the sidewalk',
-        isCorrect: false
-      }
-    ],
-    explanation: 'Wonderful kindness! Caring for animals is a great civic virtue that makes our city compassionate.',
-    rewardXP: 500,
-    rewardTime: 30
-  },
-  {
-    id: 'kids_save_light',
-    category: 'electricity',
-    ageTier: 'kids',
-    badgeId: 'power_saver',
-    icon: '💡',
-    pictureEmoji: '🚪 ➡️ 💡 🔴 OFF',
-    topic: 'Switching Off Lights',
-    scenario: 'You are going out to play in the street with your friends.',
-    question: 'What should you do before leaving your room?',
-    options: [
-      {
-        id: 'opt_a',
-        icon: '💡',
-        picture: '🔌 Turn Off Lights',
-        text: 'Switch off the room lights, fan, and TV!',
-        isCorrect: true
-      },
-      {
-        id: 'opt_b',
-        icon: '⚡',
-        picture: '💡 Leave On',
-        text: 'Leave all lights and air conditioning running',
-        isCorrect: false
-      }
-    ],
-    explanation: 'Super! Turning off lights saves electricity, prevents power cuts, and protects city power grids!',
-    rewardXP: 500,
-    rewardTime: 30
-  },
-
-  // ==========================================
-  // JUNIOR TIER (Ages 9-12) - Civic Action
-  // ==========================================
-  {
-    id: 'junior_ambulance_siren',
-    category: 'emergency',
-    ageTier: 'junior',
+    type: 'quiz',
     badgeId: 'lifesaver',
     icon: '🚑',
-    pictureEmoji: '🚑 🚨 🔊 ➡️ 🚗 💨',
-    topic: 'Emergency Ambulance Siren',
-    scenario: 'Traffic is heavy on Shahrah-e-Faisal and an Edhi Ambulance is sounding sirens behind cars.',
-    question: 'What is the duty of drivers on the street?',
+    pictureEmoji: '🚑 🚨 🔊',
+    topic: 'Emergency Ambulance Sirens',
+    scenario: 'You hear a loud WEE-WOO siren behind your car! An Edhi Ambulance is flashing red lights!',
+    question: 'What should our car driver do?',
     options: [
       {
         id: 'opt_a',
         icon: '🚑',
-        picture: '🛣️ Clear Lane Left',
-        text: 'Steer aside immediately to give a clear emergency lane!',
+        picture: '➡️ Move to Left Curb',
+        text: 'Pull to the side and give way!',
         isCorrect: true
       },
       {
         id: 'opt_b',
         icon: '🛑',
-        picture: '🚗 Block Road',
-        text: 'Race ahead of the ambulance and block the lane',
+        picture: '🚫 Block the Road',
+        text: 'Block the road and race the ambulance',
         isCorrect: false
       }
     ],
-    explanation: 'Heroic choice! Every second counts in medical emergencies. Giving way saves precious lives!',
-    rewardXP: 600,
-    rewardTime: 35
+    feedback: 'Heroic! Giving way lets doctors save lives inside the ambulance!'
   },
+
+  // ==========================================
+  // 3. JUNIOR TIER (Ages 9-12) - Civic Decisions
+  // ==========================================
   {
-    id: 'junior_open_gutter',
-    category: 'safety',
+    id: 'junior_tanker_mafia',
+    category: 'water',
     ageTier: 'junior',
-    badgeId: 'clean_green',
-    icon: '🕳️',
-    pictureEmoji: '⚠️ 🕳️ 🚧 🚩 Safe Warning',
-    topic: 'Open Road Gutter Hazard',
-    scenario: 'You notice a heavy manhole cover is missing on a busy street near a school.',
-    question: 'What is the best immediate safety action?',
+    type: 'quiz',
+    badgeId: 'water_guardian',
+    icon: '🚰',
+    pictureEmoji: '🚰 🛡️ 📞',
+    topic: 'Illegal Water Tankers & Lines',
+    scenario: 'You spot someone puncturing a municipal water main to siphon water into private commercial tankers!',
+    question: 'What is the most responsible action to take?',
     options: [
       {
         id: 'opt_a',
-        icon: '🚩',
-        picture: '⚠️ Warning Marker',
-        text: 'Place a visible warning marker/branch and alert elders to report to KMC!',
+        icon: '📱',
+        picture: '📞 Report to Karachi Water Board',
+        text: 'Report illegal water theft to KW&SC complaint helpline!',
         isCorrect: true
       },
       {
         id: 'opt_b',
         icon: '🙈',
-        picture: '🏃 Ignore & Walk Away',
-        text: 'Ignore it and hope nobody falls inside at night',
+        picture: '🤐 Walk Away Silently',
+        text: 'Ignore it and pay expensive private tanker prices',
         isCorrect: false
       }
     ],
-    explanation: 'Spot on! Marking hazardous manholes protects motorbikers and pedestrians from dangerous accidents.',
-    rewardXP: 600,
-    rewardTime: 35
+    feedback: 'Superb! Reporting water theft stops the tanker mafia and protects community tap lines!'
   },
   {
-    id: 'junior_plant_tree',
-    category: 'environment',
+    id: 'junior_ambulance_traffic',
+    category: 'ambulance',
     ageTier: 'junior',
-    badgeId: 'green_planter',
-    icon: '🌱',
-    pictureEmoji: '🌳 ☀️ 🍃 Cool Greenery',
-    topic: 'Beating Karachi Heatwaves',
-    scenario: 'Summer temperatures in Karachi can become very high due to asphalt and concrete.',
-    question: 'How can citizens naturally cool down neighborhoods?',
+    type: 'quiz',
+    badgeId: 'lifesaver',
+    icon: '🚑',
+    pictureEmoji: '🚑 🚦 🛣️',
+    topic: 'Right of Way for Emergency Vehicles',
+    scenario: 'At a red traffic light on Shahrah-e-Faisal, an ambulance is stuck behind cars with its siren blaring.',
+    question: 'How should drivers react at the intersection?',
     options: [
       {
         id: 'opt_a',
-        icon: '🌱',
-        picture: '🌳 Plant Native Trees',
-        text: 'Plant indigenous shade trees like Neem and Gulmohar!',
+        icon: '🚗',
+        picture: '↔️ Form an Emergency Corridor',
+        text: 'Safely inch forward and part to the sides to create a center corridor!',
         isCorrect: true
       },
       {
         id: 'opt_b',
-        icon: '🪓',
-        picture: '🏗️ Chop Down Trees',
-        text: 'Cut down trees to pave more concrete parking lots',
-        isCorrect: false
-      }
-    ],
-    explanation: 'Green Hero! Neem trees provide dense shade, absorb carbon dioxide, and bring pleasant breezes to Karachi.',
-    rewardXP: 600,
-    rewardTime: 35
-  },
-  {
-    id: 'junior_zebra_crossing',
-    category: 'traffic',
-    ageTier: 'junior',
-    badgeId: 'road_safety',
-    icon: '🚸',
-    pictureEmoji: '🚶 🦓 🚦 Safe Crosswalk',
-    topic: 'Pedestrian Zebra Crossing',
-    scenario: 'School children and elderly citizens need to cross a wide boulevard with busy traffic.',
-    question: 'What should vehicles do at a marked zebra crossing?',
-    options: [
-      {
-        id: 'opt_a',
         icon: '🛑',
-        picture: '🛑 Stop & Wait',
-        text: 'Stop completely before the white stripes and allow people to cross!',
+        picture: '⛔ Stay Frozen',
+        text: 'Refuse to budge until the signal turns green',
+        isCorrect: false
+      }
+    ],
+    feedback: 'Life-saving! Traffic laws internationally permit cautiously creating an emergency lane for ambulances!'
+  },
+  {
+    id: 'junior_power_kunda',
+    category: 'electricity',
+    ageTier: 'junior',
+    type: 'quiz',
+    badgeId: 'power_saver',
+    icon: '⚡',
+    pictureEmoji: '⚡ ⚠️ 🔥',
+    topic: 'Illegal Kundas & Electrical Safety',
+    scenario: 'You see metallic hooks (kundas) sparking over power lines near your neighborhood during rain.',
+    question: 'What is the safe procedure?',
+    options: [
+      {
+        id: 'opt_a',
+        icon: '⚠️',
+        picture: '🚧 Keep Away & Call 118',
+        text: 'Stay far away and immediately report the hazard to 118!',
         isCorrect: true
       },
       {
         id: 'opt_b',
-        icon: '🏎️',
-        picture: '📢 Honk & Speed',
-        text: 'Honk loudly and speed through the crosswalk',
+        icon: '🖐️',
+        picture: '⚡ Touch Wires',
+        text: 'Try to pull the wet sparking wire yourself',
         isCorrect: false
       }
     ],
-    explanation: 'Civic Excellence! Zebra crossings prioritize human pedestrians over motor vehicles for safety.',
-    rewardXP: 600,
-    rewardTime: 35
+    feedback: 'Exact safety rule! Electrocution risk during monsoon is extreme; always keep distance and inform professionals!'
   },
 
   // ==========================================
-  // TEENS & ADULTS TIER (Ages 13+) - Urban Ethics
+  // 4. SENIOR / ADULTS TIER (Ages 13+) - Policy & Ethics
   // ==========================================
   {
-    id: 'senior_water_tanker_cartel',
-    category: 'water',
+    id: 'senior_vip_culture',
+    category: 'ambulance',
     ageTier: 'senior',
-    badgeId: 'water_guardian',
-    icon: '💧',
-    pictureEmoji: '🚰 🏘️ ⚖️ Municipal Water Rights',
-    topic: 'Water Supply Justice',
-    scenario: 'Illegal commercial tankers are siphoning water from municipal pipelines, leaving homes dry.',
-    question: 'What is the sustainable civic solution to water scarcity?',
+    type: 'quiz',
+    badgeId: 'lifesaver',
+    icon: '🚔',
+    pictureEmoji: '🚔 🚫 🚑 ⚖️',
+    topic: 'VIP Protocol vs Public Safety',
+    scenario: 'A VIP motorcade escort blocks public traffic, leaving multiple ambulances stuck in gridlock.',
+    question: 'According to fundamental human rights and traffic law, what takes precedence?',
     options: [
       {
         id: 'opt_a',
-        icon: '⚖️',
-        picture: '🏛️ Metered Piping & Legal Enforcement',
-        text: 'Equitable piped municipal supply, rain harvesting, and strict enforcement!',
+        icon: '🚑',
+        picture: '⚖️ Emergency Medical Vehicles',
+        text: 'Ambulances and emergency response vehicles always have absolute priority over protocol!',
         isCorrect: true
       },
       {
         id: 'opt_b',
-        icon: '💰',
-        picture: '💸 Pay Bribes',
-        text: 'Rely permanently on paying high black-market tanker extortion',
+        icon: '🚙',
+        picture: '🚨 VIP Escort Convoys',
+        text: 'Politicians and VIP convoys should block emergency vehicles',
         isCorrect: false
       }
     ],
-    explanation: 'True Urban Leader! Clean piped tap water is a fundamental civic right that belongs to every Karachi family.',
-    rewardXP: 750,
-    rewardTime: 40
+    feedback: 'Constitutional excellence! The right to life guarantees that emergency ambulances supersede all VIP protocols!'
   },
   {
-    id: 'senior_encroachment_footpath',
-    category: 'urban',
+    id: 'senior_rain_drainage',
+    category: 'cleanliness',
     ageTier: 'senior',
-    badgeId: 'road_safety',
-    icon: '📐',
-    pictureEmoji: '🚶 🛍️ 🛣️ Accessible Public Spaces',
-    topic: 'Public Footpath Accessibility',
-    scenario: 'Shops and illegal wall encroachments block public sidewalks, pushing families into busy traffic.',
-    question: 'Why are clear sidewalks vital for Karachi?',
+    type: 'quiz',
+    badgeId: 'clean_green',
+    icon: '🌊',
+    pictureEmoji: '🌊 🏗️ 🌿',
+    topic: 'Urban Drainage & Monsoon Flooding',
+    scenario: 'Why does Karachi face severe urban flooding during monsoon downpours?',
+    question: 'What is the primary root cause and sustainable solution?',
     options: [
       {
         id: 'opt_a',
-        icon: '🚸',
-        picture: '🚶 Safe Barrier-Free Walking',
-        text: 'They ensure safe, barrier-free walking for mothers, strollers, and the disabled!',
+        icon: '🌿',
+        picture: '🏗️ Clear Encroached Storm Nullahs',
+        text: 'Clear plastic waste and encroachments from natural nullahs and install permeable surfaces!',
         isCorrect: true
       },
       {
         id: 'opt_b',
         icon: '🧱',
-        picture: '🚧 Private Grab',
-        text: 'Footpaths should be privatized and built over by shopkeepers',
+        picture: '🏗️ Build Concrete Walls',
+        text: 'Pave all city soil in concrete and dump trash in open drains',
         isCorrect: false
       }
     ],
-    explanation: 'Spot on! Public footpaths belong to citizens. Keeping sidewalks clear prevents road accidents.',
-    rewardXP: 750,
-    rewardTime: 40
+    feedback: 'True urban leadership! Preserving natural drainage channels is vital for Karachi climate resilience!'
   }
 ];
 
 export function getChallengesByAge(ageTier = 'kids') {
-  const normalizedTier = (ageTier === 'ranger' || ageTier === 'junior') ? 'junior' : 
-                         (ageTier === 'champion' || ageTier === 'senior') ? 'senior' : 'kids';
-  return EDUCATIONAL_CHALLENGES.filter(c => c.ageTier === normalizedTier);
-}
-
-export function getChallengesByTier(ageTier = 'kids') {
-  return getChallengesByAge(ageTier);
-}
-
-export function getRandomChallenge(ageTier = 'kids') {
-  const pool = getChallengesByAge(ageTier);
-  if (!pool || pool.length === 0) return EDUCATIONAL_CHALLENGES[0];
-  return pool[Math.floor(Math.random() * pool.length)];
+  return EDUCATIONAL_CHALLENGES.filter(c => c.ageTier === ageTier);
 }
 
 export function getChallengeByCategoryAndTier(category, ageTier = 'kids') {
-  const pool = getChallengesByAge(ageTier);
-  if (!category) return getRandomChallenge(ageTier);
-  const matched = pool.filter(c => c.category === category);
-  if (matched.length > 0) {
-    return matched[Math.floor(Math.random() * matched.length)];
+  const matches = EDUCATIONAL_CHALLENGES.filter(c => c.ageTier === ageTier && (category ? c.category === category : true));
+  if (matches.length > 0) {
+    return matches[Math.floor(Math.random() * matches.length)];
   }
-  return getRandomChallenge(ageTier);
+  return EDUCATIONAL_CHALLENGES[0];
+}
+
+export function getRandomChallenge(ageTier = 'kids') {
+  const matches = getChallengesByAge(ageTier);
+  return matches[Math.floor(Math.random() * matches.length)];
 }

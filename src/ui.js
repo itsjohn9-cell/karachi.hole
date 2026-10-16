@@ -104,13 +104,50 @@ export class UIManager {
             </div>
           </div>
 
+          <!-- 3D Karachi Avatar Selection -->
+          <div class="form-group">
+            <label class="form-label">🦸 CHOOSE YOUR 3D KARACHI HERO AVATAR:</label>
+            <div class="avatar-selection-grid" id="start-avatar-grid">
+              <div class="avatar-card active ui-interactive" data-avatar="tariq">
+                <span class="avatar-card-icon">🇵🇰</span>
+                <span class="avatar-card-title">Tariq</span>
+                <span class="avatar-card-sub">Street Hero</span>
+                <span class="avatar-card-desc">Green Shalwar Kameez (+10% Speed)</span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="ayesha">
+                <span class="avatar-card-icon">🌸</span>
+                <span class="avatar-card-title">Ayesha</span>
+                <span class="avatar-card-sub">Civic Crusader</span>
+                <span class="avatar-card-desc">Sindhi Ajrak Scarf (+15% Reach)</span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="farooq">
+                <span class="avatar-card-icon">👮‍♂️</span>
+                <span class="avatar-card-title">Inspector Farooq</span>
+                <span class="avatar-card-sub">Traffic Police</span>
+                <span class="avatar-card-desc">Karachi Police Uniform (Stuns Evils)</span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="bilal">
+                <span class="avatar-card-icon">🚑</span>
+                <span class="avatar-card-title">Bilal</span>
+                <span class="avatar-card-sub">Edhi Volunteer</span>
+                <span class="avatar-card-desc">Rescue Medical Vest (Double XP Rescues)</span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="zain">
+                <span class="avatar-card-icon">🎒</span>
+                <span class="avatar-card-title">Zain</span>
+                <span class="avatar-card-sub">Eco Cadet</span>
+                <span class="avatar-card-desc">School Blazer &amp; Cape (Bonus Sorting)</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Quick Mission Briefing -->
           <div class="mission-brief-box">
-            <div class="brief-title">🎯 MISSION OBJECTIVE:</div>
+            <div class="brief-title">🎯 GTA KARACHI STREET MISSION:</div>
             <div class="brief-points">
-              <span>🧹 <strong>Devour red-ringed bad guys:</strong> Mobile snatchers, water tanker mafia, VIP convoys &amp; road potholes!</span>
-              <span>💚 <strong>Protect innocent citizens, cats &amp; puppies:</strong> Do not harm good friends!</span>
-              <span>🧠 <strong>Answer pictorial civic questions:</strong> Gain XP, extra time, and unlock medals!</span>
+              <span>🧹 <strong>Street-Level Patrol:</strong> Run through Karachi avenues &amp; alleys to resolve urban crises!</span>
+              <span>🚧 <strong>Solid Obstacles:</strong> Real-life physics apply—you cannot walk through buildings or walls!</span>
+              <span>🧩 <strong>Interactive Civic Puzzles:</strong> Solve age-tailored puzzles to resume patrol and earn medals!</span>
             </div>
           </div>
         </div>
@@ -124,25 +161,25 @@ export class UIManager {
     document.body.appendChild(this.startModal);
   }
 
-  // 2. Dedicated Game Tracking HUD & Scoreboard
+  // 2. Non-Overlapping Game Tracking HUD & Scoreboard
   createHUD() {
     this.hud = document.createElement('div');
     this.hud.id = 'game-hud';
     this.hud.innerHTML = `
-      <!-- Top Status & Scoreboard Tracking Bar -->
+      <!-- Top Fixed Header Bar (z-index: 100) -->
       <div class="hud-top-bar">
         <div class="hud-left">
           <div class="karachi-badge">
-            <span class="game-logo-icon">🌀</span>
-            <span class="game-title">KARACHI PATROL</span>
+            <span class="game-logo-icon" id="hud-avatar-icon">🇵🇰</span>
+            <div class="player-title-col">
+              <span class="game-title" id="hud-player-name">KARACHI HERO</span>
+              <span class="hero-tag-sub" id="hud-level-title">Street Patrol Hero</span>
+            </div>
           </div>
           <div class="level-indicator">
             <span class="level-badge" id="hud-level-badge">LV 1</span>
-            <div class="level-info">
-              <span class="level-name" id="hud-level-title">Street Vacuum</span>
-              <div class="xp-bar-track">
-                <div class="xp-bar-fill" id="hud-xp-fill" style="width: 0%"></div>
-              </div>
+            <div class="xp-bar-track">
+              <div class="xp-bar-fill" id="hud-xp-fill" style="width: 0%"></div>
             </div>
           </div>
         </div>
@@ -153,90 +190,89 @@ export class UIManager {
             <span class="score-label">SCORE</span>
             <span class="score-val" id="hud-score">0</span>
           </div>
-          <div class="civic-pill" id="hud-civic-pill" title="District Evils Cleansed">
-            <span class="civic-icon">🧹</span>
-            <span class="civic-label">CLEANSED:</span>
-            <span id="hud-civic-pct" class="civic-val">0%</span>
-            <div class="civic-track">
-              <div class="civic-fill" id="hud-civic-fill" style="width: 0%"></div>
-            </div>
-          </div>
           <div class="combo-pill" id="hud-combo" style="display: none;">
             COMBO x<span id="hud-combo-val">2</span>! 🔥
           </div>
         </div>
 
-        <div class="hud-right">
-          <!-- Interactive Karachi Civic Mini-Map (Radar HUD) -->
-          <div class="minimap-card" id="hud-minimap-card">
-            <div class="minimap-header">
-              <span class="minimap-title">🗺️ RADAR</span>
-              <span class="minimap-badge" id="minimap-target-badge">14 LEFT</span>
-            </div>
-            <div class="minimap-canvas-wrapper">
-              <canvas id="minimap-canvas" width="130" height="130"></canvas>
-            </div>
-          </div>
-
-          <!-- Dedicated Live Scoreboard & Leaderboard -->
-          <div class="leaderboard-card" id="hud-scoreboard-card">
-            <div class="leaderboard-header">
-              <span>🏆 SCOREBOARD</span>
-              <span class="rank-tag" id="hud-player-rank">RANK #1</span>
-            </div>
-            <div class="leaderboard-list" id="hud-leaderboard">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
+        <div class="hud-top-controls">
+          <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
+          <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
+          <button class="icon-btn ui-interactive" id="btn-open-skins" title="Change Avatar Skin">🎨</button>
+          <button class="icon-btn ui-interactive" id="btn-open-guide" title="Civic Guide">❓</button>
+          <button class="icon-btn ui-interactive" id="btn-open-quiz" title="Civic Academy Challenge">🎓</button>
+          <button class="icon-btn ui-interactive" id="btn-manual-pause" title="Pause Game">⏸️</button>
         </div>
       </div>
 
-      <!-- Live Crime Radar Compass Bar -->
-      <div class="crime-radar-bar" id="hud-crime-radar"></div>
-
-      <!-- District Mission Objective Banner -->
-      <div class="district-mission-banner" id="district-mission-banner">
-        <div class="district-meta-left">
+      <!-- Left Panel: District Missions Checklist Card (Zero overlap, top: 72px, left: 16px) -->
+      <div class="hud-mission-card" id="district-mission-banner">
+        <div class="mission-card-header">
           <span class="district-badge-pill" id="hud-district-badge">DISTRICT 1</span>
           <span class="district-name-text" id="hud-district-title">Tariq Road &amp; PECHS</span>
         </div>
-        <div class="district-counter-center">
+
+        <!-- Dynamic Mission Checklist Items -->
+        <div class="mission-checklist" id="hud-mission-list">
+          <div class="mission-item">
+            <span class="m-check">⏳</span>
+            <span class="m-title">Loading district missions...</span>
+          </div>
+        </div>
+
+        <div class="mission-card-footer">
           <div class="district-counter-pill" id="hud-district-counter">
             <span class="counter-icon">🎯</span>
-            <span class="counter-num" id="hud-district-remaining-num">14</span>
-            <span class="counter-text">EVILS REMAINING</span>
+            <span class="counter-num" id="hud-district-remaining-num">5</span>
+            <span class="counter-text">LEFT</span>
           </div>
           <div class="district-progress-track">
             <div class="district-progress-fill" id="hud-district-progress" style="width: 0%"></div>
           </div>
         </div>
-        <div class="district-targets-right" id="hud-district-breakdown">
-          <!-- Dynamic remaining targets breakdown chips -->
+
+        <!-- Integrated Active Crisis Sub-card (Kept inside for test assertion & clean hierarchy) -->
+        <div class="active-crisis-card" id="hud-active-crisis" style="display: none;">
+          <div class="crisis-badge-row">
+            <span class="crisis-tag-pill">🚨 ACTIVE CRISIS</span>
+            <span class="crisis-reward-pill" id="crisis-reward-text">+1,400 XP</span>
+          </div>
+          <div class="crisis-title-row">
+            <span class="crisis-icon" id="crisis-icon">🚰</span>
+            <span class="crisis-title" id="crisis-title">Water Tanker Extortion</span>
+          </div>
+          <div class="crisis-desc" id="crisis-desc">Stop the tanker to restore tap water!</div>
+          <div class="crisis-status-box">
+            <span class="crisis-count" id="crisis-count">0/1</span>
+          </div>
         </div>
       </div>
 
-      <!-- Active Civic Crisis Challenge Card -->
-      <div class="active-crisis-card" id="hud-active-crisis" style="display: none;">
-        <div class="crisis-badge-row">
-          <span class="crisis-tag-pill">🚨 ACTIVE CIVIC CRISIS</span>
-          <span class="crisis-reward-pill" id="crisis-reward-text">+1,400 XP REWARD</span>
+      <!-- Right Panel: Live Competitor Scoreboard (top: 72px, right: 16px) -->
+      <div class="leaderboard-card" id="hud-scoreboard-card">
+        <div class="leaderboard-header">
+          <span>🏆 LIVE SCOREBOARD</span>
+          <span class="rank-tag" id="hud-player-rank">RANK #1</span>
         </div>
-        <div class="crisis-main-row">
-          <div class="crisis-icon-box" id="crisis-icon">🚰</div>
-          <div class="crisis-text-box">
-            <div class="crisis-title-row">
-              <span class="crisis-title" id="crisis-title">Water Tanker Extortion &amp; Dry Homes</span>
-            </div>
-            <div class="crisis-desc" id="crisis-desc">Devour the Water Tanker Mafia siphoning water from residential homes!</div>
-            <div class="crisis-progress-bar-wrap">
-              <div class="crisis-progress-fill" id="crisis-progress-fill" style="width: 0%"></div>
-            </div>
-          </div>
-          <div class="crisis-status-box">
-            <span class="crisis-count" id="crisis-count">0/1</span>
-            <span class="crisis-sub">RESOLVED</span>
-          </div>
+        <div class="leaderboard-list" id="hud-leaderboard">
+          <!-- Dynamically populated -->
         </div>
+      </div>
+
+      <!-- Bottom-Left: Circular GTA Radar Mini-Map (bottom: 18px, left: 18px) -->
+      <div class="minimap-card gta-radar-card" id="hud-minimap-card">
+        <div class="minimap-header">
+          <span class="minimap-title">🗺️ GTA RADAR</span>
+          <span class="minimap-badge" id="minimap-target-badge">PATROL</span>
+        </div>
+        <div class="minimap-canvas-wrapper">
+          <canvas id="minimap-canvas" width="130" height="130"></canvas>
+        </div>
+      </div>
+
+      <!-- Bottom-Right: Sprint Boost Button (bottom: 18px, right: 18px) -->
+      <div class="hud-controls-bottom-right">
+        <button class="sprint-btn ui-interactive" id="btn-sprint">⚡ SPRINT</button>
       </div>
 
       <!-- Before ➔ After Civic Transformation Toast -->
@@ -261,24 +297,6 @@ export class UIManager {
       <!-- Floating Feedbacks Container -->
       <div id="floating-feedbacks"></div>
 
-      <!-- Bottom Floating Action Bar -->
-      <div class="hud-bottom-bar">
-        <div class="bottom-left-controls">
-          <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
-          <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
-          <button class="pill-btn ui-interactive" id="btn-open-skins" title="Change Hole Skin">🎨 Skins</button>
-          <button class="pill-btn ui-interactive quiz-btn-pulse" id="btn-open-quiz" title="Civic Learning Challenge">🧠 Civic Quiz 🌟</button>
-          <button class="pill-btn ui-interactive guide-btn-pulse" id="btn-open-guide" title="Good vs Bad Targets Guide">❓ What to Devour?</button>
-          <button class="pill-btn ui-interactive highlight-btn" id="btn-diff-toggle" title="Toggle Difficulty">🎈 Easy (Kids)</button>
-          <button class="icon-btn ui-interactive" id="btn-manual-pause" title="Pause Game">⏸️</button>
-        </div>
-
-        <div class="bottom-right-controls">
-          <button class="boost-btn ui-interactive" id="btn-boost" title="Turbo Speed Boost">
-            ⚡ TURBO
-          </button>
-        </div>
-      </div>
     `;
 
     document.body.appendChild(this.hud);
@@ -789,28 +807,152 @@ export class UIManager {
     if (feedbackBox) feedbackBox.style.display = 'none';
     if (encToast) encToast.style.display = 'none';
 
-    // Populate large pictorial options
+    // Populate large pictorial options or interactive mini-puzzles
     const container = document.getElementById('quiz-options-container');
     if (container) {
       container.innerHTML = '';
-      challenge.options.forEach((opt) => {
-        const btn = document.createElement('button');
-        btn.className = 'quiz-option-btn pictorial-option-card ui-interactive';
-        btn.dataset.id = opt.id;
-        btn.innerHTML = `
-          <div class="pictorial-icon-box">${opt.icon}</div>
-          <div class="pictorial-texts">
-            <div class="pictorial-label">${opt.picture || ''}</div>
-            <div class="pictorial-desc">${opt.text}</div>
+
+      if (challenge.type === 'puzzle_waste_sorter' && challenge.items) {
+        // 1. Waste Sorter Puzzle for Kids
+        const puzzleWrap = document.createElement('div');
+        puzzleWrap.className = 'puzzle-container';
+
+        const itemsRow = document.createElement('div');
+        itemsRow.className = 'puzzle-item-row';
+        let sortedCount = 0;
+
+        challenge.items.forEach((item) => {
+          const chip = document.createElement('button');
+          chip.className = 'quiz-option-btn puzzle-item-chip ui-interactive';
+          chip.innerHTML = `${item.icon} ${item.name}`;
+          chip.addEventListener('click', () => {
+            chip.classList.add('sorted');
+            chip.innerHTML = `✅ ${item.name}`;
+            audio.playClick();
+            sortedCount++;
+            if (sortedCount >= challenge.items.length) {
+              this.handleQuizSuccess(challenge);
+            }
+          });
+          itemsRow.appendChild(chip);
+        });
+
+        const binsRow = document.createElement('div');
+        binsRow.className = 'puzzle-bins-row';
+        binsRow.innerHTML = `
+          <div class="puzzle-bin-card bin-recycle">
+            <span class="bin-icon">🟦</span>
+            <span class="bin-title">Recycle Bin</span>
+            <span class="bin-desc">Plastics &amp; Cans</span>
+          </div>
+          <div class="puzzle-bin-card bin-compost">
+            <span class="bin-icon">🟩</span>
+            <span class="bin-title">Compost Bin</span>
+            <span class="bin-desc">Peels &amp; Scraps</span>
           </div>
         `;
 
-        btn.addEventListener('click', () => {
-          this.handleQuizOption(opt, btn, challenge);
+        puzzleWrap.appendChild(itemsRow);
+        puzzleWrap.appendChild(binsRow);
+        container.appendChild(puzzleWrap);
+      } else if (challenge.type === 'puzzle_pipe_flow' && challenge.segments) {
+        // 2. Pipe Alignment Puzzle for Junior
+        const puzzleWrap = document.createElement('div');
+        puzzleWrap.className = 'puzzle-container';
+
+        const pipeRow = document.createElement('div');
+        pipeRow.className = 'puzzle-pipe-row';
+
+        const hubStart = document.createElement('div');
+        hubStart.className = 'pipe-segment-card connected';
+        hubStart.innerHTML = `🚰`;
+        pipeRow.appendChild(hubStart);
+
+        challenge.segments.forEach((seg) => {
+          let currentRot = seg.initialRotation;
+          const card = document.createElement('button');
+          card.className = `quiz-option-btn pipe-segment-card ui-interactive ${currentRot === 0 ? 'connected' : ''}`;
+          card.style.transform = `rotate(${currentRot}deg)`;
+          card.innerHTML = seg.icon;
+
+          card.addEventListener('click', () => {
+            currentRot = (currentRot + 90) % 360;
+            card.style.transform = `rotate(${currentRot}deg)`;
+            audio.playClick();
+            if (currentRot === 0 || currentRot === 180) {
+              card.classList.add('connected');
+            } else {
+              card.classList.remove('connected');
+            }
+
+            const allConnected = [...pipeRow.querySelectorAll('.pipe-segment-card')].every(c => c.classList.contains('connected'));
+            if (allConnected) {
+              this.handleQuizSuccess(challenge);
+            }
+          });
+          pipeRow.appendChild(card);
         });
 
-        container.appendChild(btn);
-      });
+        const hubEnd = document.createElement('div');
+        hubEnd.className = 'pipe-segment-card connected';
+        hubEnd.innerHTML = `🏠`;
+        pipeRow.appendChild(hubEnd);
+
+        puzzleWrap.appendChild(pipeRow);
+        container.appendChild(puzzleWrap);
+      } else if (challenge.type === 'puzzle_emergency_dispatch' && challenge.steps) {
+        // 3. Emergency Dispatch Puzzle for Teens/Adults
+        const puzzleWrap = document.createElement('div');
+        puzzleWrap.className = 'puzzle-container';
+
+        let currentStep = 1;
+        challenge.steps.forEach((st) => {
+          const btn = document.createElement('button');
+          btn.className = 'quiz-option-btn pictorial-option-card ui-interactive';
+          btn.innerHTML = `
+            <div class="pictorial-icon-box">${st.icon}</div>
+            <div class="pictorial-texts">
+              <div class="pictorial-desc">${st.label}</div>
+            </div>
+          `;
+
+          btn.addEventListener('click', () => {
+            if (st.correctStep === currentStep) {
+              btn.classList.add('option-correct');
+              audio.playClick();
+              currentStep++;
+              if (currentStep > challenge.steps.length) {
+                this.handleQuizSuccess(challenge);
+              }
+            } else {
+              btn.classList.add('option-wrong');
+              setTimeout(() => btnElement.classList.remove('option-wrong'), 500);
+            }
+          });
+          puzzleWrap.appendChild(btn);
+        });
+        container.appendChild(puzzleWrap);
+      } else if (challenge.options) {
+        // Standard Pictorial Quiz Options
+        challenge.options.forEach((opt) => {
+          const btn = document.createElement('button');
+          btn.className = 'quiz-option-btn pictorial-option-card ui-interactive';
+          btn.dataset.id = opt.id;
+          btn.innerHTML = `
+            <div class="pictorial-icon-box">${opt.icon}</div>
+            <div class="pictorial-texts">
+              <div class="pictorial-label">${opt.picture || ''}</div>
+              <div class="pictorial-desc">${opt.text}</div>
+            </div>
+          `;
+
+          btn.addEventListener('click', () => {
+            this.handleQuizOption(opt, btn, challenge);
+          });
+
+          container.appendChild(btn);
+        });
+      }
     }
 
     this.updateBadgesRibbon();
@@ -889,6 +1031,51 @@ export class UIManager {
     }
   }
 
+  handleQuizSuccess(challenge) {
+    audio.playChallengeSuccess();
+    const dilemmaCard = document.getElementById('quiz-dilemma-card');
+    if (dilemmaCard) dilemmaCard.classList.add('answered');
+
+    if (challenge.badgeId) {
+      this.unlockedBadges.add(challenge.badgeId);
+    }
+    this.completedQuizIds.add(challenge.id);
+
+    const feedbackBox = document.getElementById('quiz-feedback-box');
+    const encToast = document.getElementById('quiz-encouragement-toast');
+    if (encToast) encToast.style.display = 'none';
+    if (feedbackBox) {
+      feedbackBox.style.display = 'flex';
+      feedbackBox.classList.add('feedback-bounce-in');
+    }
+
+    const badgeObj = CIVIC_BADGES.find(b => b.id === challenge.badgeId);
+    const unlockedEl = document.getElementById('feedback-badge-unlocked');
+    if (badgeObj && unlockedEl) {
+      unlockedEl.style.display = 'flex';
+      const iconEl = document.getElementById('feedback-badge-icon');
+      if (iconEl) iconEl.textContent = badgeObj.icon;
+      const textEl = document.getElementById('feedback-badge-text');
+      if (textEl) textEl.textContent = `New Medal: ${badgeObj.name}`;
+    }
+
+    const descEl = document.getElementById('feedback-desc');
+    if (descEl) {
+      descEl.textContent = challenge.feedback || 'Outstanding civic work! Karachi streets are cleaner and safer thanks to you!';
+    }
+
+    this.updateBadgesRibbon();
+
+    if (this.onResolveEducationalQuiz) {
+      this.onResolveEducationalQuiz(challenge);
+    }
+
+    clearTimeout(this.quizAutoResumeTimeout);
+    this.quizAutoResumeTimeout = setTimeout(() => {
+      this.closeEducationalQuiz();
+    }, 1200);
+  }
+
   closeEducationalQuiz() {
     clearTimeout(this.quizAutoResumeTimeout);
     if (this.quizModal) {
@@ -933,7 +1120,8 @@ export class UIManager {
         if (this.onStartGame) {
           this.onStartGame({
             playerName: this.playerName,
-            ageTier: this.currentAgeTier
+            ageTier: this.currentAgeTier,
+            avatarId: this.selectedAvatar || 'tariq'
           });
         }
       });
@@ -956,6 +1144,26 @@ export class UIManager {
         });
       });
     });
+
+    // 3D Avatar Selection Cards on start modal
+    const startAvatarCards = document.querySelectorAll('#start-avatar-grid .avatar-card');
+    startAvatarCards.forEach(card => {
+      card.addEventListener('click', () => {
+        audio.playClick();
+        startAvatarCards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        this.selectedAvatar = card.dataset.avatar;
+      });
+    });
+
+    // Sprint Button
+    const btnSprint = document.getElementById('btn-sprint');
+    if (btnSprint) {
+      btnSprint.addEventListener('mousedown', () => { window.isBoostPressed = true; });
+      btnSprint.addEventListener('mouseup', () => { window.isBoostPressed = false; });
+      btnSprint.addEventListener('touchstart', (e) => { e.preventDefault(); window.isBoostPressed = true; });
+      btnSprint.addEventListener('touchend', (e) => { e.preventDefault(); window.isBoostPressed = false; });
+    }
 
     // 2. Sound & Music
     const btnSound = document.getElementById('btn-toggle-sound');
@@ -1164,8 +1372,26 @@ export class UIManager {
     targetBreakdown = [],
     districtEvils = [],
     recentCleaned = [],
-    activeCrisis = null
+    activeCrisis = null,
+    missions = null
   }) {
+    // Player Name & 3D Avatar Icon in Header
+    const nameEl = document.getElementById('hud-player-name');
+    if (nameEl && player && player.name) {
+      nameEl.textContent = player.name.toUpperCase();
+    }
+    const avatarIconEl = document.getElementById('hud-avatar-icon');
+    if (avatarIconEl && player) {
+      const avatarIcons = {
+        tariq: '🦺',
+        ayesha: '👩‍⚕️',
+        farooq: '👮‍♂️',
+        bilal: '🏏',
+        zain: '🏍️'
+      };
+      avatarIconEl.textContent = avatarIcons[player.avatarId] || '🇵🇰';
+    }
+
     // Active Civic Crisis Challenge Card
     const crisisCard = document.getElementById('hud-active-crisis');
     if (crisisCard) {
@@ -1192,7 +1418,7 @@ export class UIManager {
       }
     }
 
-    // District Mission Banner & Remaining Targets
+    // District Mission Banner & Multi-Mission Checklist
     if (districtConfig) {
       const badgeEl = document.getElementById('hud-district-badge');
       const titleEl = document.getElementById('hud-district-title');
@@ -1200,6 +1426,7 @@ export class UIManager {
       const counterEl = document.getElementById('hud-district-counter');
       const progressEl = document.getElementById('hud-district-progress');
       const breakdownEl = document.getElementById('hud-district-breakdown');
+      const missionListEl = document.getElementById('hud-mission-list');
 
       if (badgeEl) badgeEl.textContent = `DISTRICT ${districtConfig.level}`;
       if (titleEl) titleEl.textContent = districtConfig.name;
@@ -1213,6 +1440,26 @@ export class UIManager {
           counterEl.classList.add('final-hunt');
         } else {
           counterEl.classList.remove('final-hunt');
+        }
+      }
+
+      // Populate Mission Checklist Items
+      if (missionListEl) {
+        const activeMissions = missions || districtConfig.missions || districtConfig.challenges || [];
+        if (activeMissions && activeMissions.length > 0) {
+          missionListEl.innerHTML = '';
+          activeMissions.forEach(m => {
+            const isDone = m.completed || (m.current >= m.targetCount);
+            const mRow = document.createElement('div');
+            mRow.className = `mission-item ${isDone ? 'completed' : ''}`;
+            mRow.innerHTML = `
+              <span class="m-check">${isDone ? '✅' : '⬜'}</span>
+              <span class="m-icon">${m.icon || '🎯'}</span>
+              <span class="m-title">${m.title}</span>
+              <span class="m-progress">${Math.min(m.targetCount, m.current || 0)}/${m.targetCount}</span>
+            `;
+            missionListEl.appendChild(mRow);
+          });
         }
       }
 
