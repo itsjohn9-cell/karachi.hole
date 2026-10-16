@@ -55,8 +55,8 @@ export class Hole {
     this.comboTimer = 0;
     this.kills = 0;
 
-    // Movement speed
-    this.baseSpeed = isPlayer ? 15.5 : 13.0 * diff.botSpeedMult;
+    // Movement speed - Tuned for relaxed, observable arcade pacing
+    this.baseSpeed = isPlayer ? 9.5 : 6.5 * diff.botSpeedMult;
     this.currentSpeed = this.baseSpeed;
     this.isBoosting = false;
 

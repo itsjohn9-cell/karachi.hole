@@ -397,6 +397,136 @@ class AudioManager {
     this.vibrate(35);
   }
 
+  // K-Electric Kunda Electric Spark / Zap Sound
+  playKESpark() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Fast crackle / high frequency zap
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1400, t);
+    osc.frequency.linearRampToValueAtTime(320, t + 0.22);
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.22);
+    this.vibrate([20, 20, 40]);
+  }
+
+  // China Cutting Demolish / Concrete Rubble Sound
+  playChinaCuttingDemolish() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(40, t + 0.35);
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.35);
+    this.vibrate([40, 25, 60]);
+  }
+
+  // Bhatta Parchi Confiscated Sound
+  playBhattaConfiscate() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    [400, 600, 300].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const st = t + idx * 0.06;
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, st);
+      gain.gain.setValueAtTime(0.3, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.12);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.12);
+    });
+    this.vibrate(30);
+  }
+
+  // Reckless One-Wheeler Impounded Motorbike Sputter
+  playOneWheelerImpound() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(520, t);
+    osc.frequency.linearRampToValueAtTime(80, t + 0.32);
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.32);
+    this.vibrate([35, 20, 50]);
+  }
+
+  // Quetta Alamgir Karak Chai Slurp / Energy Chime
+  playChaiSip() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    [523.25, 659.25, 783.99, 1046.50].forEach((f, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const st = t + idx * 0.06;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, st);
+      gain.gain.setValueAtTime(0.28, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.22);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.22);
+    });
+    this.vibrate([25, 15, 35]);
+  }
+
+  // Innocent Citizen Cheering
+  playCitizenCheer() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(650, t);
+    osc.frequency.exponentialRampToValueAtTime(950, t + 0.18);
+    gain.gain.setValueAtTime(0.22, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.18);
+  }
+
   // Level up fanfare sound
   playLevelUp() {
     if (!this.soundEnabled) return;

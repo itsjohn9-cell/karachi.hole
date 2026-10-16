@@ -403,6 +403,43 @@ html, body {
   white-space: nowrap;
 }
 
+/* Mission Guidance Ticker Bar */
+.mission-guidance-bar {
+  align-self: center;
+  margin-top: 6px;
+  background: rgba(13, 21, 32, 0.88);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 229, 255, 0.2);
+  border-radius: 999px;
+  padding: 6px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  z-index: 25;
+}
+
+.mission-icon {
+  font-size: 16px;
+}
+
+.mission-text {
+  font-size: 0.82rem;
+  color: #e0f7fa;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.mission-text b {
+  color: #ffd700;
+}
+
+.mission-text i {
+  color: #ff9e80;
+  font-style: normal;
+}
+
 /* Floating Points Feedback */
 #floating-feedbacks {
   position: absolute;

@@ -1576,34 +1576,43 @@ export const KarachiModels = {
       group.add(stain);
     }
 
-    // Speech bubble
+    // Dynamic speech bubble
     const canvas = document.createElement('canvas');
-    canvas.width = 300;
-    canvas.height = 90;
+    canvas.width = 384;
+    canvas.height = 110;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#b71c1c';
-    ctx.beginPath();
-    ctx.roundRect(8, 8, 284, 74, 16);
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 22px "Outfit", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🛑 Gutka / Mawa Mafia', 150, 45);
-
     const bTex = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text) => {
+      ctx.clearRect(0, 0, 384, 110);
+      ctx.fillStyle = '#b71c1c';
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 368, 74, 18);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 192, 45);
+      bTex.needsUpdate = true;
+    };
+    drawBubble('🛑 Gutka Mafia Peddler');
+
     const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
-    bubble.scale.set(3.0, 0.9, 1);
-    bubble.position.set(0, 2.2, 0);
+    bubble.scale.set(3.4, 0.95, 1);
+    bubble.position.set(0, 2.3, 0);
     group.add(bubble);
 
     group.userData = {
       isBadGuy: true,
       evilType: 'gutka',
-      name: "Gutka Mafia Peddler"
+      name: "Gutka Mafia Peddler",
+      drawBubble,
+      bubbleSprite: bubble,
+      runSpeed: 4.2
     };
 
     return group;
@@ -1707,11 +1716,43 @@ export const KarachiModels = {
     bannerR.rotation.y = Math.PI / 2;
     tanker.add(bannerR);
 
+    // Dynamic Overhead Bubble
+    const bubbleCanvas = document.createElement('canvas');
+    bubbleCanvas.width = 420;
+    bubbleCanvas.height = 110;
+    const bctx = bubbleCanvas.getContext('2d');
+    const bubbleTex = new THREE.CanvasTexture(bubbleCanvas);
+
+    const drawBubble = (text) => {
+      bctx.clearRect(0, 0, 420, 110);
+      bctx.fillStyle = '#01579b';
+      bctx.beginPath();
+      bctx.roundRect(8, 8, 404, 76, 18);
+      bctx.fill();
+      bctx.lineWidth = 4;
+      bctx.strokeStyle = '#ffd600';
+      bctx.stroke();
+      bctx.fillStyle = '#ffffff';
+      bctx.font = 'bold 22px "Outfit", sans-serif';
+      bctx.textAlign = 'center';
+      bctx.textBaseline = 'middle';
+      bctx.fillText(text, 210, 46);
+      bubbleTex.needsUpdate = true;
+    };
+    drawBubble('🚰 12,000 RS / TANKER! پیاسا کراچی');
+
+    const bubbleSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex, transparent: true }));
+    bubbleSprite.scale.set(4.2, 1.1, 1);
+    bubbleSprite.position.set(0, 3.6, 0);
+    tanker.add(bubbleSprite);
+
     tanker.userData = {
       isBadGuy: true,
       evilType: 'tanker',
       name: "Water Tanker Mafia Truck",
-      speed: 10.5
+      speed: 5.5,
+      drawBubble,
+      bubbleSprite
     };
 
     return tanker;
@@ -1725,34 +1766,490 @@ export const KarachiModels = {
 
     // Siren Text Bubble
     const canvas = document.createElement('canvas');
-    canvas.width = 400;
-    canvas.height = 90;
+    canvas.width = 420;
+    canvas.height = 110;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#d50000';
-    ctx.beginPath();
-    ctx.roundRect(8, 8, 384, 74, 18);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 22px "Outfit", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🚨 HATO! VIP AA RAHA HAI!', 200, 45);
-
     const bTex = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text) => {
+      ctx.clearRect(0, 0, 420, 110);
+      ctx.fillStyle = '#d50000';
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 404, 76, 18);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 210, 46);
+      bTex.needsUpdate = true;
+    };
+    drawBubble('🚨 HATO! VIP AA RAHA HAI!');
+
     const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
-    bubble.scale.set(3.8, 0.9, 1);
-    bubble.position.set(0, 3.2, 0);
+    bubble.scale.set(4.2, 1.1, 1);
+    bubble.position.set(0, 3.4, 0);
     suv.add(bubble);
 
     suv.userData = {
       isBadGuy: true,
       evilType: 'vip',
       name: "VIP Protocol Speeding SUV",
-      speed: 12.0
+      speed: 6.2,
+      drawBubble,
+      bubbleSprite: bubble
     };
 
     return suv;
+  },
+
+  // 32. K-Electric Sparking Kunda Transformer Pole - Civic Evil Tier 2 (14h Load Shedding!)
+  createKElectricTransformer() {
+    const group = new THREE.Group();
+    group.name = "KE-Sparking-Kunda";
+    group.isBadGuy = true;
+
+    // Concrete Utility Pole
+    const poleGeo = new THREE.CylinderGeometry(0.24, 0.32, 7.5, 12);
+    const poleMat = new THREE.MeshLambertMaterial({ color: 0x90a4ae });
+    const pole = new THREE.Mesh(poleGeo, poleMat);
+    pole.position.y = 3.75;
+    pole.castShadow = true;
+    group.add(pole);
+
+    // Cross Arms at top
+    const crossGeo = new THREE.BoxGeometry(2.8, 0.16, 0.22);
+    const cross1 = new THREE.Mesh(crossGeo, materials.woodBench);
+    cross1.position.set(0, 6.8, 0);
+    group.add(cross1);
+
+    const cross2 = new THREE.Mesh(crossGeo, materials.woodBench);
+    cross2.position.set(0, 5.8, 0);
+    group.add(cross2);
+
+    // Ceramic Insulators
+    const insMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.1 });
+    [-1.1, 0, 1.1].forEach(x => {
+      const ins = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.28, 8), insMat);
+      ins.position.set(x, 7.02, 0);
+      group.add(ins);
+    });
+
+    // Heavy Metal Transformer Barrel
+    const transGeo = new THREE.CylinderGeometry(0.55, 0.55, 1.4, 16);
+    const transMat = new THREE.MeshStandardMaterial({ color: 0x2e4a3e, metalness: 0.6, roughness: 0.4 });
+    const trans = new THREE.Mesh(transGeo, transMat);
+    trans.position.set(0.65, 5.2, 0);
+    group.add(trans);
+
+    // Chaotic Web of Tangled Black Kunda Wires (Karachi Electricity Theft Kunda Spiderweb)
+    const wireMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const wireCurves = [
+      [[-1.1, 6.9, 0], [0.65, 5.8, 0]],
+      [[0, 6.9, 0], [0.65, 5.5, 0.2]],
+      [[1.1, 6.9, 0], [0.65, 5.2, -0.2]],
+      [[0.65, 4.6, 0], [1.8, 2.5, 1.2]],
+      [[0.65, 4.6, 0], [-1.6, 2.8, -1.0]],
+      [[0.65, 4.6, 0], [0.2, 1.8, 1.8]],
+      [[-1.1, 5.8, 0], [-2.0, 3.2, 0.8]],
+      [[1.1, 5.8, 0], [2.2, 3.0, -0.9]],
+      [[0.65, 5.0, 0.4], [1.2, 0.5, 1.5]]
+    ];
+
+    wireCurves.forEach(([p1, p2]) => {
+      const mid = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2 - 0.45, (p1[2] + p2[2]) / 2];
+      const curve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(...p1),
+        new THREE.Vector3(...mid),
+        new THREE.Vector3(...p2)
+      );
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 10, 0.035, 6, false), wireMat);
+      group.add(tube);
+    });
+
+    // Flickering Spark Orbs at wire junction
+    const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+    const sparkGroup = new THREE.Group();
+    for (let s = 0; s < 4; s++) {
+      const sp = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 6), sparkMat);
+      sp.position.set(0.65 + (Math.random() - 0.5) * 0.4, 5.6 + (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4);
+      sparkGroup.add(sp);
+    }
+    group.add(sparkGroup);
+
+    // Dynamic Speech Bubble
+    const canvas = document.createElement('canvas');
+    canvas.width = 440;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const bTex = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text) => {
+      ctx.clearRect(0, 0, 440, 110);
+      ctx.fillStyle = '#ff8f00';
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 424, 76, 18);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 21px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 220, 46);
+      bTex.needsUpdate = true;
+    };
+    drawBubble('⚡ K-Electric Kunda: 14h Load Shedding!');
+
+    const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    bubble.scale.set(4.4, 1.1, 1);
+    bubble.position.set(0, 7.8, 0);
+    group.add(bubble);
+
+    group.userData = {
+      isBadGuy: true,
+      evilType: 'ke',
+      name: "K-Electric Sparking Kunda",
+      sparkGroup,
+      drawBubble,
+      bubbleSprite: bubble
+    };
+
+    return group;
+  },
+
+  // 33. China Cutting Land Grabber Mafia - Civic Evil Tier 2 (Footpath Plot Seller)
+  createChinaCuttingMafia() {
+    const group = new THREE.Group();
+    group.name = "China-Cutting-Mafia";
+    group.isBadGuy = true;
+
+    // Shady character with safari shirt and sunglasses
+    const charGroup = new THREE.Group();
+    const shirtMat = new THREE.MeshLambertMaterial({ color: 0xf57c00 }); // Loud orange safari shirt
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.85, 8), shirtMat);
+    body.position.y = 0.88;
+    charGroup.add(body);
+
+    // Gold Chain
+    const chain = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.03, 6, 12), materials.goldMetal);
+    chain.position.set(0, 1.25, 0.05);
+    chain.rotation.x = Math.PI / 2.3;
+    charGroup.add(chain);
+
+    // Head with sunglasses
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), materials.pedestrianSkin);
+    head.position.y = 1.48;
+    charGroup.add(head);
+
+    const shades = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.05), materials.curbBlack);
+    shades.position.set(0, 1.5, 0.16);
+    charGroup.add(shades);
+
+    // Legs
+    const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6);
+    const legL = new THREE.Group();
+    const lm1 = new THREE.Mesh(legGeo, materials.shalwarNavy);
+    lm1.position.y = -0.3;
+    legL.add(lm1);
+    legL.position.set(-0.1, 0.6, 0);
+    charGroup.add(legL);
+
+    const legR = new THREE.Group();
+    const lm2 = new THREE.Mesh(legGeo, materials.shalwarNavy);
+    lm2.position.y = -0.3;
+    legR.add(lm2);
+    legR.position.set(0.1, 0.6, 0);
+    charGroup.add(legR);
+
+    // Arm with rolled Blueprint Document
+    const armR = new THREE.Group();
+    const am1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.48, 6), shirtMat);
+    am1.position.y = -0.24;
+    armR.add(am1);
+    const blueprint = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.45, 8), new THREE.MeshBasicMaterial({ color: 0x0288d1 }));
+    blueprint.rotation.z = Math.PI / 2;
+    blueprint.position.set(0, -0.38, 0.1);
+    armR.add(blueprint);
+    armR.position.set(0.3, 1.2, 0);
+    charGroup.add(armR);
+
+    // Left Arm with Yellow Measuring Tape
+    const armL = new THREE.Group();
+    const am2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.48, 6), shirtMat);
+    am2.position.y = -0.24;
+    armL.add(am2);
+    const tape = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.08), new THREE.MeshBasicMaterial({ color: 0xffeb3b }));
+    tape.position.set(0, -0.35, 0.08);
+    armL.add(tape);
+    armL.position.set(-0.3, 1.2, 0);
+    charGroup.add(armL);
+
+    group.add(charGroup);
+
+    // Illegal Concrete Plot Boundary Stone on Sidewalk
+    const stoneGeo = new THREE.BoxGeometry(0.7, 0.4, 0.5);
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0xb0bec5 });
+    const stone = new THREE.Mesh(stoneGeo, stoneMat);
+    stone.position.set(0.65, 0.2, 0.3);
+    group.add(stone);
+
+    // "2-GAZ PLOT" chalk writing on ground
+    const chalkGeo = new THREE.PlaneGeometry(1.6, 1.6);
+    chalkGeo.rotateX(-Math.PI / 2);
+    const chalkCanvas = document.createElement('canvas');
+    chalkCanvas.width = 128;
+    chalkCanvas.height = 128;
+    const cctx = chalkCanvas.getContext('2d');
+    cctx.strokeStyle = '#ffd600';
+    cctx.lineWidth = 6;
+    cctx.strokeRect(4, 4, 120, 120);
+    cctx.fillStyle = '#ffd600';
+    cctx.font = 'bold 20px sans-serif';
+    cctx.textAlign = 'center';
+    cctx.fillText('2 GAZ', 64, 55);
+    cctx.fillText('PLOT', 64, 85);
+    const chalkTex = new THREE.CanvasTexture(chalkCanvas);
+    const chalkMesh = new THREE.Mesh(chalkGeo, new THREE.MeshBasicMaterial({ map: chalkTex, transparent: true }));
+    chalkMesh.position.set(0.7, 0.03, 0.3);
+    group.add(chalkMesh);
+
+    // Dynamic Speech Bubble
+    const canvas = document.createElement('canvas');
+    canvas.width = 440;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const bTex = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text) => {
+      ctx.clearRect(0, 0, 440, 110);
+      ctx.fillStyle = '#e65100'; // Deep orange
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 424, 76, 18);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 21px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 220, 46);
+      bTex.needsUpdate = true;
+    };
+    drawBubble('📐 China Cutting: Footpath par plot le lo!');
+
+    const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    bubble.scale.set(4.2, 1.05, 1);
+    bubble.position.set(0, 2.5, 0);
+    group.add(bubble);
+
+    group.userData = {
+      isBadGuy: true,
+      evilType: 'chinacutting',
+      name: "China Cutting Land Grabber",
+      charGroup, legL, legR, armL, armR,
+      runSpeed: 4.4,
+      drawBubble,
+      bubbleSprite: bubble
+    };
+
+    return group;
+  },
+
+  // 34. Bhatta / Parchi Extortion Mafia - Civic Evil Tier 2 (Bazaar Extortionist)
+  createBhattaParchiMafia() {
+    const group = new THREE.Group();
+    group.name = "Bhatta-Parchi-Mafia";
+    group.isBadGuy = true;
+
+    // Muscular gangster
+    const charGroup = new THREE.Group();
+    const vestMat = new THREE.MeshLambertMaterial({ color: 0x3e2723 }); // Dark leather vest
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 0.88, 8), vestMat);
+    body.position.y = 0.88;
+    charGroup.add(body);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 8, 8), materials.pedestrianSkin);
+    head.position.y = 1.48;
+    charGroup.add(head);
+
+    // Thick Mustache & Dark Shades
+    const stache = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.05), materials.curbBlack);
+    stache.position.set(0, 1.44, 0.17);
+    charGroup.add(stache);
+
+    const shades = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.05), materials.curbBlack);
+    shades.position.set(0, 1.5, 0.17);
+    charGroup.add(shades);
+
+    // Legs
+    const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6);
+    const legL = new THREE.Group();
+    const lm1 = new THREE.Mesh(legGeo, materials.curbBlack);
+    lm1.position.y = -0.3;
+    legL.add(lm1);
+    legL.position.set(-0.1, 0.6, 0);
+    charGroup.add(legL);
+
+    const legR = new THREE.Group();
+    const lm2 = new THREE.Mesh(legGeo, materials.curbBlack);
+    lm2.position.y = -0.3;
+    legR.add(lm2);
+    legR.position.set(0.1, 0.6, 0);
+    charGroup.add(legR);
+
+    // Arm holding Brown Extortion Envelope & Parchi Chit
+    const armR = new THREE.Group();
+    const am1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.48, 6), vestMat);
+    am1.position.y = -0.24;
+    armR.add(am1);
+
+    // Brown envelope labeled "PARCHI"
+    const envelope = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.03), new THREE.MeshLambertMaterial({ color: 0x8d6e63 }));
+    envelope.position.set(0, -0.36, 0.08);
+    armR.add(envelope);
+    armR.position.set(0.32, 1.2, 0);
+    charGroup.add(armR);
+
+    const armL = new THREE.Group();
+    const am2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.48, 6), vestMat);
+    am2.position.y = -0.24;
+    armL.add(am2);
+    armL.position.set(-0.32, 1.2, 0);
+    charGroup.add(armL);
+
+    group.add(charGroup);
+
+    // Dynamic Speech Bubble
+    const canvas = document.createElement('canvas');
+    canvas.width = 440;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const bTex = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text) => {
+      ctx.clearRect(0, 0, 440, 110);
+      ctx.fillStyle = '#4a148c'; // Deep purple
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 424, 76, 18);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 21px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 220, 46);
+      bTex.needsUpdate = true;
+    };
+    drawBubble('📜 Bhatta Mafia: 50,000 Parchi pohnch gayi!');
+
+    const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    bubble.scale.set(4.2, 1.05, 1);
+    bubble.position.set(0, 2.5, 0);
+    group.add(bubble);
+
+    group.userData = {
+      isBadGuy: true,
+      evilType: 'bhatta',
+      name: "Bhatta Parchi Extortion Mafia",
+      charGroup, legL, legR, armL, armR,
+      runSpeed: 4.5,
+      drawBubble,
+      bubbleSprite: bubble
+    };
+
+    return group;
+  },
+
+  // 35. Reckless One-Wheeling Silencer-less Racer - Civic Evil Tier 1 (Street Menace)
+  createOneWheelerRacer() {
+    const group = new THREE.Group();
+    group.name = "One-Wheeling-Racer";
+    group.isBadGuy = true;
+
+    // CD-70 Motorbike tilted back in 42-degree WHEELIE angle!
+    const bikeGroup = new THREE.Group();
+    const bike = this.createMotorbike();
+    bikeGroup.add(bike);
+    bikeGroup.rotation.x = -Math.PI / 4.2; // Front wheel in air!
+    bikeGroup.position.y = 0.35;
+    group.add(bikeGroup);
+
+    // Reckless youth rider in neon track suit
+    const rider = new THREE.Group();
+    const suitMat = new THREE.MeshLambertMaterial({ color: 0x00e676 }); // Neon green track jacket
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.45, 0.22), suitMat);
+    body.position.set(0, 0.65, -0.15);
+    rider.add(body);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), materials.pedestrianSkin);
+    head.position.set(0, 0.98, -0.15);
+    rider.add(head);
+
+    // Backward baseball cap
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.08, 8), new THREE.MeshBasicMaterial({ color: 0xd50000 }));
+    cap.position.set(0, 1.06, -0.15);
+    rider.add(cap);
+
+    rider.position.set(0, 0.35, 0);
+    rider.rotation.x = -Math.PI / 4.5;
+    group.add(rider);
+
+    // Removed Silencer Exhaust Smoke Ring
+    const smokeMat = new THREE.MeshBasicMaterial({ color: 0x757575, transparent: true, opacity: 0.7 });
+    const smokeRing = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.04, 6, 12), smokeMat);
+    smokeRing.position.set(0.18, 0.15, -0.9);
+    group.add(smokeRing);
+
+    // Dynamic Speech Bubble
+    const canvas = document.createElement('canvas');
+    canvas.width = 440;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const bTex = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text) => {
+      ctx.clearRect(0, 0, 440, 110);
+      ctx.fillStyle = '#00b0ff'; // Bright cyan
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 424, 76, 18);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 21px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 220, 46);
+      bTex.needsUpdate = true;
+    };
+    drawBubble('🏍️ One-Wheeling: Silencer nikaal diya!');
+
+    const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    bubble.scale.set(4.2, 1.05, 1);
+    bubble.position.set(0, 2.6, 0);
+    group.add(bubble);
+
+    group.userData = {
+      isBadGuy: true,
+      evilType: 'onewheeler',
+      name: "Reckless One-Wheeling Racer",
+      speed: 5.8,
+      drawBubble,
+      bubbleSprite: bubble
+    };
+
+    return group;
   }
 };
+
 
 

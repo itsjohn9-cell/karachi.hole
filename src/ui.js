@@ -74,6 +74,12 @@ export class UIManager {
         </div>
       </div>
 
+      <!-- Mission Guidance Bar -->
+      <div class="mission-guidance-bar" id="mission-guidance-bar">
+        <span class="mission-icon">🎯</span>
+        <span class="mission-text"><b>CLEANSE KARACHI:</b> Devour <b>Water Tankers, VIP SUVs, K-Electric Kundas, Robbers, China Cutters & Trash</b>! 🍔 <i>Food stalls give Turbo Boost!</i></span>
+      </div>
+
       <!-- Center Announcement Overlay -->
       <div class="announcement-banner" id="hud-announcement" style="opacity: 0"></div>
 

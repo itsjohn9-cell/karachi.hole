@@ -97,6 +97,7 @@ class Game {
     this.badGuys = generated.badGuys || [];
     this.foodStalls = generated.foodStalls || [];
     this.buildings = generated.buildings || [];
+    this.citizens = generated.citizens || [];
     this.civicTotal = Math.max(1, this.badGuys.length);
     this.civicCleansed = 0;
     this.frenzyTimer = 0;
@@ -206,6 +207,8 @@ class Game {
     this.player.politiciansDevoured = 0;
     this.player.turboTimer = 0;
     this.player.kills = 0;
+    this.player.baseSpeed = 9.5;
+    this.player.currentSpeed = 9.5;
     this.player.isAlive = true;
     this.player.group.visible = true;
     this.player.updateNameTag();
@@ -222,7 +225,7 @@ class Game {
       h.score = 0;
       h.radius = LEVEL_CONFIG[0].radius * 0.9;
       h.targetRadius = h.radius;
-      h.baseSpeed = 13.5 * diff.botSpeedMult;
+      h.baseSpeed = 6.5 * diff.botSpeedMult;
       h.currentSpeed = h.baseSpeed;
       h.swallowedCount = 0;
       h.kills = 0;
@@ -243,6 +246,7 @@ class Game {
     this.badGuys = generated.badGuys || [];
     this.foodStalls = generated.foodStalls || [];
     this.buildings = generated.buildings || [];
+    this.citizens = generated.citizens || [];
     this.civicTotal = Math.max(1, this.badGuys.length);
     this.civicCleansed = 0;
     this.frenzyTimer = 0;
@@ -351,57 +355,91 @@ class Game {
       }
     }
 
-    // Update Fleeing Pakistani Politicians with Funny Animations!
-    for (let i = 0; i < this.politicians.length; i++) {
-      const pol = this.politicians[i];
-      if (pol.state === 'swallowed') continue;
+    // Update Karachi Civic Evils: Fleeing bad guys, sparking K-Electric, and comical panic banter!
+    for (let i = 0; i < this.badGuys.length; i++) {
+      const bg = this.badGuys[i];
+      if (bg.state === 'swallowed') continue;
 
-      const pPos = pol.mesh.position;
-      let nearestHole = null;
-      let minHoleDist = Infinity;
+      const bgMesh = bg.mesh;
+      const bgPos = bgMesh.position;
+      const ud = bgMesh.userData;
 
-      for (let h = 0; h < this.holes.length; h++) {
-        const hole = this.holes[h];
-        if (!hole.isAlive) continue;
-        const d = hole.position.distanceTo(pPos);
-        if (d < minHoleDist) {
-          minHoleDist = d;
-          nearestHole = hole;
-        }
+      // K-Electric Sparking live wires
+      if (bg.evilType === 'ke' && ud && ud.sparkGroup) {
+        ud.sparkGroup.children.forEach(sp => {
+          sp.visible = Math.random() > 0.35;
+        });
       }
 
-      // Politician panics and runs away when hole gets close!
-      if (nearestHole && minHoleDist < 20 && pol.state === 'idle') {
-        const fleeX = pPos.x - nearestHole.position.x;
-        const fleeZ = pPos.z - nearestHole.position.z;
-        const len = Math.sqrt(fleeX * fleeX + fleeZ * fleeZ);
+      // If mobile bad guy (politician, robber, gutka, chinacutting, bhatta, onewheeler, tanker, vip)
+      const isMobile = bg.evilType === 'politician' || bg.evilType === 'robber' ||
+                       bg.evilType === 'gutka' || bg.evilType === 'chinacutting' ||
+                       bg.evilType === 'bhatta' || bg.evilType === 'onewheeler' ||
+                       bg.evilType === 'tanker' || bg.evilType === 'vip';
 
-        if (len > 0.1) {
-          const normX = fleeX / len;
-          const normZ = fleeZ / len;
-          const fleeSpeed = 9.5;
-          pPos.x += normX * dt * fleeSpeed;
-          pPos.z += normZ * dt * fleeSpeed;
-          pol.mesh.rotation.y = Math.atan2(normX, normZ);
-        }
+      if (isMobile) {
+        let nearestHole = null;
+        let minHoleDist = Infinity;
 
-        // Hilarious comical flailing limb animation
-        const ud = pol.mesh.userData;
-        if (ud && ud.legL) {
-          ud.runCycle += dt * 22;
-          ud.legL.rotation.x = Math.sin(ud.runCycle) * 0.95;
-          ud.legR.rotation.x = -Math.sin(ud.runCycle) * 0.95;
-          ud.armL.rotation.z = 1.3 + Math.sin(ud.runCycle) * 0.6;
-          ud.armR.rotation.z = -1.3 - Math.sin(ud.runCycle) * 0.6;
-
-          if (minHoleDist < 12 && !ud.hasPanicked) {
-            ud.hasPanicked = true;
-            ud.drawBubble("Bhago! Black Hole aa gaya!");
+        for (let h = 0; h < this.holes.length; h++) {
+          const hole = this.holes[h];
+          if (!hole.isAlive) continue;
+          const d = hole.position.distanceTo(bgPos);
+          if (d < minHoleDist) {
+            minHoleDist = d;
+            nearestHole = hole;
           }
         }
 
-        pPos.x = THREE.MathUtils.clamp(pPos.x, -105, 105);
-        pPos.z = THREE.MathUtils.clamp(pPos.z, -105, 105);
+        // Bad guy panics and tries to escape when hole gets near!
+        if (nearestHole && minHoleDist < 18 && bg.state === 'idle') {
+          const fleeX = bgPos.x - nearestHole.position.x;
+          const fleeZ = bgPos.z - nearestHole.position.z;
+          const len = Math.sqrt(fleeX * fleeX + fleeZ * fleeZ);
+
+          if (len > 0.1) {
+            const normX = fleeX / len;
+            const normZ = fleeZ / len;
+            // Relaxed fleeing speed so player (speed ~9.5) can chase, observe, and read!
+            const fleeSpeed = ud?.runSpeed || (bg.evilType === 'vip' ? 5.8 : bg.evilType === 'tanker' ? 5.2 : 4.4);
+            bgPos.x += normX * dt * fleeSpeed;
+            bgPos.z += normZ * dt * fleeSpeed;
+            bgMesh.rotation.y = Math.atan2(normX, normZ);
+          }
+
+          // Flailing limb panic animations
+          if (ud && ud.legL && ud.legR) {
+            ud.runCycle = (ud.runCycle || 0) + dt * 20;
+            ud.legL.rotation.x = Math.sin(ud.runCycle) * 0.95;
+            ud.legR.rotation.x = -Math.sin(ud.runCycle) * 0.95;
+            if (ud.armL && ud.armR) {
+              ud.armL.rotation.z = 1.3 + Math.sin(ud.runCycle) * 0.55;
+              ud.armR.rotation.z = -1.3 - Math.sin(ud.runCycle) * 0.55;
+            }
+          }
+
+          // Escape banter on speech bubble
+          if (minHoleDist < 14 && !bg.hasPanickedEscape) {
+            bg.hasPanickedEscape = true;
+            const escapeLines = {
+              politician: "Bhago! Anti-Corruption aa gaya!",
+              robber: "Abey bhaago, Gutter Hero aa gaya!",
+              gutka: "Mera mawa chhalia gir gaya!",
+              chinacutting: "Footpath chorr ke bhaago!",
+              bhatta: "Extortion parchi bacha lo!",
+              tanker: "15,000 ka tanker bhaag raha hai!",
+              vip: "VIP Protocol ko rasta do!",
+              onewheeler: "One-wheeling se bhaago!"
+            };
+            const line = escapeLines[bg.evilType] || "Bhaago! Gutter aa gaya!";
+            if (ud && ud.drawBubble) {
+              ud.drawBubble(line);
+            }
+          }
+
+          bgPos.x = THREE.MathUtils.clamp(bgPos.x, -105, 105);
+          bgPos.z = THREE.MathUtils.clamp(bgPos.z, -105, 105);
+        }
       }
     }
 
@@ -490,14 +528,39 @@ class Game {
     }
 
     // Edible Objects Suction & Collision (Ultra-fast Bounding Box check for 60 FPS)
-    const pullSpeed = isKidsMode ? 12.0 : 7.5;
+    const pullSpeed = isKidsMode ? 10.0 : 7.0;
     for (let i = 0; i < this.edibleObjects.length; i++) {
       const obj = this.edibleObjects[i];
       if (obj.state === 'swallowed') continue;
 
+      // Update cooldowns on boost / cheers
+      if (obj.boostCooldown > 0) obj.boostCooldown -= dt;
+      if (obj.cheerCooldown > 0) obj.cheerCooldown -= dt;
+
       const objPos = obj.mesh.position;
 
-      // If object is currently idle, check for nearest hole that can eat it
+      // =========================================================
+      // RULE: ONLY BAD STUFF CAN BE DEVOURED!
+      // Innocent things (food stalls, honest citizens, stray animals, landmarks, transport) cannot be eaten!
+      // =========================================================
+      if (!obj.isBadGuy) {
+        if (this.player && this.player.isAlive) {
+          const dx = this.player.position.x - objPos.x;
+          const dz = this.player.position.z - objPos.z;
+          const r = this.player.radius;
+
+          if (Math.abs(dx) <= r + 1.2 && Math.abs(dz) <= r + 1.2 && (dx * dx + dz * dz < (r + 1.2) * (r + 1.2))) {
+            if (obj.isFoodStall && (!obj.boostCooldown || obj.boostCooldown <= 0)) {
+              this.handleFoodStallBoost(obj);
+            } else if (obj.isCitizen && (!obj.cheerCooldown || obj.cheerCooldown <= 0)) {
+              this.handleCitizenCheer(obj);
+            }
+          }
+        }
+        continue; // Never sucked into hole!
+      }
+
+      // If bad object is currently idle, check for nearest hole that can eat it
       if (obj.state === 'idle') {
         for (let h = 0; h < this.holes.length; h++) {
           const hole = this.holes[h];
@@ -513,13 +576,15 @@ class Game {
             if (Math.abs(dx) <= r && Math.abs(dz) <= r && (dx * dx + dz * dz < r * r)) {
               obj.state = 'sucking';
               obj.suckingHole = hole;
+              obj.suctionProgress = 0;
+              obj.hasTriggeredScream = false;
               break;
             }
           }
         }
       }
 
-      // If object is in suction towards a hole
+      // If object is in suction towards a hole (Slow, Dramatic Comic Struggle ~1.4s)
       if (obj.state === 'sucking' && obj.suckingHole) {
         const hole = obj.suckingHole;
         if (!hole.isAlive) {
@@ -528,19 +593,38 @@ class Game {
           continue;
         }
 
-        obj.suctionProgress += dt * 3.6;
+        // Slowed down so player can clearly see who is getting devoured and read their last words!
+        obj.suctionProgress += dt * 0.72;
+
+        // Trigger comic panicked scream words on first frame of suction
+        if (!obj.hasTriggeredScream) {
+          obj.hasTriggeredScream = true;
+          this.triggerDevourScream(obj, hole);
+        }
 
         // Gravitational magnetic suction towards hole center
-        objPos.x += (hole.position.x - objPos.x) * dt * pullSpeed;
-        objPos.z += (hole.position.z - objPos.z) * dt * pullSpeed;
+        objPos.x += (hole.position.x - objPos.x) * dt * (pullSpeed * 0.65);
+        objPos.z += (hole.position.z - objPos.z) * dt * (pullSpeed * 0.65);
 
-        // Tilt & drop into the abyss
-        obj.mesh.rotation.x += dt * 4.2;
-        obj.mesh.rotation.z += dt * 3.4;
-        objPos.y -= dt * 7.5;
+        // Dramatic comic struggle wobble & tilt
+        obj.mesh.rotation.y += dt * 8.0;
+        obj.mesh.rotation.z = Math.sin(obj.suctionProgress * 18.0) * 0.4;
+        objPos.y -= dt * 2.2;
 
-        // Scale down smoothly
-        const scaleFactor = Math.max(0.01, 1.0 - obj.suctionProgress);
+        // Flail limbs wildly if character
+        const ud = obj.mesh.userData;
+        if (ud && ud.legL && ud.legR) {
+          ud.runCycle = (ud.runCycle || 0) + dt * 28;
+          ud.legL.rotation.x = Math.sin(ud.runCycle) * 1.2;
+          ud.legR.rotation.x = -Math.sin(ud.runCycle) * 1.2;
+          if (ud.armL && ud.armR) {
+            ud.armL.rotation.z = 1.6 + Math.sin(ud.runCycle) * 0.8;
+            ud.armR.rotation.z = -1.6 - Math.sin(ud.runCycle) * 0.8;
+          }
+        }
+
+        // Scale down smoothly into the sewer void
+        const scaleFactor = Math.max(0.01, 1.0 - obj.suctionProgress * 0.88);
         obj.mesh.scale.set(
           obj.scaleX * scaleFactor,
           obj.scaleY * scaleFactor,
@@ -579,8 +663,24 @@ class Game {
               this.ui.showAnnouncement("🌟 KARACHI HERO FRENZY! قائد کا خواب پورا ہو گیا! 2X SCORE! 🌟", "#ffd700");
             }
 
-            // Specialized audio & announcements per evil type
-            if (obj.evilType === 'tanker') {
+            // Specialized audio, particles & announcements per evil type
+            if (obj.evilType === 'ke') {
+              this.particles.createSwallowBurst(hole.position, 3, 30);
+              audio.playKESpark();
+              this.ui.showAnnouncement(`⚡ K-ELECTRIC KUNDA CHOPPED! LOAD SHEDDING CLEARED! (+${points} XP)`, '#ffea00');
+            } else if (obj.evilType === 'chinacutting') {
+              this.particles.createSwallowBurst(hole.position, 2, 25);
+              audio.playChinaCuttingDemolish();
+              this.ui.showAnnouncement(`📐 CHINA CUTTING CANCELLED! FOOTPATH RECLAIMED! (+${points} XP)`, '#ff9800');
+            } else if (obj.evilType === 'bhatta') {
+              this.particles.createMoneyBurst(hole.position, 35);
+              audio.playBhattaConfiscate();
+              this.ui.showAnnouncement(`📜 BHATTA PARCHI CONFISCATED! BAZAAR SAVED! (+${points} XP)`, '#e040fb');
+            } else if (obj.evilType === 'onewheeler') {
+              this.particles.createSwallowBurst(hole.position, 2, 20);
+              audio.playOneWheelerImpound();
+              this.ui.showAnnouncement(`🏍️ RECKLESS ONE-WHEELER IMPOUNDED! STREETS SAFE! (+${points} XP)`, '#00e5ff');
+            } else if (obj.evilType === 'tanker') {
               this.particles.createSwallowBurst(hole.position, 4, 30);
               audio.playWaterTankerDevour();
               this.ui.showAnnouncement(`🚰 WATER TANKER MAFIA BUSTED! KARACHI WATER FREED! (+${points} XP)`, '#00e5ff');
@@ -602,7 +702,7 @@ class Game {
               this.particles.createSwallowBurst(hole.position, 3, 25);
               audio.playRobberDevour();
               audio.playGutterSplash();
-              this.ui.showAnnouncement(`🚨 STREET DAKOO DEVOURED! CITIZEN SAVED! (+${points} XP)`, '#ffea00');
+              this.ui.showAnnouncement(`🔫 STREET DAKOO DEVOURED! MOBILE RECOVERED! (+${points} XP)`, '#ffea00');
             } else if (obj.evilType === 'politician') {
               this.particles.createMoneyBurst(hole.position, 45);
               audio.playPoliticianSwallow();
@@ -615,14 +715,6 @@ class Game {
               this.particles.createSwallowBurst(hole.position, 1, 10);
               audio.playGutterSplash();
               audio.playSwallow(1);
-            }
-          } else if (obj.isAnimal) {
-            this.particles.createSwallowBurst(hole.position, 1, 15);
-            if (hole.isPlayer) {
-              audio.playGutterSplash();
-              if (obj.mesh.name === 'Stray-Dog') audio.playDogBark();
-              else if (obj.mesh.name === 'Street-Cat') audio.playCatMeow();
-              else if (obj.mesh.name === 'Sewer-Rat') audio.playRatSqueak();
             }
           } else {
             this.particles.createSwallowBurst(hole.position, obj.tier);
@@ -655,6 +747,110 @@ class Game {
       x: (vector.x * 0.5 + 0.5) * window.innerWidth,
       y: (-(vector.y * 0.5) + 0.5) * window.innerHeight
     };
+  }
+
+  triggerDevourScream(obj, hole) {
+    const ud = obj.mesh?.userData;
+    let scream = "";
+    const type = obj.evilType;
+
+    const screams = {
+      politician: [
+        "Nahi! Mere Offshore Swiss Accounts!",
+        "Mujhe kyun nikala?! Resign karta hoon!",
+        "Tum jantay nahi mera baap MNA hai!",
+        "VIP Protocol doob gaya! Bachao!"
+      ],
+      robber: [
+        "Aray bhai mobile wapis le lo!",
+        "Mera chori ka CD-70 chorr do!",
+        "Pistol nakli tha sarkar! Maaf kardo!",
+        "Ghalti ho gayi sarkar! Tauba!"
+      ],
+      tanker: [
+        "15 hazar ka bill maaf kar dunga!",
+        "Karachi ka sara pani free!",
+        "Tanker gutter mein doob raha hai!"
+      ],
+      vip: [
+        "HATO HATO! VIP gutter mein gir raha hai!",
+        "Sirens band kar do! Bachao!",
+        "Protocol security squad kidhar hai?!"
+      ],
+      gutka: [
+        "Mawa thook raha hoon bacha lo!",
+        "Aainda chhalia nahi bechunga!",
+        "Deewaron pe laal rang nahi thookunga!"
+      ],
+      ke: [
+        "ZZZZT! 14 ghantay load shedding maaf!",
+        "Transformer phat gaya! Sparking band!",
+        "Kunda taar cut gayi! Light aa gayi!"
+      ],
+      chinacutting: [
+        "Footpath ka plot le lo free mein!",
+        "Registry farzi thi meri bhai!",
+        "Gutter mein china cutting nahi hoti!"
+      ],
+      bhatta: [
+        "Bhatta ki 50,000 parchi wapis le lo!",
+        "Shopkeeper bhai maaf kar do!",
+        "Aainda bhatta nahi mangunga!"
+      ],
+      onewheeler: [
+        "Mera 70cc silencer doob gaya!",
+        "One-wheeling band bhai!",
+        "Brake nahi lag rahi thi!"
+      ],
+      pothole: [
+        "Khadda saaf! Smooth road ban gayi!",
+        "KW&SB leak pipeline band!"
+      ],
+      trash: [
+        "Kachra saaf! Clean Karachi!"
+      ]
+    };
+
+    const list = screams[type] || ["Bachaooo! Gutter mein gir gaya!"];
+    scream = list[Math.floor(Math.random() * list.length)];
+
+    if (ud && ud.drawBubble) {
+      ud.drawBubble(scream);
+    }
+
+    if (hole.isPlayer) {
+      this.ui.showAnnouncement(`🗯️ "${scream}"`, "#ffffff");
+      audio.vibrate([30, 20, 50]);
+    }
+  }
+
+  handleFoodStallBoost(stall) {
+    stall.boostCooldown = 6.0;
+    this.player.turboTimer = 5.0;
+    this.player.currentSpeed = this.player.baseSpeed * 1.45;
+
+    if (stall.name.includes("Bun Kabab")) {
+      audio.playBunKababSizzle();
+      this.particles.createLevelUpShockwave(this.player.position, 3.5);
+      this.ui.showAnnouncement("🍔 BURNS ROAD BUN KABAB! SPICY CHUTNEY TURBO BOOST! 🌶️", "#ff5722");
+    } else {
+      audio.playChaiSip();
+      this.particles.createLevelUpShockwave(this.player.position, 3.0);
+      this.ui.showAnnouncement("☕ QUETTA DUDH PATTI! KARAK CHAI RECHARGE! ⚡", "#ffd700");
+    }
+  }
+
+  handleCitizenCheer(citizen) {
+    citizen.cheerCooldown = 8.0;
+    audio.playCitizenCheer();
+    const cheers = [
+      "Jeetay raho Gutter Hero! Karachi ko saaf karo!",
+      "Shukriya bhai! Choron aur kachray ko saaf kar do!",
+      "Zindabad! Humari gali se tanker mafia hatao!",
+      "Shabash! Karachi civic hero zindabad!"
+    ];
+    const cheer = cheers[Math.floor(Math.random() * cheers.length)];
+    this.ui.showAnnouncement(`🗣️ Citizen: "${cheer}"`, "#69f0ae");
   }
 
   updateCamera(dt) {
