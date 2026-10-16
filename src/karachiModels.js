@@ -956,41 +956,37 @@ export const KarachiModels = {
       group.add(bar);
     });
 
-    // 3. Floating High-Visibility Billboard Badge
+    // 3. Floating High-Visibility Billboard Badge (Compact street-level pill)
     const canvas = document.createElement('canvas');
-    canvas.width = 440;
-    canvas.height = 100;
+    canvas.width = 320;
+    canvas.height = 70;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(28, 4, 8, 0.95)';
+    ctx.fillStyle = 'rgba(28, 4, 8, 0.92)';
     ctx.beginPath();
-    ctx.roundRect(6, 6, 428, 88, 20);
+    ctx.roundRect(4, 4, 312, 62, 16);
     ctx.fill();
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 3;
     ctx.strokeStyle = '#ff1744';
     ctx.stroke();
 
     ctx.fillStyle = '#ff1744';
-    ctx.font = '900 22px "Outfit", sans-serif';
+    ctx.font = '900 20px "Outfit", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`❌ ${label.toUpperCase()} ❌`, 220, 34);
-
-    ctx.fillStyle = '#ffd700';
-    ctx.font = '900 18px "Outfit", sans-serif';
-    ctx.fillText(`😈 DEVOUR THIS BAD GUY!`, 220, 68);
+    ctx.fillText(label.toUpperCase(), 160, 35);
 
     const bTex = new THREE.CanvasTexture(canvas);
     const badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
-    badge.scale.set(4.6, 1.05, 1);
-    badge.position.set(0, 3.8, 0);
+    badge.scale.set(2.4, 0.55, 1);
+    badge.position.set(0, 2.3, 0);
     group.add(badge);
 
     // 4. Bouncing Overhead Red Chevron Arrow (pointing down right at evil!)
-    const arrowGeo = new THREE.ConeGeometry(0.35, 0.7, 4);
+    const arrowGeo = new THREE.ConeGeometry(0.25, 0.5, 4);
     arrowGeo.rotateX(Math.PI);
     const arrowMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
     const arrow = new THREE.Mesh(arrowGeo, arrowMat);
-    arrow.position.set(0, 4.8, 0);
+    arrow.position.set(0, 2.9, 0);
     group.add(arrow);
 
     // 5. Skyward Beacon Pillar for final evils
@@ -1057,8 +1053,8 @@ export const KarachiModels = {
 
     const bTex = new THREE.CanvasTexture(canvas);
     const badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
-    badge.scale.set(3.6, 0.8, 1);
-    badge.position.set(0, type === 'food' || type === 'chai' ? 3.4 : 2.5, 0);
+    badge.scale.set(2.2, 0.48, 1);
+    badge.position.set(0, type === 'food' || type === 'chai' ? 2.4 : 1.9, 0);
     group.add(badge);
 
     group.userData = { ring, badge, isFriendly: true };
@@ -1383,7 +1379,7 @@ export const KarachiModels = {
     const group = new THREE.Group();
     group.name = "Trash-Bag";
 
-    const bagMat = new THREE.MeshLambertMaterial({ color, roughness: 0.6 });
+    const bagMat = new THREE.MeshStandardMaterial({ color, roughness: 0.6 });
     // Bulging bag base
     const bagGeo = new THREE.DodecahedronGeometry(0.38, 1);
     bagGeo.scale(1, 0.85, 1);

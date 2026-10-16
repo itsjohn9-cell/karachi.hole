@@ -1582,125 +1582,133 @@ class Game {
   animate() {
     requestAnimationFrame(this.animate);
 
-    const dt = Math.min(this.clock.getDelta(), 0.1);
+    try {
+      const dt = Math.min(this.clock.getDelta(), 0.1);
 
-    if (!this.isGameOver && !this.isPaused) {
-      this.updatePhysics(dt);
-      this.updateMatchTimer(dt);
-    }
+      if (!this.isGameOver && !this.isPaused) {
+        this.updatePhysics(dt);
+        this.updateMatchTimer(dt);
+      }
 
-    // Dynamic Arabian Sea wave motion and coastal bay buoy bobbing
-    const elapsedTime = this.clock.getElapsedTime();
-    if (this.cityGen && this.cityGen.seaMesh) {
-      this.cityGen.seaMesh.position.y = -0.32 + Math.sin(elapsedTime * 1.5) * 0.05;
-    }
-    if (this.cityGen && this.cityGen.coastalBays) {
-      this.cityGen.coastalBays.forEach((bay, idx) => {
-        const ud = bay.userData;
-        if (ud) {
-          if (ud.waterMesh) {
-            ud.waterMesh.position.y = 0.05 + Math.sin(elapsedTime * 1.6 + idx * 1.3) * 0.03;
+      // Dynamic Arabian Sea wave motion and coastal bay buoy bobbing
+      const elapsedTime = this.clock.getElapsedTime();
+      if (this.cityGen && this.cityGen.seaMesh) {
+        this.cityGen.seaMesh.position.y = -0.32 + Math.sin(elapsedTime * 1.5) * 0.05;
+      }
+      if (this.cityGen && this.cityGen.coastalBays) {
+        this.cityGen.coastalBays.forEach((bay, idx) => {
+          const ud = bay.userData;
+          if (ud) {
+            if (ud.waterMesh) {
+              ud.waterMesh.position.y = 0.05 + Math.sin(elapsedTime * 1.6 + idx * 1.3) * 0.03;
+            }
+            if (ud.foam) {
+              const s = 1.0 + Math.sin(elapsedTime * 2.1 + idx) * 0.04;
+              ud.foam.scale.set(s, s, s);
+            }
+            if (ud.buoyGroup) {
+              ud.buoyGroup.position.y = 0.4 + Math.sin(elapsedTime * 2.3 + idx) * 0.12;
+              ud.buoyGroup.rotation.z = Math.sin(elapsedTime * 1.7 + idx) * 0.08;
+              ud.buoyGroup.rotation.x = Math.cos(elapsedTime * 1.5 + idx) * 0.06;
+            }
           }
-          if (ud.foam) {
-            const s = 1.0 + Math.sin(elapsedTime * 2.1 + idx) * 0.04;
-            ud.foam.scale.set(s, s, s);
-          }
-          if (ud.buoyGroup) {
-            ud.buoyGroup.position.y = 0.4 + Math.sin(elapsedTime * 2.3 + idx) * 0.12;
-            ud.buoyGroup.rotation.z = Math.sin(elapsedTime * 1.7 + idx) * 0.08;
-            ud.buoyGroup.rotation.x = Math.cos(elapsedTime * 1.5 + idx) * 0.06;
-          }
-        }
+        });
+      }
+
+      this.updateCamera(dt);
+
+      // Calculate nearest active crimes & evils for HUD Radar Compass
+      const playerPos = this.player ? this.player.position : new THREE.Vector3();
+      const nearestEvils = (this.edibleObjects || [])
+        .filter(o => o && o.mesh && o.mesh.position && o.isBadGuy && o.state !== 'swallowed')
+        .map(o => {
+          const dx = o.mesh.position.x - playerPos.x;
+          const dz = o.mesh.position.z - playerPos.z;
+          const dist = Math.hypot(dx, dz);
+          let icon = "⚠️";
+          if (o.evilType === 'robber') icon = "🔫";
+          else if (o.evilType === 'vip') icon = "🚨";
+          else if (o.evilType === 'tanker') icon = "💧";
+          else if (o.evilType === 'politician') icon = "💰";
+          else if (o.evilType === 'gutka') icon = "🛑";
+          else if (o.evilType === 'ke') icon = "⚡";
+          else if (o.evilType === 'pothole') icon = "🕳️";
+
+          return {
+            name: o.name,
+            evilType: o.evilType,
+            icon,
+            dist: Math.round(dist),
+            dx,
+            dz
+          };
+        })
+        .sort((a, b) => a.dist - b.dist)
+        .slice(0, 3);
+
+      // Calculate active district targets and breakdown chips
+      const activeEvils = (this.districtEvils || []).filter(b => b && b.state !== 'swallowed');
+      this.districtRemaining = activeEvils.length;
+
+      const evilMeta = {
+        robber: { label: 'Chor / Dakoo', icon: '🔫' },
+        gutka: { label: 'Gutka Mafia', icon: '🛑' },
+        pothole: { label: 'Pothole', icon: '🕳️' },
+        trash: { label: 'Trash Pile', icon: '🗑️' },
+        vip: { label: 'VIP Protocol', icon: '🚨' },
+        bhatta: { label: 'Bhatta Parchi', icon: '📜' },
+        onewheeler: { label: 'One-Wheeler', icon: '🏍️' },
+        tanker: { label: 'Water Tanker', icon: '💧' },
+        ke: { label: 'K-Electric Kunda', icon: '⚡' },
+        chinacutting: { label: 'China Cutting', icon: '📐' },
+        politician: { label: 'Corrupt Neta', icon: '💰' }
+      };
+
+      const typeCountMap = {};
+      activeEvils.forEach(e => {
+        const t = e.evilType || 'evil';
+        typeCountMap[t] = (typeCountMap[t] || 0) + 1;
       });
+
+      const targetBreakdown = Object.keys(typeCountMap).map(type => ({
+        type,
+        count: typeCountMap[type],
+        label: evilMeta[type]?.label || type,
+        icon: evilMeta[type]?.icon || '⚠️'
+      }));
+
+      const districtConfig = getDistrictConfig(this.currentDistrictLevel);
+      const activeCrisis = this.crisisChallenges ? this.crisisChallenges[this.currentCrisisIndex] : null;
+
+      // Update HUD with Civic Cleanser progress, Hero Frenzy status, District Mission, Active Crisis & Live Radar
+      if (this.ui) {
+        const ranked = [...(this.holes || [])].sort((a, b) => b.score - a.score);
+        const civicPct = (this.civicCleansed / Math.max(1, this.civicTotal || 1)) * 100;
+        this.ui.updateHUD({
+          player: this.player,
+          timeLeft: this.timeLeft,
+          rankedHoles: ranked,
+          gameMode: this.gameMode,
+          civicPercent: civicPct,
+          frenzyActive: this.frenzyTimer > 0,
+          nearestEvils,
+          districtConfig,
+          districtRemaining: this.districtRemaining,
+          districtTotal: this.districtTotal,
+          targetBreakdown,
+          districtEvils: this.districtEvils,
+          recentCleaned: this.recentCleaned,
+          activeCrisis,
+          missions: this.crisisChallenges
+        });
+      }
+    } catch (e) {
+      console.error('Error during animate loop:', e);
     }
 
-    this.updateCamera(dt);
-
-    // Calculate nearest active crimes & evils for HUD Radar Compass
-    const playerPos = this.player ? this.player.position : new THREE.Vector3();
-    const nearestEvils = this.edibleObjects
-      .filter(o => o.isBadGuy && o.state !== 'swallowed')
-      .map(o => {
-        const dx = o.mesh.position.x - playerPos.x;
-        const dz = o.mesh.position.z - playerPos.z;
-        const dist = Math.hypot(dx, dz);
-        let icon = "⚠️";
-        if (o.evilType === 'robber') icon = "🔫";
-        else if (o.evilType === 'vip') icon = "🚨";
-        else if (o.evilType === 'tanker') icon = "💧";
-        else if (o.evilType === 'politician') icon = "💰";
-        else if (o.evilType === 'gutka') icon = "🛑";
-        else if (o.evilType === 'ke') icon = "⚡";
-        else if (o.evilType === 'pothole') icon = "🕳️";
-
-        return {
-          name: o.name,
-          evilType: o.evilType,
-          icon,
-          dist: Math.round(dist),
-          dx,
-          dz
-        };
-      })
-      .sort((a, b) => a.dist - b.dist)
-      .slice(0, 3);
-
-    // Calculate active district targets and breakdown chips
-    const activeEvils = this.districtEvils.filter(b => b.state !== 'swallowed');
-    this.districtRemaining = activeEvils.length;
-
-    const evilMeta = {
-      robber: { label: 'Chor / Dakoo', icon: '🔫' },
-      gutka: { label: 'Gutka Mafia', icon: '🛑' },
-      pothole: { label: 'Pothole', icon: '🕳️' },
-      trash: { label: 'Trash Pile', icon: '🗑️' },
-      vip: { label: 'VIP Protocol', icon: '🚨' },
-      bhatta: { label: 'Bhatta Parchi', icon: '📜' },
-      onewheeler: { label: 'One-Wheeler', icon: '🏍️' },
-      tanker: { label: 'Water Tanker', icon: '💧' },
-      ke: { label: 'K-Electric Kunda', icon: '⚡' },
-      chinacutting: { label: 'China Cutting', icon: '📐' },
-      politician: { label: 'Corrupt Neta', icon: '💰' }
-    };
-
-    const typeCountMap = {};
-    activeEvils.forEach(e => {
-      const t = e.evilType || 'evil';
-      typeCountMap[t] = (typeCountMap[t] || 0) + 1;
-    });
-
-    const targetBreakdown = Object.keys(typeCountMap).map(type => ({
-      type,
-      count: typeCountMap[type],
-      label: evilMeta[type]?.label || type,
-      icon: evilMeta[type]?.icon || '⚠️'
-    }));
-
-    const districtConfig = getDistrictConfig(this.currentDistrictLevel);
-    const activeCrisis = this.crisisChallenges ? this.crisisChallenges[this.currentCrisisIndex] : null;
-
-    // Update HUD with Civic Cleanser progress, Hero Frenzy status, District Mission, Active Crisis & Live Radar
-    const ranked = [...this.holes].sort((a, b) => b.score - a.score);
-    const civicPct = (this.civicCleansed / Math.max(1, this.civicTotal)) * 100;
-    this.ui.updateHUD({
-      player: this.player,
-      timeLeft: this.timeLeft,
-      rankedHoles: ranked,
-      gameMode: this.gameMode,
-      civicPercent: civicPct,
-      frenzyActive: this.frenzyTimer > 0,
-      nearestEvils,
-      districtConfig,
-      districtRemaining: this.districtRemaining,
-      districtTotal: this.districtTotal,
-      targetBreakdown,
-      districtEvils: this.districtEvils,
-      recentCleaned: this.recentCleaned,
-      activeCrisis,
-      missions: this.crisisChallenges
-    });
-
-    this.renderer.render(this.scene, this.camera);
+    if (this.renderer && this.scene && this.camera) {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 }
 

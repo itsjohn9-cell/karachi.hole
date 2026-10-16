@@ -926,7 +926,7 @@ export class UIManager {
               }
             } else {
               btn.classList.add('option-wrong');
-              setTimeout(() => btnElement.classList.remove('option-wrong'), 500);
+              setTimeout(() => btn.classList.remove('option-wrong'), 500);
             }
           });
           puzzleWrap.appendChild(btn);
@@ -1167,31 +1167,39 @@ export class UIManager {
 
     // 2. Sound & Music
     const btnSound = document.getElementById('btn-toggle-sound');
-    btnSound.addEventListener('click', () => {
-      const enabled = audio.toggleSound();
-      btnSound.textContent = enabled ? '🔊' : '🔇';
-    });
+    if (btnSound) {
+      btnSound.addEventListener('click', () => {
+        const enabled = audio.toggleSound();
+        btnSound.textContent = enabled ? '🔊' : '🔇';
+      });
+    }
 
     const btnMusic = document.getElementById('btn-toggle-music');
-    btnMusic.addEventListener('click', () => {
-      const enabled = audio.toggleMusic();
-      btnMusic.textContent = enabled ? '🎵' : '⏹';
-    });
+    if (btnMusic) {
+      btnMusic.addEventListener('click', () => {
+        const enabled = audio.toggleMusic();
+        btnMusic.textContent = enabled ? '🎵' : '⏹';
+      });
+    }
 
     // 3. Skins Modal
     const btnSkins = document.getElementById('btn-open-skins');
-    btnSkins.addEventListener('click', () => {
-      audio.playClick();
-      if (this.onPauseGame) this.onPauseGame();
-      this.skinModal.style.display = 'flex';
-    });
+    if (btnSkins) {
+      btnSkins.addEventListener('click', () => {
+        audio.playClick();
+        if (this.onPauseGame) this.onPauseGame();
+        if (this.skinModal) this.skinModal.style.display = 'flex';
+      });
+    }
 
     const btnCloseSkins = document.getElementById('btn-close-skins');
-    btnCloseSkins.addEventListener('click', () => {
-      audio.playClick();
-      this.skinModal.style.display = 'none';
-      if (this.onResumeGame) this.onResumeGame();
-    });
+    if (btnCloseSkins) {
+      btnCloseSkins.addEventListener('click', () => {
+        audio.playClick();
+        if (this.skinModal) this.skinModal.style.display = 'none';
+        if (this.onResumeGame) this.onResumeGame();
+      });
+    }
 
     // 4. Good vs Bad Guide Modal
     const btnOpenGuide = document.getElementById('btn-open-guide');
@@ -1199,7 +1207,7 @@ export class UIManager {
       btnOpenGuide.addEventListener('click', () => {
         audio.playClick();
         if (this.onPauseGame) this.onPauseGame();
-        this.guideModal.style.display = 'flex';
+        if (this.guideModal) this.guideModal.style.display = 'flex';
       });
     }
 
@@ -1207,7 +1215,7 @@ export class UIManager {
     if (btnCloseGuide) {
       btnCloseGuide.addEventListener('click', () => {
         audio.playClick();
-        this.guideModal.style.display = 'none';
+        if (this.guideModal) this.guideModal.style.display = 'none';
         if (this.onResumeGame) this.onResumeGame();
       });
     }
@@ -1216,7 +1224,7 @@ export class UIManager {
     if (btnCloseGuideFooter) {
       btnCloseGuideFooter.addEventListener('click', () => {
         audio.playClick();
-        this.guideModal.style.display = 'none';
+        if (this.guideModal) this.guideModal.style.display = 'none';
         if (this.onResumeGame) this.onResumeGame();
       });
     }
@@ -1244,37 +1252,41 @@ export class UIManager {
     });
 
     // Skin card selection
-    const cards = this.skinModal.querySelectorAll('.skin-card');
-    cards.forEach(card => {
-      card.addEventListener('click', () => {
-        audio.playClick();
-        cards.forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        const skinName = card.dataset.skin;
-        this.currentSkin = skinName;
-        if (this.onSelectSkin) this.onSelectSkin(skinName);
-        setTimeout(() => {
-          this.skinModal.style.display = 'none';
-          if (this.onResumeGame) this.onResumeGame();
-        }, 150);
+    if (this.skinModal) {
+      const cards = this.skinModal.querySelectorAll('.skin-card');
+      cards.forEach(card => {
+        card.addEventListener('click', () => {
+          audio.playClick();
+          cards.forEach(c => c.classList.remove('active'));
+          card.classList.add('active');
+          const skinName = card.dataset.skin;
+          this.currentSkin = skinName;
+          if (this.onSelectSkin) this.onSelectSkin(skinName);
+          setTimeout(() => {
+            if (this.skinModal) this.skinModal.style.display = 'none';
+            if (this.onResumeGame) this.onResumeGame();
+          }, 150);
+        });
       });
-    });
+    }
 
     // Difficulty Toggle (Kids / Easy by default)
     const btnDiff = document.getElementById('btn-diff-toggle');
-    btnDiff.addEventListener('click', () => {
-      audio.playClick();
-      if (this.difficulty === 'kidsEasy') {
-        this.difficulty = 'classic';
-        btnDiff.textContent = '🕹️ Classic';
-        btnDiff.classList.remove('highlight-btn');
-      } else {
-        this.difficulty = 'kidsEasy';
-        btnDiff.textContent = '🎈 Easy (Kids)';
-        btnDiff.classList.add('highlight-btn');
-      }
-      if (this.onSelectDifficulty) this.onSelectDifficulty(this.difficulty);
-    });
+    if (btnDiff) {
+      btnDiff.addEventListener('click', () => {
+        audio.playClick();
+        if (this.difficulty === 'kidsEasy') {
+          this.difficulty = 'classic';
+          btnDiff.textContent = '🕹️ Classic';
+          btnDiff.classList.remove('highlight-btn');
+        } else {
+          this.difficulty = 'kidsEasy';
+          btnDiff.textContent = '🎈 Easy (Kids)';
+          btnDiff.classList.add('highlight-btn');
+        }
+        if (this.onSelectDifficulty) this.onSelectDifficulty(this.difficulty);
+      });
+    }
 
     // Manual Pause button on HUD
     const btnManualPause = document.getElementById('btn-manual-pause');
@@ -1295,30 +1307,35 @@ export class UIManager {
 
     // Boost button
     const btnBoost = document.getElementById('btn-boost');
-    btnBoost.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      window.isBoostPressed = true;
-    });
-    btnBoost.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      window.isBoostPressed = false;
-    });
-    btnBoost.addEventListener('mousedown', () => { window.isBoostPressed = true; });
-    btnBoost.addEventListener('mouseup', () => { window.isBoostPressed = false; });
+    if (btnBoost) {
+      btnBoost.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        window.isBoostPressed = true;
+      });
+      btnBoost.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        window.isBoostPressed = false;
+      });
+      btnBoost.addEventListener('mousedown', () => { window.isBoostPressed = true; });
+      btnBoost.addEventListener('mouseup', () => { window.isBoostPressed = false; });
+    }
 
     // Play Again button
-    document.getElementById('btn-play-again').addEventListener('click', () => {
-      audio.playClick();
-      this.gameOverModal.style.display = 'none';
-      if (this.onRestartGame) this.onRestartGame();
-    });
+    const btnPlayAgain = document.getElementById('btn-play-again');
+    if (btnPlayAgain) {
+      btnPlayAgain.addEventListener('click', () => {
+        audio.playClick();
+        if (this.gameOverModal) this.gameOverModal.style.display = 'none';
+        if (this.onRestartGame) this.onRestartGame();
+      });
+    }
 
     // Next Level button on Game Over
     const btnResultsNext = document.getElementById('btn-results-next');
     if (btnResultsNext) {
       btnResultsNext.addEventListener('click', () => {
         audio.playClick();
-        this.gameOverModal.style.display = 'none';
+        if (this.gameOverModal) this.gameOverModal.style.display = 'none';
         if (this.onNextLevel) this.onNextLevel();
       });
     }
