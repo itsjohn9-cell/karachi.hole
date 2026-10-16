@@ -1,20 +1,46 @@
 import { LEVEL_CONFIG } from './hole.js';
 import { audio } from './audio.js';
+import {
+  AGE_TIERS,
+  CIVIC_BADGES,
+  EDUCATIONAL_CHALLENGES,
+  getChallengesByTier,
+  getChallengeByCategoryAndTier,
+  getRandomChallenge
+} from './educationalChallenges.js';
 
 export class UIManager {
-  constructor({ onSelectSkin, onRestartGame, onSelectMode, onSelectDifficulty }) {
+  constructor({
+    onSelectSkin,
+    onRestartGame,
+    onSelectMode,
+    onSelectDifficulty,
+    onOpenEducationalQuiz,
+    onResolveEducationalQuiz,
+    onResumeGame,
+    onPauseGame
+  }) {
     this.onSelectSkin = onSelectSkin;
     this.onRestartGame = onRestartGame;
     this.onSelectMode = onSelectMode;
     this.onSelectDifficulty = onSelectDifficulty;
+    this.onOpenEducationalQuiz = onOpenEducationalQuiz;
+    this.onResolveEducationalQuiz = onResolveEducationalQuiz;
+    this.onResumeGame = onResumeGame;
+    this.onPauseGame = onPauseGame;
 
     this.currentSkin = 'gutter';
     this.gameMode = 'battleRoyale'; // 'battleRoyale' or 'sandbox'
     this.difficulty = 'kidsEasy'; // 'kidsEasy' or 'classic'
+    this.currentAgeTier = 'junior'; // 'junior', 'ranger', 'champion'
+    this.unlockedBadges = new Set(['water_guardian']);
+    this.completedQuizIds = new Set();
+    this.activeQuizChallenge = null;
 
     this.createHUD();
     this.createSkinModal();
     this.createGoodVsBadModal();
+    this.createEducationalQuizModal();
     this.createGameOverModal();
     this.createDistrictClearedModal();
     this.bindEvents();
@@ -164,6 +190,7 @@ export class UIManager {
           <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
           <button class="icon-btn ui-interactive" id="btn-open-skins" title="Change Skin">🎨 Skins</button>
+          <button class="pill-btn ui-interactive quiz-btn-pulse" id="btn-open-quiz" title="Kids Civic Learning Challenge / بچوں کا تعلیمی چیلنج">🧠 Kids Quiz / تعلیمی چیلنج 🌟</button>
           <button class="pill-btn ui-interactive guide-btn-pulse" id="btn-open-guide" title="Good vs Bad Guide / اچھے اور برے کی پہچان">👶 ❓ What to Eat? / اچھے برے کی پہچان</button>
           <button class="pill-btn ui-interactive highlight-btn" id="btn-diff-toggle" title="Toggle Difficulty">🎈 Easy (Kids)</button>
           <button class="pill-btn ui-interactive" id="btn-mode-toggle">Mode: 2 Min</button>
@@ -537,6 +564,275 @@ export class UIManager {
     document.body.appendChild(this.guideModal);
   }
 
+  createEducationalQuizModal() {
+    this.quizModal = document.createElement('div');
+    this.quizModal.className = 'modal-backdrop quiz-modal-backdrop';
+    this.quizModal.id = 'modal-quiz';
+    this.quizModal.style.display = 'none';
+
+    this.quizModal.innerHTML = `
+      <div class="modal-card quiz-modal-card">
+        <!-- Header -->
+        <div class="modal-header quiz-modal-header">
+          <div class="quiz-title-block">
+            <div class="quiz-title-top">
+              <span class="quiz-school-badge">🏫 KARACHI JUNIOR CIVIC ACADEMY</span>
+              <span class="quiz-edu-pill">📖 LEARN &amp; WIN / سیکھو اور انعام پاؤ</span>
+            </div>
+            <h2 class="quiz-title">🌟 City Hero Dilemma / شہری ہیرو چیلنج</h2>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-quiz" title="Close and Resume">&times;</button>
+        </div>
+
+        <!-- Age Tier Selector Bar -->
+        <div class="quiz-age-bar">
+          <span class="quiz-age-label">👶 KID'S AGE / عمر منتخب کریں:</span>
+          <div class="quiz-age-tabs" id="quiz-age-tabs">
+            <button class="age-tab active ui-interactive" data-age="junior">🐣 Ages 4–7 (چھوٹے بچّے)</button>
+            <button class="age-tab ui-interactive" data-age="ranger">🎒 Ages 8–11 (اسکول کیڈٹس)</button>
+            <button class="age-tab ui-interactive" data-age="champion">🏆 Ages 12+ (شہری ہیرو)</button>
+          </div>
+        </div>
+
+        <!-- Dilemma Challenge Card -->
+        <div class="quiz-dilemma-card" id="quiz-dilemma-card">
+          <div class="dilemma-topic-row">
+            <span class="dilemma-topic-badge" id="quiz-topic-badge">🚰 Water Conservation / پانی کی بچت</span>
+            <span class="dilemma-reward-badge" id="quiz-reward-badge">🎁 +500 XP &amp; +20s TIME BONUS</span>
+          </div>
+
+          <!-- Scenario Presentation -->
+          <div class="dilemma-scenario-box">
+            <div class="dilemma-icon-large" id="quiz-scenario-icon">🚰</div>
+            <div class="dilemma-scenario-texts">
+              <div class="scenario-text" id="quiz-scenario-en">Loading scenario...</div>
+              <div class="scenario-urdu" id="quiz-scenario-ur">لوڈ ہو رہا ہے...</div>
+            </div>
+          </div>
+
+          <!-- Question Prompt -->
+          <div class="dilemma-question-box">
+            <h3 class="question-en" id="quiz-question-en">What should you do?</h3>
+            <h4 class="question-ur" id="quiz-question-ur">آپ کیا کریں گے؟</h4>
+          </div>
+
+          <!-- Interactive Choices Container -->
+          <div class="quiz-options-container" id="quiz-options-container">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Positive Reinforcement / Feedback Box -->
+          <div class="quiz-feedback-box" id="quiz-feedback-box" style="display: none;">
+            <div class="feedback-badge" id="feedback-badge">🌟 EXCELLENT CIVIC HERO! / شاباش!</div>
+            <div class="feedback-badge-unlocked" id="feedback-badge-unlocked">
+              <span class="badge-icon" id="feedback-badge-icon">🚰</span>
+              <span class="badge-text" id="feedback-badge-text">New Medal Unlocked: Water Guardian / محافظِ آب</span>
+            </div>
+            <div class="feedback-text-wrap">
+              <p class="feedback-desc" id="feedback-desc"></p>
+              <p class="feedback-desc-ur" id="feedback-desc-ur"></p>
+            </div>
+            
+            <div class="feedback-actions">
+              <button class="pill-btn highlight-btn ui-interactive resume-game-btn" id="btn-quiz-resume">
+                🚀 RESUME GAME / کھیلنا جاری رکھیں (+Rewards Added!)
+              </button>
+              <button class="pill-btn ui-interactive next-quiz-btn" id="btn-quiz-next">
+                ✨ Next Challenge / اگلا سوال
+              </button>
+            </div>
+          </div>
+
+          <!-- Gentle Encouragement Note for incorrect tap -->
+          <div class="quiz-encouragement-toast" id="quiz-encouragement-toast" style="display: none;">
+            <span class="enc-icon">💡</span>
+            <div class="enc-txt">
+              <strong>Think carefully! / سوچیں ذرا:</strong>
+              <span id="quiz-enc-text">If everyone does that, our city suffers. Tap the other option to save the day!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Earned Civic Badges Ribbon -->
+        <div class="quiz-badges-ribbon">
+          <div class="ribbon-title">🏅 YOUR CIVIC BADGES / آپ کے میڈلز:</div>
+          <div class="badges-row" id="quiz-badges-row">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(this.quizModal);
+  }
+
+  openEducationalQuiz(category = null) {
+    if (this.onPauseGame) this.onPauseGame();
+
+    const challenge = getChallengeByCategoryAndTier(category, this.currentAgeTier);
+    this.renderQuizChallenge(challenge);
+
+    this.quizModal.style.display = 'flex';
+    audio.playQuizOpen();
+  }
+
+  renderQuizChallenge(challenge) {
+    if (!challenge) return;
+    this.activeQuizChallenge = challenge;
+
+    const topicEl = document.getElementById('quiz-topic-badge');
+    if (topicEl) topicEl.textContent = `${challenge.icon} ${challenge.topic}`;
+
+    const rewardEl = document.getElementById('quiz-reward-badge');
+    if (rewardEl) rewardEl.textContent = `🎁 +${challenge.rewardXP} XP & +${challenge.rewardTime}s TIME`;
+
+    const iconEl = document.getElementById('quiz-scenario-icon');
+    if (iconEl) iconEl.textContent = challenge.icon;
+
+    const scenarioEn = document.getElementById('quiz-scenario-en');
+    if (scenarioEn) scenarioEn.textContent = challenge.scenario;
+
+    const scenarioUr = document.getElementById('quiz-scenario-ur');
+    if (scenarioUr) scenarioUr.textContent = challenge.scenarioUrdu;
+
+    const qEn = document.getElementById('quiz-question-en');
+    if (qEn) qEn.textContent = challenge.question;
+
+    const qUr = document.getElementById('quiz-question-ur');
+    if (qUr) qUr.textContent = challenge.questionUrdu;
+
+    // Reset feedback, toast & answered card state
+    const dilemmaCard = document.getElementById('quiz-dilemma-card');
+    if (dilemmaCard) dilemmaCard.classList.remove('answered');
+
+    const feedbackBox = document.getElementById('quiz-feedback-box');
+    const encToast = document.getElementById('quiz-encouragement-toast');
+    if (feedbackBox) feedbackBox.style.display = 'none';
+    if (encToast) encToast.style.display = 'none';
+
+    // Populate options
+    const container = document.getElementById('quiz-options-container');
+    if (container) {
+      container.innerHTML = '';
+      challenge.options.forEach((opt) => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-option-btn ui-interactive';
+        btn.dataset.id = opt.id;
+        btn.innerHTML = `
+          <span class="opt-icon">${opt.icon}</span>
+          <div class="opt-texts">
+            <div class="opt-en">${opt.text}</div>
+            <div class="opt-ur">${opt.textUrdu}</div>
+          </div>
+        `;
+
+        btn.addEventListener('click', () => {
+          this.handleQuizOption(opt, btn, challenge);
+        });
+
+        container.appendChild(btn);
+      });
+    }
+
+    this.updateBadgesRibbon();
+  }
+
+  handleQuizOption(option, btnElement, challenge) {
+    const encToast = document.getElementById('quiz-encouragement-toast');
+    const feedbackBox = document.getElementById('quiz-feedback-box');
+    const dilemmaCard = document.getElementById('quiz-dilemma-card');
+
+    if (option.isCorrect) {
+      // Correct answer!
+      audio.playChallengeSuccess();
+      btnElement.classList.add('option-correct');
+      if (dilemmaCard) dilemmaCard.classList.add('answered');
+
+      // Disable other buttons
+      const allBtns = document.querySelectorAll('.quiz-option-btn');
+      allBtns.forEach(b => {
+        if (b !== btnElement) b.classList.add('option-disabled');
+      });
+
+      // Unlock badge
+      if (challenge.badgeId) {
+        this.unlockedBadges.add(challenge.badgeId);
+      }
+      this.completedQuizIds.add(challenge.id);
+
+      // Populate feedback
+      if (encToast) encToast.style.display = 'none';
+      if (feedbackBox) {
+        feedbackBox.style.display = 'flex';
+        feedbackBox.classList.add('feedback-bounce-in');
+      }
+
+      const badgeObj = CIVIC_BADGES.find(b => b.id === challenge.badgeId);
+      const unlockedEl = document.getElementById('feedback-badge-unlocked');
+      if (badgeObj && unlockedEl) {
+        unlockedEl.style.display = 'flex';
+        const iconEl = document.getElementById('feedback-badge-icon');
+        if (iconEl) iconEl.textContent = badgeObj.icon;
+        const textEl = document.getElementById('feedback-badge-text');
+        if (textEl) textEl.textContent = `New Medal: ${badgeObj.name} (${badgeObj.urdu})`;
+      } else if (unlockedEl) {
+        unlockedEl.style.display = 'none';
+      }
+
+      const descEl = document.getElementById('feedback-desc');
+      if (descEl) descEl.textContent = challenge.explanation;
+
+      const descUrEl = document.getElementById('feedback-desc-ur');
+      if (descUrEl) descUrEl.textContent = challenge.explanationUrdu;
+
+      this.updateBadgesRibbon();
+
+      // Trigger callback to reward player
+      if (this.onResolveEducationalQuiz) {
+        this.onResolveEducationalQuiz(challenge);
+      }
+    } else {
+      // Gentle encouragement without penalty
+      audio.playQuizTryAgain();
+      btnElement.classList.add('option-wrong');
+      setTimeout(() => btnElement.classList.remove('option-wrong'), 500);
+
+      if (encToast) {
+        encToast.style.display = 'flex';
+        encToast.classList.add('enc-shake');
+        setTimeout(() => encToast.classList.remove('enc-shake'), 600);
+      }
+    }
+  }
+
+  closeEducationalQuiz() {
+    if (this.quizModal) {
+      this.quizModal.style.display = 'none';
+    }
+    if (this.onResumeGame) {
+      this.onResumeGame();
+    }
+  }
+
+  updateBadgesRibbon() {
+    const row = document.getElementById('quiz-badges-row');
+    if (!row) return;
+    row.innerHTML = '';
+
+    CIVIC_BADGES.forEach(badge => {
+      const isUnlocked = this.unlockedBadges.has(badge.id);
+      const chip = document.createElement('div');
+      chip.className = `badge-chip ${isUnlocked ? 'unlocked' : 'locked'}`;
+      chip.title = `${badge.name} (${badge.urdu}): ${badge.desc}`;
+      chip.innerHTML = `
+        <span class="badge-chip-icon">${badge.icon}</span>
+        <span class="badge-chip-name">${badge.name}</span>
+        ${isUnlocked ? '<span class="badge-check">✓</span>' : '<span class="badge-lock">🔒</span>'}
+      `;
+      row.appendChild(chip);
+    });
+  }
+
   bindEvents() {
     // Sound & Music
     const btnSound = document.getElementById('btn-toggle-sound');
@@ -555,6 +851,7 @@ export class UIManager {
     const btnSkins = document.getElementById('btn-open-skins');
     btnSkins.addEventListener('click', () => {
       audio.playClick();
+      if (this.onPauseGame) this.onPauseGame();
       this.skinModal.style.display = 'flex';
     });
 
@@ -562,6 +859,7 @@ export class UIManager {
     btnCloseSkins.addEventListener('click', () => {
       audio.playClick();
       this.skinModal.style.display = 'none';
+      if (this.onResumeGame) this.onResumeGame();
     });
 
     // Good vs Bad Guide Modal
@@ -569,6 +867,7 @@ export class UIManager {
     if (btnOpenGuide) {
       btnOpenGuide.addEventListener('click', () => {
         audio.playClick();
+        if (this.onPauseGame) this.onPauseGame();
         this.guideModal.style.display = 'flex';
       });
     }
@@ -578,6 +877,7 @@ export class UIManager {
       btnCloseGuide.addEventListener('click', () => {
         audio.playClick();
         this.guideModal.style.display = 'none';
+        if (this.onResumeGame) this.onResumeGame();
       });
     }
 
@@ -586,8 +886,56 @@ export class UIManager {
       btnCloseGuideFooter.addEventListener('click', () => {
         audio.playClick();
         this.guideModal.style.display = 'none';
+        if (this.onResumeGame) this.onResumeGame();
       });
     }
+
+    // Educational Quiz Modal Buttons
+    const btnOpenQuiz = document.getElementById('btn-open-quiz');
+    if (btnOpenQuiz) {
+      btnOpenQuiz.addEventListener('click', () => {
+        audio.playClick();
+        this.openEducationalQuiz();
+      });
+    }
+
+    const btnCloseQuiz = document.getElementById('btn-close-quiz');
+    if (btnCloseQuiz) {
+      btnCloseQuiz.addEventListener('click', () => {
+        audio.playClick();
+        this.closeEducationalQuiz();
+      });
+    }
+
+    const btnQuizResume = document.getElementById('btn-quiz-resume');
+    if (btnQuizResume) {
+      btnQuizResume.addEventListener('click', () => {
+        audio.playClick();
+        this.closeEducationalQuiz();
+      });
+    }
+
+    const btnQuizNext = document.getElementById('btn-quiz-next');
+    if (btnQuizNext) {
+      btnQuizNext.addEventListener('click', () => {
+        audio.playClick();
+        const nextChallenge = getRandomChallenge(this.currentAgeTier, Array.from(this.completedQuizIds));
+        this.renderQuizChallenge(nextChallenge);
+      });
+    }
+
+    // Age Tier Tab Selection
+    const ageTabs = document.querySelectorAll('.age-tab');
+    ageTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        audio.playClick();
+        ageTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        this.currentAgeTier = tab.dataset.age;
+        const newChallenge = getRandomChallenge(this.currentAgeTier, Array.from(this.completedQuizIds));
+        this.renderQuizChallenge(newChallenge);
+      });
+    });
 
     // Skin card selection
     const cards = this.skinModal.querySelectorAll('.skin-card');

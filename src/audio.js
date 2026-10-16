@@ -390,6 +390,51 @@ class AudioManager {
     this.vibrate([40, 30, 60, 30, 120]);
   }
 
+  // Kid-Friendly Educational Quiz Opening Chime (G4, C5, E5, G5 bright marimba)
+  playQuizOpen() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const notes = [392.00, 523.25, 659.25, 783.99]; // G4, C5, E5, G5
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const st = t + idx * 0.08;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, st);
+      gain.gain.setValueAtTime(0.32, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.3);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.3);
+    });
+    this.vibrate([20, 20, 30]);
+  }
+
+  // Gentle, warm cartoon boing for kids when an answer needs reconsideration
+  playQuizTryAgain() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(320, t);
+    osc.frequency.exponentialRampToValueAtTime(260, t + 0.28);
+    gain.gain.setValueAtTime(0.28, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.32);
+    this.vibrate(25);
+  }
+
   // Crowd Cheering & Whistling ("Karachi Zindabad!")
   playCrowdCheer() {
     if (!this.soundEnabled) return;

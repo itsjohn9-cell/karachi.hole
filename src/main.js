@@ -18,6 +18,7 @@ class Game {
     this.matchDuration = 120; // 2 minutes
     this.timeLeft = this.matchDuration;
     this.isGameOver = false;
+    this.isPaused = false;
 
     // Karachi Civic District Progression System (Leveling up via Civic Cleanse!)
     this.currentDistrictLevel = 1;
@@ -195,8 +196,41 @@ class Game {
       onSelectDifficulty: (diff) => {
         this.difficulty = diff;
         this.restartGame();
+      },
+      onOpenEducationalQuiz: (category) => {
+        this.pauseGame();
+      },
+      onResolveEducationalQuiz: (challenge) => {
+        if (this.player) {
+          this.player.addXP(challenge.rewardXP || 500);
+          this.particles.createCelebrationConfetti(this.player.position, 45);
+        }
+        this.timeLeft += (challenge.rewardTime || 20);
+        this.ui.showAnnouncement(`🌟 CIVIC HERO: +${challenge.rewardXP} XP & +${challenge.rewardTime}s BONUS!`, '#00e676');
+      },
+      onResumeGame: () => {
+        this.resumeGame();
+      },
+      onPauseGame: () => {
+        this.pauseGame();
       }
     });
+  }
+
+  pauseGame() {
+    if (this.isPaused) return;
+    this.isPaused = true;
+    if (this.moveVector) {
+      this.moveVector.x = 0;
+      this.moveVector.y = 0;
+    }
+  }
+
+  resumeGame() {
+    if (!this.isPaused) return;
+    this.isPaused = false;
+    this.clock.getDelta(); // Reset clock delta so physics doesn't leap
+    audio.playClick();
   }
 
   initAudioTriggers() {
@@ -319,6 +353,18 @@ class Game {
           if (this.player) this.player.addXP(active.xpReward || 1000);
           this.ui.showCrisisCompleteBanner(active);
           this.timeLeft += 25;
+
+          // Automatically pause & present educational civic challenge for this crisis
+          setTimeout(() => {
+            let quizCategory = 'water';
+            if (active.evilType === 'vip') quizCategory = 'ambulance';
+            else if (active.evilType === 'robber') quizCategory = 'safety';
+            else if (active.evilType === 'tanker') quizCategory = 'water';
+            else if (active.evilType === 'kunda') quizCategory = 'electricity';
+            else if (active.evilType === 'pothole' || active.evilType === 'trash') quizCategory = 'cleanliness';
+
+            this.ui.openEducationalQuiz(quizCategory);
+          }, 1500);
 
           setTimeout(() => {
             if (this.currentCrisisIndex < this.crisisChallenges.length - 1) {
@@ -1483,7 +1529,7 @@ class Game {
 
     const dt = Math.min(this.clock.getDelta(), 0.1);
 
-    if (!this.isGameOver) {
+    if (!this.isGameOver && !this.isPaused) {
       this.updatePhysics(dt);
       this.updateMatchTimer(dt);
     }
