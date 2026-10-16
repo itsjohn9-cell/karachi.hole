@@ -1629,21 +1629,21 @@ html, body {
    ============================================================== */
 .active-crisis-card {
   position: absolute;
-  top: 138px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 92px;
+  left: 16px;
+  transform: none;
   width: auto;
-  min-width: 380px;
-  max-width: 580px;
+  min-width: 300px;
+  max-width: 360px;
   background: rgba(10, 16, 28, 0.92);
   border: 1.5px solid rgba(0, 229, 255, 0.45);
   border-radius: 14px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 14px rgba(0, 229, 255, 0.25);
   backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   pointer-events: none;
   z-index: 25;
   transition: all 0.3s ease;

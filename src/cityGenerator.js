@@ -746,32 +746,84 @@ export class CityGenerator {
     this.populateDistrict(1);
 
     // =============================================================
-    // 11. LANDMARKS & BIGGER DISTRICT OBJECTS (Safely Positioned in Background!)
+    // 11. ICONIC KARACHI LANDMARKS & URBAN MONUMENTS
     // =============================================================
-    // Mazar-e-Quaid: Northern backdrop at z = -115 right behind Bab-e-Karachi gate
-    const mazar = KarachiModels.createMazarEQuaid();
-    mazar.position.set(0, 0, -115);
-    this.registerEdible(mazar, 5, 3000, "Mazar-e-Quaid", 14.0, { isBuilding: true, isBadGuy: false });
+    // 1. Teen Talwar Chowrangi (Three Swords Monument, Clifton) - At North Avenue Roundabout (z = -32)
+    const teenTalwar = KarachiModels.createTeenTalwarChowrangi();
+    teenTalwar.position.set(0, 0, -32);
+    this.registerEdible(teenTalwar, 4, 1500, "Teen Talwar Chowrangi (تین تلوار)", 9.5, { isBuilding: true, isBadGuy: false });
 
-    // Empress Market in northwestern district
+    // 2. Shahrah-e-Faisal Overhead Green Steel Pedestrian Bridge (with Shan Biryani & Tapal Danedar Billboards) at z = 22
+    const pedBridge = KarachiModels.createOverheadPedestrianBridge(24);
+    pedBridge.position.set(0, 0, 22);
+    this.scene.add(pedBridge);
+
+    // 3. Mazar-e-Quaid (Jinnah's Mausoleum) - Northern Avenue Axis at z = -84
+    const mazar = KarachiModels.createMazarEQuaid();
+    mazar.position.set(0, 0, -84);
+    this.registerEdible(mazar, 5, 3500, "Mazar-e-Quaid (مزارِ قائد)", 14.0, { isBuilding: true, isBadGuy: false });
+
+    // 4. Empress Market Saddar - Historic Anglo-Mughal Sandstone Clock Tower (Northwest at x: -48, z: -48)
     const empress = KarachiModels.createEmpressMarket();
     empress.position.set(-48, 0, -48);
-    this.registerEdible(empress, 4, 1500, "Empress Market Saddar", 10.0, { isBuilding: true, isBadGuy: false });
+    this.registerEdible(empress, 4, 2000, "Empress Market Saddar (ایمپریس مارکیٹ)", 10.5, { isBuilding: true, isBadGuy: false });
 
-    // Chundrigar Skyscrapers in northeastern district
-    const towerCoords = [[48, -48], [72, -48], [48, -72], [72, -72]];
+    // 5. Mohatta Palace Museum - Rajasthani Pink Sandstone Heritage Palace (Southeast at x: 48, z: 15)
+    const mohatta = KarachiModels.createMohattaPalace();
+    mohatta.position.set(48, 0, 15);
+    this.registerEdible(mohatta, 4, 1800, "Mohatta Palace Museum (مہٹہ پیلس)", 11.0, { isBuilding: true, isBadGuy: false });
+
+    // 6. Frere Hall Sadequain Gallery - Venetian-Gothic Yellow Gizri Limestone (Southwest at x: -48, z: 15)
+    const frere = KarachiModels.createFrereHall();
+    frere.position.set(-48, 0, 15);
+    this.registerEdible(frere, 4, 1800, "Frere Hall Gardens (فریئر ہال)", 11.0, { isBuilding: true, isBadGuy: false });
+
+    // 7. Habib Bank Plaza (HBL Plaza, I.I. Chundrigar Road) - Modernist 1960s Skyscraper (Northeast at x: 48, z: -48)
+    const hbl = KarachiModels.createHabibBankPlaza();
+    hbl.position.set(48, 0, -48);
+    this.registerEdible(hbl, 5, 2800, "Habib Bank Plaza HBL (حبیب بینک)", 9.0, { isBuilding: true, isBadGuy: false });
+
+    // Chundrigar Financial Towers in background
+    const towerCoords = [[72, -48], [48, -72], [72, -72]];
     towerCoords.forEach(([tx, tz], idx) => {
       const tower = KarachiModels.createChundrigarSkyscraper();
       tower.position.set(tx, 0, tz);
       this.registerEdible(tower, 5, 2200, `Chundrigar Tower #${idx + 1}`, 7.5, { isBuilding: true, isBadGuy: false });
     });
 
+    // 8. Clifton Sea View Decorated Camels (سی ویو کے اونٹ) strolling along the wet beach sand (z = 94)
+    [[-35, 94], [0, 94], [35, 94]].forEach(([cx, cz], idx) => {
+      const camel = KarachiModels.createCliftonDecoratedCamel();
+      camel.position.set(cx, 0, cz);
+      camel.rotation.y = idx % 2 === 0 ? 0.35 : -0.35;
+      this.registerEdible(camel, 2, 85, `Clifton Sea View Camel #${idx + 1}`, 1.8, { isPet: true, isBadGuy: false });
+    });
+
+    // 9. K-Electric Poles with Wire Nests & 440V Danger Warning Plates
+    [[-8.5, -14], [8.5, -14], [-8.5, 34], [8.5, 34]].forEach(([kx, kz]) => {
+      const kePole = KarachiModels.createKElectricTransformerPole();
+      kePole.position.set(kx, 0, kz);
+      this.scene.add(kePole);
+    });
+
+    // 10. Authentic Karachi Municipal Green Directional Signboards on Street Corners
+    [
+      { pos: [7.8, 7.8], ave: "SHAHRAH-E-FAISAL", ur: "شاہراہِ فیصل", cr: "TARIQ ROAD", cru: "طرق روڈ" },
+      { pos: [-7.8, 7.8], ave: "BURNS ROAD", ur: "برنز روڈ", cr: "SADDAR BAZAAR", cru: "صدر بازار" },
+      { pos: [7.8, -7.8], ave: "I.I. CHUNDRIGAR", ur: "چندریگر روڈ", cr: "HBL PLAZA", cru: "حبیب بینک" },
+      { pos: [-7.8, -7.8], ave: "CLIFTON ROAD", ur: "کلفٹن روڈ", cr: "TEEN TALWAR", cru: "تین تلوار" }
+    ].forEach(s => {
+      const sign = KarachiModels.createKarachiGreenStreetSign(s.ave, s.ur, s.cr, s.cru);
+      sign.position.set(s.pos[0], 0, s.pos[1]);
+      this.scene.add(sign);
+    });
+
     // Commercial Plazas on outer avenue blocks
     const plazas = [
-      { pos: [48, -20], name: "Habib Bank Plaza", sign: "HABIB BANK PLAZA", sub: "HEAD OFFICE KARACHI" },
-      { pos: [48, 48], name: "Kababjees Commercial", sign: "KABABJEES HIGHWAY", sub: "EXPRESS DINING" },
+      { pos: [48, -20], name: "Kababjees Highway", sign: "KABABJEES HIGHWAY", sub: "EXPRESS DINING" },
+      { pos: [48, 48], name: "Burns Road Super Mart", sign: "BURNS ROAD SUPER MART", sub: "AUTHENTIC KARACHI" },
       { pos: [-48, -20], name: "Jahangir Autos", sign: "JAHANGIR AUTOS", sub: "CHUNDRIGAR ROAD" },
-      { pos: [-48, 48], name: "Burns Road Super Mart", sign: "BURNS ROAD SUPER MART", sub: "AUTHENTIC KARACHI" }
+      { pos: [-48, 48], name: "Agha's Supermarket", sign: "AGHA'S SUPERMARKET", sub: "CLIFTON KARACHI" }
     ];
     plazas.forEach(p => {
       const plaza = KarachiModels.createCommercialPlaza(p.sign, p.sub);
@@ -779,7 +831,7 @@ export class CityGenerator {
       this.registerEdible(plaza, 4, 900, p.name, 6.5, { isBuilding: true, isBadGuy: false });
     });
 
-    // Clifton Villas in southeast residential quadrant
+    // Clifton Residential Bungalows in southeast residential quadrant
     for (let bx = 32; bx <= 76; bx += 15) {
       for (let bz = 32; bz <= 76; bz += 15) {
         const bungalow = KarachiModels.createResidentialBungalow();

@@ -64,7 +64,8 @@ class Game {
       0.5,
       500
     );
-    this.camera.position.set(0, 11, 9.5);
+    this.camera.position.set(0, 6.5, 7.2);
+    this.camera.lookAt(0, 1.2, -4.5);
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -266,6 +267,8 @@ class Game {
     this.player.isAlive = true;
     this.player.group.visible = true;
     this.player.updateNameTag();
+    this.camera.position.set(0, 6.2 + this.player.radius * 1.15, 6.8 + this.player.radius * 1.15);
+    this.camera.lookAt(0, 1.2, -4.5);
 
     // Reset Bots (Friendly tuning in Kids/Easy mode)
     const botPositions = [[-45, 15], [-20, 45], [45, 45], [-55, 30], [45, -35]];
@@ -1406,10 +1409,11 @@ class Game {
   updateCamera(dt) {
     if (!this.player) return;
 
-    // Dramatic, intimate action camera: characters, crimes, cars, and facial expressions are crystal clear!
-    // Much closer, lower action angle so player sees exactly who is getting devoured and how citizens celebrate
-    const targetHeight = 4.6 + this.player.radius * 1.05;
-    const targetDistZ = 4.8 + this.player.radius * 1.05;
+    // Panoramic Karachi action camera: hole and victims remain crystal clear,
+    // while the majestic Karachi skyline (Teen Talwar, Mazar-e-Quaid, Empress Market, Shan Biryani Bridge)
+    // is revealed in breathtaking third-person glory!
+    const targetHeight = 6.2 + this.player.radius * 1.15;
+    const targetDistZ = 6.8 + this.player.radius * 1.15;
 
     const targetCamX = this.player.position.x;
     const targetCamY = targetHeight;
@@ -1422,8 +1426,8 @@ class Game {
 
     const lookTarget = new THREE.Vector3(
       this.player.position.x,
-      1.15,
-      this.player.position.z - 1.8
+      1.5,
+      this.player.position.z - 4.5
     );
     this.camera.lookAt(lookTarget);
 
@@ -1650,5 +1654,6 @@ class Game {
 
 // Initialize on DOM load
 window.addEventListener('DOMContentLoaded', () => {
-  new Game();
+  window.game = new Game();
 });
+

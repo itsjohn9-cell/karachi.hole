@@ -32,6 +32,15 @@ const materials = {
   shalwarWhite: new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.6 }),
   shalwarNavy: new THREE.MeshStandardMaterial({ color: 0x1a237e, roughness: 0.6 }),
   shalwarTeal: new THREE.MeshStandardMaterial({ color: 0x00695c, roughness: 0.6 }),
+  jodhpurPink: new THREE.MeshStandardMaterial({ color: 0xc87d75, roughness: 0.65 }), // Mohatta Palace pink sandstone
+  gizriYellow: new THREE.MeshStandardMaterial({ color: 0xd9be8b, roughness: 0.6 }), // Empress Market / Frere Hall yellow limestone
+  hblBlue: new THREE.MeshStandardMaterial({ color: 0x00558f, roughness: 0.25, metalness: 0.4 }), // HBL Plaza facade
+  bridgeGreen: new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.4 }), // Shahrah-e-Faisal pedestrian bridge
+  camelFur: new THREE.MeshStandardMaterial({ color: 0xb58450, roughness: 0.85 }), // Clifton Sea View decorated camel
+  rilliPink: new THREE.MeshStandardMaterial({ color: 0xd81b60, roughness: 0.5 }), // Sindhi Rilli patchwork
+  rilliCyan: new THREE.MeshStandardMaterial({ color: 0x00bcd4, roughness: 0.5 }),
+  rilliGold: new THREE.MeshStandardMaterial({ color: 0xffb300, roughness: 0.4 }),
+  trafficSignGreen: new THREE.MeshStandardMaterial({ color: 0x005a36, roughness: 0.35 }), // Karachi Municipal Green Signboards
   truckArtTexture: TextureGenerator.createTruckArtTexture(),
   truckTajTexture: TextureGenerator.createTruckTajTexture(),
   ajrakTexture: TextureGenerator.createAjrakTexture(),
@@ -3673,6 +3682,595 @@ export const KarachiModels = {
       createdTime: 0,
       life: 9999
     };
+
+    return group;
+  },
+
+  // =========================================================================
+  // ICONIC KARACHI LANDMARKS & MONUMENTS
+  // =========================================================================
+
+  // 1. Teen Talwar Chowrangi (Clifton Three Swords Roundabout Monument)
+  createTeenTalwarChowrangi() {
+    const group = new THREE.Group();
+    group.name = "Teen Talwar Chowrangi (تین تلوار)";
+
+    // Roundabout outer curb (Yellow and black checkered)
+    const curbGeo = new THREE.CylinderGeometry(9.6, 9.8, 0.45, 32);
+    const curb = new THREE.Mesh(curbGeo, materials.curbYellow);
+    curb.position.y = 0.22;
+    group.add(curb);
+
+    // Inner green lawn mound
+    const lawnGeo = new THREE.CylinderGeometry(9.2, 9.4, 0.5, 32);
+    const lawn = new THREE.Mesh(lawnGeo, materials.lawnGreen);
+    lawn.position.y = 0.25;
+    lawn.receiveShadow = true;
+    group.add(lawn);
+
+    // Central circular fountain pool basin
+    const basinGeo = new THREE.CylinderGeometry(5.2, 5.4, 0.6, 24);
+    const basin = new THREE.Mesh(basinGeo, materials.whiteMarble);
+    basin.position.y = 0.55;
+    group.add(basin);
+
+    const waterGeo = new THREE.CylinderGeometry(4.8, 4.8, 0.55, 24);
+    const water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({ color: 0x00bcd4, roughness: 0.1, metalness: 0.8 }));
+    water.position.y = 0.6;
+    group.add(water);
+
+    // Central stepped octagonal marble pedestal
+    const step1 = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.8, 0.6, 8), materials.whiteMarble);
+    step1.position.y = 0.85;
+    group.add(step1);
+
+    const step2 = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 3.0, 0.6, 8), materials.whiteMarble);
+    step2.position.y = 1.45;
+    group.add(step2);
+
+    // Three White Marble Swords (تین تلوار) - 120° apart
+    const slogans = [
+      { text: "UNITY", urdu: "اتحاد" },
+      { text: "FAITH", urdu: "یقین محکم" },
+      { text: "DISCIPLINE", urdu: "تنظیم" }
+    ];
+
+    for (let i = 0; i < 3; i++) {
+      const angle = (i * Math.PI * 2) / 3;
+      const swordGroup = new THREE.Group();
+      swordGroup.position.set(Math.cos(angle) * 1.5, 1.75, Math.sin(angle) * 1.5);
+      swordGroup.rotation.y = -angle + Math.PI / 2;
+      swordGroup.rotation.z = -0.05; // Gentle majestic outward curve
+
+      // Golden Hilt & Pommel
+      const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), materials.goldMetal);
+      pommel.position.y = 0.2;
+      swordGroup.add(pommel);
+
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 1.2, 12), materials.goldMetal);
+      grip.position.y = 0.8;
+      swordGroup.add(grip);
+
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.35, 0.5), materials.goldMetal);
+      guard.position.y = 1.5;
+      swordGroup.add(guard);
+
+      // White Marble Blade (Height 9.5m, tapering to curved tip)
+      const bladeGeo = new THREE.BoxGeometry(0.85, 9.5, 0.25);
+      const blade = new THREE.Mesh(bladeGeo, materials.whiteMarble);
+      blade.position.y = 6.25;
+      blade.castShadow = true;
+      swordGroup.add(blade);
+
+      // Pointed Tip
+      const tipGeo = new THREE.ConeGeometry(0.42, 1.6, 4);
+      const tip = new THREE.Mesh(tipGeo, materials.whiteMarble);
+      tip.position.y = 11.5;
+      tip.rotation.y = Math.PI / 4;
+      swordGroup.add(tip);
+
+      // Golden Calligraphy Motto Banner on Blade Face
+      const bannerCanvas = document.createElement('canvas');
+      bannerCanvas.width = 128;
+      bannerCanvas.height = 380;
+      const bctx = bannerCanvas.getContext('2d');
+      bctx.fillStyle = '#ffffff';
+      bctx.fillRect(0, 0, 128, 380);
+      bctx.fillStyle = '#b78103';
+      bctx.font = 'bold 36px "Noto Nastaliq Urdu", "Outfit", sans-serif';
+      bctx.textAlign = 'center';
+      bctx.fillText(slogans[i].urdu, 64, 140);
+      bctx.font = '900 24px "Outfit", sans-serif';
+      bctx.fillText(slogans[i].text, 64, 240);
+
+      const bannerTex = new THREE.CanvasTexture(bannerCanvas);
+      const bannerMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 4.5), new THREE.MeshBasicMaterial({ map: bannerTex }));
+      bannerMesh.position.set(0, 6.0, 0.14);
+      swordGroup.add(bannerMesh);
+
+      group.add(swordGroup);
+    }
+
+    // 4 Spotlights on the lawn aimed at the swords
+    [0, Math.PI / 2, Math.PI, Math.PI * 1.5].forEach(a => {
+      const spot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.4, 8), materials.chrome);
+      spot.position.set(Math.cos(a) * 6.5, 0.6, Math.sin(a) * 6.5);
+      spot.rotation.x = 0.5;
+      group.add(spot);
+    });
+
+    // 4 Date Palm Trees around the Chowrangi
+    [Math.PI / 4, (Math.PI * 3) / 4, (Math.PI * 5) / 4, (Math.PI * 7) / 4].forEach(a => {
+      const palm = this.createPalmTree(6.0);
+      palm.position.set(Math.cos(a) * 7.5, 0.4, Math.sin(a) * 7.5);
+      group.add(palm);
+    });
+
+    return group;
+  },
+
+  // 2. Shahrah-e-Faisal Overhead Green Steel Pedestrian Bridge (پل) with Authentic Billboards
+  createOverheadPedestrianBridge(spanWidth = 24) {
+    const group = new THREE.Group();
+    group.name = "Overhead Pedestrian Bridge (شاہراہ پل)";
+
+    const halfSpan = spanWidth / 2;
+
+    // Twin Green Steel Towers / Pillars on sidewalks
+    [-halfSpan, halfSpan].forEach((px) => {
+      const colL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 6.8, 0.8), materials.bridgeGreen);
+      colL.position.set(px, 3.4, -1.8);
+      group.add(colL);
+      const colR = colL.clone();
+      colR.position.z = 1.8;
+      group.add(colR);
+
+      // Staircase ramp
+      const stairBeam = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 6.5), materials.bridgeGreen);
+      stairBeam.position.set(px, 2.5, px < 0 ? -4.5 : 4.5);
+      stairBeam.rotation.x = px < 0 ? 0.45 : -0.45;
+      group.add(stairBeam);
+
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 6.5), materials.chrome);
+      rail.position.set(px - 0.75, 3.2, px < 0 ? -4.5 : 4.5);
+      rail.rotation.x = px < 0 ? 0.45 : -0.45;
+      group.add(rail);
+    });
+
+    // Main Span Deck
+    const deckGeo = new THREE.BoxGeometry(spanWidth + 2.0, 0.5, 3.6);
+    const deck = new THREE.Mesh(deckGeo, materials.bridgeGreen);
+    deck.position.set(0, 6.5, 0);
+    group.add(deck);
+
+    // Green Steel Cage Handrails
+    const cageL = new THREE.Mesh(new THREE.BoxGeometry(spanWidth, 2.2, 0.1), new THREE.MeshStandardMaterial({ color: 0x1b5e20, wireframe: true }));
+    cageL.position.set(0, 7.8, -1.75);
+    group.add(cageL);
+    const cageR = cageL.clone();
+    cageR.position.z = 1.75;
+    group.add(cageR);
+
+    // Side A (Facing -Z): Shan Bombay Biryani Masala
+    const canvasShan = document.createElement('canvas');
+    canvasShan.width = 1024;
+    canvasShan.height = 256;
+    const sctx = canvasShan.getContext('2d');
+    sctx.fillStyle = '#b71c1c';
+    sctx.fillRect(0, 0, 1024, 256);
+    sctx.fillStyle = '#ffd54f';
+    sctx.fillRect(8, 8, 1008, 12);
+    sctx.fillRect(8, 236, 1008, 12);
+    sctx.fillStyle = '#ffffff';
+    sctx.font = '900 64px "Outfit", sans-serif';
+    sctx.textAlign = 'center';
+    sctx.fillText('SHAN BOMBAY BIRYANI MASALA', 512, 95);
+    sctx.fillStyle = '#ffd54f';
+    sctx.font = 'bold 52px "Noto Nastaliq Urdu", "Outfit", sans-serif';
+    sctx.fillText('شان بمبئی بریانی • اصلی ذائقہ، ہر بار! 🌶️', 512, 195);
+
+    const texShan = new THREE.CanvasTexture(canvasShan);
+    const boardMeshNorth = new THREE.Mesh(
+      new THREE.PlaneGeometry(spanWidth * 0.85, 4.2),
+      new THREE.MeshBasicMaterial({ map: texShan })
+    );
+    boardMeshNorth.position.set(0, 10.2, -1.85);
+    boardMeshNorth.rotation.y = Math.PI;
+    group.add(boardMeshNorth);
+
+    // Side B (Facing +Z): Tapal Danedar Tea
+    const canvasTapal = document.createElement('canvas');
+    canvasTapal.width = 1024;
+    canvasTapal.height = 256;
+    const tctx = canvasTapal.getContext('2d');
+    tctx.fillStyle = '#4a0e17';
+    tctx.fillRect(0, 0, 1024, 256);
+    tctx.fillStyle = '#ffb300';
+    tctx.fillRect(8, 8, 1008, 12);
+    tctx.fillRect(8, 236, 1008, 12);
+    tctx.fillStyle = '#ffffff';
+    tctx.font = '900 64px "Outfit", sans-serif';
+    tctx.textAlign = 'center';
+    tctx.fillText('TAPAL DANEDAR TEA', 512, 95);
+    tctx.fillStyle = '#ffb300';
+    tctx.font = 'bold 52px "Noto Nastaliq Urdu", "Outfit", sans-serif';
+    tctx.fillText('تپال دانے دار • مزہ ہر گھونٹ میں! ☕', 512, 195);
+
+    const texTapal = new THREE.CanvasTexture(canvasTapal);
+    const boardMeshSouth = new THREE.Mesh(
+      new THREE.PlaneGeometry(spanWidth * 0.85, 4.2),
+      new THREE.MeshBasicMaterial({ map: texTapal })
+    );
+    boardMeshSouth.position.set(0, 10.2, 1.85);
+    group.add(boardMeshSouth);
+
+    // Green Highway Overhead Directional Sign
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 768;
+    signCanvas.height = 160;
+    const gctx = signCanvas.getContext('2d');
+    gctx.fillStyle = '#004d40';
+    gctx.fillRect(0, 0, 768, 160);
+    gctx.strokeStyle = '#ffffff';
+    gctx.lineWidth = 6;
+    gctx.strokeRect(6, 6, 756, 148);
+    gctx.fillStyle = '#ffffff';
+    gctx.font = 'bold 28px "Outfit", sans-serif';
+    gctx.textAlign = 'center';
+    gctx.fillText('⬅️ CLIFTON (کلفٹن)   ⬆️ SHAHRAH-E-FAISAL (شاہراہِ فیصل)   ➡️ SADDAR (صدر)', 384, 90);
+
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 2.8), new THREE.MeshBasicMaterial({ map: signTex }));
+    signMesh.position.set(0, 4.8, 1.85);
+    group.add(signMesh);
+
+    return group;
+  },
+
+  // 3. Mohatta Palace (مہٹہ پیلس - Rajasthani Pink Sandstone Heritage Palace)
+  createMohattaPalace() {
+    const group = new THREE.Group();
+    group.name = "Mohatta Palace (مہٹہ پیلس)";
+
+    const plinth = new THREE.Mesh(new THREE.BoxGeometry(24, 1.2, 18), materials.sandstone);
+    plinth.position.y = 0.6;
+    group.add(plinth);
+
+    const palaceGeo = new THREE.BoxGeometry(21, 9.5, 15);
+    const palace = new THREE.Mesh(palaceGeo, materials.jodhpurPink);
+    palace.position.y = 5.95;
+    palace.castShadow = true;
+    group.add(palace);
+
+    // Arched windows
+    const winGeo = new THREE.BoxGeometry(2.4, 3.2, 0.4);
+    [-6.5, 0, 6.5].forEach(wx => {
+      const winG = new THREE.Mesh(winGeo, materials.gizriYellow);
+      winG.position.set(wx, 4.5, 7.6);
+      group.add(winG);
+      const win1 = new THREE.Mesh(winGeo, materials.gizriYellow);
+      win1.position.set(wx, 8.5, 7.6);
+      group.add(win1);
+    });
+
+    // 4 Corner Chhatris
+    const cornerCoords = [
+      [-9.5, -6.5], [9.5, -6.5], [-9.5, 6.5], [9.5, 6.5]
+    ];
+    cornerCoords.forEach(([cx, cz]) => {
+      const turret = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.8, 4.0, 8), materials.jodhpurPink);
+      turret.position.set(cx, 12.5, cz);
+      group.add(turret);
+
+      const cDome = new THREE.Mesh(new THREE.SphereGeometry(1.7, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), materials.gizriYellow);
+      cDome.position.set(cx, 14.5, cz);
+      group.add(cDome);
+
+      const finial = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.2, 8), materials.goldMetal);
+      finial.position.set(cx, 16.5, cz);
+      group.add(finial);
+    });
+
+    // Signboard
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 512;
+    signCanvas.height = 128;
+    const mctx = signCanvas.getContext('2d');
+    mctx.fillStyle = '#4a1525';
+    mctx.fillRect(0, 0, 512, 128);
+    mctx.strokeStyle = '#d9be8b';
+    mctx.lineWidth = 6;
+    mctx.strokeRect(6, 6, 500, 116);
+    mctx.fillStyle = '#ffffff';
+    mctx.font = 'bold 32px "Outfit", sans-serif';
+    mctx.textAlign = 'center';
+    mctx.fillText('MOHATTA PALACE MUSEUM', 256, 54);
+    mctx.fillStyle = '#d9be8b';
+    mctx.font = 'bold 28px "Noto Nastaliq Urdu", sans-serif';
+    mctx.fillText('مہٹہ پیلس میوزیم • کلفٹن کراچی', 256, 96);
+
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(8, 2.0), new THREE.MeshBasicMaterial({ map: signTex }));
+    signMesh.position.set(0, 6.8, 7.65);
+    group.add(signMesh);
+
+    return group;
+  },
+
+  // 4. Frere Hall (فریئر ہال - Venetian-Gothic Yellow Gizri Limestone Landmark)
+  createFrereHall() {
+    const group = new THREE.Group();
+    group.name = "Frere Hall (فریئر ہال)";
+
+    const base = new THREE.Mesh(new THREE.BoxGeometry(26, 1.2, 16), materials.sandstone);
+    base.position.y = 0.6;
+    group.add(base);
+
+    const bodyGeo = new THREE.BoxGeometry(22, 11, 13);
+    const body = new THREE.Mesh(bodyGeo, materials.gizriYellow);
+    body.position.y = 6.6;
+    body.castShadow = true;
+    group.add(body);
+
+    const roofGeo = new THREE.ConeGeometry(9.5, 6.5, 4);
+    const roof = new THREE.Mesh(roofGeo, materials.roofGreen);
+    roof.position.set(0, 15.3, 0);
+    roof.rotation.y = Math.PI / 4;
+    group.add(roof);
+
+    const spireTower = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.4, 7.5, 8), materials.gizriYellow);
+    spireTower.position.set(-6.5, 14.5, 0);
+    group.add(spireTower);
+
+    const spireCone = new THREE.Mesh(new THREE.ConeGeometry(2.1, 8.5, 8), materials.roofGreen);
+    spireCone.position.set(-6.5, 21.5, 0);
+    group.add(spireCone);
+
+    [-7, -3.5, 0, 3.5, 7].forEach(lx => {
+      const lancet = new THREE.Mesh(new THREE.BoxGeometry(1.6, 4.2, 0.4), materials.darkGlass);
+      lancet.position.set(lx, 6.8, 6.6);
+      group.add(lancet);
+    });
+
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 512;
+    signCanvas.height = 128;
+    const fctx = signCanvas.getContext('2d');
+    fctx.fillStyle = '#1b3a27';
+    fctx.fillRect(0, 0, 512, 128);
+    fctx.strokeStyle = '#e6c875';
+    fctx.lineWidth = 6;
+    fctx.strokeRect(6, 6, 500, 116);
+    fctx.fillStyle = '#ffffff';
+    fctx.font = 'bold 34px "Outfit", sans-serif';
+    fctx.textAlign = 'center';
+    fctx.fillText('FRERE HALL SADEQUAIN GALLERY', 256, 54);
+    fctx.fillStyle = '#e6c875';
+    fctx.font = 'bold 26px "Noto Nastaliq Urdu", sans-serif';
+    fctx.fillText('فریئر ہال و صادقین گیلری • کراچی', 256, 96);
+
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 2.0), new THREE.MeshBasicMaterial({ map: signTex }));
+    signMesh.position.set(0, 3.4, 6.65);
+    group.add(signMesh);
+
+    return group;
+  },
+
+  // 5. Habib Bank Plaza (HBL Plaza, I.I. Chundrigar Road Modernist Skyscraper)
+  createHabibBankPlaza() {
+    const group = new THREE.Group();
+    group.name = "Habib Bank Plaza (حبیب بینک پلازہ)";
+
+    const podiumGeo = new THREE.CylinderGeometry(8.5, 9.2, 4.5, 24);
+    const podium = new THREE.Mesh(podiumGeo, materials.towerConcrete);
+    podium.position.y = 2.25;
+    podium.receiveShadow = true;
+    group.add(podium);
+
+    const shaftGeo = new THREE.CylinderGeometry(6.4, 6.8, 30, 24);
+    const shaft = new THREE.Mesh(shaftGeo, materials.hblBlue);
+    shaft.position.y = 19.5;
+    shaft.castShadow = true;
+    group.add(shaft);
+
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.35, 28, 0.8), materials.towerConcrete);
+      fin.position.set(Math.cos(a) * 6.8, 19.5, Math.sin(a) * 6.8);
+      fin.rotation.y = -a;
+      group.add(fin);
+    }
+
+    const crownGeo = new THREE.CylinderGeometry(8.5, 6.2, 5.0, 24);
+    const crown = new THREE.Mesh(crownGeo, materials.towerConcrete);
+    crown.position.y = 37.0;
+    group.add(crown);
+
+    const roofDeck = new THREE.Mesh(new THREE.CylinderGeometry(8.2, 8.2, 0.8, 24), materials.darkGlass);
+    roofDeck.position.y = 39.8;
+    group.add(roofDeck);
+
+    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.45, 9.0, 8), materials.chrome);
+    spire.position.y = 44.5;
+    group.add(spire);
+
+    const logoCanvas = document.createElement('canvas');
+    logoCanvas.width = 512;
+    logoCanvas.height = 160;
+    const lctx = logoCanvas.getContext('2d');
+    lctx.fillStyle = '#00558f';
+    lctx.fillRect(0, 0, 512, 160);
+    lctx.strokeStyle = '#00e5ff';
+    lctx.lineWidth = 6;
+    lctx.strokeRect(6, 6, 500, 148);
+    lctx.fillStyle = '#ffffff';
+    lctx.font = '900 48px "Outfit", sans-serif';
+    lctx.textAlign = 'center';
+    lctx.fillText('HBL PLAZA', 256, 68);
+    lctx.fillStyle = '#00e5ff';
+    lctx.font = 'bold 36px "Noto Nastaliq Urdu", sans-serif';
+    lctx.fillText('حبیب بینک پلازہ • چندریگر روڈ', 256, 126);
+
+    const logoTex = new THREE.CanvasTexture(logoCanvas);
+    const logoMesh = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 2.4), new THREE.MeshBasicMaterial({ map: logoTex }));
+    logoMesh.position.set(0, 6.0, 8.2);
+    group.add(logoMesh);
+
+    return group;
+  },
+
+  // 6. Clifton Decorated Sea View Camel (سی ویو اونٹ)
+  createCliftonDecoratedCamel() {
+    const group = new THREE.Group();
+    group.name = "Clifton Beach Camel (سی ویو اونٹ)";
+
+    const bodyGeo = new THREE.BoxGeometry(1.8, 1.4, 2.8);
+    const body = new THREE.Mesh(bodyGeo, materials.camelFur);
+    body.position.y = 2.4;
+    group.add(body);
+
+    const humpGeo = new THREE.SphereGeometry(0.85, 12, 12);
+    humpGeo.scale(0.8, 1.2, 1.0);
+    const hump = new THREE.Mesh(humpGeo, materials.camelFur);
+    hump.position.set(0, 3.2, -0.2);
+    group.add(hump);
+
+    const neckGeo = new THREE.CylinderGeometry(0.35, 0.45, 1.8, 8);
+    const neck = new THREE.Mesh(neckGeo, materials.camelFur);
+    neck.position.set(0, 3.2, 1.5);
+    neck.rotation.x = 0.55;
+    group.add(neck);
+
+    const headGeo = new THREE.BoxGeometry(0.55, 0.65, 1.1);
+    const head = new THREE.Mesh(headGeo, materials.camelFur);
+    head.position.set(0, 3.9, 2.2);
+    group.add(head);
+
+    const legGeo = new THREE.CylinderGeometry(0.14, 0.16, 2.0, 8);
+    [
+      [-0.6, 1.0, 0.9], [0.6, 1.0, 0.9],
+      [-0.6, 1.0, -0.9], [0.6, 1.0, -0.9]
+    ].forEach(([lx, ly, lz]) => {
+      const leg = new THREE.Mesh(legGeo, materials.camelFur);
+      leg.position.set(lx, ly, lz);
+      group.add(leg);
+    });
+
+    const saddleGeo = new THREE.BoxGeometry(2.0, 0.8, 1.8);
+    const saddle = new THREE.Mesh(saddleGeo, materials.rilliPink);
+    saddle.position.set(0, 2.8, -0.2);
+    group.add(saddle);
+
+    [-1.05, 1.05].forEach(tx => {
+      for (let tz = -0.7; tz <= 0.7; tz += 0.45) {
+        const pom = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), materials.rilliGold);
+        pom.position.set(tx, 2.4, tz);
+        group.add(pom);
+      }
+    });
+
+    const decal = this.createFriendlyDecal('pet', '🐪 CLIFTON CAMEL • سی ویو اونٹ');
+    decal.position.set(0, 4.8, 0);
+    group.add(decal);
+
+    return group;
+  },
+
+  // 7. K-Electric Pole with Tangled Wire Nest & 440V Danger Plate
+  createKElectricTransformerPole() {
+    const group = new THREE.Group();
+    group.name = "K-Electric Transformer Pole (کے الیکٹرک)";
+
+    [-1.0, 1.0].forEach(px => {
+      const pole = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9.5, 0.4), materials.towerConcrete);
+      pole.position.set(px, 4.75, 0);
+      group.add(pole);
+    });
+
+    const barTop = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.25, 0.35), materials.curbBlack);
+    barTop.position.set(0, 9.0, 0);
+    group.add(barTop);
+
+    const barPlatform = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.35, 1.8), materials.curbBlack);
+    barPlatform.position.set(0, 5.2, 0);
+    group.add(barPlatform);
+
+    const transGeo = new THREE.CylinderGeometry(0.7, 0.7, 2.2, 12);
+    const trans = new THREE.Mesh(transGeo, materials.roofGreen);
+    trans.position.set(0, 6.5, 0);
+    group.add(trans);
+
+    const dangerCanvas = document.createElement('canvas');
+    dangerCanvas.width = 256;
+    dangerCanvas.height = 128;
+    const dctx = dangerCanvas.getContext('2d');
+    dctx.fillStyle = '#ffd600';
+    dctx.fillRect(0, 0, 256, 128);
+    dctx.strokeStyle = '#d50000';
+    dctx.lineWidth = 6;
+    dctx.strokeRect(6, 6, 244, 116);
+    dctx.fillStyle = '#d50000';
+    dctx.font = '900 28px "Outfit", sans-serif';
+    dctx.textAlign = 'center';
+    dctx.fillText('⚡ 440 VOLTS ⚡', 128, 48);
+    dctx.font = 'bold 32px "Noto Nastaliq Urdu", sans-serif';
+    dctx.fillText('خطرہ ۴۴۰ وولٹ', 128, 98);
+
+    const dangerTex = new THREE.CanvasTexture(dangerCanvas);
+    const dangerMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.7), new THREE.MeshBasicMaterial({ map: dangerTex }));
+    dangerMesh.position.set(0, 4.2, 0.25);
+    group.add(dangerMesh);
+
+    for (let i = 0; i < 6; i++) {
+      const wireCurve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(-1.2 + i * 0.4, 9.0, 0.2),
+        new THREE.Vector3(Math.sin(i) * 1.5, 7.8 - i * 0.2, 0.8),
+        new THREE.Vector3(-0.6 + i * 0.3, 6.5, 0.6)
+      );
+      const wireGeo = new THREE.TubeGeometry(wireCurve, 8, 0.04, 4, false);
+      const wire = new THREE.Mesh(wireGeo, materials.curbBlack);
+      group.add(wire);
+    }
+
+    return group;
+  },
+
+  // 8. Authentic Karachi Municipal Green Road Sign (شاہراہِ فیصل سائن بورڈ)
+  createKarachiGreenStreetSign(
+    avenueName = "SHAHRAH-E-FAISAL",
+    urduName = "شاہراہِ فیصل",
+    crossName = "TARIQ ROAD",
+    crossUrdu = "طرق روڈ"
+  ) {
+    const group = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.8, 8), materials.curbBlack);
+    pole.position.y = 1.9;
+    group.add(pole);
+
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 512;
+    signCanvas.height = 192;
+    const sctx = signCanvas.getContext('2d');
+    sctx.fillStyle = '#005a36';
+    sctx.fillRect(0, 0, 512, 192);
+    sctx.strokeStyle = '#ffffff';
+    sctx.lineWidth = 6;
+    sctx.strokeRect(6, 6, 500, 180);
+    sctx.fillStyle = '#ffffff';
+    sctx.font = 'bold 36px "Outfit", sans-serif';
+    sctx.textAlign = 'center';
+    sctx.fillText(avenueName, 256, 55);
+    sctx.font = 'bold 38px "Noto Nastaliq Urdu", sans-serif';
+    sctx.fillText(urduName, 256, 108);
+    sctx.fillStyle = '#ffd700';
+    sctx.font = '600 24px "Outfit", sans-serif';
+    sctx.fillText(`CROSS: ${crossName} (${crossUrdu})`, 256, 155);
+
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    const signMat = new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide });
+    const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.9), signMat);
+    signMesh.position.set(0, 3.4, 0);
+    group.add(signMesh);
 
     return group;
   }
