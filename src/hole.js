@@ -1,22 +1,42 @@
 import * as THREE from 'three';
 import { TextureGenerator } from './textures.js';
 
+export const DIFFICULTY_CONFIG = {
+  kidsEasy: {
+    startRadius: 1.65,
+    xpMultiplier: 1.8,
+    suctionPull: 11.5,
+    botSpeedMult: 0.62,
+    botAggression: false, // Bots never hunt the player!
+    title: "Kids / Easy (Default)"
+  },
+  classic: {
+    startRadius: 1.15,
+    xpMultiplier: 1.0,
+    suctionPull: 7.5,
+    botSpeedMult: 0.88,
+    botAggression: true,
+    title: "Classic Arcade"
+  }
+};
+
 export const LEVEL_CONFIG = [
-  { level: 1, radius: 1.15, maxXP: 150, title: "Gali Vacuum" },
-  { level: 2, radius: 2.1, maxXP: 500, title: "Rickshaw Eater" },
-  { level: 3, radius: 3.6, maxXP: 1200, title: "Bedford Devourer" },
-  { level: 4, radius: 6.2, maxXP: 2600, title: "Bazaar Destroyer" },
-  { level: 5, radius: 10.8, maxXP: 5500, title: "Chundrigar Void" },
-  { level: 6, radius: 16.5, maxXP: 99999, title: "MAZAR MEGA VOID" }
+  { level: 1, radius: 1.65, maxXP: 90, title: "Gali Vacuum" },
+  { level: 2, radius: 2.65, maxXP: 300, title: "Rickshaw Eater" },
+  { level: 3, radius: 4.2, maxXP: 800, title: "Bedford Devourer" },
+  { level: 4, radius: 7.0, maxXP: 1800, title: "Bazaar Destroyer" },
+  { level: 5, radius: 11.8, maxXP: 4200, title: "Chundrigar Void" },
+  { level: 6, radius: 17.5, maxXP: 99999, title: "MAZAR MEGA VOID" }
 ];
 
 export class Hole {
-  constructor({ scene, name, isPlayer = false, skin = 'truckArt', initialPos = { x: 0, z: 0 }, color = 0x00e5ff }) {
+  constructor({ scene, name, isPlayer = false, skin = 'truckArt', initialPos = { x: 0, z: 0 }, color = 0x00e5ff, difficulty = 'kidsEasy' }) {
     this.scene = scene;
     this.name = name;
     this.isPlayer = isPlayer;
     this.skin = skin;
     this.baseColor = color;
+    this.difficulty = difficulty;
 
     this.position = new THREE.Vector3(initialPos.x, 0, initialPos.z);
     this.velocity = new THREE.Vector3();
@@ -24,18 +44,19 @@ export class Hole {
     this.rotationY = 0;
 
     // Progression
+    const diff = DIFFICULTY_CONFIG[this.difficulty] || DIFFICULTY_CONFIG.kidsEasy;
     this.level = 1;
     this.xp = 0;
     this.score = 0;
-    this.radius = LEVEL_CONFIG[0].radius;
+    this.radius = isPlayer ? diff.startRadius : LEVEL_CONFIG[0].radius * 0.9;
     this.targetRadius = this.radius;
     this.swallowedCount = 0;
     this.comboCount = 0;
     this.comboTimer = 0;
     this.kills = 0;
 
-    // Movement speed
-    this.baseSpeed = isPlayer ? 15.0 : 13.5;
+    // Movement speed - Kid-friendly smooth speed
+    this.baseSpeed = isPlayer ? 16.5 : 13.5 * diff.botSpeedMult;
     this.currentSpeed = this.baseSpeed;
     this.isBoosting = false;
 
@@ -238,14 +259,20 @@ export class Hole {
     let threat = null;
     let huntTarget = null;
 
+    const diff = DIFFICULTY_CONFIG[this.difficulty] || DIFFICULTY_CONFIG.kidsEasy;
+
     otherHoles.forEach(other => {
       if (other === this || !other.isAlive) return;
       const d = this.position.distanceTo(other.position);
 
       if (other.radius > this.radius * 1.25 && d < 22) {
+        // In kids mode, if player approaches, bot flees slowly so player can catch it!
         threat = other;
       } else if (this.radius > other.radius * 1.25 && d < 18) {
-        huntTarget = other;
+        // In kids mode, bots NEVER hunt the player!
+        if (!other.isPlayer || diff.botAggression) {
+          huntTarget = other;
+        }
       }
     });
 

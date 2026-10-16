@@ -81,6 +81,50 @@ class AudioManager {
     }
   }
 
+  // Comical cartoon sound when a corrupt politician gets devoured!
+  playPoliticianSwallow() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Slide whistle / comical boing
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(600, t);
+    osc.frequency.exponentialRampToValueAtTime(120, t + 0.35);
+
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.35);
+
+    // Cash register cha-ching chime!
+    [1046.50, 1318.51, 1567.98].forEach((f, idx) => {
+      const bell = this.ctx.createOscillator();
+      const bGain = this.ctx.createGain();
+      const bellTime = t + 0.15 + idx * 0.08;
+
+      bell.type = 'sine';
+      bell.frequency.setValueAtTime(f, bellTime);
+
+      bGain.gain.setValueAtTime(0.25, bellTime);
+      bGain.gain.exponentialRampToValueAtTime(0.001, bellTime + 0.25);
+
+      bell.connect(bGain);
+      bGain.connect(this.ctx.destination);
+      bell.start(bellTime);
+      bell.stop(bellTime + 0.25);
+    });
+
+    this.vibrate([40, 20, 80, 20, 100]);
+  }
+
   // Level up fanfare sound
   playLevelUp() {
     if (!this.soundEnabled) return;

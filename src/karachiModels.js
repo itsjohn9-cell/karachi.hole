@@ -876,5 +876,206 @@ export const KarachiModels = {
     group.add(whiteBand);
 
     return group;
+  },
+
+  // 18. Pakistani Politician with VIP Protocol Briefcase & Speech Bubble - Tier 1 (Fun Parody Target!)
+  createPolitician({ name = "VIP Politician", quote = "VIP Protocol do!" } = {}) {
+    const group = new THREE.Group();
+    group.name = name;
+    group.isPolitician = true;
+    group.quote = quote;
+
+    const waistcoats = [
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.5 }), // Classic Black
+      new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.5 }), // Brown
+      new THREE.MeshStandardMaterial({ color: 0x0d47a1, roughness: 0.5 }), // Navy
+      new THREE.MeshStandardMaterial({ color: 0xb71c1c, roughness: 0.5 })  // Red party
+    ];
+    const coatMat = waistcoats[Math.floor(Math.random() * waistcoats.length)];
+
+    // White Shalwar Kameez body
+    const bodyGeo = new THREE.CylinderGeometry(0.24, 0.28, 0.85, 8);
+    const body = new THREE.Mesh(bodyGeo, materials.shalwarWhite);
+    body.position.y = 0.88;
+    body.castShadow = true;
+    group.add(body);
+
+    // Politician Waistcoat (Sadri)
+    const coatGeo = new THREE.CylinderGeometry(0.25, 0.29, 0.65, 8);
+    const coat = new THREE.Mesh(coatGeo, coatMat);
+    coat.position.y = 0.95;
+    group.add(coat);
+
+    // Politician Muffler / Party Scarf
+    const mufflerGeo = new THREE.TorusGeometry(0.22, 0.05, 8, 16);
+    const mufflerMat = new THREE.MeshStandardMaterial({ color: 0x00c853 });
+    const muffler = new THREE.Mesh(mufflerGeo, mufflerMat);
+    muffler.position.y = 1.3;
+    muffler.rotation.x = Math.PI / 2;
+    group.add(muffler);
+
+    // Head with Politician Cap / Mustache
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), materials.pedestrianSkin);
+    head.position.y = 1.48;
+    group.add(head);
+
+    // Jinnah / Karakul Cap
+    const capGeo = new THREE.CylinderGeometry(0.18, 0.17, 0.14, 8);
+    const cap = new THREE.Mesh(capGeo, materials.curbBlack);
+    cap.position.y = 1.64;
+    group.add(cap);
+
+    // Thick Politician Mustache
+    const stache = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.05), materials.curbBlack);
+    stache.position.set(0, 1.44, 0.17);
+    group.add(stache);
+
+    // Animated Limbs Groups
+    const legL = new THREE.Group();
+    const legMeshL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6), materials.shalwarWhite);
+    legMeshL.position.y = -0.3;
+    legL.add(legMeshL);
+    legL.position.set(-0.1, 0.6, 0);
+    group.add(legL);
+
+    const legR = new THREE.Group();
+    const legMeshR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6), materials.shalwarWhite);
+    legMeshR.position.y = -0.3;
+    legR.add(legMeshR);
+    legR.position.set(0.1, 0.6, 0);
+    group.add(legR);
+
+    // Arms
+    const armL = new THREE.Group();
+    const armMeshL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6), materials.shalwarWhite);
+    armMeshL.position.y = -0.25;
+    armL.add(armMeshL);
+    armL.position.set(-0.3, 1.2, 0);
+    group.add(armL);
+
+    const armR = new THREE.Group();
+    const armMeshR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6), materials.shalwarWhite);
+    armMeshR.position.y = -0.25;
+    armR.add(armMeshR);
+    armR.position.set(0.3, 1.2, 0);
+    group.add(armR);
+
+    // Golden VIP Money Briefcase in Hand
+    const caseGeo = new THREE.BoxGeometry(0.32, 0.24, 0.12);
+    const caseMat = new THREE.MeshStandardMaterial({ color: 0x4e342e, roughness: 0.3 });
+    const briefcase = new THREE.Mesh(caseGeo, caseMat);
+    briefcase.position.set(0, -0.28, 0.05);
+    armR.add(briefcase);
+
+    // Gold handle & lock
+    const lock = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.13), materials.goldMetal);
+    lock.position.set(0, -0.15, 0.05);
+    armR.add(lock);
+
+    // Speech Bubble Canvas Sprite
+    const canvas = document.createElement('canvas');
+    canvas.width = 384;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const bubbleTexture = new THREE.CanvasTexture(canvas);
+
+    const drawBubble = (text) => {
+      ctx.clearRect(0, 0, 384, 110);
+      // White speech pill
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(10, 10, 364, 75, 20);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#d32f2f';
+      ctx.stroke();
+
+      // Tail
+      ctx.beginPath();
+      ctx.moveTo(192, 85);
+      ctx.lineTo(175, 105);
+      ctx.lineTo(210, 85);
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.stroke();
+
+      // Text
+      ctx.fillStyle = '#111111';
+      ctx.font = 'bold 24px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 192, 48);
+      bubbleTexture.needsUpdate = true;
+    };
+    drawBubble(quote);
+
+    const bubbleSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture, transparent: true }));
+    bubbleSprite.scale.set(3.8, 1.1, 1);
+    bubbleSprite.position.y = 2.4;
+    group.add(bubbleSprite);
+
+    group.userData = {
+      legL, legR, armL, armR,
+      bubbleSprite,
+      drawBubble,
+      runCycle: Math.random() * 10,
+      isFleeing: false,
+      fleeSpeed: 10.0,
+      origQuote: quote
+    };
+
+    return group;
+  },
+
+  // 19. Black VIP Protocol Police Escort SUV with Flashers - Tier 3
+  createVIPProtocolSUV() {
+    const group = new THREE.Group();
+    group.name = "VIP-Protocol-SUV";
+
+    // Black SUV Body
+    const bodyGeo = new THREE.BoxGeometry(2.2, 1.2, 4.8);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111114, roughness: 0.1, metalness: 0.8 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 1.0;
+    body.castShadow = true;
+    group.add(body);
+
+    // Cabin / Windows
+    const cabGeo = new THREE.BoxGeometry(2.0, 0.9, 2.8);
+    const cab = new THREE.Mesh(cabGeo, materials.darkGlass);
+    cab.position.set(0, 1.8, -0.2);
+    group.add(cab);
+
+    // Red & Blue Emergency Police Flashers on Roof
+    const flasherBar = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.15, 0.3), materials.chrome);
+    flasherBar.position.set(0, 2.3, -0.2);
+    group.add(flasherBar);
+
+    const redLight = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.25), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+    redLight.position.set(-0.5, 2.32, -0.2);
+    group.add(redLight);
+
+    const blueLight = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.25), new THREE.MeshBasicMaterial({ color: 0x0088ff }));
+    blueLight.position.set(0.5, 2.32, -0.2);
+    group.add(blueLight);
+
+    // Bull-bar chrome bumper
+    const bumper = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.6, 0.3), materials.chrome);
+    bumper.position.set(0, 0.7, 2.45);
+    group.add(bumper);
+
+    // 4 Big Wheels
+    const wheelGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.35, 12);
+    wheelGeo.rotateZ(Math.PI / 2);
+    [[-1.15, 0.48, 1.4], [1.15, 0.48, 1.4], [-1.15, 0.48, -1.4], [1.15, 0.48, -1.4]].forEach(p => {
+      const w = new THREE.Mesh(wheelGeo, materials.rubber);
+      w.position.set(...p);
+      group.add(w);
+    });
+
+    group.userData = { redLight, blueLight, flasherTime: 0 };
+    return group;
   }
 };
+

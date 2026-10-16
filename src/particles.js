@@ -17,6 +17,40 @@ export class ParticleSystem {
       new THREE.MeshBasicMaterial({ color: 0x76ff03 }), // Lime
       new THREE.MeshBasicMaterial({ color: 0xff6d00 }), // Orange
     ];
+
+    // Money note geometry & materials for devoured politicians
+    this.moneyGeo = new THREE.PlaneGeometry(0.35, 0.18);
+    this.moneyMat = new THREE.MeshBasicMaterial({ color: 0x2e7d32, side: THREE.DoubleSide });
+    this.goldMoneyMat = new THREE.MeshBasicMaterial({ color: 0xffd700, side: THREE.DoubleSide });
+  }
+
+  // Burst of currency / rupee notes when a corrupt politician is devoured!
+  createMoneyBurst(pos, count = 35) {
+    for (let i = 0; i < count; i++) {
+      const mat = Math.random() > 0.3 ? this.moneyMat : this.goldMoneyMat;
+      const mesh = new THREE.Mesh(this.moneyGeo, mat);
+      mesh.position.copy(pos);
+      mesh.position.y += 0.5;
+
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 3 + Math.random() * 5;
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        5 + Math.random() * 6,
+        Math.sin(angle) * speed
+      );
+
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -10, // Slower flutter
+        life: 1.4 + Math.random() * 0.6,
+        maxLife: 2.0,
+        scale: 1.0,
+        isMoney: true
+      });
+    }
   }
 
   // Burst when an object is swallowed
@@ -107,8 +141,14 @@ export class ParticleSystem {
       p.mesh.position.z += p.vel.z * dt;
 
       // Rotate
-      p.mesh.rotation.x += dt * 4;
-      p.mesh.rotation.y += dt * 6;
+      if (p.isMoney) {
+        p.mesh.rotation.x += dt * 8;
+        p.mesh.rotation.z += dt * 5;
+        p.mesh.rotation.y += dt * 3;
+      } else {
+        p.mesh.rotation.x += dt * 4;
+        p.mesh.rotation.y += dt * 6;
+      }
 
       // Scale down with life
       const ratio = p.life / p.maxLife;

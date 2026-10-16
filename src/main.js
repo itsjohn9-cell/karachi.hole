@@ -89,24 +89,28 @@ class Game {
 
   initScene() {
     this.cityGen = new CityGenerator(this.scene);
-    this.edibleObjects = this.cityGen.generateCity();
+    const generated = this.cityGen.generateCity();
+    this.edibleObjects = generated.edibleObjects;
+    this.politicians = generated.politicians || [];
   }
 
   initHoles() {
     this.holes = [];
 
-    // Player Hole
+    // Player Hole (Kids / Easy mode by default)
     this.player = new Hole({
       scene: this.scene,
       name: "You (Karachi King)",
       isPlayer: true,
       skin: 'truckArt',
       initialPos: { x: 0, z: -15 },
-      color: 0x00e5ff
+      color: 0x00e5ff,
+      difficulty: this.difficulty || 'kidsEasy'
     });
+    this.player.politiciansDevoured = 0;
     this.holes.push(this.player);
 
-    // 5 Intelligent AI Bots with Karachi Personalities
+    // 5 AI Bots with Kid-Friendly tuning (Slow, Non-aggressive)
     const botConfigs = [
       { name: "TruckArtMaster", skin: "truckArt", color: 0xff007f, pos: [-45, 15] },
       { name: "ChaiWala_99", skin: "ajrak", color: 0x8b0000, pos: [-20, 45] },
@@ -122,7 +126,8 @@ class Game {
         isPlayer: false,
         skin: cfg.skin,
         initialPos: cfg.pos,
-        color: cfg.color
+        color: cfg.color,
+        difficulty: this.difficulty || 'kidsEasy'
       });
       this.holes.push(bot);
     });
@@ -155,6 +160,10 @@ class Game {
       onSelectMode: (mode) => {
         this.gameMode = mode;
         this.restartGame();
+      },
+      onSelectDifficulty: (diff) => {
+        this.difficulty = diff;
+        this.restartGame();
       }
     });
   }
@@ -175,20 +184,22 @@ class Game {
     this.isGameOver = false;
 
     // Reset Player
+    const diff = DIFFICULTY_CONFIG[this.difficulty || 'kidsEasy'] || DIFFICULTY_CONFIG.kidsEasy;
     this.player.position.set(0, 0, -15);
     this.player.group.position.copy(this.player.position);
     this.player.level = 1;
     this.player.xp = 0;
     this.player.score = 0;
-    this.player.radius = LEVEL_CONFIG[0].radius;
+    this.player.radius = diff.startRadius;
     this.player.targetRadius = this.player.radius;
     this.player.swallowedCount = 0;
+    this.player.politiciansDevoured = 0;
     this.player.kills = 0;
     this.player.isAlive = true;
     this.player.group.visible = true;
     this.player.updateNameTag();
 
-    // Reset Bots
+    // Reset Bots (Friendly tuning in Kids/Easy mode)
     const botPositions = [[-45, 15], [-20, 45], [45, 45], [-55, 30], [45, -35]];
     this.holes.forEach((h, idx) => {
       if (h.isPlayer) return;
@@ -198,8 +209,10 @@ class Game {
       h.level = 1;
       h.xp = 0;
       h.score = 0;
-      h.radius = LEVEL_CONFIG[0].radius;
+      h.radius = LEVEL_CONFIG[0].radius * 0.9;
       h.targetRadius = h.radius;
+      h.baseSpeed = 13.5 * diff.botSpeedMult;
+      h.currentSpeed = h.baseSpeed;
       h.swallowedCount = 0;
       h.kills = 0;
       h.isAlive = true;
@@ -207,11 +220,13 @@ class Game {
       h.updateNameTag();
     });
 
-    // Re-generate city objects
+    // Re-generate city objects & politicians
     this.edibleObjects.forEach(obj => {
       this.scene.remove(obj.mesh);
     });
-    this.edibleObjects = this.cityGen.generateCity();
+    const generated = this.cityGen.generateCity();
+    this.edibleObjects = generated.edibleObjects;
+    this.politicians = generated.politicians || [];
     this.particles.clear();
   }
 
@@ -248,6 +263,7 @@ class Game {
     });
 
     // Hole vs Hole Swallowing Interactions
+    const isKidsMode = (this.difficulty || 'kidsEasy') === 'kidsEasy';
     for (let i = 0; i < this.holes.length; i++) {
       for (let j = 0; j < this.holes.length; j++) {
         if (i === j) continue;
@@ -256,8 +272,14 @@ class Game {
 
         if (!hunter.isAlive || !victim.isAlive) continue;
 
-        // Hunter must be at least 25% larger to eat victim
-        if (hunter.radius > victim.radius * 1.25) {
+        // In Kids / Easy mode, bots NEVER devour the player!
+        if (victim.isPlayer && isKidsMode) {
+          continue;
+        }
+
+        // Hunter eats victim if larger
+        const threshold = (hunter.isPlayer && isKidsMode) ? 1.15 : 1.25;
+        if (hunter.radius > victim.radius * threshold) {
           const dist = hunter.position.distanceTo(victim.position);
           if (dist < hunter.radius) {
             // Devour victim hole!
@@ -285,7 +307,62 @@ class Game {
       }
     }
 
+    // Update Fleeing Pakistani Politicians with Funny Animations!
+    for (let i = 0; i < this.politicians.length; i++) {
+      const pol = this.politicians[i];
+      if (pol.state === 'swallowed') continue;
+
+      const pPos = pol.mesh.position;
+      let nearestHole = null;
+      let minHoleDist = Infinity;
+
+      for (let h = 0; h < this.holes.length; h++) {
+        const hole = this.holes[h];
+        if (!hole.isAlive) continue;
+        const d = hole.position.distanceTo(pPos);
+        if (d < minHoleDist) {
+          minHoleDist = d;
+          nearestHole = hole;
+        }
+      }
+
+      // Politician panics and runs away when hole gets close!
+      if (nearestHole && minHoleDist < 20 && pol.state === 'idle') {
+        const fleeX = pPos.x - nearestHole.position.x;
+        const fleeZ = pPos.z - nearestHole.position.z;
+        const len = Math.sqrt(fleeX * fleeX + fleeZ * fleeZ);
+
+        if (len > 0.1) {
+          const normX = fleeX / len;
+          const normZ = fleeZ / len;
+          const fleeSpeed = 9.5;
+          pPos.x += normX * dt * fleeSpeed;
+          pPos.z += normZ * dt * fleeSpeed;
+          pol.mesh.rotation.y = Math.atan2(normX, normZ);
+        }
+
+        // Hilarious comical flailing limb animation
+        const ud = pol.mesh.userData;
+        if (ud && ud.legL) {
+          ud.runCycle += dt * 22;
+          ud.legL.rotation.x = Math.sin(ud.runCycle) * 0.95;
+          ud.legR.rotation.x = -Math.sin(ud.runCycle) * 0.95;
+          ud.armL.rotation.z = 1.3 + Math.sin(ud.runCycle) * 0.6;
+          ud.armR.rotation.z = -1.3 - Math.sin(ud.runCycle) * 0.6;
+
+          if (minHoleDist < 12 && !ud.hasPanicked) {
+            ud.hasPanicked = true;
+            ud.drawBubble("Bhago! Black Hole aa gaya!");
+          }
+        }
+
+        pPos.x = THREE.MathUtils.clamp(pPos.x, -105, 105);
+        pPos.z = THREE.MathUtils.clamp(pPos.z, -105, 105);
+      }
+    }
+
     // Edible Objects Suction & Collision
+    const pullSpeed = isKidsMode ? 12.0 : 7.5;
     for (let i = 0; i < this.edibleObjects.length; i++) {
       const obj = this.edibleObjects[i];
       if (obj.state === 'swallowed') continue;
@@ -322,16 +399,16 @@ class Game {
           continue;
         }
 
-        obj.suctionProgress += dt * 3.4;
+        obj.suctionProgress += dt * 3.6;
 
-        // Gravitational suction towards hole center
-        objPos.x += (hole.position.x - objPos.x) * dt * 7.5;
-        objPos.z += (hole.position.z - objPos.z) * dt * 7.5;
+        // Gravitational magnetic suction towards hole center
+        objPos.x += (hole.position.x - objPos.x) * dt * pullSpeed;
+        objPos.z += (hole.position.z - objPos.z) * dt * pullSpeed;
 
         // Tilt & drop into the abyss
-        obj.mesh.rotation.x += dt * 3.5;
-        obj.mesh.rotation.z += dt * 2.8;
-        objPos.y -= dt * 6.5;
+        obj.mesh.rotation.x += dt * 4.2;
+        obj.mesh.rotation.z += dt * 3.4;
+        objPos.y -= dt * 7.5;
 
         // Scale down smoothly
         const scaleFactor = Math.max(0.01, 1.0 - obj.suctionProgress);
@@ -342,7 +419,7 @@ class Game {
         );
 
         // Fully Swallowed!
-        if (obj.suctionProgress >= 1.0 || objPos.y < -2.8) {
+        if (obj.suctionProgress >= 1.0 || objPos.y < -2.6) {
           obj.state = 'swallowed';
           this.scene.remove(obj.mesh);
 
@@ -356,11 +433,22 @@ class Game {
             if (h.isPlayer) this.handlePlayerLevelUp(h);
           });
 
-          // Visual and Audio FX
-          this.particles.createSwallowBurst(hole.position, obj.tier);
+          // Special Devour Effects for Pakistani Politicians!
+          if (obj.isPolitician) {
+            this.particles.createMoneyBurst(hole.position, 40);
+            if (hole.isPlayer) {
+              this.player.politiciansDevoured = (this.player.politiciansDevoured || 0) + 1;
+              audio.playPoliticianSwallow();
+              this.ui.showAnnouncement(`💰 DEVOURED VIP POLITICIAN! (+${points} XP)`, '#ffd700');
+            }
+          } else {
+            this.particles.createSwallowBurst(hole.position, obj.tier);
+            if (hole.isPlayer) {
+              audio.playSwallow(obj.tier);
+            }
+          }
 
           if (hole.isPlayer) {
-            audio.playSwallow(obj.tier);
             if (hole.comboCount > 2) {
               audio.playCombo(hole.comboCount);
             }

@@ -2,13 +2,15 @@ import { LEVEL_CONFIG } from './hole.js';
 import { audio } from './audio.js';
 
 export class UIManager {
-  constructor({ onSelectSkin, onRestartGame, onSelectMode }) {
+  constructor({ onSelectSkin, onRestartGame, onSelectMode, onSelectDifficulty }) {
     this.onSelectSkin = onSelectSkin;
     this.onRestartGame = onRestartGame;
     this.onSelectMode = onSelectMode;
+    this.onSelectDifficulty = onSelectDifficulty;
 
     this.currentSkin = 'truckArt';
     this.gameMode = 'battleRoyale'; // 'battleRoyale' or 'sandbox'
+    this.difficulty = 'kidsEasy'; // 'kidsEasy' or 'classic'
 
     this.createHUD();
     this.createSkinModal();
@@ -44,6 +46,10 @@ export class UIManager {
             <span class="score-label">SCORE</span>
             <span class="score-val" id="hud-score">0</span>
           </div>
+          <div class="politician-pill" title="Pakistani Politicians Devoured">
+            <span>💰 VIPs:</span>
+            <span id="hud-politicians" class="pol-count">0</span>
+          </div>
           <div class="combo-pill" id="hud-combo" style="display: none;">
             COMBO x<span id="hud-combo-val">2</span>! 🔥
           </div>
@@ -72,6 +78,7 @@ export class UIManager {
           <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
           <button class="icon-btn ui-interactive" id="btn-open-skins" title="Change Skin">🎨 Skins</button>
+          <button class="pill-btn ui-interactive highlight-btn" id="btn-diff-toggle" title="Toggle Difficulty">🎈 Easy (Kids)</button>
           <button class="pill-btn ui-interactive" id="btn-mode-toggle">Mode: 2 Min</button>
         </div>
 
@@ -231,6 +238,22 @@ export class UIManager {
       });
     });
 
+    // Difficulty Toggle (Kids / Easy by default)
+    const btnDiff = document.getElementById('btn-diff-toggle');
+    btnDiff.addEventListener('click', () => {
+      audio.playClick();
+      if (this.difficulty === 'kidsEasy') {
+        this.difficulty = 'classic';
+        btnDiff.textContent = '🕹️ Classic';
+        btnDiff.classList.remove('highlight-btn');
+      } else {
+        this.difficulty = 'kidsEasy';
+        btnDiff.textContent = '🎈 Easy (Kids)';
+        btnDiff.classList.add('highlight-btn');
+      }
+      if (this.onSelectDifficulty) this.onSelectDifficulty(this.difficulty);
+    });
+
     // Mode Toggle
     const btnMode = document.getElementById('btn-mode-toggle');
     btnMode.addEventListener('click', () => {
@@ -269,8 +292,12 @@ export class UIManager {
   }
 
   updateHUD({ player, timeLeft, rankedHoles, gameMode }) {
-    // Score
+    // Score & Politician VIP Count
     document.getElementById('hud-score').textContent = player.score.toLocaleString();
+    const polCountEl = document.getElementById('hud-politicians');
+    if (polCountEl) {
+      polCountEl.textContent = player.politiciansDevoured || 0;
+    }
 
     // Level & XP Bar
     const currentConfig = LEVEL_CONFIG[player.level - 1];
