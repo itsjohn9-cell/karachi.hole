@@ -2248,8 +2248,369 @@ export const KarachiModels = {
     };
 
     return group;
+  },
+
+  // 36. Saddar Victorian Clock Tower (North-West Corner Landmark)
+  createSaddarClockTower() {
+    const group = new THREE.Group();
+    group.name = "Saddar-Clock-Tower";
+
+    // Sandstone Plinth Base
+    const base = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.0, 5.2), materials.sandstone);
+    base.position.y = 1.0;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    group.add(base);
+
+    // Red Brick Shaft Tower
+    const shaft = new THREE.Mesh(new THREE.BoxGeometry(3.8, 12.0, 3.8), materials.redBrick);
+    shaft.position.y = 8.0;
+    shaft.castShadow = true;
+    shaft.receiveShadow = true;
+    group.add(shaft);
+
+    // Stone Cornice Band
+    const cornice = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.6, 4.4), materials.sandstone);
+    cornice.position.y = 14.3;
+    group.add(cornice);
+
+    // Clock Chamber Room
+    const chamber = new THREE.Mesh(new THREE.BoxGeometry(4.0, 3.6, 4.0), materials.sandstone);
+    chamber.position.y = 16.2;
+    group.add(chamber);
+
+    // 4 Clock Faces
+    const clockCanvas = document.createElement('canvas');
+    clockCanvas.width = 128;
+    clockCanvas.height = 128;
+    const cctx = clockCanvas.getContext('2d');
+    cctx.fillStyle = '#ffffff';
+    cctx.beginPath();
+    cctx.arc(64, 64, 58, 0, Math.PI * 2);
+    cctx.fill();
+    cctx.lineWidth = 6;
+    cctx.strokeStyle = '#111111';
+    cctx.stroke();
+    // Clock hands
+    cctx.beginPath();
+    cctx.moveTo(64, 64);
+    cctx.lineTo(64, 25);
+    cctx.moveTo(64, 64);
+    cctx.lineTo(95, 64);
+    cctx.stroke();
+    const clockTex = new THREE.CanvasTexture(clockCanvas);
+    const clockMat = new THREE.MeshBasicMaterial({ map: clockTex });
+
+    const clockPlanes = [
+      { pos: [0, 16.2, 2.02], rot: [0, 0, 0] },
+      { pos: [0, 16.2, -2.02], rot: [0, Math.PI, 0] },
+      { pos: [2.02, 16.2, 0], rot: [0, Math.PI / 2, 0] },
+      { pos: [-2.02, 16.2, 0], rot: [0, -Math.PI / 2, 0] }
+    ];
+    clockPlanes.forEach(cp => {
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), clockMat);
+      face.position.set(...cp.pos);
+      face.rotation.set(...cp.rot);
+      group.add(face);
+    });
+
+    // Green Copper Pointed Cupola Dome
+    const domeGeo = new THREE.ConeGeometry(2.6, 4.5, 8);
+    const dome = new THREE.Mesh(domeGeo, materials.roofGreen);
+    dome.position.y = 20.25;
+    dome.castShadow = true;
+    group.add(dome);
+
+    // Brass Finial Spire
+    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 6), materials.goldMetal);
+    spire.position.y = 23.2;
+    group.add(spire);
+
+    // Corner Name Banner
+    const bannerCanvas = document.createElement('canvas');
+    bannerCanvas.width = 400;
+    bannerCanvas.height = 90;
+    const bctx = bannerCanvas.getContext('2d');
+    bctx.fillStyle = '#212121';
+    bctx.beginPath();
+    bctx.roundRect(6, 6, 388, 78, 16);
+    bctx.fill();
+    bctx.strokeStyle = '#ffd700';
+    bctx.lineWidth = 4;
+    bctx.stroke();
+    bctx.fillStyle = '#ffd700';
+    bctx.font = 'bold 22px "Outfit", sans-serif';
+    bctx.textAlign = 'center';
+    bctx.textBaseline = 'middle';
+    bctx.fillText('🏛️ SADDAR CLOCK TOWER', 200, 45);
+
+    const bTex = new THREE.CanvasTexture(bannerCanvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    sprite.scale.set(4.4, 1.0, 1);
+    sprite.position.set(0, 5.0, 3.2);
+    group.add(sprite);
+
+    return group;
+  },
+
+  // 37. Clifton Marine Lighthouse (South-West Corner Landmark)
+  createCliftonLighthouse() {
+    const group = new THREE.Group();
+    group.name = "Clifton-Lighthouse";
+
+    // Stone Hexagonal Foundation
+    const plinth = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.6, 2.2, 8), materials.towerConcrete);
+    plinth.position.y = 1.1;
+    plinth.receiveShadow = true;
+    group.add(plinth);
+
+    // Alternating Red & White Striped Tapered Tower Bands
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.4 });
+    const whiteMat = materials.whiteMarble;
+    const bands = [
+      { r1: 2.8, r2: 2.5, y: 4.0, h: 3.6, mat: redMat },
+      { r1: 2.5, r2: 2.2, y: 7.6, h: 3.6, mat: whiteMat },
+      { r1: 2.2, r2: 1.9, y: 11.2, h: 3.6, mat: redMat },
+      { r1: 1.9, r2: 1.6, y: 14.8, h: 3.6, mat: whiteMat }
+    ];
+
+    bands.forEach(b => {
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(b.r2, b.r1, b.h, 16), b.mat);
+      seg.position.y = b.y;
+      seg.castShadow = true;
+      seg.receiveShadow = true;
+      group.add(seg);
+    });
+
+    // Gallery Observation Platform
+    const gallery = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.4, 16), materials.curbBlack);
+    gallery.position.y = 16.8;
+    group.add(gallery);
+
+    // Railing
+    const railing = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.8, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xeeeeee, wireframe: true }));
+    railing.position.y = 17.2;
+    group.add(railing);
+
+    // Brass Lantern Room Housing
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0xfff59d, roughness: 0.1, metalness: 0.8, emissive: 0xffd54f, emissiveIntensity: 0.8 });
+    const lantern = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 1.8, 12), glassMat);
+    lantern.position.y = 18.0;
+    group.add(lantern);
+
+    // Pointed Copper Cap
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(1.6, 1.8, 12), materials.curbBlack);
+    cap.position.y = 19.8;
+    group.add(cap);
+
+    // Corner Name Banner
+    const bannerCanvas = document.createElement('canvas');
+    bannerCanvas.width = 400;
+    bannerCanvas.height = 90;
+    const bctx = bannerCanvas.getContext('2d');
+    bctx.fillStyle = '#01579b';
+    bctx.beginPath();
+    bctx.roundRect(6, 6, 388, 78, 16);
+    bctx.fill();
+    bctx.strokeStyle = '#00e5ff';
+    bctx.lineWidth = 4;
+    bctx.stroke();
+    bctx.fillStyle = '#ffffff';
+    bctx.font = 'bold 22px "Outfit", sans-serif';
+    bctx.textAlign = 'center';
+    bctx.textBaseline = 'middle';
+    bctx.fillText('🌊 CLIFTON LIGHTHOUSE', 200, 45);
+
+    const bTex = new THREE.CanvasTexture(bannerCanvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    sprite.scale.set(4.4, 1.0, 1);
+    sprite.position.set(0, 4.5, 3.2);
+    group.add(sprite);
+
+    return group;
+  },
+
+  // 38. Chundrigar Billboard Tower (North-East Corner Landmark)
+  createChundrigarBillboardTower() {
+    const group = new THREE.Group();
+    group.name = "Chundrigar-Billboard-Tower";
+
+    // Dual Steel Lattice Pylons
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x37474f, metalness: 0.8, roughness: 0.3 });
+    [-4.5, 4.5].forEach(x => {
+      const pylon = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, 15.0, 8), steelMat);
+      pylon.position.set(x, 7.5, 0);
+      pylon.castShadow = true;
+      group.add(pylon);
+    });
+
+    // Cross Braces
+    const braceMat = new THREE.MeshBasicMaterial({ color: 0x263238, wireframe: true });
+    const truss = new THREE.Mesh(new THREE.BoxGeometry(9.0, 14.0, 0.6), braceMat);
+    truss.position.set(0, 7.5, 0);
+    group.add(truss);
+
+    // Giant Illuminated Billboard Board
+    const board = new THREE.Mesh(new THREE.BoxGeometry(11.5, 5.4, 0.5), materials.curbBlack);
+    board.position.set(0, 14.2, 0.1);
+    group.add(board);
+
+    // Canvas Billboard Graphic
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 240;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#004d40'; // Deep green
+    ctx.fillRect(0, 0, 512, 240);
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#ffd700';
+    ctx.strokeRect(6, 6, 500, 228);
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 36px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('HABIB BANK PLAZA', 256, 75);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px "Outfit", sans-serif';
+    ctx.fillText('CHUNDRIGAR ROAD • FINANCIAL HEART', 256, 130);
+    ctx.fillStyle = '#80cbc4';
+    ctx.font = 'bold 20px "Outfit", sans-serif';
+    ctx.fillText('کراچی • CITY OF LIGHTS', 256, 185);
+
+    const bTex = new THREE.CanvasTexture(canvas);
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(11.2, 5.1), new THREE.MeshBasicMaterial({ map: bTex }));
+    screen.position.set(0, 14.2, 0.38);
+    group.add(screen);
+
+    return group;
+  },
+
+  // 39. Do Darya Coastal Pavilion (South-East Corner Landmark)
+  createDoDaryaPavilion() {
+    const group = new THREE.Group();
+    group.name = "Do-Darya-Pavilion";
+
+    // Coastal Timber Platform
+    const platform = new THREE.Mesh(new THREE.BoxGeometry(9.0, 1.2, 9.0), materials.woodBench);
+    platform.position.y = 0.6;
+    platform.receiveShadow = true;
+    group.add(platform);
+
+    // 8 Wooden Pergola Pillars
+    const pillarGeo = new THREE.CylinderGeometry(0.18, 0.18, 5.0, 8);
+    const pillarMat = materials.wood;
+    const coords = [
+      [-3.8, -3.8], [3.8, -3.8], [-3.8, 3.8], [3.8, 3.8],
+      [0, -3.8], [0, 3.8], [-3.8, 0], [3.8, 0]
+    ];
+    coords.forEach(([px, pz]) => {
+      const pil = new THREE.Mesh(pillarGeo, pillarMat);
+      pil.position.set(px, 3.7, pz);
+      pil.castShadow = true;
+      group.add(pil);
+    });
+
+    // Double Tiered Pagoda Roof
+    const roof1 = new THREE.Mesh(new THREE.ConeGeometry(6.5, 2.2, 8), materials.roofGreen);
+    roof1.position.y = 7.0;
+    group.add(roof1);
+
+    const roof2 = new THREE.Mesh(new THREE.ConeGeometry(4.0, 1.8, 8), materials.roofGreen);
+    roof2.position.y = 8.8;
+    group.add(roof2);
+
+    // Corner Name Banner
+    const bannerCanvas = document.createElement('canvas');
+    bannerCanvas.width = 400;
+    bannerCanvas.height = 90;
+    const bctx = bannerCanvas.getContext('2d');
+    bctx.fillStyle = '#004d40';
+    bctx.beginPath();
+    bctx.roundRect(6, 6, 388, 78, 16);
+    bctx.fill();
+    bctx.strokeStyle = '#ffd700';
+    bctx.lineWidth = 4;
+    bctx.stroke();
+    bctx.fillStyle = '#ffd700';
+    bctx.font = 'bold 22px "Outfit", sans-serif';
+    bctx.textAlign = 'center';
+    bctx.textBaseline = 'middle';
+    bctx.fillText('🦐 DO DARYA COASTAL PIER', 200, 45);
+
+    const bTex = new THREE.CanvasTexture(bannerCanvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    sprite.scale.set(4.4, 1.0, 1);
+    sprite.position.set(0, 4.0, 4.5);
+    group.add(sprite);
+
+    return group;
+  },
+
+  // 40. KMC Hazard Barricade Barrier
+  createKMCBarrier() {
+    const group = new THREE.Group();
+    group.name = "KMC-Barricade";
+
+    const barrierGeo = new THREE.BoxGeometry(3.2, 1.1, 0.6);
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    // Yellow and black diagonal stripes
+    ctx.fillStyle = '#fbc02d';
+    ctx.fillRect(0, 0, 256, 128);
+    ctx.fillStyle = '#212121';
+    for (let x = -100; x < 350; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + 20, 0);
+      ctx.lineTo(x - 20, 128);
+      ctx.lineTo(x - 40, 128);
+      ctx.fill();
+    }
+    const bTex = new THREE.CanvasTexture(canvas);
+    const barrier = new THREE.Mesh(barrierGeo, new THREE.MeshStandardMaterial({ map: bTex, roughness: 0.5 }));
+    barrier.position.y = 0.55;
+    group.add(barrier);
+
+    // Amber Flashing Light
+    const strobe = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffa000 }));
+    strobe.position.set(0, 1.25, 0);
+    group.add(strobe);
+
+    return group;
+  },
+
+  // 41. Solid Coastal Granite Seawall Segment
+  createSeawallSegment(width = 24) {
+    const group = new THREE.Group();
+    group.name = "Seawall-Segment";
+
+    // Granite block
+    const wallGeo = new THREE.BoxGeometry(width, 2.4, 1.6);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.8 });
+    const wall = new THREE.Mesh(wallGeo, wallMat);
+    wall.position.y = 1.2;
+    wall.receiveShadow = true;
+    wall.castShadow = true;
+    group.add(wall);
+
+    // Marine Blue Safety Railing
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x0288d1, metalness: 0.6, roughness: 0.3 });
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(width, 0.1, 0.1), railMat);
+    rail.position.set(0, 2.45, 0);
+    group.add(rail);
+
+    const postGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 6);
+    for (let x = -width / 2 + 2; x <= width / 2 - 2; x += 4) {
+      const p = new THREE.Mesh(postGeo, railMat);
+      p.position.set(x, 2.05, 0);
+      group.add(p);
+    }
+
+    return group;
   }
 };
+
 
 
 

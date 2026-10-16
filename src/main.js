@@ -299,7 +299,7 @@ class Game {
 
     // Move Player
     if (this.moveVector.x !== 0 || this.moveVector.y !== 0) {
-      this.player.move(this.moveVector.x, this.moveVector.y, dt, 110);
+      this.player.move(this.moveVector.x, this.moveVector.y, dt, 70.0);
     }
 
     // Update Player & Bots
@@ -346,9 +346,9 @@ class Game {
               this.ui.showAnnouncement(`💀 DEVOURED BY ${hunter.name}!`, '#ff1744');
             }
 
-            // Safe respawn position on a random open road
-            const safeX = (Math.random() - 0.5) * 80;
-            const safeZ = (Math.random() - 0.5) * 80;
+            // Safe respawn position on a random open road within active district
+            const safeX = (Math.random() - 0.5) * 60;
+            const safeZ = (Math.random() - 0.5) * 60;
             victim.killAndRespawn({ x: safeX, z: safeZ });
           }
         }
@@ -437,8 +437,8 @@ class Game {
             }
           }
 
-          bgPos.x = THREE.MathUtils.clamp(bgPos.x, -105, 105);
-          bgPos.z = THREE.MathUtils.clamp(bgPos.z, -105, 105);
+          bgPos.x = THREE.MathUtils.clamp(bgPos.x, -68, 68);
+          bgPos.z = THREE.MathUtils.clamp(bgPos.z, -68, 68);
         }
       }
     }
@@ -523,8 +523,8 @@ class Game {
         }
       }
 
-      aPos.x = THREE.MathUtils.clamp(aPos.x, -110, 110);
-      aPos.z = THREE.MathUtils.clamp(aPos.z, -110, 110);
+      aPos.x = THREE.MathUtils.clamp(aPos.x, -68, 68);
+      aPos.z = THREE.MathUtils.clamp(aPos.z, -68, 68);
     }
 
     // Edible Objects Suction & Collision (Ultra-fast Bounding Box check for 60 FPS)
