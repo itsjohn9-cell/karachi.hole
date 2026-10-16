@@ -298,15 +298,22 @@ html, body {
    LIVE CRIME RADAR COMPASS BAR (SUPERHERO SCANNER)
    ============================================================== */
 .crime-radar-bar {
+  position: absolute;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 10px;
-  width: 100%;
+  gap: 8px;
+  width: auto;
+  max-width: 85%;
   pointer-events: none;
-  flex-wrap: wrap;
-  margin-top: 4px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  z-index: 22;
 }
+
 
 .radar-evil-badge {
   display: inline-flex;

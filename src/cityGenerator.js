@@ -748,50 +748,110 @@ export class CityGenerator {
     // =============================================================
     // 11. ICONIC KARACHI LANDMARKS & URBAN MONUMENTS
     // =============================================================
-    // 1. Teen Talwar Chowrangi (Three Swords Monument, Clifton) - At North Avenue Roundabout (z = -32)
+    // AUTHENTIC KARACHI LANDMARKS & HISTORIC MONUMENTS
+    // =============================================================
+
+    // 1. Teen Talwar Chowrangi (Three Swords Monument, Clifton) - North Boulevard Roundabout (z = -32)
     const teenTalwar = KarachiModels.createTeenTalwarChowrangi();
     teenTalwar.position.set(0, 0, -32);
     this.registerEdible(teenTalwar, 4, 1500, "Teen Talwar Chowrangi (تین تلوار)", 9.5, { isBuilding: true, isBadGuy: false });
 
-    // 2. Shahrah-e-Faisal Overhead Green Steel Pedestrian Bridge (with Shan Biryani & Tapal Danedar Billboards) at z = 22
+    // 2. Bahadurabad Charminar Chowrangi (Four Minarets Monument) - South Boulevard Roundabout (z = 52)
+    const charminar = KarachiModels.createBahadurabadCharminar();
+    charminar.position.set(0, 0, 52);
+    this.registerEdible(charminar, 4, 1600, "Bahadurabad Charminar (چار مینار چورنگی)", 10.0, { isBuilding: true, isBadGuy: false });
+
+    // 3. Shahrah-e-Faisal Overhead Green Steel Pedestrian Bridge (with Shan Biryani & Tapal Danedar Billboards) at z = 22
     const pedBridge = KarachiModels.createOverheadPedestrianBridge(24);
     pedBridge.position.set(0, 0, 22);
     this.scene.add(pedBridge);
 
-    // 3. Mazar-e-Quaid (Jinnah's Mausoleum) - Northern Avenue Axis at z = -84
+    // 4. Mazar-e-Quaid (Jinnah's Mausoleum) - Northern Avenue Axis at z = -84
     const mazar = KarachiModels.createMazarEQuaid();
     mazar.position.set(0, 0, -84);
     this.registerEdible(mazar, 5, 3500, "Mazar-e-Quaid (مزارِ قائد)", 14.0, { isBuilding: true, isBadGuy: false });
 
-    // 4. Empress Market Saddar - Historic Anglo-Mughal Sandstone Clock Tower (Northwest at x: -48, z: -48)
+    // 5. Empress Market Saddar - Victorian Anglo-Mughal Clock Tower (x: -48, z: -48)
     const empress = KarachiModels.createEmpressMarket();
     empress.position.set(-48, 0, -48);
     this.registerEdible(empress, 4, 2000, "Empress Market Saddar (ایمپریس مارکیٹ)", 10.5, { isBuilding: true, isBadGuy: false });
 
-    // 5. Mohatta Palace Museum - Rajasthani Pink Sandstone Heritage Palace (Southeast at x: 48, z: 15)
-    const mohatta = KarachiModels.createMohattaPalace();
-    mohatta.position.set(48, 0, 15);
-    this.registerEdible(mohatta, 4, 1800, "Mohatta Palace Museum (مہٹہ پیلس)", 11.0, { isBuilding: true, isBadGuy: false });
+    // 6. KMC Building (Karachi Municipal Corporation, M.A. Jinnah Road) at (x: -74, z: -48)
+    const kmc = KarachiModels.createKMCBuilding();
+    kmc.position.set(-74, 0, -48);
+    this.registerEdible(kmc, 5, 2600, "KMC Building M.A. Jinnah (بلدیہ عظمیٰ)", 11.5, { isBuilding: true, isBadGuy: false });
 
-    // 6. Frere Hall Sadequain Gallery - Venetian-Gothic Yellow Gizri Limestone (Southwest at x: -48, z: 15)
-    const frere = KarachiModels.createFrereHall();
-    frere.position.set(-48, 0, 15);
-    this.registerEdible(frere, 4, 1800, "Frere Hall Gardens (فریئر ہال)", 11.0, { isBuilding: true, isBadGuy: false });
-
-    // 7. Habib Bank Plaza (HBL Plaza, I.I. Chundrigar Road) - Modernist 1960s Skyscraper (Northeast at x: 48, z: -48)
+    // 7. Habib Bank Plaza (HBL Plaza, I.I. Chundrigar Road) - Modernist Skyscraper at (x: 48, z: -48)
     const hbl = KarachiModels.createHabibBankPlaza();
     hbl.position.set(48, 0, -48);
     this.registerEdible(hbl, 5, 2800, "Habib Bank Plaza HBL (حبیب بینک)", 9.0, { isBuilding: true, isBadGuy: false });
 
-    // Chundrigar Financial Towers in background
-    const towerCoords = [[72, -48], [48, -72], [72, -72]];
-    towerCoords.forEach(([tx, tz], idx) => {
-      const tower = KarachiModels.createChundrigarSkyscraper();
-      tower.position.set(tx, 0, tz);
-      this.registerEdible(tower, 5, 2200, `Chundrigar Tower #${idx + 1}`, 7.5, { isBuilding: true, isBadGuy: false });
+    // 8. MCB Tower (29-Story Skyscraper - I.I. Chundrigar Road) at (x: 74, z: -48)
+    const mcb = KarachiModels.createMCBTower();
+    mcb.position.set(74, 0, -48);
+    this.registerEdible(mcb, 5, 3000, "MCB Tower Chundrigar (ایم سی بی ٹاور)", 9.5, { isBuilding: true, isBadGuy: false });
+
+    // 9. Mohatta Palace Museum - Rajasthani Pink Sandstone Heritage Palace (x: 48, z: 15)
+    const mohatta = KarachiModels.createMohattaPalace();
+    mohatta.position.set(48, 0, 15);
+    this.registerEdible(mohatta, 4, 1800, "Mohatta Palace Museum (مہٹہ پیلس)", 11.0, { isBuilding: true, isBadGuy: false });
+
+    // 10. Frere Hall Sadequain Gallery - Venetian-Gothic Yellow Gizri Limestone (x: -48, z: 15)
+    const frere = KarachiModels.createFrereHall();
+    frere.position.set(-48, 0, 15);
+    this.registerEdible(frere, 4, 1800, "Frere Hall Gardens (فریئر ہال)", 11.0, { isBuilding: true, isBadGuy: false });
+
+    // 11. Sakhi Hasan Water Hydrant Station (Water Tanker filling gantry in Gulshan quadrant) at (x: -48, z: 48)
+    const hydrant = KarachiModels.createSakhiHasanWaterHydrant();
+    hydrant.position.set(-48, 0, 48);
+    this.registerEdible(hydrant, 4, 1500, "Sakhi Hasan Water Hydrant (واٹر ہائیڈرینٹ)", 8.5, { isBuilding: true, isBadGuy: false });
+
+    // 12. Burns Road Food Street Colonial Heritage Tenements (lining west side of central avenue)
+    const burnsRoadShops = [
+      { pos: [-26, -18], name: "Dilpasand Sweets", ur: "دلپسند مٹھائی و نمکو • برنز روڈ", col: "#b71c1c" },
+      { pos: [-26, 6], name: "Karachi Haleem Centre", ur: "کراچی حلیم سنٹر • صدر", col: "#004d40" },
+      { pos: [-26, -34], name: "Student Biryani", ur: "اسٹوڈنٹ بریانی • برنز روڈ", col: "#d84315" },
+      { pos: [-48, -18], name: "Rehmat-e-Shereen", ur: "رحمتِ شیریں • مٹھائی و بیکری", col: "#4a148c" }
+    ];
+    burnsRoadShops.forEach(s => {
+      const bldg = KarachiModels.createBurnsRoadColonialBuilding(s.name, s.ur, s.col);
+      bldg.position.set(s.pos[0], 0, s.pos[1]);
+      bldg.rotation.y = Math.PI / 2;
+      this.registerEdible(bldg, 4, 1100, `Burns Road: ${s.name}`, 7.0, { isBuilding: true, isBadGuy: false });
     });
 
-    // 8. Clifton Sea View Decorated Camels (سی ویو کے اونٹ) strolling along the wet beach sand (z = 94)
+    // 13. Tariq Road & PECHS Fashion Plazas (lining east side of central avenue)
+    const tariqRoadPlazas = [
+      { pos: [26, -18], name: "J. JUNAID JAMSHED", ur: "جے ڈاٹ کرتہ و برانڈ • طارق روڈ" },
+      { pos: [26, 6], name: "KURTA CORNER", ur: "کرتا کارنر • طارق روڈ" },
+      { pos: [26, -34], name: "KHAADI LAWN", ur: "خادی پاکستان • فیشن پلازہ" }
+    ];
+    tariqRoadPlazas.forEach(p => {
+      const plaza = KarachiModels.createTariqRoadFashionPlaza(p.name, p.ur);
+      plaza.position.set(p.pos[0], 0, p.pos[1]);
+      plaza.rotation.y = -Math.PI / 2;
+      this.registerEdible(plaza, 4, 1200, `Tariq Road: ${p.name}`, 7.5, { isBuilding: true, isBadGuy: false });
+    });
+
+    // 14. Clifton Sea View Victoria Horse Buggy (at southern coast)
+    const victoria = KarachiModels.createCliftonVictoriaBuggy();
+    victoria.position.set(16, 0, 92);
+    this.registerEdible(victoria, 3, 240, "Sea View Victoria Buggy (کلفٹن بگی)", 2.8, { isTransport: true, isBadGuy: false });
+
+    // 15. Classic Roadside Paan Khokhas on Street Corners
+    [
+      [-8.8, 0, -2],
+      [8.8, 0, 18],
+      [-8.8, 0, 38],
+      [8.8, 0, 48]
+    ].forEach((pos, idx) => {
+      const khokha = KarachiModels.createRoadsidePaanKhokha();
+      khokha.position.set(pos[0], pos[1], pos[2]);
+      khokha.rotation.y = idx % 2 === 0 ? 0.4 : -0.4;
+      this.registerEdible(khokha, 2, 90, `Paan Khokha Cabin #${idx + 1}`, 1.6, { isFoodStall: true, isBadGuy: false });
+    });
+
+    // 16. Clifton Sea View Decorated Camels strolling along wet beach sand (z = 94)
     [[-35, 94], [0, 94], [35, 94]].forEach(([cx, cz], idx) => {
       const camel = KarachiModels.createCliftonDecoratedCamel();
       camel.position.set(cx, 0, cz);
@@ -799,14 +859,14 @@ export class CityGenerator {
       this.registerEdible(camel, 2, 85, `Clifton Sea View Camel #${idx + 1}`, 1.8, { isPet: true, isBadGuy: false });
     });
 
-    // 9. K-Electric Poles with Wire Nests & 440V Danger Warning Plates
+    // 17. K-Electric Poles with Wire Nests & 440V Danger Plates
     [[-8.5, -14], [8.5, -14], [-8.5, 34], [8.5, 34]].forEach(([kx, kz]) => {
       const kePole = KarachiModels.createKElectricTransformerPole();
       kePole.position.set(kx, 0, kz);
       this.scene.add(kePole);
     });
 
-    // 10. Authentic Karachi Municipal Green Directional Signboards on Street Corners
+    // 18. Karachi Municipal Green Directional Signboards on Street Corners
     [
       { pos: [7.8, 7.8], ave: "SHAHRAH-E-FAISAL", ur: "شاہراہِ فیصل", cr: "TARIQ ROAD", cru: "طرق روڈ" },
       { pos: [-7.8, 7.8], ave: "BURNS ROAD", ur: "برنز روڈ", cr: "SADDAR BAZAAR", cru: "صدر بازار" },
@@ -818,12 +878,12 @@ export class CityGenerator {
       this.scene.add(sign);
     });
 
-    // Commercial Plazas on outer avenue blocks
+    // 19. Commercial Plazas and Clifton Bungalows
     const plazas = [
       { pos: [48, -20], name: "Kababjees Highway", sign: "KABABJEES HIGHWAY", sub: "EXPRESS DINING" },
       { pos: [48, 48], name: "Burns Road Super Mart", sign: "BURNS ROAD SUPER MART", sub: "AUTHENTIC KARACHI" },
       { pos: [-48, -20], name: "Jahangir Autos", sign: "JAHANGIR AUTOS", sub: "CHUNDRIGAR ROAD" },
-      { pos: [-48, 48], name: "Agha's Supermarket", sign: "AGHA'S SUPERMARKET", sub: "CLIFTON KARACHI" }
+      { pos: [-48, 72], name: "Agha's Supermarket", sign: "AGHA'S SUPERMARKET", sub: "CLIFTON KARACHI" }
     ];
     plazas.forEach(p => {
       const plaza = KarachiModels.createCommercialPlaza(p.sign, p.sub);
@@ -832,13 +892,14 @@ export class CityGenerator {
     });
 
     // Clifton Residential Bungalows in southeast residential quadrant
-    for (let bx = 32; bx <= 76; bx += 15) {
-      for (let bz = 32; bz <= 76; bz += 15) {
+    for (let bx = 36; bx <= 76; bx += 18) {
+      for (let bz = 36; bz <= 76; bz += 18) {
         const bungalow = KarachiModels.createResidentialBungalow();
         bungalow.position.set(bx, 0, bz);
         this.registerEdible(bungalow, 3, 380, "Clifton Villa", 5.0, { isBuilding: true, isBadGuy: false });
       }
     }
+
 
     // 14 Truck-Art Bedford Trucks & 10 W-11 Mini-Buses (Karachi Transport Heritage)
     const truckPositions = [

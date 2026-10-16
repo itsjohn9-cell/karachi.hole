@@ -41,6 +41,11 @@ const materials = {
   rilliCyan: new THREE.MeshStandardMaterial({ color: 0x00bcd4, roughness: 0.5 }),
   rilliGold: new THREE.MeshStandardMaterial({ color: 0xffb300, roughness: 0.4 }),
   trafficSignGreen: new THREE.MeshStandardMaterial({ color: 0x005a36, roughness: 0.35 }), // Karachi Municipal Green Signboards
+  colonialShutterGreen: new THREE.MeshStandardMaterial({ color: 0x1b4d3e, roughness: 0.5 }), // Saddar wooden shutters
+  balconyIronBlack: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3, metalness: 0.85 }), // Wrought iron verandas
+  charminarStone: new THREE.MeshStandardMaterial({ color: 0xebd8be, roughness: 0.6 }), // Bahadurabad Charminar stone
+  kmcRedStone: new THREE.MeshStandardMaterial({ color: 0xb73a2e, roughness: 0.65 }), // KMC Building red Jodhpur stone
+  mcbGlass: new THREE.MeshStandardMaterial({ color: 0x1e88e5, roughness: 0.1, metalness: 0.85 }), // MCB Tower glazed curtain wall
   truckArtTexture: TextureGenerator.createTruckArtTexture(),
   truckTajTexture: TextureGenerator.createTruckTajTexture(),
   ajrakTexture: TextureGenerator.createAjrakTexture(),
@@ -4273,8 +4278,697 @@ export const KarachiModels = {
     group.add(signMesh);
 
     return group;
+  },
+
+  // 9. Bahadurabad Charminar Monument (بہادر آباد چار مینار چورنگی)
+  createBahadurabadCharminar() {
+    const group = new THREE.Group();
+    group.name = "Bahadurabad-Charminar";
+
+    // Roundabout Green Mound
+    const moundGeo = new THREE.CylinderGeometry(11, 12, 0.9, 32);
+    const mound = new THREE.Mesh(moundGeo, materials.lawnGreen);
+    mound.position.y = 0.45;
+    mound.receiveShadow = true;
+    group.add(mound);
+
+    // Decorative Yellow/Black curb border
+    const curbGeo = new THREE.TorusGeometry(11.8, 0.35, 8, 32);
+    curbGeo.rotateX(Math.PI / 2);
+    const curb = new THREE.Mesh(curbGeo, materials.curbYellow);
+    curb.position.y = 0.2;
+    group.add(curb);
+
+    // Stepped Marble Plinth
+    const plinth1 = new THREE.Mesh(new THREE.BoxGeometry(9.0, 0.6, 9.0), materials.whiteMarble);
+    plinth1.position.y = 1.2;
+    group.add(plinth1);
+
+    const plinth2 = new THREE.Mesh(new THREE.BoxGeometry(7.5, 0.5, 7.5), materials.charminarStone);
+    plinth2.position.y = 1.7;
+    group.add(plinth2);
+
+    // Central Archways Block
+    const centralBlock = new THREE.Mesh(new THREE.BoxGeometry(5.2, 5.0, 5.2), materials.charminarStone);
+    centralBlock.position.y = 4.45;
+    group.add(centralBlock);
+
+    // 4 Grand Arched Openings (North, South, East, West)
+    const archMat = new THREE.MeshStandardMaterial({ color: 0x1a120b, roughness: 0.9 });
+    const archH = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.8, 5.3), archMat);
+    archH.position.y = 3.9;
+    group.add(archH);
+    const archV = new THREE.Mesh(new THREE.BoxGeometry(5.3, 3.8, 3.2), archMat);
+    archV.position.y = 3.9;
+    group.add(archV);
+
+    // Upper Balcony & Cornice
+    const cornice = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.45, 6.2), materials.charminarStone);
+    cornice.position.y = 7.15;
+    group.add(cornice);
+
+    const parapet = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.7, 5.8), materials.whiteMarble);
+    parapet.position.y = 7.6;
+    group.add(parapet);
+
+    // Central Dome with Golden Crescent Finial
+    const centralDome = new THREE.Mesh(new THREE.SphereGeometry(1.6, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), materials.whiteMarble);
+    centralDome.position.y = 7.9;
+    group.add(centralDome);
+
+    const centralFinial = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.14, 1.2, 8), materials.goldMetal);
+    centralFinial.position.y = 9.8;
+    group.add(centralFinial);
+
+    // 4 Soaring Corner Minarets (Height ~14m)
+    const minaretOffsets = [
+      [-2.8, -2.8], [2.8, -2.8],
+      [-2.8, 2.8], [2.8, 2.8]
+    ];
+    minaretOffsets.forEach(([mx, mz]) => {
+      // Base Plinth
+      const mBase = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.2, 1.3), materials.whiteMarble);
+      mBase.position.set(mx, 1.8, mz);
+      group.add(mBase);
+
+      // Fluted Shaft
+      const mShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.58, 9.5, 12), materials.charminarStone);
+      mShaft.position.set(mx, 7.15, mz);
+      group.add(mShaft);
+
+      // Minaret Balcony
+      const mBalcony = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.65, 0.45, 12), materials.whiteMarble);
+      mBalcony.position.set(mx, 12.0, mz);
+      group.add(mBalcony);
+
+      // Upper Pavilion & Lantern
+      const mLantern = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.2, 8), materials.charminarStone);
+      mLantern.position.set(mx, 12.75, mz);
+      group.add(mLantern);
+
+      // Golden Onion Dome
+      const mDome = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 10), materials.goldMetal);
+      mDome.position.set(mx, 13.6, mz);
+      group.add(mDome);
+
+      // Sharp Spike Finial
+      const mSpike = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.8, 6), materials.goldMetal);
+      mSpike.position.set(mx, 14.3, mz);
+      group.add(mSpike);
+    });
+
+    // Central Fountain Basin inside plinth
+    const basinMat = new THREE.MeshStandardMaterial({ color: 0x00bcd4, roughness: 0.15, metalness: 0.6 });
+    const fountainWater = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.3, 16), basinMat);
+    fountainWater.position.y = 1.95;
+    group.add(fountainWater);
+
+    // Calligraphy Plaque Canvas
+    const plaqueCanvas = document.createElement('canvas');
+    plaqueCanvas.width = 512;
+    plaqueCanvas.height = 128;
+    const pctx = plaqueCanvas.getContext('2d');
+    pctx.fillStyle = '#004d40';
+    pctx.fillRect(0, 0, 512, 128);
+    pctx.strokeStyle = '#ffd700';
+    pctx.lineWidth = 6;
+    pctx.strokeRect(6, 6, 500, 116);
+    pctx.fillStyle = '#ffd700';
+    pctx.font = 'bold 30px "Outfit", sans-serif';
+    pctx.textAlign = 'center';
+    pctx.fillText('BAHADURABAD CHARMINAR CHOWRANGI', 256, 48);
+    pctx.fillStyle = '#ffffff';
+    pctx.font = 'bold 36px "Noto Nastaliq Urdu", sans-serif';
+    pctx.fillText('چار مینار چورنگی • بہادر آباد کراچی', 256, 98);
+    const pTex = new THREE.CanvasTexture(plaqueCanvas);
+    const pMesh = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 0.9), new THREE.MeshBasicMaterial({ map: pTex }));
+    pMesh.position.set(0, 1.45, 4.55);
+    group.add(pMesh);
+
+    return group;
+  },
+
+  // 10. KMC Building (Karachi Municipal Corporation, M.A. Jinnah Road)
+  createKMCBuilding() {
+    const group = new THREE.Group();
+    group.name = "KMC-Building-Heritage";
+
+    // Main Central Red Sandstone Hall
+    const mainHall = new THREE.Mesh(new THREE.BoxGeometry(16.0, 7.5, 9.0), materials.kmcRedStone);
+    mainHall.position.y = 3.75;
+    mainHall.castShadow = true;
+    group.add(mainHall);
+
+    // Base plinth in yellow Gizri limestone
+    const plinth = new THREE.Mesh(new THREE.BoxGeometry(17.0, 0.8, 10.0), materials.gizriYellow);
+    plinth.position.y = 0.4;
+    group.add(plinth);
+
+    // Front Colonial Arcade Portico with stone arches
+    const arcade = new THREE.Mesh(new THREE.BoxGeometry(12.0, 4.2, 2.2), materials.gizriYellow);
+    arcade.position.set(0, 2.1, 5.2);
+    group.add(arcade);
+
+    // Arched portico door openings
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x1a120b, roughness: 0.8 });
+    for (let dx = -4; dx <= 4; dx += 2.6) {
+      const archDoor = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.2, 0.4), doorMat);
+      archDoor.position.set(dx, 1.6, 6.2);
+      group.add(archDoor);
+    }
+
+    // Windows on Main Hall
+    const winMat = materials.darkGlass;
+    for (let wx = -6.5; wx <= 6.5; wx += 2.2) {
+      if (Math.abs(wx) < 1.5) continue;
+      const win = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.0, 0.2), winMat);
+      win.position.set(wx, 5.6, 4.55);
+      group.add(win);
+    }
+
+    // Two Side Wing Pavilions
+    [-9.0, 9.0].forEach(sx => {
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(4.2, 8.2, 8.0), materials.kmcRedStone);
+      wing.position.set(sx, 4.1, 0);
+      group.add(wing);
+
+      // Wing Chhatri (Mughal domed pavilion on roof)
+      const chhatriRoof = new THREE.Mesh(new THREE.SphereGeometry(1.4, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), materials.whiteMarble);
+      chhatriRoof.position.set(sx, 8.6, 0);
+      group.add(chhatriRoof);
+
+      const finial = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.8, 6), materials.goldMetal);
+      finial.position.set(sx, 9.7, 0);
+      group.add(finial);
+    });
+
+    // Central Iconic Clock Tower (Height 24m)
+    const towerShaft = new THREE.Mesh(new THREE.BoxGeometry(4.6, 14.0, 4.6), materials.kmcRedStone);
+    towerShaft.position.set(0, 14.5, 0);
+    group.add(towerShaft);
+
+    // Tower Gizri Stone Trim Bands
+    const band1 = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.6, 5.0), materials.gizriYellow);
+    band1.position.set(0, 11.5, 0);
+    group.add(band1);
+    const band2 = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.6, 5.0), materials.gizriYellow);
+    band2.position.set(0, 17.5, 0);
+    group.add(band2);
+
+    // 4 Clock Dials (North, South, East, West)
+    const clockCanvas = document.createElement('canvas');
+    clockCanvas.width = 128;
+    clockCanvas.height = 128;
+    const cctx = clockCanvas.getContext('2d');
+    cctx.fillStyle = '#ffffff';
+    cctx.fillRect(0, 0, 128, 128);
+    cctx.beginPath();
+    cctx.arc(64, 64, 58, 0, Math.PI * 2);
+    cctx.fillStyle = '#f5f5f5';
+    cctx.fill();
+    cctx.lineWidth = 6;
+    cctx.strokeStyle = '#000000';
+    cctx.stroke();
+    cctx.fillStyle = '#000000';
+    cctx.font = 'bold 20px sans-serif';
+    cctx.textAlign = 'center';
+    cctx.textBaseline = 'middle';
+    cctx.fillText('12', 64, 22);
+    cctx.fillText('3', 108, 64);
+    cctx.fillText('6', 64, 108);
+    cctx.fillText('9', 20, 64);
+    cctx.lineWidth = 4;
+    cctx.beginPath();
+    cctx.moveTo(64, 64);
+    cctx.lineTo(64, 34); // Hour hand at 12
+    cctx.moveTo(64, 64);
+    cctx.lineTo(88, 64); // Minute hand at 3
+    cctx.stroke();
+
+    const clockTex = new THREE.CanvasTexture(clockCanvas);
+    const clockMat = new THREE.MeshBasicMaterial({ map: clockTex });
+
+    const clockFront = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), clockMat);
+    clockFront.position.set(0, 19.5, 2.35);
+    group.add(clockFront);
+    const clockBack = clockFront.clone();
+    clockBack.rotation.y = Math.PI;
+    clockBack.position.set(0, 19.5, -2.35);
+    group.add(clockBack);
+
+    // Tower Crown Chhatri Dome
+    const towerDome = new THREE.Mesh(new THREE.SphereGeometry(2.2, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), materials.whiteMarble);
+    towerDome.position.set(0, 22.0, 0);
+    group.add(towerDome);
+
+    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.25, 2.8, 8), materials.goldMetal);
+    spire.position.set(0, 24.5, 0);
+    group.add(spire);
+
+    // Grand Entrance Inscription Plaque
+    const plaqueCanvas = document.createElement('canvas');
+    plaqueCanvas.width = 512;
+    plaqueCanvas.height = 128;
+    const pctx = plaqueCanvas.getContext('2d');
+    pctx.fillStyle = '#3e2723';
+    pctx.fillRect(0, 0, 512, 128);
+    pctx.strokeStyle = '#ffd700';
+    pctx.lineWidth = 6;
+    pctx.strokeRect(6, 6, 500, 116);
+    pctx.fillStyle = '#ffd700';
+    pctx.font = 'bold 28px "Outfit", sans-serif';
+    pctx.textAlign = 'center';
+    pctx.fillText('KARACHI MUNICIPAL CORPORATION (KMC)', 256, 46);
+    pctx.fillStyle = '#ffffff';
+    pctx.font = 'bold 34px "Noto Nastaliq Urdu", sans-serif';
+    pctx.fillText('بلدیہ عظمیٰ کراچی • ایم اے جناح روڈ', 256, 96);
+    const pTex = new THREE.CanvasTexture(plaqueCanvas);
+    const plaque = new THREE.Mesh(new THREE.PlaneGeometry(6.5, 1.4), new THREE.MeshBasicMaterial({ map: pTex }));
+    plaque.position.set(0, 4.6, 6.35);
+    group.add(plaque);
+
+    return group;
+  },
+
+  // 11. Burns Road / Saddar Heritage Colonial Tenement with Street Shop
+  createBurnsRoadColonialBuilding(
+    shopName = "DILPASAND SWEETS & BAKERS",
+    shopUrdu = "دلپسند مٹھائی و نمکو • برنز روڈ",
+    bannerColor = '#b71c1c'
+  ) {
+    const group = new THREE.Group();
+    group.name = `Colonial-${shopName.replace(/\s+/g, '-')}`;
+
+    // 3-Story Heritage Building Body (Gizri Yellow Stone)
+    const bHeight = 11.5;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(10.0, bHeight, 7.5), materials.gizriYellow);
+    body.position.y = bHeight / 2;
+    body.castShadow = true;
+    group.add(body);
+
+    // Decorative Cornice and Rooftop Balustrade
+    const cornice = new THREE.Mesh(new THREE.BoxGeometry(10.5, 0.45, 8.0), materials.sandstone);
+    cornice.position.y = bHeight;
+    group.add(cornice);
+
+    const parapet = new THREE.Mesh(new THREE.BoxGeometry(10.2, 0.8, 7.7), materials.gizriYellow);
+    parapet.position.y = bHeight + 0.4;
+    group.add(parapet);
+
+    // Upper Floors (2nd & 3rd Floor) Ornate Green Wooden Shuttered Windows
+    for (let floorY of [4.8, 8.2]) {
+      for (let wx = -3.4; wx <= 3.4; wx += 2.2) {
+        // Window Frame
+        const win = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.15), materials.colonialShutterGreen);
+        win.position.set(wx, floorY, 3.8);
+        group.add(win);
+
+        // Arched Window Header
+        const archTop = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.15, 12, 1, false, 0, Math.PI), materials.sandstone);
+        archTop.rotation.z = Math.PI / 2;
+        archTop.rotation.y = Math.PI / 2;
+        archTop.position.set(wx, floorY + 0.9, 3.8);
+        group.add(archTop);
+      }
+
+      // Cantilevered Wrought Iron Balcony
+      const balconyFloor = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.25, 1.2), materials.sandstone);
+      balconyFloor.position.set(0, floorY - 0.9, 4.3);
+      group.add(balconyFloor);
+
+      const ironRailing = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.85, 0.08), materials.balconyIronBlack);
+      ironRailing.position.set(0, floorY - 0.45, 4.85);
+      group.add(ironRailing);
+
+      // Hanging Laundry / Clothesline (Quintessential Saddar atmosphere!)
+      const laundryGeo = new THREE.BoxGeometry(1.2, 0.65, 0.04);
+      const lMat1 = new THREE.MeshStandardMaterial({ color: 0x03a9f4, roughness: 0.7 });
+      const l1 = new THREE.Mesh(laundryGeo, lMat1);
+      l1.position.set(-2.0, floorY - 0.35, 4.75);
+      group.add(l1);
+
+      const lMat2 = new THREE.MeshStandardMaterial({ color: 0xffeb3b, roughness: 0.7 });
+      const l2 = new THREE.Mesh(laundryGeo, lMat2);
+      l2.position.set(1.5, floorY - 0.35, 4.75);
+      group.add(l2);
+    }
+
+    // Ground Floor: Vibrant Backlit Shop Front
+    const shopArch = new THREE.Mesh(new THREE.BoxGeometry(9.2, 3.2, 0.6), materials.sandstone);
+    shopArch.position.set(0, 1.6, 3.6);
+    group.add(shopArch);
+
+    // Glowing Signboard
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 512;
+    signCanvas.height = 140;
+    const sctx = signCanvas.getContext('2d');
+    sctx.fillStyle = bannerColor;
+    sctx.fillRect(0, 0, 512, 140);
+    sctx.strokeStyle = '#ffd700';
+    sctx.lineWidth = 6;
+    sctx.strokeRect(6, 6, 500, 128);
+    sctx.fillStyle = '#ffffff';
+    sctx.font = 'bold 30px "Outfit", sans-serif';
+    sctx.textAlign = 'center';
+    sctx.fillText(shopName, 256, 48);
+    sctx.fillStyle = '#ffd700';
+    sctx.font = 'bold 34px "Noto Nastaliq Urdu", sans-serif';
+    sctx.fillText(shopUrdu, 256, 102);
+
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    const signMat = new THREE.MeshBasicMaterial({ map: signTex });
+    const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 1.8), signMat);
+    signMesh.position.set(0, 2.8, 3.95);
+    group.add(signMesh);
+
+    // Shop Glass Windows & Open Door
+    const shopGlass = new THREE.Mesh(new THREE.BoxGeometry(7.5, 1.8, 0.2), materials.darkGlass);
+    shopGlass.position.set(0, 0.9, 3.8);
+    group.add(shopGlass);
+
+    return group;
+  },
+
+  // 12. Tariq Road Fashion & Shopping Plaza
+  createTariqRoadFashionPlaza(
+    plazaName = "J. JUNAID JAMSHED",
+    plazaUrdu = "جے ڈاٹ کرتہ و برانڈ • طارق روڈ"
+  ) {
+    const group = new THREE.Group();
+    group.name = "Tariq-Road-Fashion-Plaza";
+
+    const pHeight = 15.0;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(11.0, pHeight, 8.5), materials.towerConcrete);
+    body.position.y = pHeight / 2;
+    group.add(body);
+
+    // Glazed Tinted Curtain Wall Panels
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(9.6, 9.5, 0.3), materials.darkGlass);
+    glass.position.set(0, 8.5, 4.35);
+    group.add(glass);
+
+    // Modern Geometric Aluminum Fins
+    for (let fx = -4.5; fx <= 4.5; fx += 1.8) {
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.18, 9.5, 0.5), materials.chrome);
+      fin.position.set(fx, 8.5, 4.55);
+      group.add(fin);
+    }
+
+    // Giant Illuminated Fashion Billboard
+    const bbCanvas = document.createElement('canvas');
+    bbCanvas.width = 512;
+    bbCanvas.height = 160;
+    const bbCtx = bbCanvas.getContext('2d');
+    bbCtx.fillStyle = '#0a192f'; // Deep midnight blue
+    bbCtx.fillRect(0, 0, 512, 160);
+    bbCtx.strokeStyle = '#00e5ff';
+    bbCtx.lineWidth = 6;
+    bbCtx.strokeRect(6, 6, 500, 148);
+    bbCtx.fillStyle = '#00e5ff';
+    bbCtx.font = 'bold 32px "Outfit", sans-serif';
+    bbCtx.textAlign = 'center';
+    bbCtx.fillText(plazaName, 256, 55);
+    bbCtx.fillStyle = '#ffd700';
+    bbCtx.font = 'bold 36px "Noto Nastaliq Urdu", sans-serif';
+    bbCtx.fillText(plazaUrdu, 256, 115);
+
+    const bbTex = new THREE.CanvasTexture(bbCanvas);
+    const bbMesh = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 2.5), new THREE.MeshBasicMaterial({ map: bbTex }));
+    bbMesh.position.set(0, 14.2, 4.4);
+    group.add(bbMesh);
+
+    // Ground Floor Entrance Showroom
+    const entrance = new THREE.Mesh(new THREE.BoxGeometry(8.5, 3.2, 0.4), materials.chrome);
+    entrance.position.set(0, 1.6, 4.3);
+    group.add(entrance);
+
+    return group;
+  },
+
+  // 13. MCB Tower (29-Story Skyscraper - I.I. Chundrigar Road)
+  createMCBTower() {
+    const group = new THREE.Group();
+    group.name = "MCB-Tower-Chundrigar";
+
+    // 1st Tier Podium (height 14m)
+    const podium = new THREE.Mesh(new THREE.BoxGeometry(11.0, 14.0, 10.0), materials.towerConcrete);
+    podium.position.y = 7.0;
+    group.add(podium);
+
+    // Main Tower Glass Shaft (height 36m)
+    const mainTower = new THREE.Mesh(new THREE.BoxGeometry(9.0, 36.0, 8.0), materials.mcbGlass);
+    mainTower.position.y = 20.0;
+    group.add(mainTower);
+
+    // White Vertical Structural Fins
+    [-4.6, 4.6].forEach(fx => {
+      const col = new THREE.Mesh(new THREE.BoxGeometry(0.8, 40.0, 8.4), materials.whiteMarble);
+      col.position.set(fx, 20.0, 0);
+      group.add(col);
+    });
+
+    // Crown Floor Setback & Helipad
+    const crown = new THREE.Mesh(new THREE.BoxGeometry(7.0, 4.5, 6.5), materials.towerConcrete);
+    crown.position.y = 40.25;
+    group.add(crown);
+
+    // Soaring Communication Spire (Karachi Skyline landmark)
+    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.35, 10.0, 8), materials.chrome);
+    spire.position.y = 47.5;
+    group.add(spire);
+
+    // Flashing Red Beacon
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+    beacon.position.y = 52.5;
+    group.add(beacon);
+
+    // Illuminated MCB Signboard
+    const mcbCanvas = document.createElement('canvas');
+    mcbCanvas.width = 256;
+    mcbCanvas.height = 128;
+    const mctx = mcbCanvas.getContext('2d');
+    mctx.fillStyle = '#ff6f00'; // MCB Orange
+    mctx.fillRect(0, 0, 256, 128);
+    mctx.fillStyle = '#ffffff';
+    mctx.font = '900 48px "Outfit", sans-serif';
+    mctx.textAlign = 'center';
+    mctx.fillText('MCB', 128, 62);
+    mctx.font = 'bold 24px "Outfit", sans-serif';
+    mctx.fillText('TOWER', 128, 102);
+
+    const mcbTex = new THREE.CanvasTexture(mcbCanvas);
+    const mcbSign = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.1), new THREE.MeshBasicMaterial({ map: mcbTex }));
+    mcbSign.position.set(0, 40.2, 3.3);
+    group.add(mcbSign);
+
+    return group;
+  },
+
+  // 14. Sakhi Hasan Water Tanker Hydrant Station (سخی حسن واٹر ہائیڈرینٹ)
+  createSakhiHasanWaterHydrant() {
+    const group = new THREE.Group();
+    group.name = "Sakhi-Hasan-Water-Hydrant";
+
+    // Overhead Steel Pipe Filling Gantry
+    const gantryBeam = new THREE.Mesh(new THREE.BoxGeometry(14.0, 0.6, 0.8), materials.towerConcrete);
+    gantryBeam.position.set(0, 6.2, 0);
+    group.add(gantryBeam);
+
+    // Twin Gantry Columns
+    [-6.5, 6.5].forEach(cx => {
+      const col = new THREE.Mesh(new THREE.BoxGeometry(0.8, 6.2, 0.8), materials.towerConcrete);
+      col.position.set(cx, 3.1, 0);
+      group.add(col);
+    });
+
+    // 2 Giant Overhead Filling Water Pipes (Downspouts for tankers)
+    [-2.5, 2.5].forEach(px => {
+      const pipeH = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 3.5, 8), materials.waterTankBlue);
+      pipeH.rotation.z = Math.PI / 2;
+      pipeH.position.set(px, 5.8, 0.8);
+      group.add(pipeH);
+
+      const pipeV = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 2.6, 8), materials.waterTankBlue);
+      pipeV.position.set(px, 4.3, 1.8);
+      group.add(pipeV);
+
+      // Water splash stream
+      const splashMat = new THREE.MeshBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.75 });
+      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 2.8, 6), splashMat);
+      stream.position.set(px, 1.4, 1.8);
+      group.add(stream);
+    });
+
+    // Pump Machinery Control Room
+    const pumpHouse = new THREE.Mesh(new THREE.BoxGeometry(4.2, 3.2, 4.0), materials.sandstone);
+    pumpHouse.position.set(-8.5, 1.6, 0);
+    group.add(pumpHouse);
+
+    // Official Hydrant Warning Board
+    const hCanvas = document.createElement('canvas');
+    hCanvas.width = 512;
+    hCanvas.height = 140;
+    const hctx = hCanvas.getContext('2d');
+    hctx.fillStyle = '#01579b'; // Deep water blue
+    hctx.fillRect(0, 0, 512, 140);
+    hctx.strokeStyle = '#ffd700';
+    hctx.lineWidth = 6;
+    hctx.strokeRect(6, 6, 500, 128);
+    hctx.fillStyle = '#ffd700';
+    hctx.font = 'bold 30px "Outfit", sans-serif';
+    hctx.textAlign = 'center';
+    hctx.fillText('KMC WATER BOARD • GOVT OF SINDH', 256, 44);
+    hctx.fillStyle = '#ffffff';
+    hctx.font = 'bold 34px "Noto Nastaliq Urdu", sans-serif';
+    hctx.fillText('سخی حسن سرکاری واٹر ہائیڈرینٹ', 256, 96);
+
+    const hTex = new THREE.CanvasTexture(hCanvas);
+    const hSign = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 2.2), new THREE.MeshBasicMaterial({ map: hTex }));
+    hSign.position.set(0, 7.5, 0.45);
+    group.add(hSign);
+
+    return group;
+  },
+
+  // 15. Clifton Sea View Victoria Horse Carriage / Buggy (گھوڑا گاڑی / بگی)
+  createCliftonVictoriaBuggy() {
+    const group = new THREE.Group();
+    group.name = "Clifton-Victoria-Buggy";
+
+    // Carriage Body
+    const carriageMat = new THREE.MeshStandardMaterial({ color: 0x212121, roughness: 0.4, metalness: 0.2 });
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 1.6), carriageMat);
+    cab.position.set(0, 1.3, 0);
+    group.add(cab);
+
+    // Crimson Velvet Cushions
+    const velvetMat = new THREE.MeshStandardMaterial({ color: 0xb71c1c, roughness: 0.8 });
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.35, 1.2), velvetMat);
+    seat.position.set(0, 1.1, 0);
+    group.add(seat);
+
+    // 4 Large Spoked Carriage Wheels
+    const wheelGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.12, 16);
+    wheelGeo.rotateZ(Math.PI / 2);
+    [[-1.1, -0.9], [1.1, -0.9], [-1.1, 0.9], [1.1, 0.9]].forEach(([wx, wz]) => {
+      const wheel = new THREE.Mesh(wheelGeo, materials.goldMetal);
+      wheel.position.set(wx, 0.65, wz);
+      group.add(wheel);
+    });
+
+    // Canopy with Twinkling LED Fairy Light Strips
+    const canopy = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.4, 0.1, 16, 1, false, 0, Math.PI), materials.goldMetal);
+    canopy.rotation.z = Math.PI / 2;
+    canopy.position.set(0, 2.4, 0);
+    group.add(canopy);
+
+    // Glowing Fairy Light Spheres
+    const fairyColors = [0xffeb3b, 0xe91e63, 0x00e5ff, 0x76ff03];
+    for (let i = 0; i < 8; i++) {
+      const fairyMat = new THREE.MeshBasicMaterial({ color: fairyColors[i % 4] });
+      const fairyLight = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), fairyMat);
+      const angle = (i / 8) * Math.PI;
+      fairyLight.position.set(Math.cos(angle) * 1.35, 2.4 + Math.sin(angle) * 0.5, 0.8);
+      group.add(fairyLight);
+    }
+
+    // Ceremonial Horse in Front
+    const horseGroup = new THREE.Group();
+    horseGroup.position.set(0, 0, -2.6);
+
+    const horseMat = new THREE.MeshStandardMaterial({ color: 0x4e342e, roughness: 0.8 });
+    const horseBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 1.6), horseMat);
+    horseBody.position.y = 1.3;
+    horseGroup.add(horseBody);
+
+    const horseNeck = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.6), horseMat);
+    horseNeck.position.set(0, 1.8, -0.7);
+    horseNeck.rotation.x = -0.35;
+    horseGroup.add(horseNeck);
+
+    const horseHead = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.5, 0.7), horseMat);
+    horseHead.position.set(0, 2.2, -1.05);
+    horseGroup.add(horseHead);
+
+    // Feather Plume on Horse Head
+    const plume = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.65, 8), materials.rilliPink);
+    plume.position.set(0, 2.7, -1.0);
+    horseGroup.add(plume);
+
+    // 4 Horse Legs
+    const legGeo = new THREE.CylinderGeometry(0.09, 0.08, 0.9, 8);
+    [[-0.3, -0.6], [0.3, -0.6], [-0.3, 0.6], [0.3, 0.6]].forEach(([lx, lz]) => {
+      const leg = new THREE.Mesh(legGeo, horseMat);
+      leg.position.set(lx, 0.45, lz);
+      horseGroup.add(leg);
+    });
+
+    group.add(horseGroup);
+
+    const friendlyDecal = this.createFriendlyDecal('transport', '🎠 SEA VIEW VICTORIA BUGGY • کلفٹن بگی');
+    friendlyDecal.position.y = 3.2;
+    group.add(friendlyDecal);
+
+    return group;
+  },
+
+  // 16. Classic Karachi Paan Khokha & Betel Nut Kiosk (پان کیبن)
+  createRoadsidePaanKhokha() {
+    const group = new THREE.Group();
+    group.name = "Paan-Khokha-Kiosk";
+
+    // Weathered Wooden Cabin
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.4, 1.8), materials.wood);
+    cabin.position.y = 1.2;
+    group.add(cabin);
+
+    // Corrugated Tin Roof with Overhang
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.15, 2.2), materials.waterTankSilver);
+    roof.position.set(0, 2.45, 0);
+    roof.rotation.x = 0.08;
+    group.add(roof);
+
+    // Front Serving Counter
+    const counter = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.85, 0.6), materials.wood);
+    counter.position.set(0, 0.8, 1.0);
+    group.add(counter);
+
+    // Display Jars of Sweet Supari & Betel Leaves
+    const jarMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, transparent: true, opacity: 0.8 });
+    for (let jx = -0.7; jx <= 0.7; jx += 0.45) {
+      const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.35, 8), jarMat);
+      jar.position.set(jx, 1.4, 0.95);
+      group.add(jar);
+    }
+
+    // Urdu Hand-Painted Khokha Sign
+    const kCanvas = document.createElement('canvas');
+    kCanvas.width = 256;
+    kCanvas.height = 96;
+    const kctx = kCanvas.getContext('2d');
+    kctx.fillStyle = '#1b5e20'; // Paan Green
+    kctx.fillRect(0, 0, 256, 96);
+    kctx.strokeStyle = '#ffd700';
+    kctx.lineWidth = 4;
+    kctx.strokeRect(4, 4, 248, 88);
+    kctx.fillStyle = '#ffffff';
+    kctx.font = 'bold 22px "Noto Nastaliq Urdu", sans-serif';
+    kctx.textAlign = 'center';
+    kctx.fillText('عالمگیر پان شاپ و سگریٹ', 128, 52);
+    kctx.fillStyle = '#ffd700';
+    kctx.font = 'bold 15px "Outfit", sans-serif';
+    kctx.fillText('SPECIAL MEETHA PAAN', 128, 80);
+
+    const kTex = new THREE.CanvasTexture(kCanvas);
+    const kSign = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.8), new THREE.MeshBasicMaterial({ map: kTex }));
+    kSign.position.set(0, 2.05, 0.95);
+    group.add(kSign);
+
+    return group;
   }
 };
+
 
 
 

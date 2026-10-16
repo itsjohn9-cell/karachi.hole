@@ -179,7 +179,11 @@ export class Hole {
     this.nameTag = new THREE.Sprite(spriteMat);
     this.nameTag.scale.set(3.5, 0.9, 1);
     this.nameTag.position.y = 2.4;
+    if (this.isPlayer) {
+      this.nameTag.visible = false; // Player already has HUD card; keep Karachi street view clean
+    }
     this.group.add(this.nameTag);
+
 
     this.updateNameTag();
   }
@@ -206,8 +210,12 @@ export class Hole {
     ctx.textBaseline = 'middle';
     ctx.fillText(`${this.name} [Lv.${this.level}]`, 128, 32);
 
+    if (this.isPlayer) {
+      this.nameTag.visible = false;
+    }
     this.tagTexture.needsUpdate = true;
   }
+
 
   addXP(amount, onLevelUp) {
     this.score += amount;
