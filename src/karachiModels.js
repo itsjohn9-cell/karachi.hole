@@ -3175,6 +3175,261 @@ export const KarachiModels = {
     };
 
     return group;
+  },
+
+  // ==============================================================
+  // 36. BEFORE ➔ AFTER CIVIC CLEANSE TRANSFORMATION MONUMENTS
+  // When an evil is cleansed, this beautiful civic upgrade appears!
+  // ==============================================================
+  createCleanedReplacement(evilType = 'pothole') {
+    const group = new THREE.Group();
+
+    // Base glowing green civic aura ring on ground
+    const auraGeo = new THREE.RingGeometry(0.8, 1.8, 24);
+    auraGeo.rotateX(-Math.PI / 2);
+    const auraMat = new THREE.MeshBasicMaterial({
+      color: 0x00e676,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide
+    });
+    const auraRing = new THREE.Mesh(auraGeo, auraMat);
+    auraRing.position.y = 0.04;
+    group.add(auraRing);
+
+    let badgeText = "✅ REPAIRED / بحال شدہ";
+    let badgeUrdu = "شہری صفائی و ترقی";
+
+    if (evilType === 'pothole') {
+      badgeText = "✅ SMOOTH ROAD REPAIRED";
+      badgeUrdu = "سڑک ہموار و پکی بحال";
+      // Smooth circular fresh asphalt patch
+      const patchGeo = new THREE.CylinderGeometry(2.2, 2.2, 0.06, 24);
+      const patchMat = new THREE.MeshStandardMaterial({ color: 0x1a1e24, roughness: 0.5 });
+      const patch = new THREE.Mesh(patchGeo, patchMat);
+      patch.position.y = 0.03;
+      group.add(patch);
+
+      // Bright yellow reflective road stripe
+      const stripeGeo = new THREE.PlaneGeometry(3.2, 0.28);
+      stripeGeo.rotateX(-Math.PI / 2);
+      const stripeMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+      const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+      stripe.position.y = 0.07;
+      group.add(stripe);
+
+    } else if (evilType === 'trash') {
+      badgeText = "🌸 BLOOMING JASMINE PLANTER";
+      badgeUrdu = "کچرا ختم - گلشنِ کراچی";
+      // Polished cedar wooden planter box
+      const boxGeo = new THREE.BoxGeometry(2.0, 0.7, 1.2);
+      const boxMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.7 });
+      const box = new THREE.Mesh(boxGeo, boxMat);
+      box.position.y = 0.35;
+      group.add(box);
+
+      // Lush green bush with blossoming flowers
+      const bushGeo = new THREE.SphereGeometry(0.8, 10, 8);
+      const bushMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.8 });
+      const bush = new THREE.Mesh(bushGeo, bushMat);
+      bush.position.set(0, 0.95, 0);
+      bush.scale.set(1.4, 0.75, 0.9);
+      group.add(bush);
+
+      // Pink & white jasmine flower blooms
+      for (let f = 0; f < 8; f++) {
+        const flowerGeo = new THREE.DodecahedronGeometry(0.12);
+        const flowerMat = new THREE.MeshBasicMaterial({ color: f % 2 === 0 ? 0xff4081 : 0xffffff });
+        const flower = new THREE.Mesh(flowerGeo, flowerMat);
+        const angle = (f / 8) * Math.PI * 2;
+        flower.position.set(Math.cos(angle) * 0.7, 1.2 + (f % 3) * 0.1, Math.sin(angle) * 0.45);
+        group.add(flower);
+      }
+
+      // Modern KMC Green Recycling Bin
+      const binGeo = new THREE.CylinderGeometry(0.3, 0.26, 0.9, 12);
+      const binMat = new THREE.MeshStandardMaterial({ color: 0x43a047, roughness: 0.4 });
+      const bin = new THREE.Mesh(binGeo, binMat);
+      bin.position.set(1.5, 0.45, 0);
+      group.add(bin);
+
+    } else if (evilType === 'gutka') {
+      badgeText = "🚰 CLEAN DRINKING SABEEL";
+      badgeUrdu = "گٹکا ختم - مفت صاف پانی";
+      // Chilled water dispenser cooler
+      const coolerGeo = new THREE.BoxGeometry(0.8, 1.4, 0.7);
+      const coolerMat = new THREE.MeshStandardMaterial({ color: 0x0288d1, roughness: 0.3, metalness: 0.4 });
+      const cooler = new THREE.Mesh(coolerGeo, coolerMat);
+      cooler.position.y = 0.7;
+      group.add(cooler);
+
+      // Stainless steel tap & water tray
+      const trayGeo = new THREE.BoxGeometry(0.5, 0.1, 0.3);
+      const trayMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.9 });
+      const tray = new THREE.Mesh(trayGeo, trayMat);
+      tray.position.set(0, 0.55, 0.42);
+      group.add(tray);
+
+      // Green anti-litter bin
+      const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.24, 0.8, 12), new THREE.MeshStandardMaterial({ color: 0x388e3c }));
+      bin.position.set(-0.85, 0.4, 0);
+      group.add(bin);
+
+    } else if (evilType === 'robber') {
+      badgeText = "🛡️ SECURE CIVIC SAFE ZONE";
+      badgeUrdu = "ڈاکو گرفتار - پرامن علاقہ";
+      // Golden Civic Peace Shield on pavement
+      const shieldGeo = new THREE.CylinderGeometry(1.4, 1.4, 0.04, 32);
+      const shieldMat = new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.3, metalness: 0.3 });
+      const shield = new THREE.Mesh(shieldGeo, shieldMat);
+      shield.position.y = 0.04;
+      group.add(shield);
+
+      // Restored bright Victorian heritage street lamp
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.2, 10), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+      post.position.set(0, 1.6, 0);
+      group.add(post);
+
+      const lamp = new THREE.Mesh(new THREE.OctahedronGeometry(0.4), new THREE.MeshBasicMaterial({ color: 0xffea00 }));
+      lamp.position.set(0, 3.2, 0);
+      group.add(lamp);
+
+    } else if (evilType === 'vip') {
+      badgeText = "🚦 FREE FLOWING CORRIDOR";
+      badgeUrdu = "وی آئی پی کلچر ختم - ٹریفک رواں";
+      // Green traffic light pillar
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 3.4, 10), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+      pole.position.set(0, 1.7, 0);
+      group.add(pole);
+
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.1, 0.35), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+      box.position.set(0, 3.0, 0);
+      group.add(box);
+
+      const greenLight = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), new THREE.MeshBasicMaterial({ color: 0x00e676 }));
+      greenLight.position.set(0, 2.7, 0.2);
+      group.add(greenLight);
+
+    } else if (evilType === 'tanker') {
+      badgeText = "💧 SABEEL-E-AAB FOUNTAIN";
+      badgeUrdu = "ٹینکر مافیا ختم - میٹھا پانی عام";
+      // Tiled mosaic fountain basin
+      const basinGeo = new THREE.CylinderGeometry(1.6, 1.8, 0.65, 24);
+      const basinMat = new THREE.MeshStandardMaterial({ color: 0x00838f, roughness: 0.3 });
+      const basin = new THREE.Mesh(basinGeo, basinMat);
+      basin.position.y = 0.32;
+      group.add(basin);
+
+      // Water surface inside fountain
+      const waterSurface = new THREE.Mesh(new THREE.CircleGeometry(1.45, 24), new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.85 }));
+      waterSurface.rotateX(-Math.PI / 2);
+      waterSurface.position.y = 0.62;
+      group.add(waterSurface);
+
+      // Center decorative Islamic arched pillar
+      const centerPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 1.6, 16), new THREE.MeshStandardMaterial({ color: 0x00695c }));
+      centerPillar.position.set(0, 1.3, 0);
+      group.add(centerPillar);
+
+    } else if (evilType === 'ke') {
+      badgeText = "☀️ SOLAR CLEAN POWER";
+      badgeUrdu = "کنڈہ کلچر ختم - سولر انرجی";
+      // Green solar energy utility kiosk
+      const kiosk = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.9), new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.4 }));
+      kiosk.position.y = 0.9;
+      group.add(kiosk);
+
+      // Angled blue solar panel canopy on top
+      const solarPanel = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.08, 1.4), new THREE.MeshStandardMaterial({ color: 0x1565c0, roughness: 0.2, metalness: 0.8 }));
+      solarPanel.position.set(0, 2.1, 0);
+      solarPanel.rotation.x = 0.3;
+      group.add(solarPanel);
+
+    } else if (evilType === 'chinacutting') {
+      badgeText = "🌳 PUBLIC GREEN PROMENADE";
+      badgeUrdu = "چائنا کٹنگ ختم - عوامی واک وے";
+      // Clean paved footpath segment
+      const pave = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.1, 2.0), new THREE.MeshStandardMaterial({ color: 0x90a4ae, roughness: 0.6 }));
+      pave.position.y = 0.05;
+      group.add(pave);
+
+      // Wooden park bench
+      const bench = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.6), new THREE.MeshStandardMaterial({ color: 0x795548 }));
+      bench.position.set(0, 0.3, 0);
+      group.add(bench);
+
+    } else if (evilType === 'bhatta') {
+      badgeText = "🕊️ AMAN BAZAAR MARKET";
+      badgeUrdu = "بھتہ بند - پرامن کراچی مارکیٹ";
+      // Festive striped canopy
+      const canopy = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 1.6, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x00c853, roughness: 0.5 }));
+      canopy.position.set(0, 2.0, 0);
+      group.add(canopy);
+
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.0, 10), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+      pole.position.set(0, 1.0, 0);
+      group.add(pole);
+
+    } else if (evilType === 'onewheeler') {
+      badgeText = "🚸 SAFE TRANSIT ZONE";
+      badgeUrdu = "ون ویلنگ بند - محفوظ سڑکیں";
+      // Traffic safety signboard
+      const board = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 0.08), new THREE.MeshStandardMaterial({ color: 0xffeb3b }));
+      board.position.set(0, 2.2, 0);
+      group.add(board);
+
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 8), new THREE.MeshStandardMaterial({ color: 0x555555 }));
+      pole.position.set(0, 1.1, 0);
+      group.add(pole);
+
+    } else {
+      // Politician / General
+      badgeText = "🏛️ AWAMI WELFARE MONUMENT";
+      badgeUrdu = "عوامی پیسہ عوام پر خرچ";
+      // Golden treasury chest turning into public park
+      const chest = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.9, 0.8), new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3, metalness: 0.7 }));
+      chest.position.y = 0.45;
+      group.add(chest);
+    }
+
+    // Floating 3D Billboard Badge: "BEFORE ➔ AFTER: CLEANSED!"
+    const canvas = document.createElement('canvas');
+    canvas.width = 460;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(10, 25, 18, 0.92)';
+    ctx.beginPath();
+    ctx.roundRect(8, 8, 444, 94, 20);
+    ctx.fill();
+    ctx.strokeStyle = '#00e676';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.fillStyle = '#00e676';
+    ctx.font = '900 22px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`✨ ${badgeText} ✨`, 230, 36);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px "Noto Nastaliq Urdu", "Outfit", sans-serif';
+    ctx.fillText(badgeUrdu, 230, 74);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+    sprite.scale.set(4.6, 1.1, 1);
+    sprite.position.set(0, 3.6, 0);
+    group.add(sprite);
+
+    group.userData = {
+      isCleanedMonument: true,
+      auraRing,
+      sprite,
+      createdTime: 0,
+      life: 9999
+    };
+
+    return group;
   }
 };
 

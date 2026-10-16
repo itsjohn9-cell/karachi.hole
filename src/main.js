@@ -6,6 +6,7 @@ import { VirtualJoystick } from './joystick.js';
 import { ParticleSystem } from './particles.js';
 import { UIManager } from './ui.js';
 import { audio } from './audio.js';
+import { KarachiModels } from './karachiModels.js';
 
 class Game {
   constructor() {
@@ -24,6 +25,10 @@ class Game {
     this.districtEvils = [];
     this.districtTotal = 0;
     this.districtRemaining = 0;
+
+    // Before & After Transformation Monuments and Mini-Map Tracker
+    this.cleanedMonuments = [];
+    this.recentCleaned = [];
 
     // Movement vectors
     this.moveVector = { x: 0, y: 0 };
@@ -278,6 +283,11 @@ class Game {
     this.frenzyTimer = 0;
     this.frenzyTriggered = false;
     this.particles.clear();
+    if (this.cleanedMonuments) {
+      this.cleanedMonuments.forEach(m => this.scene.remove(m));
+      this.cleanedMonuments = [];
+    }
+    this.recentCleaned = [];
     if (this.ui) this.ui.hideDistrictClearedModal();
   }
 
@@ -358,6 +368,12 @@ class Game {
     this.districtRemaining = this.districtTotal;
     this.civicTotal = this.districtTotal;
     this.civicCleansed = 0;
+
+    if (this.cleanedMonuments) {
+      this.cleanedMonuments.forEach(m => this.scene.remove(m));
+      this.cleanedMonuments = [];
+    }
+    this.recentCleaned = [];
 
     // Reset player position smoothly back to center crossroads and blast celebration
     this.player.position.set(0, 0, 0);
@@ -768,6 +784,26 @@ class Game {
       }
     }
 
+    // 5. Animate Cleaned Transformation Monuments (Rising up smoothly from ground & floating billboards)
+    if (this.cleanedMonuments && this.cleanedMonuments.length > 0) {
+      for (let i = 0; i < this.cleanedMonuments.length; i++) {
+        const mon = this.cleanedMonuments[i];
+        if (mon.position.y < 0) {
+          mon.position.y = Math.min(0, mon.position.y + dt * 2.5);
+        }
+        const ud = mon.userData;
+        if (ud) {
+          if (ud.auraRing) {
+            const s = 1.0 + Math.sin(currentTime * 3.5 + i) * 0.08;
+            ud.auraRing.scale.set(s, s, s);
+          }
+          if (ud.sprite) {
+            ud.sprite.position.y = 3.6 + Math.sin(currentTime * 2.2 + i) * 0.12;
+          }
+        }
+      }
+    }
+
     // Edible Objects Suction & Collision (Ultra-fast Bounding Box check for 60 FPS)
     const pullSpeed = isKidsMode ? 10.0 : 7.0;
     for (let i = 0; i < this.edibleObjects.length; i++) {
@@ -894,6 +930,41 @@ class Game {
           if (hole.isPlayer && obj.isBadGuy) {
             this.civicCleansed++;
             this.districtRemaining = this.districtEvils.filter(b => b.state !== 'swallowed').length;
+
+            // Trigger Uplifting Civic Cleanse Audio & Particle Transformation
+            audio.playCleanseTransformation();
+            this.particles.createCleanseSparkleBurst(hole.position, 35);
+
+            // Spawn the "AFTER" Cleaned Monument right where the bad guy was!
+            const replacement = KarachiModels.createCleanedReplacement(obj.evilType);
+            replacement.position.set(objPos.x, -0.6, objPos.z);
+            this.scene.add(replacement);
+            this.cleanedMonuments.push(replacement);
+
+            // Track recent cleaned location for the Mini-Map
+            this.recentCleaned.push({
+              x: objPos.x,
+              z: objPos.z,
+              time: performance.now()
+            });
+
+            // Before / After descriptions
+            const beforeAfterMap = {
+              pothole: { before: "Broken Road Pothole", after: "Smooth Asphalt Repaired!" },
+              trash: { before: "Overflowing Trash Heap", after: "Blooming Jasmine Planter!" },
+              gutka: { before: "Shady Gutka Peddler", after: "Chilled Sabeel Water Cooler!" },
+              robber: { before: "Armed Mobile Robbery", after: "Crime-Free Safe Zone!" },
+              vip: { before: "2-Hour VIP Traffic Jam", after: "Free Flowing Road!" },
+              tanker: { before: "Illegal Water Tanker", after: "Free Sabeel-e-Aab Fountain!" },
+              ke: { before: "Dangerous Kundas & Sparks", after: "Clean Solar Energy Kiosk!" },
+              chinacutting: { before: "Illegal Footpath Wall", after: "Public Pedestrian Walkway!" },
+              bhatta: { before: "Extortion Bhatta Parchi", after: "Peaceful Aman Bazaar!" },
+              onewheeler: { before: "Reckless 70cc Racer", after: "Safe Driving Street!" },
+              politician: { before: "Corrupt VIP Politician", after: "Public Welfare & Library Fund!" }
+            };
+
+            const ba = beforeAfterMap[obj.evilType] || { before: "Civic Crime", after: "Karachi Restored!" };
+            this.ui.showBeforeAfterToast(ba.before, ba.after);
 
             if (this.districtRemaining === 0 && !this.districtClearing) {
               this.handleDistrictCleared();
@@ -1388,7 +1459,9 @@ class Game {
       districtConfig,
       districtRemaining: this.districtRemaining,
       districtTotal: this.districtTotal,
-      targetBreakdown
+      targetBreakdown,
+      districtEvils: this.districtEvils,
+      recentCleaned: this.recentCleaned
     });
 
     this.renderer.render(this.scene, this.camera);

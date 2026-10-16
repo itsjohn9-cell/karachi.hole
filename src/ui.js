@@ -65,6 +65,17 @@ export class UIManager {
         </div>
 
         <div class="hud-right">
+          <!-- Interactive Karachi Civic Mini-Map (Radar HUD) -->
+          <div class="minimap-card" id="hud-minimap-card">
+            <div class="minimap-header">
+              <span class="minimap-title">🗺️ RADAR / نقشہ</span>
+              <span class="minimap-badge" id="minimap-target-badge">14 LEFT</span>
+            </div>
+            <div class="minimap-canvas-wrapper">
+              <canvas id="minimap-canvas" width="144" height="144"></canvas>
+            </div>
+          </div>
+
           <!-- Realtime Leaderboard -->
           <div class="leaderboard-card">
             <div class="leaderboard-header">LEADERBOARD</div>
@@ -96,6 +107,22 @@ export class UIManager {
         </div>
         <div class="district-targets-right" id="hud-district-breakdown">
           <!-- Dynamic remaining targets breakdown chips -->
+        </div>
+      </div>
+
+      <!-- Before ➔ After Civic Transformation Toast -->
+      <div class="before-after-toast" id="hud-before-after-toast" style="opacity: 0">
+        <div class="ba-badge">✨ CIVIC TRANSFORMATION / شہری بحالی ✨</div>
+        <div class="ba-row">
+          <div class="ba-side ba-before">
+            <span class="ba-tag">BEFORE:</span>
+            <span class="ba-text" id="ba-before-text">Broken Pothole</span>
+          </div>
+          <div class="ba-arrow">➔</div>
+          <div class="ba-side ba-after">
+            <span class="ba-tag">AFTER:</span>
+            <span class="ba-text" id="ba-after-text">Smooth Repaired Road!</span>
+          </div>
         </div>
       </div>
 
@@ -391,7 +418,9 @@ export class UIManager {
     districtConfig = null,
     districtRemaining = 0,
     districtTotal = 0,
-    targetBreakdown = []
+    targetBreakdown = [],
+    districtEvils = [],
+    recentCleaned = []
   }) {
     // District Mission Banner & Remaining Targets
     if (districtConfig) {
@@ -518,6 +547,292 @@ export class UIManager {
         radarContainer.appendChild(item);
       });
     }
+
+    // Render Realtime Interactive Mini-Map (Radar HUD)
+    this.drawMiniMap({
+      player,
+      districtEvils,
+      holes: rankedHoles,
+      districtConfig,
+      recentCleaned
+    });
+  }
+
+  // Interactive High-Tech Karachi Civic Mini-Map (Radar HUD)
+  drawMiniMap({
+    player,
+    districtEvils = [],
+    holes = [],
+    districtConfig = null,
+    recentCleaned = []
+  }) {
+    const canvas = document.getElementById('minimap-canvas');
+    if (!canvas || !player) return;
+
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const cx = width / 2;
+    const cy = height / 2;
+    const R = (width / 2) - 6; // Radar circle radius
+    const maxRadarDist = 65; // 65 meters radius coverage
+    const scale = R / maxRadarDist;
+    const now = performance.now();
+
+    ctx.clearRect(0, 0, width, height);
+
+    // 1. Radar Glass Background
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Dark high-tech sci-fi glass gradient
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+    grad.addColorStop(0, 'rgba(12, 22, 36, 0.94)');
+    grad.addColorStop(0.7, 'rgba(8, 16, 26, 0.96)');
+    grad.addColorStop(1, 'rgba(3, 8, 14, 0.98)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Subtle Coastal Arabian Sea indicator in the south (z > 80 in world)
+    const seaWorldZ = 85;
+    const seaRelZ = (seaWorldZ - player.position.z) * scale;
+    if (cy + seaRelZ < height) {
+      ctx.fillStyle = 'rgba(0, 229, 255, 0.22)';
+      ctx.fillRect(0, Math.max(0, cy + seaRelZ), width, height);
+      ctx.fillStyle = 'rgba(0, 229, 255, 0.75)';
+      ctx.font = 'bold 8px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🌊 ARABIAN SEA', cx, Math.min(height - 4, cy + seaRelZ + 10));
+    }
+
+    // Concentric Range Rings (20m and 45m)
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.2)';
+    ctx.lineWidth = 1;
+    [20, 45].forEach(dist => {
+      const ringR = dist * scale;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+
+    // Crosshairs
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.15)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - R);
+    ctx.lineTo(cx, cy + R);
+    ctx.moveTo(cx - R, cy);
+    ctx.lineTo(cx + R, cy);
+    ctx.stroke();
+
+    // North Indicator
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.8)';
+    ctx.font = '900 9px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('N', cx, cy - R + 11);
+
+    // 2. Rotating Radar Sweep Beam
+    this.radarAngle = (this.radarAngle || 0) + 0.038;
+    const sweepAngle = this.radarAngle;
+    const sweepGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+    sweepGrad.addColorStop(0, 'rgba(0, 229, 255, 0.35)');
+    sweepGrad.addColorStop(1, 'rgba(0, 229, 255, 0)');
+    ctx.fillStyle = sweepGrad;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, sweepAngle - 0.45, sweepAngle);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Recently Cleaned Locations (Sparkling green checkmarks fading out)
+    if (recentCleaned && recentCleaned.length > 0) {
+      recentCleaned.forEach(item => {
+        const age = (now - item.time) / 1000;
+        if (age < 8.0) {
+          const alpha = 1.0 - (age / 8.0);
+          const rdx = (item.x - player.position.x) * scale;
+          const rdz = (item.z - player.position.z) * scale;
+          const rdist = Math.hypot(rdx, rdz);
+          if (rdist < R - 5) {
+            ctx.fillStyle = `rgba(0, 230, 118, ${alpha})`;
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('✓', cx + rdx, cy + rdz);
+          }
+        }
+      });
+    }
+
+    // 4. Other AI Holes (small subtle amber dots)
+    holes.forEach(h => {
+      if (h.isPlayer || !h.isAlive) return;
+      const hdx = (h.position.x - player.position.x) * scale;
+      const hdz = (h.position.z - player.position.z) * scale;
+      const hdist = Math.hypot(hdx, hdz);
+      if (hdist < R - 4) {
+        ctx.fillStyle = 'rgba(255, 171, 0, 0.65)';
+        ctx.beginPath();
+        ctx.arc(cx + hdx, cy + hdz, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    // 5. Active District Evils (Target Pips & Off-Screen Edge Pointers!)
+    const activeEvils = districtEvils.filter(b => b.state !== 'swallowed');
+    const evilPalette = {
+      robber: { color: '#ff1744', icon: '🔫' },
+      vip: { color: '#00e5ff', icon: '🚨' },
+      tanker: { color: '#29b6f6', icon: '💧' },
+      politician: { color: '#ffd700', icon: '💰' },
+      ke: { color: '#ffea00', icon: '⚡' },
+      gutka: { color: '#e040fb', icon: '🛑' },
+      pothole: { color: '#ff9100', icon: '🕳️' },
+      trash: { color: '#90a4ae', icon: '🗑️' },
+      bhatta: { color: '#d500f9', icon: '📜' },
+      onewheeler: { color: '#00e676', icon: '🏍️' },
+      chinacutting: { color: '#ff6d00', icon: '📐' }
+    };
+
+    activeEvils.forEach(e => {
+      const ex = e.mesh.position.x;
+      const ez = e.mesh.position.z;
+      const edx = ex - player.position.x;
+      const edz = ez - player.position.z;
+      const worldDist = Math.hypot(edx, edz);
+      const angle = Math.atan2(edz, edx);
+      const meta = evilPalette[e.evilType] || { color: '#ff1744', icon: '⚠️' };
+
+      const pipDist = worldDist * scale;
+
+      if (pipDist <= R - 8) {
+        // Within radar circle: draw glowing pip and icon!
+        const px = cx + edx * scale;
+        const py = cy + edz * scale;
+
+        // Glowing outer halo
+        ctx.fillStyle = meta.color;
+        ctx.globalAlpha = 0.35 + Math.sin(now * 0.006) * 0.2;
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        // Pip dot
+        ctx.fillStyle = meta.color;
+        ctx.beginPath();
+        ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Target Emoji
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(meta.icon, px, py - 7);
+      } else {
+        // OFF-SCREEN / FAR TARGET: Clamped to radar perimeter with directional arrow & meters!
+        const clampR = R - 8;
+        const px = cx + Math.cos(angle) * clampR;
+        const py = cy + Math.sin(angle) * clampR;
+
+        ctx.fillStyle = meta.color;
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Directional arrowhead
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(angle);
+        ctx.fillStyle = meta.color;
+        ctx.beginPath();
+        ctx.moveTo(4, 0);
+        ctx.lineTo(-4, -3);
+        ctx.lineTo(-4, 3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Distance text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 8px "Outfit", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const textOffsetR = clampR - 11;
+        const tx = cx + Math.cos(angle) * textOffsetR;
+        const ty = cy + Math.sin(angle) * textOffsetR;
+        ctx.fillText(`${Math.round(worldDist)}m`, tx, ty);
+      }
+    });
+
+    // 6. Player Hole at Center
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#00e5ff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Player Directional Heading Chevron (based on movement vector)
+    const moveLen = Math.hypot(player.moveVector?.x || 0, player.moveVector?.y || 0);
+    if (moveLen > 0.05) {
+      const headingAngle = Math.atan2(player.moveVector.y, player.moveVector.x);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(headingAngle);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(9, 0);
+      ctx.lineTo(4, -3.5);
+      ctx.lineTo(4, 3.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.restore(); // End clipping
+
+    // 7. Outer Radar Bezel
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.75)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Update target count badge
+    const badgeEl = document.getElementById('minimap-target-badge');
+    if (badgeEl) {
+      badgeEl.textContent = `${activeEvils.length} LEFT`;
+      if (activeEvils.length <= 3 && activeEvils.length > 0) {
+        badgeEl.classList.add('urgent');
+      } else {
+        badgeEl.classList.remove('urgent');
+      }
+    }
+  }
+
+  showBeforeAfterToast(beforeText, afterText) {
+    const toast = document.getElementById('hud-before-after-toast');
+    if (!toast) return;
+
+    document.getElementById('ba-before-text').textContent = beforeText;
+    document.getElementById('ba-after-text').textContent = afterText;
+
+    toast.style.opacity = '1';
+    toast.style.transform = 'translate(-50%, 0) scale(1.04)';
+
+    clearTimeout(this.beforeAfterTimeout);
+    this.beforeAfterTimeout = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translate(-50%, -12px) scale(0.96)';
+    }, 2800);
   }
 
   showAnnouncement(text, color = '#ffd700') {

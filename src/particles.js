@@ -277,6 +277,63 @@ export class ParticleSystem {
     }
   }
 
+  // Magical Civic Cleanse Sparkle Shower (Spawns stars, green emerald orbs, and expanding renewal ring)
+  createCleanseSparkleBurst(pos, count = 35) {
+    const greenMat = new THREE.MeshBasicMaterial({ color: 0x00e676 });
+    const goldMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+    const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    for (let i = 0; i < count; i++) {
+      const isStar = Math.random() > 0.45;
+      const geo = isStar ? this.starGeo : this.sparkGeo;
+      const r = Math.random();
+      const mat = r < 0.4 ? greenMat : (r < 0.8 ? goldMat : whiteMat);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        pos.x + (Math.random() - 0.5) * 1.6,
+        0.3 + Math.random() * 0.5,
+        pos.z + (Math.random() - 0.5) * 1.6
+      );
+
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.5 + Math.random() * 4.0;
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        4.0 + Math.random() * 5.0,
+        Math.sin(angle) * speed
+      );
+
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -10,
+        life: 0.9 + Math.random() * 0.6,
+        maxLife: 1.5,
+        scale: 0.9 + Math.random() * 0.6
+      });
+    }
+
+    // Expanding emerald green renewal ring on ground
+    const ringGeo = new THREE.RingGeometry(0.8, 1.4, 32);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x00e676,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.9
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.set(pos.x, 0.06, pos.z);
+    this.scene.add(ring);
+    this.rings.push({
+      mesh: ring,
+      scale: 1,
+      opacity: 0.9,
+      speed: 4.8
+    });
+  }
+
   update(dt) {
     // Update individual particle meshes
     for (let i = this.particles.length - 1; i >= 0; i--) {

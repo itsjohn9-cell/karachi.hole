@@ -595,6 +595,35 @@ class AudioManager {
     this.vibrate([100, 50, 100, 50, 250]);
   }
 
+  // Uplifting Civic Cleanse Transformation Chime (Before ➔ After Renovation)
+  playCleanseTransformation() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 987.77, 1046.50, 1318.51];
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const st = t + idx * 0.045;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, st);
+
+      gain.gain.setValueAtTime(0, st);
+      gain.gain.linearRampToValueAtTime(0.18, st + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.45);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.45);
+    });
+
+    this.vibrate([40, 20, 60]);
+  }
+
   // Combo burst sound
   playCombo(comboCount = 2) {
     if (!this.soundEnabled) return;
