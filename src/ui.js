@@ -452,7 +452,8 @@ export class UIManager {
           if (tb.count <= 0) return;
           const chip = document.createElement('span');
           chip.className = `target-chip chip-${tb.type}`;
-          chip.innerHTML = `${tb.icon} ${tb.count} ${tb.name.split(' ')[0]}`;
+          const label = (tb.label || tb.name || tb.type || '').split(' ')[0];
+          chip.innerHTML = `${tb.icon} ${tb.count} ${label}`;
           breakdownEl.appendChild(chip);
         });
       }
@@ -541,7 +542,7 @@ export class UIManager {
         }
         item.innerHTML = `
           <span class="radar-icon">${evil.icon}</span>
-          <span class="radar-name">${evil.name.split('(')[0].trim()}</span>
+          <span class="radar-name">${(evil.name || evil.evilType || 'Target').split('(')[0].trim()}</span>
           <span class="radar-dist">${evil.dist}m ${arrow}</span>
         `;
         radarContainer.appendChild(item);

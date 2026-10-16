@@ -456,7 +456,7 @@ export class CityGenerator {
     victimCitizen.position.set(posX, 0, posZ + 2.2);
     this.scene.add(victimCitizen);
     this.interactiveVictims.push(victimCitizen);
-    this.registerEdible(robberTarget, 1, 850, "Mobile Snatcher (ڈاکو)", 2.0, { isRobbery: true, isBadGuy: true, evilType: 'robber' });
+    this.registerEdible(robberTarget, 1, 850, "Mobile Snatcher (ڈاکو)", 2.0, { isRobbery: true, isBadGuy: true, evilType: 'robber', isDistrictEvil: true });
   }
 
   // Interactive VIP Protocol Traffic Jam Scene with Stuck Commuters that get freed!
@@ -471,7 +471,7 @@ export class CityGenerator {
       this.scene.add(v);
       this.interactiveTraffic.push(v);
     });
-    this.registerEdible(vipTarget, 3, 1600, "VIP Protocol Prado Convoy", 4.2, { isBadGuy: true, evilType: 'vip' });
+    this.registerEdible(vipTarget, 3, 1600, "VIP Protocol Prado Convoy", 4.2, { isBadGuy: true, evilType: 'vip', isDistrictEvil: true });
   }
 
   // Interactive Water Tanker Extortion Scene with Thirsty Karachi Residents!
@@ -485,7 +485,7 @@ export class CityGenerator {
       this.scene.add(r);
       this.interactiveResidents.push(r);
     });
-    this.registerEdible(tankerTarget, 3, 1400, "Water Tanker Mafia Truck", 3.8, { isBadGuy: true, evilType: 'tanker' });
+    this.registerEdible(tankerTarget, 3, 1400, "Water Tanker Mafia Truck", 3.8, { isBadGuy: true, evilType: 'tanker', isDistrictEvil: true });
   }
 
   // Curated District Level Generator
