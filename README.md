@@ -11,6 +11,10 @@ An authentic 3D Hole.io style arcade game set in Karachi, Pakistan. Built using 
 - **Audio & Haptics**: Procedural Web Audio API sound effects and music loop with Android vibration support.
 - **Android Platform**: Capacitor Android project ready for compilation in Android Studio.
 
+## GitHub Repository
+- **Remote**: `https://github.com/itsjohn9-cell/karachi.hole`
+- **Branch**: `main` (Local commits preserved; push only on explicit instruction)
+
 ## Quick Start
 ```bash
 npm install
