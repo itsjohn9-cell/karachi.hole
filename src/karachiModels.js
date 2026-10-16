@@ -649,6 +649,15 @@ export const KarachiModels = {
     group.add(createCharpai(-1.8, 1.8, 0.3));
     group.add(createCharpai(1.8, 1.8, -0.2));
 
+    const friendlyDecal = this.createFriendlyDecal('chai', '☕ CHAI RECHARGE • کڑک چائے');
+    group.add(friendlyDecal);
+    group.userData = {
+      isFriendly: true,
+      friendlyType: 'chai',
+      name: "Quetta Chai Dhaba (چائے ڈھابہ)",
+      friendlyDecal
+    };
+
     return group;
   },
 
@@ -688,6 +697,15 @@ export const KarachiModels = {
     const umbrella = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.7, 12), materials.coneOrange);
     umbrella.position.set(0, 2.6, -0.6);
     group.add(umbrella);
+
+    const friendlyDecal = this.createFriendlyDecal('food', '🍲 FEAST • بریانی دیگ');
+    group.add(friendlyDecal);
+    group.userData = {
+      isFriendly: true,
+      friendlyType: 'food',
+      name: "Burns Road Biryani",
+      friendlyDecal
+    };
 
     return group;
   },
@@ -828,6 +846,17 @@ export const KarachiModels = {
     legR.position.x = 0.1;
     group.add(legR);
 
+    // Radiant Emerald Green Ground Halo & Floating Friendly Badge
+    const friendlyDecal = this.createFriendlyDecal('citizen', '💚 FRIEND • کراچی شہری');
+    group.add(friendlyDecal);
+
+    group.userData = {
+      isFriendly: true,
+      friendlyType: 'citizen',
+      name: "Innocent Citizen (شہری)",
+      friendlyDecal
+    };
+
     return group;
   },
 
@@ -877,47 +906,35 @@ export const KarachiModels = {
     return group;
   },
 
-  // Dynamic Neon Target Decal & Floating Billboard Badge (Crystal Clear "What to Devour" Visibility!)
+  // Dynamic Comic Target Decal & Floating Billboard Badge (Crystal Clear "What to Devour" Visibility for Kids!)
   createEvilTargetDecal(evilType, label = "DEVOUR TARGET") {
     const group = new THREE.Group();
     group.name = `Target-Decal-${evilType}`;
 
-    const colorMap = {
-      robber: 0xff1744,      // Neon Crimson
-      vip: 0xff1744,         // Police Red/Blue
-      politician: 0xffd700,  // Gold
-      tanker: 0x00e5ff,      // Cyan
-      gutka: 0xe040fb,       // Magenta
-      ke: 0xffea00,          // Electric Yellow
-      pothole: 0xff9100,     // Hazard Orange
-      chinacutting: 0xff6d00,// Orange
-      bhatta: 0x76ff03,      // Lime
-      onewheeler: 0x00e5ff   // Cyan
-    };
-    const color = colorMap[evilType] || 0xff1744;
+    const color = 0xff1744; // Bold Universal Danger Crimson for ALL bad guys!
 
-    // 1. Ground Pulsing Ring
-    const ringGeo = new THREE.RingGeometry(1.3, 1.7, 32);
+    // 1. Ground Pulsing Hazard Ring
+    const ringGeo = new THREE.RingGeometry(1.4, 1.85, 32);
     ringGeo.rotateX(-Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({
-      color: color,
+      color: 0xff1744,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.85
+      opacity: 0.9
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.position.y = 0.04;
     group.add(ring);
 
-    // 2. Crosshair chevrons on ground
-    const barGeo = new THREE.PlaneGeometry(0.18, 0.7);
+    // 2. Yellow hazard crosshair markers on ground
+    const barGeo = new THREE.PlaneGeometry(0.2, 0.7);
     barGeo.rotateX(-Math.PI / 2);
-    const barMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    const barMat = new THREE.MeshBasicMaterial({ color: 0xffd700, side: THREE.DoubleSide });
     [
-      [0, 1.7, 0],
-      [0, -1.7, 0],
-      [1.7, 0, Math.PI / 2],
-      [-1.7, 0, Math.PI / 2]
+      [0, 1.85, 0],
+      [0, -1.85, 0],
+      [1.85, 0, Math.PI / 2],
+      [-1.85, 0, Math.PI / 2]
     ].forEach(([bx, bz, rot]) => {
       const bar = new THREE.Mesh(barGeo, barMat);
       bar.position.set(bx, 0.05, bz);
@@ -927,36 +944,110 @@ export const KarachiModels = {
 
     // 3. Floating High-Visibility Billboard Badge
     const canvas = document.createElement('canvas');
-    canvas.width = 400;
-    canvas.height = 96;
+    canvas.width = 440;
+    canvas.height = 100;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(17, 17, 17, 0.94)';
+    ctx.fillStyle = 'rgba(28, 4, 8, 0.95)';
     ctx.beginPath();
-    ctx.roundRect(6, 6, 388, 84, 18);
+    ctx.roundRect(6, 6, 428, 88, 20);
     ctx.fill();
     ctx.lineWidth = 5;
-    ctx.strokeStyle = `#${color.toString(16).padStart(6, '0')}`;
+    ctx.strokeStyle = '#ff1744';
     ctx.stroke();
 
-    ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
-    ctx.font = '900 24px "Outfit", sans-serif';
+    ctx.fillStyle = '#ff1744';
+    ctx.font = '900 22px "Outfit", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, 200, 48);
+    ctx.fillText(`❌ ${label.toUpperCase()} ❌`, 220, 34);
+
+    ctx.fillStyle = '#ffd700';
+    ctx.font = '900 17px "Outfit", sans-serif';
+    ctx.fillText(`😈 DEVOUR THIS BAD GUY! / کھاؤ اسے`, 220, 68);
 
     const bTex = new THREE.CanvasTexture(canvas);
     const badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
-    badge.scale.set(4.4, 1.05, 1);
+    badge.scale.set(4.6, 1.05, 1);
     badge.position.set(0, 3.8, 0);
     group.add(badge);
+
+    // 4. Bouncing Overhead Red Chevron Arrow (pointing down right at evil!)
+    const arrowGeo = new THREE.ConeGeometry(0.35, 0.7, 4);
+    arrowGeo.rotateX(Math.PI);
+    const arrowMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
+    const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+    arrow.position.set(0, 4.8, 0);
+    group.add(arrow);
+
+    // 5. Skyward Beacon Pillar for final evils
+    const beacon = this.createDistrictBeaconPillar(0xff1744);
+    beacon.visible = false;
+    group.add(beacon);
 
     group.userData = {
       ring,
       badge,
+      arrow,
+      beacon,
       color,
-      timer: 0
+      isEvil: true
     };
 
+    return group;
+  },
+
+  // Friendly Protector Decal for Innocent Citizens, Food Stalls, Pets
+  createFriendlyDecal(type = 'citizen', label = "💚 FRIEND / دوست") {
+    const group = new THREE.Group();
+    group.name = `Friendly-Decal-${type}`;
+
+    const colorMap = {
+      citizen: 0x00e676, // Radiant Emerald Green
+      food: 0xffd700,    // Golden Sparkle
+      chai: 0xff9100,    // Warm Amber
+      pet: 0x00e5ff      // Cyan
+    };
+    const color = colorMap[type] || 0x00e676;
+
+    // 1. Soft Radiant Ground Protector Ring
+    const ringGeo = new THREE.RingGeometry(0.9, 1.25, 24);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: color,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.55
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.y = 0.04;
+    group.add(ring);
+
+    // 2. Floating High-Visibility Friendly Billboard Badge
+    const canvas = document.createElement('canvas');
+    canvas.width = 380;
+    canvas.height = 80;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(10, 26, 18, 0.9)';
+    ctx.beginPath();
+    ctx.roundRect(6, 6, 368, 68, 16);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = `#${color.toString(16).padStart(6, '0')}`;
+    ctx.stroke();
+
+    ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+    ctx.font = '900 23px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, 190, 40);
+
+    const bTex = new THREE.CanvasTexture(canvas);
+    const badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    badge.scale.set(3.6, 0.8, 1);
+    badge.position.set(0, type === 'food' || type === 'chai' ? 3.4 : 2.5, 0);
+    group.add(badge);
+
+    group.userData = { ring, badge, isFriendly: true };
     return group;
   },
 
@@ -1448,8 +1539,14 @@ export const KarachiModels = {
       legFL, legFR, legBL, legBR, tail,
       walkCycle: Math.random() * 10,
       barkTimer: 2 + Math.random() * 4,
-      moveSpeed: 5.5
+      moveSpeed: 5.5,
+      isFriendly: true,
+      isPet: true,
+      petType: 'dog',
+      name: "Friendly Stray Dog (پیارا کتا)",
+      friendlyDecal: this.createFriendlyDecal('pet', '🐕 PET • پیارا دوست')
     };
+    group.add(group.userData.friendlyDecal);
 
     return group;
   },
@@ -1486,7 +1583,16 @@ export const KarachiModels = {
     tail.rotation.x = 0.6;
     group.add(tail);
 
-    group.userData = { walkCycle: Math.random() * 10, moveSpeed: 6.5 };
+    group.userData = {
+      walkCycle: Math.random() * 10,
+      moveSpeed: 6.5,
+      isFriendly: true,
+      isPet: true,
+      petType: 'cat',
+      name: "Friendly Street Cat (پیاری بلی)",
+      friendlyDecal: this.createFriendlyDecal('pet', '🐈 PET • پیاری بلی')
+    };
+    group.add(group.userData.friendlyDecal);
     return group;
   },
 
@@ -1948,10 +2054,13 @@ export const KarachiModels = {
     group.add(sign);
 
     group.userData = {
+      isFriendly: true,
       isBunKabab: true,
       hasGivenBoost: false,
-      chefQuote: "Karachi ko saaf karo bhai! Ye lo Spicy Chutney Turbo Boost!"
+      chefQuote: "Karachi ko saaf karo bhai! Ye lo Spicy Chutney Turbo Boost!",
+      friendlyDecal: this.createFriendlyDecal('food', '🍔 SPEED BOOST! • بن کباب')
     };
+    group.add(group.userData.friendlyDecal);
 
     return group;
   },

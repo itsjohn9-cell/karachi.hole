@@ -408,11 +408,12 @@ export class CityGenerator {
     isFoodStall = false,
     isBuilding = false,
     isCitizen = false,
+    isPet = false,
     isTransport = false
   } = {}) {
     this.scene.add(mesh);
-    const calculatedIsBadGuy = Boolean(isBadGuy || isPolitician || isRobbery || isRubbish || (evilType !== null));
-    const calculatedEvilType = evilType || (isPolitician ? 'politician' : isRobbery ? 'robber' : isRubbish ? 'trash' : null);
+    const calculatedIsBadGuy = Boolean(!isCitizen && !isPet && !isFoodStall && !isBuilding && !isTransport && (isBadGuy || isPolitician || isRobbery || isRubbish || (evilType !== null)));
+    const calculatedEvilType = calculatedIsBadGuy ? (evilType || (isPolitician ? 'politician' : isRobbery ? 'robber' : isRubbish ? 'trash' : null)) : null;
 
     const item = {
       mesh,
@@ -436,6 +437,7 @@ export class CityGenerator {
       isFoodStall,
       isBuilding,
       isCitizen,
+      isPet,
       isTransport
     };
     this.edibleObjects.push(item);
@@ -446,6 +448,10 @@ export class CityGenerator {
     if (isFoodStall) this.foodStalls.push(item);
     if (isBuilding) this.buildings.push(item);
     if (isCitizen) this.citizens.push(item);
+    if (isPet) {
+      if (!this.pets) this.pets = [];
+      this.pets.push(item);
+    }
     return item;
   }
 
@@ -817,6 +823,26 @@ export class CityGenerator {
       ped.position.set(px, 0, pz);
       ped.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(ped, 1, 30, "Citizen", 0.65, { isCitizen: true, isBadGuy: false });
+    }
+
+    // 18 Friendly Desi Stray Dogs (Karachi Street Puppies - Protect & Pet!)
+    for (let i = 0; i < 18; i++) {
+      const dog = KarachiModels.createStrayDog();
+      const dx = (Math.random() - 0.5) * 175;
+      const dz = (Math.random() - 0.5) * 175;
+      dog.position.set(dx, 0, dz);
+      dog.rotation.y = Math.random() * Math.PI * 2;
+      this.registerEdible(dog, 1, 30, "Friendly Stray Dog", 0.7, { isPet: true, isBadGuy: false });
+    }
+
+    // 16 Friendly Street Cats (Billi - Protect & Pet!)
+    for (let i = 0; i < 16; i++) {
+      const cat = KarachiModels.createStreetCat();
+      const cx = (Math.random() - 0.5) * 175;
+      const cz = (Math.random() - 0.5) * 175;
+      cat.position.set(cx, 0, cz);
+      cat.rotation.y = Math.random() * Math.PI * 2;
+      this.registerEdible(cat, 1, 30, "Friendly Street Cat", 0.6, { isPet: true, isBadGuy: false });
     }
 
     // Street Lamps along North-South Avenues

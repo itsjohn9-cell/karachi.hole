@@ -810,11 +810,36 @@ class Game {
       const obj = this.edibleObjects[i];
       if (obj.state === 'swallowed') continue;
 
-      // Update cooldowns on boost / cheers
+      // Update cooldowns on boost / cheers / pet interaction
       if (obj.boostCooldown > 0) obj.boostCooldown -= dt;
       if (obj.cheerCooldown > 0) obj.cheerCooldown -= dt;
+      if (obj.petCooldown > 0) obj.petCooldown -= dt;
 
       const objPos = obj.mesh.position;
+
+      // Animate overhead Red Chevrons & Pulsing Rings for Bad Guys; Green Halos & Badges for Friends
+      const ud = obj.mesh.userData;
+      if (ud) {
+        if (ud.isBadGuy || obj.isBadGuy) {
+          if (ud.arrow) {
+            ud.arrow.position.y = 4.8 + Math.sin(currentTime * 6.0 + i) * 0.35;
+            ud.arrow.rotation.y += dt * 2.5;
+          }
+          if (ud.ring) {
+            const s = 1.0 + Math.sin(currentTime * 5.0 + i) * 0.12;
+            ud.ring.scale.set(s, s, 1);
+          }
+        }
+        if (ud.isFriendly || ud.friendlyDecal) {
+          const fd = ud.friendlyDecal?.userData;
+          if (fd && fd.ring) {
+            fd.ring.rotation.z += dt * 0.4;
+          }
+          if (fd && fd.badge) {
+            fd.badge.position.y = (ud.friendlyType === 'food' || ud.friendlyType === 'chai' ? 3.4 : 2.5) + Math.sin(currentTime * 3.0 + i) * 0.12;
+          }
+        }
+      }
 
       // =========================================================
       // RULE: ONLY BAD STUFF CAN BE DEVOURED!
@@ -831,6 +856,8 @@ class Game {
               this.handleFoodStallBoost(obj);
             } else if (obj.isCitizen && (!obj.cheerCooldown || obj.cheerCooldown <= 0)) {
               this.handleCitizenCheer(obj);
+            } else if (obj.isPet && (!obj.petCooldown || obj.petCooldown <= 0)) {
+              this.handlePetInteraction(obj);
             }
           }
         }
@@ -1213,16 +1240,39 @@ class Game {
   }
 
   handleCitizenCheer(citizen) {
-    citizen.cheerCooldown = 8.0;
+    citizen.cheerCooldown = 6.0;
     audio.playCitizenCheer();
+    this.particles.createHeartBurst(citizen.mesh.position, 14);
     const cheers = [
-      "Jeetay raho Gutter Hero! Karachi ko saaf karo!",
-      "Shukriya bhai! Choron aur kachray ko saaf kar do!",
-      "Zindabad! Humari gali se tanker mafia hatao!",
-      "Shabash! Karachi civic hero zindabad!"
+      "🗣️ Citizen: 'Jeetay raho Gutter Hero! Only eat RED bad guys! ❌'",
+      "🗣️ Citizen: 'Shukriya bhai! Karachi ko saaf aur safe kar do! 💚'",
+      "🗣️ Citizen: 'Zindabad! Tanker aur chor mafia ko khatam karo! 💚'",
+      "🗣️ Citizen: 'Aap sachay hero ho! Good citizens are safe with you! 💚'"
     ];
     const cheer = cheers[Math.floor(Math.random() * cheers.length)];
-    this.ui.showAnnouncement(`🗣️ Citizen: "${cheer}"`, "#69f0ae");
+    this.ui.showAnnouncement(cheer, "#00e676");
+  }
+
+  handlePetInteraction(pet) {
+    pet.petCooldown = 5.0;
+    audio.playCitizenCheer();
+    this.particles.createHeartBurst(pet.mesh.position, 16);
+    const petType = pet.mesh.userData?.petType || 'dog';
+    if (petType === 'dog') {
+      const barks = [
+        "🐕 Stray Puppy: *Woof woof!* (Wags tail happily! 💚)",
+        "🐕 Friendly Doggo: *Happy panting!* You are a good human! 💚",
+        "🐕 Gali Ka Hero Puppy: Woof! Thank you for protecting Karachi! 💚"
+      ];
+      this.ui.showAnnouncement(barks[Math.floor(Math.random() * barks.length)], "#00e5ff");
+    } else {
+      const purrs = [
+        "🐈 Street Kitty: *Purrrrr meow!* (Rubs against your hole! 💚)",
+        "🐈 Karachi Billi: Meow! Only eat bad guys, leave kitties alone! 💚",
+        "🐈 Fluffy Cat: *Happy purr!* Keep Karachi clean and safe! 💚"
+      ];
+      this.ui.showAnnouncement(purrs[Math.floor(Math.random() * purrs.length)], "#00e5ff");
+    }
   }
 
   updateCamera(dt) {

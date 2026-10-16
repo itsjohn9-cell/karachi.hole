@@ -14,6 +14,7 @@ export class UIManager {
 
     this.createHUD();
     this.createSkinModal();
+    this.createGoodVsBadModal();
     this.createGameOverModal();
     this.createDistrictClearedModal();
     this.bindEvents();
@@ -138,6 +139,7 @@ export class UIManager {
           <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
           <button class="icon-btn ui-interactive" id="btn-open-skins" title="Change Skin">🎨 Skins</button>
+          <button class="pill-btn ui-interactive guide-btn-pulse" id="btn-open-guide" title="Good vs Bad Guide / اچھے اور برے کی پہچان">👶 ❓ What to Eat? / اچھے برے کی پہچان</button>
           <button class="pill-btn ui-interactive highlight-btn" id="btn-diff-toggle" title="Toggle Difficulty">🎈 Easy (Kids)</button>
           <button class="pill-btn ui-interactive" id="btn-mode-toggle">Mode: 2 Min</button>
         </div>
@@ -311,6 +313,205 @@ export class UIManager {
     document.body.appendChild(this.districtClearedModal);
   }
 
+  createGoodVsBadModal() {
+    this.guideModal = document.createElement('div');
+    this.guideModal.className = 'modal-backdrop';
+    this.guideModal.id = 'modal-guide';
+    this.guideModal.style.display = 'none';
+
+    this.guideModal.innerHTML = `
+      <div class="modal-card guide-modal-card">
+        <div class="modal-header guide-modal-header">
+          <div class="guide-title-block">
+            <h2 class="guide-title">👶 WHAT TO EAT? / اچھے اور برے کی پہچان</h2>
+            <p class="guide-subtitle">A Kid-Friendly Guide to Karachi Hole.io: Only Devour the Bad Guys!</p>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-guide">&times;</button>
+        </div>
+
+        <!-- Visual Rule Summary Pill -->
+        <div class="guide-summary-banner">
+          <div class="summary-pill pill-bad">
+            <span class="sum-icon">🔴</span>
+            <div class="sum-txt">
+              <strong>RED RINGS &amp; ARROWS 🔻</strong>
+              <span>BAD GUYS ➔ DEVOUR THEM ALL!</span>
+            </div>
+          </div>
+          <div class="summary-arrow">⚡ VS ⚡</div>
+          <div class="summary-pill pill-good">
+            <span class="sum-icon">🟢</span>
+            <div class="sum-txt">
+              <strong>GREEN HALOS &amp; BADGES 💚</strong>
+              <span>GOOD FRIENDS ➔ PROTECT THEM!</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="guide-columns">
+          <!-- LEFT COLUMN: BAD GUYS (DEVOUR) -->
+          <div class="guide-col col-bad">
+            <div class="col-header bad-header">
+              <span class="col-icon">😈</span>
+              <div class="col-title-wrap">
+                <h3>🔴 BAD GUYS (DEVOUR THEM!)</h3>
+                <span class="urdu-sub">ان برائیوں کو ختم کریں اور کراچی بچائیں</span>
+              </div>
+            </div>
+            <div class="guide-list">
+              <div class="guide-item item-bad">
+                <div class="item-icon">📱</div>
+                <div class="item-info">
+                  <h4>Mobile Snatchers (موبائل چھیننے والا)</h4>
+                  <p>Armed thugs on 70cc motorbikes stealing phones from citizens. Devour them to restore street peace!</p>
+                  <span class="item-tag tag-bad">Devour for +120 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🚨</div>
+                <div class="item-info">
+                  <h4>VIP Protocol Convoy (وی آئی پی پروٹوکول)</h4>
+                  <p>Heavy black SUVs with flashing red-blue police beacons causing 2-hour traffic jams. Devour them to free traffic!</p>
+                  <span class="item-tag tag-bad">Devour for +350 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🛢️</div>
+                <div class="item-info">
+                  <h4>Water Tanker Mafia (ٹینکر مافیا)</h4>
+                  <p>Giant blue tankers stealing tap water and selling it at high prices. Devour them to erupt free water for citizens!</p>
+                  <span class="item-tag tag-bad">Devour for +450 XP &amp; Geyser</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">📜</div>
+                <div class="item-info">
+                  <h4>Bhatta Extortion Gang (بھتہ خور)</h4>
+                  <p>Criminals waving brown extortion chits demanding money from honest shopkeepers. Swallowing them brings peace!</p>
+                  <span class="item-tag tag-bad">Devour for +180 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🏍️</div>
+                <div class="item-info">
+                  <h4>Reckless One-Wheelers (ون ویلنگ ریسر)</h4>
+                  <p>Speeding bikes without silencers doing stunts in public streets. Swallowing them secures pedestrians!</p>
+                  <span class="item-tag tag-bad">Devour for +140 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🕳️</div>
+                <div class="item-info">
+                  <h4>Broken Road Potholes (خطرناک گڑھے)</h4>
+                  <p>Deep craters in asphalt damaging cars. Devour them to transform them into smooth carpet roads!</p>
+                  <span class="item-tag tag-bad">Devour for +60 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🗑️</div>
+                <div class="item-info">
+                  <h4>Overflowing Garbage (کچرے کا ڈھیر)</h4>
+                  <p>Smelly trash bags and plastic piles blocking footpaths. Devour them to plant fresh flowers!</p>
+                  <span class="item-tag tag-bad">Devour for +50 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🍂</div>
+                <div class="item-info">
+                  <h4>Gutka &amp; Chalia Peddlers (گٹکا مافیا)</h4>
+                  <p>Shady vendors selling harmful betel concoctions staining walls red. Clear them for clean streets!</p>
+                  <span class="item-tag tag-bad">Devour for +80 XP</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: GOOD FRIENDS (DO NOT DEVOUR!) -->
+          <div class="guide-col col-good">
+            <div class="col-header good-header">
+              <span class="col-icon">😇</span>
+              <div class="col-title-wrap">
+                <h3>🟢 GOOD FRIENDS (PROTECT THEM!)</h3>
+                <span class="urdu-sub">یہ کراچی کے دوست ہیں، ان کو نقصان مت پہنچائیں</span>
+              </div>
+            </div>
+            <div class="guide-list">
+              <div class="guide-item item-good">
+                <div class="item-icon">💚</div>
+                <div class="item-info">
+                  <h4>Innocent Citizens (شہری)</h4>
+                  <p>Everyday people in shalwar kameez. <strong>Your hole cannot eat them!</strong> Touch them to hear blessings &amp; green love hearts!</p>
+                  <span class="item-tag tag-good">Blessings &amp; Hearts Burst 💚</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-good">
+                <div class="item-icon">🍔</div>
+                <div class="item-info">
+                  <h4>Burns Road Bun Kabab (بن کباب اسٹال)</h4>
+                  <p>Karachi's legendary egg-shami burger cart. <strong>Touch it for a FREE Turbo Speed Boost</strong> with spicy green chutney!</p>
+                  <span class="item-tag tag-good">⚡ Gives Instant Turbo Boost!</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-good">
+                <div class="item-icon">☕</div>
+                <div class="item-info">
+                  <h4>Quetta Karak Chai Dhaba (چائے کا ڈھابہ)</h4>
+                  <p>Traditional tea stall with silver samovar and charpais. <strong>Touch it for Dudh Patti recharge</strong> and shockwave!</p>
+                  <span class="item-tag tag-good">⚡ Gives Chai Energy Recharge!</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-good">
+                <div class="item-icon">🐕</div>
+                <div class="item-info">
+                  <h4>Friendly Stray Puppies (پیارے کتے)</h4>
+                  <p>Desi street dogs wagging their tails. <strong>Touch them to pet them!</strong> They woof happily and shower you with heart sparkles!</p>
+                  <span class="item-tag tag-good">🐕 Pet for Happy Tail Wags!</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-good">
+                <div class="item-icon">🐈</div>
+                <div class="item-info">
+                  <h4>Street Cats (پیاری بلیاں)</h4>
+                  <p>Playful orange tabby kittens roaming Karachi footpaths. <strong>Touch to pet them</strong> for affectionate purrs!</p>
+                  <span class="item-tag tag-good">🐈 Pet for Purrs &amp; Hearts!</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-good">
+                <div class="item-icon">🛺</div>
+                <div class="item-info">
+                  <h4>Rickshaws &amp; Public Buses (شہری ٹرانسپورٹ)</h4>
+                  <p>Honest drivers working hard from morning to night. They safely drive through your neighborhood.</p>
+                  <span class="item-tag tag-good">Safe &amp; Protected Commuters</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Button to Close -->
+        <div class="guide-modal-footer">
+          <button class="pill-btn ui-interactive guide-play-btn" id="btn-close-guide-footer">
+            🚀 Got It! Let's Clean Karachi! / چلو کھیلیں
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(this.guideModal);
+  }
+
   bindEvents() {
     // Sound & Music
     const btnSound = document.getElementById('btn-toggle-sound');
@@ -337,6 +538,31 @@ export class UIManager {
       audio.playClick();
       this.skinModal.style.display = 'none';
     });
+
+    // Good vs Bad Guide Modal
+    const btnOpenGuide = document.getElementById('btn-open-guide');
+    if (btnOpenGuide) {
+      btnOpenGuide.addEventListener('click', () => {
+        audio.playClick();
+        this.guideModal.style.display = 'flex';
+      });
+    }
+
+    const btnCloseGuide = document.getElementById('btn-close-guide');
+    if (btnCloseGuide) {
+      btnCloseGuide.addEventListener('click', () => {
+        audio.playClick();
+        this.guideModal.style.display = 'none';
+      });
+    }
+
+    const btnCloseGuideFooter = document.getElementById('btn-close-guide-footer');
+    if (btnCloseGuideFooter) {
+      btnCloseGuideFooter.addEventListener('click', () => {
+        audio.playClick();
+        this.guideModal.style.display = 'none';
+      });
+    }
 
     // Skin card selection
     const cards = this.skinModal.querySelectorAll('.skin-card');
