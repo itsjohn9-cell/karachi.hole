@@ -125,6 +125,149 @@ class AudioManager {
     this.vibrate([40, 20, 80, 20, 100]);
   }
 
+  // Desi stray dog barking sound (Woof! Woof!)
+  playDogBark() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    [0, 0.14].forEach(offset => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const st = t + offset;
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(240, st);
+      osc.frequency.exponentialRampToValueAtTime(110, st + 0.1);
+
+      gain.gain.setValueAtTime(0.3, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.1);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.1);
+    });
+  }
+
+  // Street cat meow sound
+  playCatMeow() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(550, t);
+    osc.frequency.linearRampToValueAtTime(780, t + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(420, t + 0.3);
+
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.3);
+  }
+
+  // Sewer rat squeak sound
+  playRatSqueak() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1800, t);
+    osc.frequency.linearRampToValueAtTime(2400, t + 0.04);
+    osc.frequency.exponentialRampToValueAtTime(1600, t + 0.08);
+
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.08);
+  }
+
+  // Street Justice: Robber Devoured with Police Siren & Heroic Victory Punch!
+  playRobberDevour() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+
+    // Siren sweeps (Wee-woo!)
+    for (let i = 0; i < 2; i++) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const st = t + i * 0.18;
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(650, st);
+      osc.frequency.linearRampToValueAtTime(1100, st + 0.09);
+      osc.frequency.linearRampToValueAtTime(650, st + 0.18);
+
+      gain.gain.setValueAtTime(0.28, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.18);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.18);
+    }
+
+    // Heavy justice punch impact thud
+    const punch = this.ctx.createOscillator();
+    const pGain = this.ctx.createGain();
+    punch.type = 'triangle';
+    punch.frequency.setValueAtTime(180, t + 0.15);
+    punch.frequency.exponentialRampToValueAtTime(40, t + 0.45);
+
+    pGain.gain.setValueAtTime(0.5, t + 0.15);
+    pGain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+
+    punch.connect(pGain);
+    pGain.connect(this.ctx.destination);
+    punch.start(t + 0.15);
+    punch.stop(t + 0.45);
+
+    this.vibrate([80, 40, 100, 40, 150]);
+  }
+
+  // Open Gutter Wet Splash & Slosh Sound
+  playGutterSplash() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(320, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.16);
+
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.16);
+  }
+
   // Level up fanfare sound
   playLevelUp() {
     if (!this.soundEnabled) return;

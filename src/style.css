@@ -537,6 +537,11 @@ html, body {
   border: 2px solid white;
 }
 
+.skin-gutter {
+  background: radial-gradient(circle, #050a06 20%, #152217 45%, #4a5568 80%, #718096 100%);
+  border: 2px dashed #a0aec0;
+}
+
 .skin-truck-art {
   background: radial-gradient(circle, #00e5ff 25%, #ff007f 60%, #ffd700 100%);
 }

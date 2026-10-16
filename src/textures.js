@@ -2,23 +2,173 @@ import * as THREE from 'three';
 
 // Procedurally generate authentic Karachi textures with Canvas 2D
 export const TextureGenerator = {
-  // Pakistani Truck Art Pattern (Kaleidoscopic floral motifs, bright yellow, orange, turquoise, pink)
+  // 1. Authentic Karachi Open Gutter / Manhole Texture (کھلا گٹر / KMC Sewer Manhole)
+  createManholeGutterTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Outer dark broken asphalt / road surround
+    ctx.fillStyle = '#1c1f24';
+    ctx.fillRect(0, 0, 512, 512);
+
+    const cx = 256;
+    const cy = 256;
+
+    // Outer concrete chipped collar
+    ctx.beginPath();
+    ctx.arc(cx, cy, 240, 0, Math.PI * 2);
+    ctx.fillStyle = '#616771';
+    ctx.fill();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#2d3239';
+    ctx.stroke();
+
+    // Rusted cast iron manhole rim ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, 218, 0, Math.PI * 2);
+    ctx.fillStyle = '#2b2927';
+    ctx.fill();
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = '#8d6e63'; // Rust orange-brown tone
+    ctx.stroke();
+
+    // Heavy iron radial cleats & bolt rivets around the rim
+    const cleats = 24;
+    for (let i = 0; i < cleats; i++) {
+      const angle = (i * Math.PI * 2) / cleats;
+      const rx = cx + Math.cos(angle) * 205;
+      const ry = cy + Math.sin(angle) * 205;
+
+      ctx.beginPath();
+      ctx.arc(rx, ry, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffd54f'; // Rusted metal bolt
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#3e2723';
+      ctx.stroke();
+    }
+
+    // Embossed circular text: "KMC • SEWERAGE BOARD KARACHI • DANGER"
+    ctx.fillStyle = '#d7ccc8';
+    ctx.font = 'bold 20px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('★ KMC SEWERAGE KARACHI ★', cx, 80);
+    ctx.fillText('DANGER • خطرہ • OPEN GUTTER', cx, 435);
+
+    // Inner open sewer void: Dark murky black-green sludge with ripples
+    const sewerGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 185);
+    sewerGrad.addColorStop(0, '#020503'); // Total darkness center
+    sewerGrad.addColorStop(0.65, '#0a160d'); // Murky greenish sewer water
+    sewerGrad.addColorStop(0.92, '#142718'); // Oily green scum rim
+    sewerGrad.addColorStop(1, '#332415'); // Wet iron lip
+    ctx.beginPath();
+    ctx.arc(cx, cy, 185, 0, Math.PI * 2);
+    ctx.fillStyle = sewerGrad;
+    ctx.fill();
+
+    // Subtle murky sludge ripples & bubbles
+    ctx.strokeStyle = 'rgba(76, 175, 80, 0.4)';
+    ctx.lineWidth = 3;
+    for (let r = 40; r <= 150; r += 35) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.anisotropy = 16;
+    return texture;
+  },
+
+  // 2. High-Definition Crisp Asphalt Road with Drainage Grates & Markings
+  createCrispRoadTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+
+    // Deep dark asphalt foundation
+    ctx.fillStyle = '#1e2228';
+    ctx.fillRect(0, 0, 1024, 1024);
+
+    // Realistic granular asphalt surface noise
+    for (let i = 0; i < 15000; i++) {
+      const rx = Math.random() * 1024;
+      const ry = Math.random() * 1024;
+      const brightness = Math.random() > 0.5 ? 40 : 25;
+      ctx.fillStyle = `rgb(${brightness}, ${brightness + 4}, ${brightness + 8})`;
+      ctx.fillRect(rx, ry, 2, 2);
+    }
+
+    // Curbside concrete storm drainage gutters (both sides)
+    ctx.fillStyle = '#2d333b';
+    ctx.fillRect(0, 0, 40, 1024);
+    ctx.fillRect(984, 0, 40, 1024);
+
+    // Sewer iron drain grates along curbs every 256px
+    ctx.fillStyle = '#121518';
+    for (let y = 60; y < 1024; y += 256) {
+      // Left drain grate
+      ctx.fillRect(6, y, 28, 70);
+      ctx.strokeStyle = '#4e5661';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(6, y, 28, 70);
+      for (let s = y + 10; s < y + 65; s += 12) {
+        ctx.beginPath();
+        ctx.moveTo(8, s);
+        ctx.lineTo(32, s);
+        ctx.stroke();
+      }
+
+      // Right drain grate
+      ctx.fillRect(990, y, 28, 70);
+      ctx.strokeRect(990, y, 28, 70);
+      for (let s = y + 10; s < y + 65; s += 12) {
+        ctx.beginPath();
+        ctx.moveTo(992, s);
+        ctx.lineTo(1016, s);
+        ctx.stroke();
+      }
+    }
+
+    // Crisp white solid shoulder lines
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(48, 0, 12, 1024);
+    ctx.fillRect(964, 0, 12, 1024);
+
+    // Vibrant Yellow Center Dashed Divider Line
+    ctx.fillStyle = '#fbc02d';
+    for (let y = 30; y < 1024; y += 170) {
+      ctx.fillRect(504, y, 16, 100);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 4);
+    texture.anisotropy = 16;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    return texture;
+  },
+
+  // 3. Pakistani Truck Art Pattern
   createTruckArtTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
 
-    // Vibrant background bands
     const gradient = ctx.createLinearGradient(0, 0, 512, 512);
-    gradient.addColorStop(0, '#ff1493'); // Deep pink
-    gradient.addColorStop(0.35, '#ff8c00'); // Dark orange
-    gradient.addColorStop(0.7, '#ffd700'); // Gold
-    gradient.addColorStop(1, '#00ced1'); // Dark turquoise
+    gradient.addColorStop(0, '#ff1493');
+    gradient.addColorStop(0.35, '#ff8c00');
+    gradient.addColorStop(0.7, '#ffd700');
+    gradient.addColorStop(1, '#00ced1');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 512, 512);
 
-    // Decorative geometric border
     ctx.lineWidth = 12;
     ctx.strokeStyle = '#fffb00';
     ctx.strokeRect(10, 10, 492, 492);
@@ -26,7 +176,6 @@ export const TextureGenerator = {
     ctx.strokeStyle = '#000000';
     ctx.strokeRect(18, 18, 476, 476);
 
-    // Central floral medallion (classic truck art sunburst)
     const cx = 256;
     const cy = 256;
     const petals = 12;
@@ -43,7 +192,6 @@ export const TextureGenerator = {
       ctx.strokeStyle = '#000';
       ctx.stroke();
 
-      // Inner petal highlight
       ctx.beginPath();
       ctx.ellipse(80, 0, 40, 12, 0, 0, Math.PI * 2);
       ctx.fillStyle = i % 2 === 0 ? '#ff007f' : '#ff6f00';
@@ -51,7 +199,6 @@ export const TextureGenerator = {
       ctx.restore();
     }
 
-    // Inner medallion circle
     ctx.beginPath();
     ctx.arc(cx, cy, 45, 0, Math.PI * 2);
     ctx.fillStyle = '#ff0055';
@@ -60,64 +207,32 @@ export const TextureGenerator = {
     ctx.strokeStyle = '#fff';
     ctx.stroke();
 
-    // Center eye motif
-    ctx.beginPath();
-    ctx.arc(cx, cy, 20, 0, Math.PI * 2);
-    ctx.fillStyle = '#00f0ff';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(cx, cy, 10, 0, Math.PI * 2);
-    ctx.fillStyle = '#000000';
-    ctx.fill();
-
-    // Corner decorative rosettes
-    const corners = [[60, 60], [452, 60], [60, 452], [452, 452]];
-    corners.forEach(([x, y]) => {
-      ctx.beginPath();
-      ctx.arc(x, y, 32, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffd700';
-      ctx.fill();
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = '#ff0055';
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(x, y, 16, 0, Math.PI * 2);
-      ctx.fillStyle = '#00e5ff';
-      ctx.fill();
-    });
-
     const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
+    texture.anisotropy = 16;
     return texture;
   },
 
-  // Traditional Sindh Ajrak Pattern (Deep crimson, royal indigo blue, geometric floral grid)
+  // 4. Traditional Sindh Ajrak Pattern
   createAjrakTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
     const ctx = canvas.getContext('2d');
 
-    // Deep crimson red background
     ctx.fillStyle = '#8b0000';
     ctx.fillRect(0, 0, 256, 256);
 
-    // Navy indigo blue tiles
     const tileSize = 64;
     for (let x = 0; x < 256; x += tileSize) {
       for (let y = 0; y < 256; y += tileSize) {
         if ((x / tileSize + y / tileSize) % 2 === 0) {
-          ctx.fillStyle = '#0c2340'; // Deep indigo blue
+          ctx.fillStyle = '#0c2340';
           ctx.fillRect(x + 4, y + 4, tileSize - 8, tileSize - 8);
         }
 
-        // Geometric star / floral motif in each tile
         const tcx = x + tileSize / 2;
         const tcy = y + tileSize / 2;
 
-        // White floral star
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         for (let i = 0; i < 8; i++) {
@@ -131,7 +246,6 @@ export const TextureGenerator = {
         ctx.closePath();
         ctx.fill();
 
-        // Inner red dot
         ctx.beginPath();
         ctx.arc(tcx, tcy, 4, 0, Math.PI * 2);
         ctx.fillStyle = '#c00000';
@@ -140,68 +254,37 @@ export const TextureGenerator = {
     }
 
     const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
+    texture.anisotropy = 16;
     return texture;
   },
 
-  // Asphalt Road Texture with Lane Markings
-  createRoadTexture() {
+  // 5. Lyari Nullah Toxic Slime Rim Pattern
+  createLyariSlimeTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d');
 
-    // Dark grey asphalt with subtle noise
-    ctx.fillStyle = '#22252a';
-    ctx.fillRect(0, 0, 256, 256);
+    const grad = ctx.createLinearGradient(0, 0, 512, 512);
+    grad.addColorStop(0, '#1b5e20');
+    grad.addColorStop(0.5, '#76ff03');
+    grad.addColorStop(1, '#00e676');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
 
-    // Subtle grain
-    ctx.fillStyle = '#2d3137';
-    for (let i = 0; i < 2000; i++) {
-      const rx = Math.random() * 256;
-      const ry = Math.random() * 256;
-      ctx.fillRect(rx, ry, 1.5, 1.5);
-    }
-
-    // Yellow dashed center line
-    ctx.fillStyle = '#f5c518';
-    ctx.fillRect(123, 10, 10, 60);
-    ctx.fillRect(123, 100, 10, 60);
-    ctx.fillRect(123, 190, 10, 60);
-
-    // White solid curb lines
-    ctx.fillStyle = '#e0e0e0';
-    ctx.fillRect(8, 0, 6, 256);
-    ctx.fillRect(242, 0, 6, 256);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(1, 4);
-    return texture;
-  },
-
-  // Zebra Crossing Texture
-  createZebraTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 128;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = '#22252a';
-    ctx.fillRect(0, 0, 256, 128);
-
-    ctx.fillStyle = '#f0f0f0';
-    for (let x = 16; x < 256; x += 36) {
-      ctx.fillRect(x, 8, 20, 112);
+    ctx.fillStyle = '#003300';
+    for (let i = 0; i < 200; i++) {
+      ctx.beginPath();
+      ctx.arc(Math.random() * 512, Math.random() * 512, 4 + Math.random() * 12, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     const texture = new THREE.CanvasTexture(canvas);
+    texture.anisotropy = 16;
     return texture;
   },
 
-  // Shop Signboards (Authentic Karachi shops)
+  // 6. Shop Signboard
   createShopSignTexture(text, subtext = '', bgColor = '#d32f2f', textColor = '#ffffff') {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -211,37 +294,34 @@ export const TextureGenerator = {
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, 512, 128);
 
-    // Outer border
     ctx.lineWidth = 6;
     ctx.strokeStyle = '#ffd700';
     ctx.strokeRect(6, 6, 500, 116);
 
-    // Title
     ctx.fillStyle = textColor;
-    ctx.font = 'bold 36px "Outfit", "Segoe UI", sans-serif';
+    ctx.font = 'bold 36px "Outfit", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, 256, subtext ? 48 : 64);
 
-    // Subtitle
     if (subtext) {
       ctx.fillStyle = '#ffe082';
-      ctx.font = 'bold 20px "Outfit", "Segoe UI", sans-serif';
+      ctx.font = 'bold 20px "Outfit", sans-serif';
       ctx.fillText(subtext, 256, 92);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
+    texture.anisotropy = 8;
     return texture;
   },
 
-  // Truck Art Crown (Taj) Texture
+  // 7. Truck Art Taj
   createTruckTajTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 256;
     const ctx = canvas.getContext('2d');
 
-    // Radiant orange-red gradient
     const grad = ctx.createLinearGradient(0, 0, 512, 256);
     grad.addColorStop(0, '#ff3d00');
     grad.addColorStop(0.5, '#ffea00');
@@ -249,7 +329,6 @@ export const TextureGenerator = {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 512, 256);
 
-    // Peacock feather eye motifs
     for (let x = 80; x < 512; x += 110) {
       ctx.beginPath();
       ctx.ellipse(x, 128, 40, 70, 0, 0, Math.PI * 2);
@@ -270,13 +349,13 @@ export const TextureGenerator = {
       ctx.fill();
     }
 
-    // Urdu calligraphic flourishes
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 34px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('ماشاءاللہ ★ KARACHI', 256, 50);
 
     const texture = new THREE.CanvasTexture(canvas);
+    texture.anisotropy = 8;
     return texture;
   }
 };

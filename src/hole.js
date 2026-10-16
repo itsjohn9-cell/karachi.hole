@@ -21,16 +21,16 @@ export const DIFFICULTY_CONFIG = {
 };
 
 export const LEVEL_CONFIG = [
-  { level: 1, radius: 1.65, maxXP: 90, title: "Gali Vacuum" },
-  { level: 2, radius: 2.65, maxXP: 300, title: "Rickshaw Eater" },
-  { level: 3, radius: 4.2, maxXP: 800, title: "Bedford Devourer" },
-  { level: 4, radius: 7.0, maxXP: 1800, title: "Bazaar Destroyer" },
-  { level: 5, radius: 11.8, maxXP: 4200, title: "Chundrigar Void" },
+  { level: 1, radius: 1.45, maxXP: 220, title: "Open Gutter (کھلا گٹر)" },
+  { level: 2, radius: 2.35, maxXP: 650, title: "Sewer Drain (بڑی نالی)" },
+  { level: 3, radius: 3.8, maxXP: 1600, title: "Lyari Nullah (لیاری نالہ)" },
+  { level: 4, radius: 6.4, maxXP: 3400, title: "Bazaar Destroyer" },
+  { level: 5, radius: 11.2, maxXP: 7500, title: "Chundrigar Void" },
   { level: 6, radius: 17.5, maxXP: 99999, title: "MAZAR MEGA VOID" }
 ];
 
 export class Hole {
-  constructor({ scene, name, isPlayer = false, skin = 'truckArt', initialPos = { x: 0, z: 0 }, color = 0x00e5ff, difficulty = 'kidsEasy' }) {
+  constructor({ scene, name, isPlayer = false, skin = 'gutter', initialPos = { x: 0, z: 0 }, color = 0x00e5ff, difficulty = 'kidsEasy' }) {
     this.scene = scene;
     this.name = name;
     this.isPlayer = isPlayer;
@@ -48,15 +48,15 @@ export class Hole {
     this.level = 1;
     this.xp = 0;
     this.score = 0;
-    this.radius = isPlayer ? diff.startRadius : LEVEL_CONFIG[0].radius * 0.9;
+    this.radius = isPlayer ? 1.45 : LEVEL_CONFIG[0].radius * 0.85;
     this.targetRadius = this.radius;
     this.swallowedCount = 0;
     this.comboCount = 0;
     this.comboTimer = 0;
     this.kills = 0;
 
-    // Movement speed - Kid-friendly smooth speed
-    this.baseSpeed = isPlayer ? 16.5 : 13.5 * diff.botSpeedMult;
+    // Movement speed
+    this.baseSpeed = isPlayer ? 15.5 : 13.0 * diff.botSpeedMult;
     this.currentSpeed = this.baseSpeed;
     this.isBoosting = false;
 
@@ -66,7 +66,7 @@ export class Hole {
 
     // AI navigation variables
     this.aiTarget = null;
-    this.aiState = 'roam'; // 'roam', 'hunt', 'flee'
+    this.aiState = 'roam';
     this.aiTimer = 0;
 
     this.createHoleMesh();
@@ -77,34 +77,34 @@ export class Hole {
     this.group = new THREE.Group();
     this.group.position.copy(this.position);
 
-    // Inner Deep Black Void (Inverted Cone penetrating the ground)
-    const voidGeo = new THREE.ConeGeometry(this.radius, 2.5, 32, 1, true);
+    // Inner Deep Gutter Sewer Void (Inverted 3D cone into the earth)
+    const voidGeo = new THREE.ConeGeometry(this.radius, 3.2, 32, 1, true);
     voidGeo.rotateX(Math.PI); // Point down into the ground
     const voidMat = new THREE.MeshBasicMaterial({
-      color: 0x020204,
-      side: THREE.DoubleSide
+      color: 0x050b07, // Deep murky sewer green-black
+      side: THREE.BackSide
     });
     this.voidMesh = new THREE.Mesh(voidGeo, voidMat);
-    this.voidMesh.position.y = -1.25;
+    this.voidMesh.position.y = -1.6;
     this.group.add(this.voidMesh);
 
-    // Bottom dark center plug
-    const plugGeo = new THREE.CircleGeometry(this.radius * 0.98, 32);
+    // Murky sewage sludge water layer at the bottom of the open gutter
+    const plugGeo = new THREE.CircleGeometry(this.radius * 0.88, 32);
     plugGeo.rotateX(-Math.PI / 2);
-    this.plugMesh = new THREE.Mesh(plugGeo, new THREE.MeshBasicMaterial({ color: 0x000000 }));
-    this.plugMesh.position.y = 0.04;
+    this.plugMesh = new THREE.Mesh(plugGeo, new THREE.MeshBasicMaterial({ color: 0x0a160d }));
+    this.plugMesh.position.y = -1.55;
     this.group.add(this.plugMesh);
 
-    // Outer Animated Rim Ring
+    // Outer Animated Karachi Gutter Manhole Cast Iron Rim
     this.rimMat = this.createSkinMaterial(this.skin);
-    const rimGeo = new THREE.RingGeometry(this.radius * 0.96, this.radius * 1.14, 32);
+    const rimGeo = new THREE.RingGeometry(this.radius * 0.90, this.radius * 1.30, 32);
     rimGeo.rotateX(-Math.PI / 2);
     this.rimMesh = new THREE.Mesh(rimGeo, this.rimMat);
     this.rimMesh.position.y = 0.05;
     this.group.add(this.rimMesh);
 
-    // Glowing Neon Accent Ring
-    const accentGeo = new THREE.RingGeometry(this.radius * 1.13, this.radius * 1.18, 32);
+    // Glowing Neon Accent Ring around the iron rim
+    const accentGeo = new THREE.RingGeometry(this.radius * 1.28, this.radius * 1.33, 32);
     accentGeo.rotateX(-Math.PI / 2);
     this.accentMat = new THREE.MeshBasicMaterial({
       color: this.isPlayer ? 0x00ffcc : this.baseColor,
@@ -118,7 +118,12 @@ export class Hole {
   }
 
   createSkinMaterial(skinName) {
-    if (skinName === 'truckArt') {
+    if (skinName === 'gutter') {
+      return new THREE.MeshBasicMaterial({
+        map: TextureGenerator.createManholeGutterTexture(),
+        side: THREE.DoubleSide
+      });
+    } else if (skinName === 'truckArt') {
       return new THREE.MeshBasicMaterial({
         map: TextureGenerator.createTruckArtTexture(),
         side: THREE.DoubleSide
@@ -126,6 +131,11 @@ export class Hole {
     } else if (skinName === 'ajrak') {
       return new THREE.MeshBasicMaterial({
         map: TextureGenerator.createAjrakTexture(),
+        side: THREE.DoubleSide
+      });
+    } else if (skinName === 'slime') {
+      return new THREE.MeshBasicMaterial({
+        map: TextureGenerator.createLyariSlimeTexture(),
         side: THREE.DoubleSide
       });
     } else if (skinName === 'emerald') {

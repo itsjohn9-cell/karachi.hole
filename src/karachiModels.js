@@ -1076,6 +1076,357 @@ export const KarachiModels = {
 
     group.userData = { redLight, blueLight, flasherTime: 0 };
     return group;
+  },
+
+  // 20. Crinkled Plastic Garbage Bag (Kachray ki theli) - Tier 1
+  createTrashBag(color = 0x1565c0) {
+    const group = new THREE.Group();
+    group.name = "Trash-Bag";
+
+    const bagMat = new THREE.MeshLambertMaterial({ color, roughness: 0.6 });
+    // Bulging bag base
+    const bagGeo = new THREE.DodecahedronGeometry(0.38, 1);
+    bagGeo.scale(1, 0.85, 1);
+    const bag = new THREE.Mesh(bagGeo, bagMat);
+    bag.position.y = 0.32;
+    bag.castShadow = true;
+    group.add(bag);
+
+    // Tied knot top
+    const knotGeo = new THREE.ConeGeometry(0.12, 0.18, 6);
+    const knot = new THREE.Mesh(knotGeo, bagMat);
+    knot.position.y = 0.64;
+    group.add(knot);
+
+    return group;
+  },
+
+  // 21. Tin Soda Can & Plastic Bottle Debris - Tier 1
+  createSodaCan() {
+    const group = new THREE.Group();
+    group.name = "Soda-Can";
+
+    const canMat = new THREE.MeshLambertMaterial({ color: 0xd32f2f }); // Red Cola can
+    const can = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.22, 8), canMat);
+    can.position.y = 0.08;
+    can.rotation.z = Math.PI / 2; // Lying on side
+    group.add(can);
+
+    return group;
+  },
+
+  createWaterBottle() {
+    const group = new THREE.Group();
+    group.name = "Plastic-Bottle";
+
+    const bottleMat = new THREE.MeshLambertMaterial({ color: 0x81d4fa, transparent: true, opacity: 0.85 });
+    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.26, 8), bottleMat);
+    bottle.position.y = 0.07;
+    bottle.rotation.x = Math.PI / 2;
+    group.add(bottle);
+
+    // Blue cap
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.06, 6), new THREE.MeshBasicMaterial({ color: 0x0288d1 }));
+    cap.position.set(0, 0.07, 0.15);
+    group.add(cap);
+
+    return group;
+  },
+
+  // 22. Street Garbage Dump (Kachra Kundi Heap) - Tier 2
+  createKachraDump() {
+    const group = new THREE.Group();
+    group.name = "Kachra-Dump";
+
+    // Broken concrete bin / dump base
+    const binMat = new THREE.MeshLambertMaterial({ color: 0x546e7a });
+    const binL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 2.2), binMat);
+    binL.position.set(-1.1, 0.4, 0);
+    group.add(binL);
+    const binR = binL.clone();
+    binR.position.x = 1.1;
+    group.add(binR);
+    const binB = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 0.2), binMat);
+    binB.position.set(0, 0.4, -1.0);
+    group.add(binB);
+
+    // Mound of rubbish bags and scrap
+    const trashColors = [0x1565c0, 0x212121, 0x43a047, 0xffb300];
+    for (let i = 0; i < 6; i++) {
+      const col = trashColors[i % trashColors.length];
+      const bag = this.createTrashBag(col);
+      bag.position.set((Math.random() - 0.5) * 1.4, 0, (Math.random() - 0.5) * 1.2);
+      bag.scale.set(0.9, 0.9, 0.9);
+      group.add(bag);
+    }
+
+    // Crushed cardboard box
+    const boxMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.45, 0.6), boxMat);
+    box.position.set(0.3, 0.25, 0.4);
+    box.rotation.y = 0.4;
+    group.add(box);
+
+    return group;
+  },
+
+  // 23. Desi Stray Dog (Karachi Kutta) - Tier 1
+  createStrayDog() {
+    const group = new THREE.Group();
+    group.name = "Stray-Dog";
+    group.isAnimal = true;
+    group.animalType = "dog";
+
+    const furMat = new THREE.MeshLambertMaterial({ color: 0xa16226 }); // Desi tan fur
+
+    // Torso Body
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.32, 0.65), furMat);
+    body.position.y = 0.42;
+    body.castShadow = true;
+    group.add(body);
+
+    // Head & Snout
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, 0.28), furMat);
+    head.position.set(0, 0.62, 0.38);
+    group.add(head);
+
+    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.2), furMat);
+    snout.position.set(0, 0.56, 0.56);
+    group.add(snout);
+
+    // Black nose
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.06), materials.curbBlack);
+    nose.position.set(0, 0.58, 0.67);
+    group.add(nose);
+
+    // Floppy Ears
+    const earL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.08), furMat);
+    earL.position.set(-0.14, 0.68, 0.36);
+    earL.rotation.z = -0.3;
+    group.add(earL);
+
+    const earR = earL.clone();
+    earR.position.x = 0.14;
+    earR.rotation.z = 0.3;
+    group.add(earR);
+
+    // 4 Animated Legs
+    const legGeo = new THREE.BoxGeometry(0.08, 0.3, 0.08);
+    const legFL = new THREE.Group();
+    const l1 = new THREE.Mesh(legGeo, furMat);
+    l1.position.y = -0.15;
+    legFL.add(l1);
+    legFL.position.set(-0.12, 0.3, 0.22);
+    group.add(legFL);
+
+    const legFR = new THREE.Group();
+    const l2 = new THREE.Mesh(legGeo, furMat);
+    l2.position.y = -0.15;
+    legFR.add(l2);
+    legFR.position.set(0.12, 0.3, 0.22);
+    group.add(legFR);
+
+    const legBL = new THREE.Group();
+    const l3 = new THREE.Mesh(legGeo, furMat);
+    l3.position.y = -0.15;
+    legBL.add(l3);
+    legBL.position.set(-0.12, 0.3, -0.22);
+    group.add(legBL);
+
+    const legBR = new THREE.Group();
+    const l4 = new THREE.Mesh(legGeo, furMat);
+    l4.position.y = -0.15;
+    legBR.add(l4);
+    legBR.position.set(0.12, 0.3, -0.22);
+    group.add(legBR);
+
+    // Wagging Tail
+    const tail = new THREE.Group();
+    const tailMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.32, 6), furMat);
+    tailMesh.position.y = 0.15;
+    tail.add(tailMesh);
+    tail.position.set(0, 0.5, -0.32);
+    tail.rotation.x = -0.8;
+    group.add(tail);
+
+    group.userData = {
+      legFL, legFR, legBL, legBR, tail,
+      walkCycle: Math.random() * 10,
+      barkTimer: 2 + Math.random() * 4,
+      moveSpeed: 5.5
+    };
+
+    return group;
+  },
+
+  // 24. Street Cat (Billi) - Tier 1
+  createStreetCat() {
+    const group = new THREE.Group();
+    group.name = "Street-Cat";
+    group.isAnimal = true;
+    group.animalType = "cat";
+
+    const catMat = new THREE.MeshLambertMaterial({ color: 0xff9800 }); // Orange tabby
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.45), catMat);
+    body.position.y = 0.24;
+    group.add(body);
+
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 0.18), catMat);
+    head.position.set(0, 0.38, 0.26);
+    group.add(head);
+
+    // Pointy Ears
+    const earGeo = new THREE.ConeGeometry(0.05, 0.1, 4);
+    const earL = new THREE.Mesh(earGeo, catMat);
+    earL.position.set(-0.07, 0.49, 0.26);
+    group.add(earL);
+    const earR = earL.clone();
+    earR.position.x = 0.07;
+    group.add(earR);
+
+    // Tail
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 6), catMat);
+    tail.position.set(0, 0.35, -0.25);
+    tail.rotation.x = 0.6;
+    group.add(tail);
+
+    group.userData = { walkCycle: Math.random() * 10, moveSpeed: 6.5 };
+    return group;
+  },
+
+  // 25. Sewer Rat (Karachi Chooha) - Tier 1
+  createSewerRat() {
+    const group = new THREE.Group();
+    group.name = "Sewer-Rat";
+    group.isAnimal = true;
+    group.animalType = "rat";
+
+    const ratMat = new THREE.MeshLambertMaterial({ color: 0x424242 }); // Dark grey
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.22), ratMat);
+    body.position.y = 0.08;
+    group.add(body);
+
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.1, 6), ratMat);
+    snout.rotation.x = Math.PI / 2;
+    snout.position.set(0, 0.08, 0.15);
+    group.add(snout);
+
+    // Pink tail
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2, 4), new THREE.MeshBasicMaterial({ color: 0xf48fb1 }));
+    tail.rotation.x = -Math.PI / 2;
+    tail.position.set(0, 0.06, -0.18);
+    group.add(tail);
+
+    group.userData = { walkCycle: Math.random() * 10, moveSpeed: 7.5 };
+    return group;
+  },
+
+  // 26. Karachi Street Robbery Scene (Mobile Snatcher Scene) - Tier 2 (Huge Parody Target!)
+  createRobberyScene() {
+    const group = new THREE.Group();
+    group.name = "Street-Robber-Scene";
+    group.isRobbery = true;
+
+    // 1. The Robber (Wearing cloth mask / helmet, holding pistol)
+    const robberGroup = new THREE.Group();
+    robberGroup.position.set(0, 0, 0);
+
+    const jacketMat = new THREE.MeshLambertMaterial({ color: 0x212121 }); // Black leather jacket
+    const rBody = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.26, 0.85, 8), jacketMat);
+    rBody.position.y = 0.88;
+    robberGroup.add(rBody);
+
+    // Helmet / Mask Head
+    const rHead = new THREE.Mesh(new THREE.SphereGeometry(0.19, 8, 8), materials.curbBlack);
+    rHead.position.y = 1.48;
+    robberGroup.add(rHead);
+
+    // Arm with Pistol pointed forward
+    const armGeo = new THREE.BoxGeometry(0.1, 0.1, 0.6);
+    const arm = new THREE.Mesh(armGeo, jacketMat);
+    arm.position.set(0.25, 1.15, 0.35);
+    robberGroup.add(arm);
+
+    // Black 9mm Pistol Gun
+    const gun = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.25), materials.curbBlack);
+    gun.position.set(0.25, 1.18, 0.72);
+    robberGroup.add(gun);
+
+    group.add(robberGroup);
+
+    // 2. The Terrified Victim Citizen with hands in air!
+    const victimGroup = new THREE.Group();
+    victimGroup.position.set(0, 0, 1.8);
+    victimGroup.rotation.y = Math.PI; // Facing robber
+
+    const vBody = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.85, 8), materials.shalwarNavy);
+    vBody.position.y = 0.88;
+    victimGroup.add(vBody);
+
+    const vHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), materials.pedestrianSkin);
+    vHead.position.y = 1.48;
+    victimGroup.add(vHead);
+
+    // Hands raised in surrender
+    const handL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 0.08), materials.shalwarNavy);
+    handL.position.set(-0.25, 1.4, 0);
+    victimGroup.add(handL);
+    const handR = handL.clone();
+    handR.position.x = 0.25;
+    victimGroup.add(handR);
+
+    // Dropped Smartphone & Wallet on ground
+    const phone = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.22), new THREE.MeshBasicMaterial({ color: 0x00e5ff }));
+    phone.position.set(0.2, 0.02, 0.8);
+    group.add(phone);
+
+    group.add(victimGroup);
+
+    // 3. Robber's Red CD-70 Getaway Motorbike
+    const bike = this.createMotorbike();
+    bike.position.set(-1.4, 0, 0.3);
+    group.add(bike);
+
+    // 4. Robbery Dialogue Speech Bubble
+    const canvas = document.createElement('canvas');
+    canvas.width = 384;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d');
+    const bubbleTexture = new THREE.CanvasTexture(canvas);
+
+    const drawRobberBubble = (text) => {
+      ctx.clearRect(0, 0, 384, 110);
+      ctx.fillStyle = '#d50000'; // Alert Red
+      ctx.beginPath();
+      ctx.roundRect(10, 10, 364, 75, 20);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 192, 48);
+      bubbleTexture.needsUpdate = true;
+    };
+    drawRobberBubble('🔫 Mobile nikaal! Purse do!');
+
+    const bubbleSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture, transparent: true }));
+    bubbleSprite.scale.set(3.8, 1.1, 1);
+    bubbleSprite.position.set(0, 2.4, 0.8);
+    group.add(bubbleSprite);
+
+    group.userData = {
+      robberGroup, victimGroup, bubbleSprite, drawRobberBubble,
+      isResolved: false
+    };
+
+    return group;
   }
 };
+
 

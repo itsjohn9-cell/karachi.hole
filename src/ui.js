@@ -8,7 +8,7 @@ export class UIManager {
     this.onSelectMode = onSelectMode;
     this.onSelectDifficulty = onSelectDifficulty;
 
-    this.currentSkin = 'truckArt';
+    this.currentSkin = 'gutter';
     this.gameMode = 'battleRoyale'; // 'battleRoyale' or 'sandbox'
     this.difficulty = 'kidsEasy'; // 'kidsEasy' or 'classic'
 
@@ -106,7 +106,15 @@ export class UIManager {
           <button class="close-btn ui-interactive" id="btn-close-skins">&times;</button>
         </div>
         <div class="skin-grid">
-          <div class="skin-card ui-interactive active" data-skin="truckArt">
+          <div class="skin-card ui-interactive active" data-skin="gutter">
+            <div class="skin-preview skin-gutter"></div>
+            <div class="skin-info">
+              <h3>KMC Open Gutter (کھلا گٹر)</h3>
+              <p>Authentic Karachi sewer manhole with iron cleats & murky sludge</p>
+            </div>
+          </div>
+
+          <div class="skin-card ui-interactive" data-skin="truckArt">
             <div class="skin-preview skin-truck-art"></div>
             <div class="skin-info">
               <h3>Truck Art Chamak</h3>

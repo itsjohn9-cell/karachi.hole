@@ -42,14 +42,14 @@ class Game {
     this.scene.background = new THREE.Color(0xd2c6b2);
     this.scene.fog = new THREE.FogExp2(0xd2c6b2, 0.0065);
 
-    // Camera
+    // Camera - closer framing for intimate Karachi street view
     this.camera = new THREE.PerspectiveCamera(
       45,
       window.innerWidth / window.innerHeight,
       0.5,
       500
     );
-    this.camera.position.set(0, 24, 20);
+    this.camera.position.set(0, 11, -5);
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -92,17 +92,19 @@ class Game {
     const generated = this.cityGen.generateCity();
     this.edibleObjects = generated.edibleObjects;
     this.politicians = generated.politicians || [];
+    this.animals = generated.animals || [];
+    this.robberies = generated.robberies || [];
   }
 
   initHoles() {
     this.holes = [];
 
-    // Player Hole (Kids / Easy mode by default)
+    // Player Hole (Kids / Easy mode by default, KMC Open Gutter skin)
     this.player = new Hole({
       scene: this.scene,
       name: "You (Karachi King)",
       isPlayer: true,
-      skin: 'truckArt',
+      skin: 'gutter',
       initialPos: { x: 0, z: -15 },
       color: 0x00e5ff,
       difficulty: this.difficulty || 'kidsEasy'
@@ -227,6 +229,8 @@ class Game {
     const generated = this.cityGen.generateCity();
     this.edibleObjects = generated.edibleObjects;
     this.politicians = generated.politicians || [];
+    this.animals = generated.animals || [];
+    this.robberies = generated.robberies || [];
     this.particles.clear();
   }
 
@@ -361,7 +365,91 @@ class Game {
       }
     }
 
-    // Edible Objects Suction & Collision
+    // Update Karachi Stray Animals (Dogs barking, Cats roaming, Rats scurrying)
+    for (let i = 0; i < this.animals.length; i++) {
+      const animal = this.animals[i];
+      if (animal.state === 'swallowed') continue;
+
+      const aMesh = animal.mesh;
+      const aPos = aMesh.position;
+      const ud = aMesh.userData;
+      if (!ud) continue;
+
+      let nearestHole = null;
+      let minHoleDist = Infinity;
+      for (let h = 0; h < this.holes.length; h++) {
+        const hole = this.holes[h];
+        if (!hole.isAlive) continue;
+        const d = hole.position.distanceTo(aPos);
+        if (d < minHoleDist) {
+          minHoleDist = d;
+          nearestHole = hole;
+        }
+      }
+
+      if (aMesh.name === 'Stray-Dog') {
+        ud.walkCycle = (ud.walkCycle || 0) + dt * 8;
+        if (ud.legFL && ud.legFR && ud.legBL && ud.legBR) {
+          ud.legFL.rotation.x = Math.sin(ud.walkCycle) * 0.55;
+          ud.legFR.rotation.x = -Math.sin(ud.walkCycle) * 0.55;
+          ud.legBL.rotation.x = -Math.sin(ud.walkCycle) * 0.55;
+          ud.legBR.rotation.x = Math.sin(ud.walkCycle) * 0.55;
+        }
+        if (ud.tail) {
+          ud.tail.rotation.y = Math.sin(ud.walkCycle * 2.2) * 0.45;
+        }
+
+        // Flee if hole approaches within 12m
+        if (nearestHole && minHoleDist < 12 && animal.state === 'idle') {
+          const fleeX = aPos.x - nearestHole.position.x;
+          const fleeZ = aPos.z - nearestHole.position.z;
+          const len = Math.sqrt(fleeX * fleeX + fleeZ * fleeZ);
+          if (len > 0.1) {
+            aPos.x += (fleeX / len) * dt * (ud.moveSpeed || 5.5);
+            aPos.z += (fleeZ / len) * dt * (ud.moveSpeed || 5.5);
+            aMesh.rotation.y = Math.atan2(fleeX, fleeZ);
+          }
+
+          // Bark sound when player approaches
+          ud.barkTimer = (ud.barkTimer || 3) - dt;
+          if (ud.barkTimer <= 0 && minHoleDist < 10) {
+            ud.barkTimer = 3.5 + Math.random() * 3.0;
+            if (nearestHole.isPlayer) {
+              audio.playDogBark();
+            }
+          }
+        }
+      } else if (aMesh.name === 'Street-Cat') {
+        ud.walkCycle = (ud.walkCycle || 0) + dt * 10;
+        if (nearestHole && minHoleDist < 9 && animal.state === 'idle') {
+          const fleeX = aPos.x - nearestHole.position.x;
+          const fleeZ = aPos.z - nearestHole.position.z;
+          const len = Math.sqrt(fleeX * fleeX + fleeZ * fleeZ);
+          if (len > 0.1) {
+            aPos.x += (fleeX / len) * dt * (ud.moveSpeed || 6.5);
+            aPos.z += (fleeZ / len) * dt * (ud.moveSpeed || 6.5);
+            aMesh.rotation.y = Math.atan2(fleeX, fleeZ);
+          }
+        }
+      } else if (aMesh.name === 'Sewer-Rat') {
+        ud.walkCycle = (ud.walkCycle || 0) + dt * 14;
+        if (nearestHole && minHoleDist < 7 && animal.state === 'idle') {
+          const fleeX = aPos.x - nearestHole.position.x;
+          const fleeZ = aPos.z - nearestHole.position.z;
+          const len = Math.sqrt(fleeX * fleeX + fleeZ * fleeZ);
+          if (len > 0.1) {
+            aPos.x += (fleeX / len) * dt * (ud.moveSpeed || 7.5);
+            aPos.z += (fleeZ / len) * dt * (ud.moveSpeed || 7.5);
+            aMesh.rotation.y = Math.atan2(fleeX, fleeZ);
+          }
+        }
+      }
+
+      aPos.x = THREE.MathUtils.clamp(aPos.x, -110, 110);
+      aPos.z = THREE.MathUtils.clamp(aPos.z, -110, 110);
+    }
+
+    // Edible Objects Suction & Collision (Ultra-fast Bounding Box check for 60 FPS)
     const pullSpeed = isKidsMode ? 12.0 : 7.5;
     for (let i = 0; i < this.edibleObjects.length; i++) {
       const obj = this.edibleObjects[i];
@@ -379,9 +467,10 @@ class Game {
           if (obj.tier <= hole.level) {
             const dx = hole.position.x - objPos.x;
             const dz = hole.position.z - objPos.z;
-            const dist = Math.sqrt(dx * dx + dz * dz);
+            const r = hole.radius;
 
-            if (dist < hole.radius) {
+            // Fast bounding box reject first
+            if (Math.abs(dx) <= r && Math.abs(dz) <= r && (dx * dx + dz * dz < r * r)) {
               obj.state = 'sucking';
               obj.suckingHole = hole;
               break;
@@ -433,17 +522,43 @@ class Game {
             if (h.isPlayer) this.handlePlayerLevelUp(h);
           });
 
-          // Special Devour Effects for Pakistani Politicians!
+          // Special Devour Effects
           if (obj.isPolitician) {
-            this.particles.createMoneyBurst(hole.position, 40);
+            this.particles.createMoneyBurst(hole.position, 45);
             if (hole.isPlayer) {
               this.player.politiciansDevoured = (this.player.politiciansDevoured || 0) + 1;
               audio.playPoliticianSwallow();
-              this.ui.showAnnouncement(`💰 DEVOURED VIP POLITICIAN! (+${points} XP)`, '#ffd700');
+              audio.playGutterSplash();
+              const pName = obj.mesh.userData?.name || "VIP Politician";
+              const quote = obj.mesh.userData?.quote || "Mujhe kyun nikala?!";
+              this.ui.showAnnouncement(`💰 DEVOURED ${pName.toUpperCase()}! "${quote}" (+${points} XP)`, '#ffd700');
+            }
+          } else if (obj.isRobbery) {
+            this.particles.createMoneyBurst(hole.position, 35);
+            this.particles.createSwallowBurst(hole.position, 3, 25);
+            if (hole.isPlayer) {
+              audio.playRobberDevour();
+              audio.playGutterSplash();
+              this.ui.showAnnouncement(`🚨 STREET JUSTICE! ROBBER DEVOURED! (+${points} XP)`, '#ffea00');
+            }
+          } else if (obj.isAnimal) {
+            this.particles.createSwallowBurst(hole.position, 1, 15);
+            if (hole.isPlayer) {
+              audio.playGutterSplash();
+              if (obj.mesh.name === 'Stray-Dog') audio.playDogBark();
+              else if (obj.mesh.name === 'Street-Cat') audio.playCatMeow();
+              else if (obj.mesh.name === 'Sewer-Rat') audio.playRatSqueak();
+            }
+          } else if (obj.isRubbish) {
+            this.particles.createSwallowBurst(hole.position, 1, 10);
+            if (hole.isPlayer) {
+              audio.playGutterSplash();
+              audio.playSwallow(1);
             }
           } else {
             this.particles.createSwallowBurst(hole.position, obj.tier);
             if (hole.isPlayer) {
+              audio.playGutterSplash();
               audio.playSwallow(obj.tier);
             }
           }
@@ -476,32 +591,33 @@ class Game {
   updateCamera(dt) {
     if (!this.player) return;
 
-    // Dynamic zoom out based on hole radius / level
-    const targetHeight = 16 + this.player.radius * 2.4;
-    const targetDistZ = 14 + this.player.radius * 2.0;
+    // Intimate closer zoom at early levels so politicians, animals, trash, and open gutter are crystal clear!
+    // Smoothly expands outward as the hole levels up and swallows bigger city objects
+    const targetHeight = 8.8 + this.player.radius * 1.5;
+    const targetDistZ = 7.4 + this.player.radius * 1.35;
 
     const targetCamX = this.player.position.x;
     const targetCamY = targetHeight;
     const targetCamZ = this.player.position.z + targetDistZ;
 
-    // Smooth Lerp Camera Follow
-    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, dt * 5.0);
-    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, dt * 4.0);
-    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, dt * 5.0);
+    // Responsive smooth camera follow
+    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, dt * 6.0);
+    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, dt * 5.0);
+    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, dt * 6.0);
 
     const lookTarget = new THREE.Vector3(
       this.player.position.x,
-      0,
-      this.player.position.z - 2
+      0.25,
+      this.player.position.z - 1.6
     );
     this.camera.lookAt(lookTarget);
 
     // Keep Directional Sunlight centered around player for sharp shadows
     if (this.dirLight) {
       this.dirLight.position.set(
-        this.player.position.x + 40,
-        70,
-        this.player.position.z + 30
+        this.player.position.x + 35,
+        60,
+        this.player.position.z + 25
       );
       this.dirLight.target.position.copy(this.player.position);
       this.dirLight.target.updateMatrixWorld();
