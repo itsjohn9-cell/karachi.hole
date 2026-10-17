@@ -9,6 +9,10 @@ import {
   getRandomChallenge
 } from './educationalChallenges.js';
 
+if (typeof window !== 'undefined') {
+  window.getChallengeByCategoryAndTier = getChallengeByCategoryAndTier;
+}
+
 export class UIManager {
   constructor({
     onStartGame,

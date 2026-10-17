@@ -563,13 +563,15 @@ class Game {
     const isFinalDistrict = this.currentDistrictLevel >= DISTRICT_CONFIGS.length;
     const nextCfg = getDistrictConfig(this.currentDistrictLevel + 1);
 
-    // Apply District Rewards to Player
-    this.player.addXP(cfg.bonusScore, (h) => {
+    // Apply District Rewards to Player safely with fallback protection against NaN
+    this.player.addXP(cfg.bonusScore || 3000, (h) => {
       if (h.isPlayer) this.handlePlayerLevelUp(h);
     });
-    this.timeLeft += cfg.timeBonus;
-    this.player.targetRadius += cfg.holeRadiusBonus;
-    this.player.baseSpeed += cfg.speedBonus;
+    this.timeLeft += (cfg.timeBonus || 60);
+    const rBonus = Number(cfg.holeRadiusBonus) || 0.35;
+    const sBonus = Number(cfg.speedBonus) || 0.8;
+    this.player.targetRadius = (isFinite(this.player.targetRadius) && this.player.targetRadius > 0 ? this.player.targetRadius : 1.6) + rBonus;
+    this.player.baseSpeed = (isFinite(this.player.baseSpeed) && this.player.baseSpeed > 0 ? this.player.baseSpeed : 13.5) + sBonus;
     this.player.currentSpeed = this.player.baseSpeed;
 
     this.ui.showAnnouncement(
@@ -633,7 +635,25 @@ class Game {
 
     // Reset player position smoothly back to center crossroads and blast celebration
     this.player.position.set(0, 0, 0);
-    this.player.group.position.copy(this.player.position);
+    this.player.group.position.set(0, 0, 0);
+    this.player.facingAngle = Math.PI;
+    this.player.targetRotationY = Math.PI;
+    this.player.group.rotation.y = Math.PI;
+    this.moveVector = { x: 0, y: 0 };
+    if (!isFinite(this.player.targetRadius) || this.player.targetRadius <= 0) {
+      this.player.targetRadius = 1.6;
+    }
+    if (!isFinite(this.player.baseSpeed) || this.player.baseSpeed <= 0) {
+      this.player.baseSpeed = 13.5;
+    }
+    this.player.currentSpeed = this.player.baseSpeed;
+
+    // Explicitly reset camera position and orientation behind player facing north down avenue
+    this.camAngle = Math.PI;
+    this.camera.position.set(0, 2.35, 4.4);
+    this.camera.lookAt(0, 1.35, -7.0);
+    this.camera.updateMatrixWorld(true);
+
     this.particles.createLevelUpShockwave(this.player.position, 18);
     this.particles.createCelebrationConfetti(this.player.position, 50);
 
@@ -1606,25 +1626,32 @@ class Game {
     }
 
     // Smooth camera orientation tracking:
-    // Only adjust yaw when moving forward (holding W / Up or driving forward into turn).
+    // Adjust yaw when moving along the Z axis (forward or backward).
     // Pure left/right strafing moves laterally without spinning the camera!
     const inputForward = -this.moveVector.y;
-    const isMovingForward = inputForward > 0.15;
-    if (isMovingForward && this.player.facingAngle !== undefined) {
+    const isMovingAlongZ = Math.abs(inputForward) > 0.15;
+    if (isMovingAlongZ && this.player.facingAngle !== undefined) {
       let angleDiff = this.player.facingAngle - this.camAngle;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      this.camAngle += angleDiff * Math.min(1.0, dt * 3.2);
+      this.camAngle += angleDiff * Math.min(1.0, dt * 3.5);
+    }
+
+    // Safety guard against NaN
+    if (!isFinite(this.camera.position.x) || !isFinite(this.camera.position.z)) {
+      this.camera.position.set(this.player.position.x, 2.35, this.player.position.z + camDist);
     }
 
     // Camera position behind the character
     const targetCamX = this.player.position.x - Math.sin(this.camAngle) * camDist;
-    const targetCamY = Math.max(1.85, this.player.position.y + camHeight);
+    const targetCamY = Math.max(1.85, (this.player.position.y || 0) + camHeight);
     const targetCamZ = this.player.position.z - Math.cos(this.camAngle) * camDist;
 
-    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, dt * 9.0);
-    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, dt * 8.0);
-    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, dt * 9.0);
+    if (isFinite(targetCamX) && isFinite(targetCamZ)) {
+      this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, dt * 9.0);
+      this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, dt * 8.0);
+      this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, dt * 9.0);
+    }
 
     // Look target ahead down the street corridor
     const lookAheadDist = 7.0;
@@ -1633,7 +1660,9 @@ class Game {
       1.35,
       this.player.position.z + Math.cos(this.camAngle) * lookAheadDist
     );
-    this.camera.lookAt(lookTarget);
+    if (isFinite(lookTarget.x) && isFinite(lookTarget.z)) {
+      this.camera.lookAt(lookTarget);
+    }
 
     // Subtle bank tilt when turning corners
     this.camera.rotation.z = THREE.MathUtils.lerp(

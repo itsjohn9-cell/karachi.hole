@@ -508,6 +508,90 @@ async function runTestSuite() {
   recordTest('TC-12', '3D Ground Chevron & Top HUD Target Compass Guidance', res12.success ? 'PASSED' : 'FAILED', Date.now() - t12Start, 'Verified 3D ground chevron points to objective, HUD pill displays real-time distance and arrow');
 
   // -------------------------------------------------------------------------
+  // TC-13: District 2 3D Scene Rendering, Backward Viewing Angle & Solid Obstacle Collision
+  // -------------------------------------------------------------------------
+  const t13Start = Date.now();
+  const res13 = await runChromeTest({
+    testId: 'TC-13',
+    screenshotName: 'tc13_district2_gameplay_verified.png',
+    extraStyle: '#modal-start-mission { display: none !important; }',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          const startBtn = document.getElementById('btn-start-patrol');
+          if (startBtn) startBtn.click();
+
+          setTimeout(() => {
+            const g = window.game;
+            if (!g) throw new Error('Game instance not found');
+
+            // 1. Advance to District 2
+            g.handleDistrictCleared();
+            const nextBtn = document.getElementById('btn-next-district');
+            if (nextBtn) nextBtn.click();
+
+            if (g.currentDistrictLevel !== 2) {
+              throw new Error('Failed to advance to District 2');
+            }
+
+            // 2. Check 3D scene rendering integrity
+            const p = g.player.position;
+            const c = g.camera.position;
+            if (!isFinite(p.x) || !isFinite(p.z)) throw new Error('Player position is NaN in District 2');
+            if (!isFinite(c.x) || !isFinite(c.z)) throw new Error('Camera position is NaN in District 2');
+            if (g.scene.children.length < 40) throw new Error('Scene empty in District 2: ' + g.scene.children.length);
+
+            // 3. Backward Movement viewing angle tracking test
+            const initCamAngle = g.camAngle;
+            g.moveVector.y = 1; // inputForward = -1 (backward)
+            g.moveVector.x = 0;
+            for (let f = 0; f < 25; f++) {
+              g.updatePhysics(0.033);
+              g.updateCamera(0.033);
+            }
+            g.moveVector.y = 0;
+            const newCamAngle = g.camAngle;
+            if (Math.abs(newCamAngle - initCamAngle) < 0.2) {
+              throw new Error('Camera failed to rotate when moving backward');
+            }
+
+            // 4. Solid Obstacle Collision Prevention test
+            const obstacles = g.cityGen.obstacles || [];
+            const boxObs = obstacles.find(o => o.isBox && (o.maxX - o.minX) > 3.0);
+            if (boxObs) {
+              // Try to push North directly into the building
+              g.player.position.set(boxObs.cx, 0, boxObs.maxZ + 0.3);
+              g.player.isBoosting = true;
+              for (let f = 0; f < 30; f++) {
+                g.player.move(0, -1, 0.033, 94.0, obstacles);
+              }
+              const pZ = g.player.position.z;
+              if (pZ < boxObs.maxZ + 0.65) {
+                throw new Error('Player penetrated inside building box: ' + pZ + ' vs maxZ ' + boxObs.maxZ);
+              }
+            }
+
+            // 5. Quiz Questions Diversity test
+            if (window.getChallengeByCategoryAndTier) {
+              const qSafety1 = window.getChallengeByCategoryAndTier('safety', 'kids');
+              const qSafety2 = window.getChallengeByCategoryAndTier('safety', 'kids');
+              const qClean1 = window.getChallengeByCategoryAndTier('cleanliness', 'kids');
+              const qClean2 = window.getChallengeByCategoryAndTier('cleanliness', 'kids');
+              if (!qSafety1 || !qSafety2 || qSafety1.id === qSafety2.id) {
+                throw new Error('Safety quiz question repeated on consecutive calls: ' + qSafety1?.id);
+              }
+              if (!qClean1 || !qClean2 || qClean1.id === qClean2.id) {
+                throw new Error('Cleanliness quiz question repeated on consecutive calls: ' + qClean1?.id);
+              }
+            }
+          }, 700);
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-13', 'District 2 3D Scene Rendering, Backward Viewing Angle, Collision & Quiz Diversity', res13.success ? 'PASSED' : 'FAILED', Date.now() - t13Start, 'Verified District 2 3D geometry, backward camera tracking, impenetrable building collision, and quiz non-repetition');
+
+  // -------------------------------------------------------------------------
   // Summary Report Output
   // -------------------------------------------------------------------------
   const totalDuration = Date.now() - startTime;

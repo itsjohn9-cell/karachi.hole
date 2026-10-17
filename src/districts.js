@@ -15,6 +15,8 @@ export const DISTRICT_CONFIGS = [
     unlockedTitle: 'PECHS Neighborhood Guardian',
     timeBonus: 60,
     bonusScore: 3000,
+    holeRadiusBonus: 0.35,
+    speedBonus: 0.8,
     description: 'Intercept the illegal Water Tanker Mafia stealing tap water from PECHS homes, catch mobile snatchers, and repair road potholes!',
     missions: [
       {
@@ -59,6 +61,8 @@ export const DISTRICT_CONFIGS = [
     unlockedTitle: 'Bazaar Protector',
     timeBonus: 75,
     bonusScore: 5000,
+    holeRadiusBonus: 0.40,
+    speedBonus: 0.8,
     description: 'Clear the VIP Protocol Prado convoy blocking the Edhi Ambulance, bust bhatta extortionists, and catch reckless street racers!',
     missions: [
       {
@@ -123,6 +127,8 @@ export const DISTRICT_CONFIGS = [
     unlockedTitle: 'Civic Commissioner',
     timeBonus: 85,
     bonusScore: 8000,
+    holeRadiusBonus: 0.45,
+    speedBonus: 0.8,
     description: 'Dismantle the industrial water tanker cartel, disconnect sparking power kundas, and tear down illegal sidewalk encroachment walls!',
     missions: [
       {
@@ -177,6 +183,8 @@ export const DISTRICT_CONFIGS = [
     unlockedTitle: 'Karachi Legend',
     timeBonus: 95,
     bonusScore: 12000,
+    holeRadiusBonus: 0.50,
+    speedBonus: 0.8,
     description: 'Catch corrupt VIP politicians fleeing with offshore briefcases, clear beach motorcades, and reclaim public mangroves!',
     missions: [
       {
@@ -231,6 +239,8 @@ export const DISTRICT_CONFIGS = [
     unlockedTitle: 'Supreme Karachi Savior',
     timeBonus: 120,
     bonusScore: 25000,
+    holeRadiusBonus: 0.60,
+    speedBonus: 0.8,
     description: 'Cleanse all remaining mafias and corrupt cartels to make Karachi the peaceful, thriving City of Lights!',
     missions: [
       {

@@ -239,68 +239,100 @@ export class Hole {
     // Update limb stride animations
     AvatarBuilder.updateAnimation(this.avatarMesh, isMoving, dt, this.isBoosting ? 1.5 : 1.0);
 
-    // Tentative next coordinates
-    let nextX = this.position.x + dx * speed * dt;
-    let nextZ = this.position.z + dz * speed * dt;
-
-    // Solid Obstacle Collision Prevention (Buildings, Stalls, Monuments)
+    // High-precision sub-stepping physics with axial separation for smooth sliding and zero building tunneling
+    const substeps = 3;
+    const subDt = dt / substeps;
     const avatarBodyRadius = 0.70;
-    if (obstacles && obstacles.length > 0) {
-      for (let i = 0; i < obstacles.length; i++) {
-        const obs = obstacles[i];
-        if (!obs) continue;
 
-        if (obs.isBox) {
-          // Circle vs AABB Obstacle Collision with sliding and interior pushout
-          const clampX = Math.max(obs.minX, Math.min(nextX, obs.maxX));
-          const clampZ = Math.max(obs.minZ, Math.min(nextZ, obs.maxZ));
+    for (let step = 0; step < substeps; step++) {
+      // 1. Move along X
+      let nextX = this.position.x + dx * speed * subDt;
+      let nextZ = this.position.z;
 
-          const diffX = nextX - clampX;
-          const diffZ = nextZ - clampZ;
-          const distSq = diffX * diffX + diffZ * diffZ;
+      if (obstacles && obstacles.length > 0) {
+        for (let i = 0; i < obstacles.length; i++) {
+          const obs = obstacles[i];
+          if (!obs) continue;
 
-          if (distSq < avatarBodyRadius * avatarBodyRadius) {
-            if (distSq > 0.0001) {
-              const dist = Math.sqrt(distSq);
-              const pushDist = avatarBodyRadius - dist;
-              nextX += (diffX / dist) * pushDist;
-              nextZ += (diffZ / dist) * pushDist;
-            } else {
-              // Avatar center is completely inside building box: eject to nearest outer face
-              const dLeft = Math.abs(nextX - obs.minX);
-              const dRight = Math.abs(obs.maxX - nextX);
-              const dTop = Math.abs(nextZ - obs.minZ);
-              const dBottom = Math.abs(obs.maxZ - nextZ);
-              const minDist = Math.min(dLeft, dRight, dTop, dBottom);
-              if (minDist === dLeft) nextX = obs.minX - avatarBodyRadius;
-              else if (minDist === dRight) nextX = obs.maxX + avatarBodyRadius;
-              else if (minDist === dTop) nextZ = obs.minZ - avatarBodyRadius;
-              else nextZ = obs.maxZ + avatarBodyRadius;
+          if (obs.isBox) {
+            const clampX = Math.max(obs.minX, Math.min(nextX, obs.maxX));
+            const clampZ = Math.max(obs.minZ, Math.min(nextZ, obs.maxZ));
+            const diffX = nextX - clampX;
+            const diffZ = nextZ - clampZ;
+            const distSq = diffX * diffX + diffZ * diffZ;
+
+            if (distSq < avatarBodyRadius * avatarBodyRadius) {
+              if (Math.abs(diffX) > 0.001) {
+                nextX = (diffX > 0) ? (obs.maxX + avatarBodyRadius) : (obs.minX - avatarBodyRadius);
+              } else {
+                const dL = Math.abs(nextX - obs.minX);
+                const dR = Math.abs(obs.maxX - nextX);
+                nextX = (dL < dR) ? (obs.minX - avatarBodyRadius) : (obs.maxX + avatarBodyRadius);
+              }
             }
-          }
-        } else {
-          // Circular obstacle (poles, round monuments, kiosks)
-          const oPos = obs.position || (obs.mesh && obs.mesh.position);
-          if (!oPos) continue;
-
-          const oRad = obs.radius || obs.collisionRadius || 2.4;
-          const totalClearance = oRad + avatarBodyRadius;
-
-          const diffX = nextX - oPos.x;
-          const diffZ = nextZ - oPos.z;
-          const distSq = diffX * diffX + diffZ * diffZ;
-          if (distSq < totalClearance * totalClearance) {
-            const dist = Math.sqrt(distSq) || 1;
-            nextX = oPos.x + (diffX / dist) * totalClearance;
-            nextZ = oPos.z + (diffZ / dist) * totalClearance;
+          } else {
+            const oPos = obs.position || (obs.mesh && obs.mesh.position);
+            if (!oPos) continue;
+            const oRad = obs.radius || obs.collisionRadius || 2.2;
+            const totalClearance = oRad + avatarBodyRadius;
+            const diffX = nextX - oPos.x;
+            const diffZ = nextZ - oPos.z;
+            const distSq = diffX * diffX + diffZ * diffZ;
+            if (distSq < totalClearance * totalClearance) {
+              const dist = Math.sqrt(distSq) || 0.001;
+              nextX = oPos.x + (diffX / dist) * totalClearance;
+            }
           }
         }
       }
+      this.position.x = nextX;
+
+      // 2. Move along Z
+      nextX = this.position.x;
+      nextZ = this.position.z + dz * speed * subDt;
+
+      if (obstacles && obstacles.length > 0) {
+        for (let i = 0; i < obstacles.length; i++) {
+          const obs = obstacles[i];
+          if (!obs) continue;
+
+          if (obs.isBox) {
+            const clampX = Math.max(obs.minX, Math.min(nextX, obs.maxX));
+            const clampZ = Math.max(obs.minZ, Math.min(nextZ, obs.maxZ));
+            const diffX = nextX - clampX;
+            const diffZ = nextZ - clampZ;
+            const distSq = diffX * diffX + diffZ * diffZ;
+
+            if (distSq < avatarBodyRadius * avatarBodyRadius) {
+              if (Math.abs(diffZ) > 0.001) {
+                nextZ = (diffZ > 0) ? (obs.maxZ + avatarBodyRadius) : (obs.minZ - avatarBodyRadius);
+              } else {
+                const dT = Math.abs(nextZ - obs.minZ);
+                const dB = Math.abs(obs.maxZ - nextZ);
+                nextZ = (dT < dB) ? (obs.minZ - avatarBodyRadius) : (obs.maxZ + avatarBodyRadius);
+              }
+            }
+          } else {
+            const oPos = obs.position || (obs.mesh && obs.mesh.position);
+            if (!oPos) continue;
+            const oRad = obs.radius || obs.collisionRadius || 2.2;
+            const totalClearance = oRad + avatarBodyRadius;
+            const diffX = nextX - oPos.x;
+            const diffZ = nextZ - oPos.z;
+            const distSq = diffX * diffX + diffZ * diffZ;
+            if (distSq < totalClearance * totalClearance) {
+              const dist = Math.sqrt(distSq) || 0.001;
+              nextZ = oPos.z + (diffZ / dist) * totalClearance;
+            }
+          }
+        }
+      }
+      this.position.z = nextZ;
     }
 
     // Boundary walls clamp
-    this.position.x = THREE.MathUtils.clamp(nextX, -maxCoord, maxCoord);
-    this.position.z = THREE.MathUtils.clamp(nextZ, -maxCoord, maxCoord);
+    this.position.x = THREE.MathUtils.clamp(this.position.x, -maxCoord, maxCoord);
+    this.position.z = THREE.MathUtils.clamp(this.position.z, -maxCoord, maxCoord);
     this.group.position.copy(this.position);
   }
 

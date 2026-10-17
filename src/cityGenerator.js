@@ -486,7 +486,7 @@ export class CityGenerator {
       try {
         mesh.updateMatrixWorld(true);
         const bbox = new THREE.Box3().setFromObject(mesh);
-        if (isFinite(bbox.min.x) && bbox.max.x > bbox.min.x) {
+        if (isFinite(bbox.min.x) && bbox.max.x > bbox.min.x && (bbox.max.x - bbox.min.x) >= 2.0) {
           obsData = {
             isBox: true,
             minX: bbox.min.x,
@@ -500,6 +500,20 @@ export class CityGenerator {
           };
         }
       } catch (e) {}
+      if (!obsData.isBox) {
+        const halfR = Math.max(3.2, (radius || 4.0) * 0.85);
+        obsData = {
+          isBox: true,
+          minX: mesh.position.x - halfR,
+          maxX: mesh.position.x + halfR,
+          minZ: mesh.position.z - halfR,
+          maxZ: mesh.position.z + halfR,
+          cx: mesh.position.x,
+          cz: mesh.position.z,
+          position: mesh.position,
+          mesh
+        };
+      }
       this.obstacles.push(obsData);
     }
     if (isCitizen) this.citizens.push(item);
@@ -566,10 +580,18 @@ export class CityGenerator {
     vipTarget.rotation.y = rotY;
     stuckVehicles.forEach(v => {
       const localPos = v.position.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
-      v.position.set(posX + localPos.x, 0, posZ + localPos.z);
+      const vx = posX + localPos.x;
+      const vz = posZ + localPos.z;
+      v.position.set(vx, 0, vz);
       v.rotation.y = rotY;
       this.scene.add(v);
       this.interactiveTraffic.push(v);
+      this.obstacles.push({
+        position: { x: vx, y: 0, z: vz },
+        radius: 2.2,
+        mesh: v,
+        isDynamic: true
+      });
     });
     // Set to tier 1 so player can immediately interact and free the blocked ambulance!
     this.registerEdible(vipTarget, 1, 1600, "VIP Protocol Prado Convoy", 3.2, { isBadGuy: true, evilType: 'vip', isDistrictEvil: true });
@@ -596,6 +618,17 @@ export class CityGenerator {
         h.position.set(hx, 0, hz);
         this.scene.add(h);
         this.interactiveHomes.push(h);
+        this.obstacles.push({
+          isBox: true,
+          minX: hx - 3.4,
+          maxX: hx + 3.4,
+          minZ: hz - 4.2,
+          maxZ: hz + 4.2,
+          cx: hx,
+          cz: hz,
+          mesh: h,
+          isDynamic: true
+        });
       });
     }
 
@@ -620,6 +653,11 @@ export class CityGenerator {
     // Purge all old district evil references from badGuys array
     this.badGuys = (this.badGuys || []).filter(b => !b.isDistrictEvil);
     this.currentDistrictEvils = [];
+
+    // Purge dynamic scene obstacles from previous district
+    if (this.obstacles) {
+      this.obstacles = this.obstacles.filter(obs => !obs.isDynamic);
+    }
 
     // Clear previous interactive victims, traffic, homes, and residents if any
     if (this.interactiveVictims) {
@@ -858,6 +896,8 @@ export class CityGenerator {
     const pedBridge = KarachiModels.createOverheadPedestrianBridge(24);
     pedBridge.position.set(0, 0, 22);
     this.scene.add(pedBridge);
+    this.obstacles.push({ position: { x: -12.5, y: 0, z: 22 }, radius: 1.4 });
+    this.obstacles.push({ position: { x: 12.5, y: 0, z: 22 }, radius: 1.4 });
 
     // 4. Mazar-e-Quaid (Jinnah's Mausoleum) - Northern Avenue Axis at z = -84
     const mazar = KarachiModels.createMazarEQuaid();
