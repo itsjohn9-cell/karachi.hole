@@ -35,12 +35,14 @@ class Game {
     // Movement vectors
     this.moveVector = { x: 0, y: 0 };
     this.isBoosting = false;
+    this.currentTargetObjective = null;
 
     this.initThree();
     this.initScene();
     this.initHoles();
     this.initJoystick();
     this.initDistrictChallenges(getDistrictConfig(1));
+    this.createNavigationGuide();
     this.initUI();
     this.initAudioTriggers();
 
@@ -280,8 +282,8 @@ class Game {
     this.player.politiciansDevoured = 0;
     this.player.turboTimer = 0;
     this.player.kills = 0;
-    this.player.baseSpeed = 9.5;
-    this.player.currentSpeed = 9.5;
+    this.player.baseSpeed = 13.5;
+    this.player.currentSpeed = 13.5;
     this.player.isAlive = true;
     this.player.group.visible = true;
     this.player.updateNameTag();
@@ -358,6 +360,127 @@ class Game {
     this.currentCrisisIndex = 0;
   }
 
+  // 3D Ground Navigation Guide Chevron (Direct visual route to active objectives)
+  createNavigationGuide() {
+    this.navGuideGroup = new THREE.Group();
+
+    // 3D Ground Chevron/Arrow (Pointing along +Z in local coordinates)
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 1.1);       // Forward tip
+    shape.lineTo(0.55, -0.45);  // Right outer fin
+    shape.lineTo(0.22, -0.3);   // Right inner nook
+    shape.lineTo(0.22, -0.85);  // Right tail
+    shape.lineTo(-0.22, -0.85); // Left tail
+    shape.lineTo(-0.22, -0.3);  // Left inner nook
+    shape.lineTo(-0.55, -0.45); // Left outer fin
+    shape.closePath();
+
+    const arrowGeo = new THREE.ShapeGeometry(shape);
+    arrowGeo.rotateX(-Math.PI / 2);
+    arrowGeo.rotateY(Math.PI);
+
+    this.navArrowMat = new THREE.MeshBasicMaterial({
+      color: 0x00ffff,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+
+    this.navArrowMesh = new THREE.Mesh(arrowGeo, this.navArrowMat);
+    this.navGuideGroup.add(this.navArrowMesh);
+
+    // Subtle pulsing ring around the chevron
+    const ringGeo = new THREE.RingGeometry(0.75, 0.95, 32);
+    ringGeo.rotateX(-Math.PI / 2);
+    this.navRingMat = new THREE.MeshBasicMaterial({
+      color: 0x00ffff,
+      transparent: true,
+      opacity: 0.45,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    this.navRingMesh = new THREE.Mesh(ringGeo, this.navRingMat);
+    this.navGuideGroup.add(this.navRingMesh);
+
+    this.navGuideGroup.position.set(0, 0.05, 0);
+    this.navGuideGroup.visible = false;
+    this.scene.add(this.navGuideGroup);
+  }
+
+  updateNavigationGuide(dt, elapsedTime) {
+    if (!this.player || !this.navGuideGroup) return;
+
+    const playerPos = this.player.position;
+    let target = null;
+    let minDist = Infinity;
+
+    // 1. Prioritize active crisis mission target
+    const activeCrisis = this.crisisChallenges ? this.crisisChallenges[this.currentCrisisIndex] : null;
+    const candidates = (this.districtEvils || []).filter(e => e && e.mesh && e.state !== 'swallowed');
+
+    if (activeCrisis && !activeCrisis.completed) {
+      for (let i = 0; i < candidates.length; i++) {
+        const c = candidates[i];
+        if (c.evilType === activeCrisis.evilType || (activeCrisis.evilType === 'pothole' && c.evilType === 'trash')) {
+          const d = playerPos.distanceTo(c.mesh.position);
+          if (d < minDist) {
+            minDist = d;
+            target = c;
+          }
+        }
+      }
+    }
+
+    // 2. Fallback to any nearest district evil
+    if (!target) {
+      for (let i = 0; i < candidates.length; i++) {
+        const c = candidates[i];
+        const d = playerPos.distanceTo(c.mesh.position);
+        if (d < minDist) {
+          minDist = d;
+          target = c;
+        }
+      }
+    }
+
+    if (target && target.mesh && minDist < 150) {
+      this.navGuideGroup.visible = true;
+      const tPos = target.mesh.position;
+      const dx = tPos.x - playerPos.x;
+      const dz = tPos.z - playerPos.z;
+      const targetAngle = Math.atan2(dx, dz);
+
+      // Place arrow 2.0 meters in front of avatar toward target
+      const offsetDist = 1.95;
+      this.navGuideGroup.position.x = playerPos.x + Math.sin(targetAngle) * offsetDist;
+      this.navGuideGroup.position.y = 0.05;
+      this.navGuideGroup.position.z = playerPos.z + Math.cos(targetAngle) * offsetDist;
+
+      // Rotate arrow to point directly toward target
+      this.navGuideGroup.rotation.y = targetAngle;
+
+      // Pulse glow & scale
+      const pulse = 0.85 + Math.sin(elapsedTime * 6.0) * 0.15;
+      this.navGuideGroup.scale.set(pulse, 1.0, pulse);
+      if (this.navArrowMat) {
+        this.navArrowMat.opacity = 0.7 + Math.sin(elapsedTime * 6.0) * 0.3;
+      }
+
+      this.currentTargetObjective = {
+        name: target.name || 'Objective',
+        evilType: target.evilType || 'evil',
+        dist: Math.round(minDist),
+        dx,
+        dz,
+        targetAngle
+      };
+    } else {
+      this.navGuideGroup.visible = false;
+      this.currentTargetObjective = null;
+    }
+  }
+
   handleCrisisProgress(evilType) {
     if (!this.crisisChallenges || this.crisisChallenges.length === 0) return;
 
@@ -373,17 +496,21 @@ class Game {
           this.ui.showCrisisCompleteBanner(mission);
           this.timeLeft += 25;
 
-          // Automatically pause & present educational civic challenge for this crisis
-          setTimeout(() => {
-            let quizCategory = 'cleanliness';
-            if (mission.evilType === 'vip') quizCategory = 'ambulance';
-            else if (mission.evilType === 'robber') quizCategory = 'safety';
-            else if (mission.evilType === 'tanker') quizCategory = 'water';
-            else if (mission.evilType === 'ke') quizCategory = 'electricity';
-            else if (mission.evilType === 'pothole' || mission.evilType === 'trash') quizCategory = 'cleanliness';
+          // Check if this was the last remaining mission
+          const willFinishAll = this.crisisChallenges.every(m => m.completed);
+          if (!willFinishAll) {
+            // Mid-game educational challenge for completed crisis
+            setTimeout(() => {
+              let quizCategory = 'cleanliness';
+              if (mission.evilType === 'vip') quizCategory = 'ambulance';
+              else if (mission.evilType === 'robber') quizCategory = 'safety';
+              else if (mission.evilType === 'tanker') quizCategory = 'water';
+              else if (mission.evilType === 'ke') quizCategory = 'electricity';
+              else if (mission.evilType === 'pothole' || mission.evilType === 'trash') quizCategory = 'cleanliness';
 
-            this.ui.openEducationalQuiz(quizCategory);
-          }, 1500);
+              this.ui.openEducationalQuiz(quizCategory);
+            }, 1500);
+          }
         }
       }
     });
@@ -1478,12 +1605,16 @@ class Game {
       this.camAngle = Math.PI; // Facing north down main boulevard
     }
 
-    const isMoving = Math.abs(this.moveVector.x) > 0.05 || Math.abs(this.moveVector.y) > 0.05;
-    if (isMoving && this.player.facingAngle !== undefined) {
+    // Smooth camera orientation tracking:
+    // Only adjust yaw when moving forward (holding W / Up or driving forward into turn).
+    // Pure left/right strafing moves laterally without spinning the camera!
+    const inputForward = -this.moveVector.y;
+    const isMovingForward = inputForward > 0.15;
+    if (isMovingForward && this.player.facingAngle !== undefined) {
       let angleDiff = this.player.facingAngle - this.camAngle;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      this.camAngle += angleDiff * Math.min(1.0, dt * 7.5);
+      this.camAngle += angleDiff * Math.min(1.0, dt * 3.2);
     }
 
     // Camera position behind the character
@@ -1656,6 +1787,7 @@ class Game {
       }
 
       this.updateCamera(dt);
+      this.updateNavigationGuide(dt, elapsedTime);
 
       // Calculate nearest active crimes & evils for HUD Radar Compass
       const playerPos = this.player ? this.player.position : new THREE.Vector3();
@@ -1732,6 +1864,7 @@ class Game {
           civicPercent: civicPct,
           frenzyActive: this.frenzyTimer > 0,
           nearestEvils,
+          targetObjective: this.currentTargetObjective,
           districtConfig,
           districtRemaining: this.districtRemaining,
           districtTotal: this.districtTotal,

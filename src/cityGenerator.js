@@ -96,18 +96,23 @@ export class CityGenerator {
   }
 
   createRoadNetwork() {
-    // High-definition crisp asphalt texture with storm sewer grates and yellow/white lane stripes
+    // High-definition crisp asphalt texture with sharp lane markings
     const roadTexture = TextureGenerator.createCrispRoadTexture();
     const roadMat = new THREE.MeshLambertMaterial({
-      map: roadTexture
+      map: roadTexture,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1
     });
 
     const roadWidth = 14;
     // 5x5 Arterial Avenue and Boulevard Network across 200m district
     const roadGrid = [-96, -48, 0, 48, 96];
     const districtLength = 200; // Roads span cleanly from -100 to +100 inside perimeter boundaries
+    const blockCenters = [-72, -24, 24, 72]; // Center of blocks between avenues
+    const blockLength = 34; // 48 - roadWidth (14) = 34m clean block span
 
-    // North-South Avenues
+    // 1. Continuous North-South Avenues (Elevation y = 0.02)
     roadGrid.forEach(x => {
       const roadGeo = new THREE.PlaneGeometry(roadWidth, districtLength);
       roadGeo.rotateX(-Math.PI / 2);
@@ -116,33 +121,38 @@ export class CityGenerator {
       road.receiveShadow = true;
       this.scene.add(road);
 
-      // Sidewalk curbs
-      const curbL = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, districtLength), KarachiModels.materials.sandstone);
-      curbL.position.set(x - roadWidth / 2 - 0.7, 0.12, 0);
-      this.scene.add(curbL);
+      // Sidewalk curbs placed ONLY along city blocks, NEVER crossing intersections!
+      blockCenters.forEach(bz => {
+        const curbL = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, blockLength), KarachiModels.materials.sandstone);
+        curbL.position.set(x - roadWidth / 2 - 0.7, 0.12, bz);
+        this.scene.add(curbL);
 
-      const curbR = curbL.clone();
-      curbR.position.x = x + roadWidth / 2 + 0.7;
-      this.scene.add(curbR);
+        const curbR = curbL.clone();
+        curbR.position.x = x + roadWidth / 2 + 0.7;
+        this.scene.add(curbR);
+      });
     });
 
-    // East-West Boulevards
+    // 2. Segmented East-West Boulevards (Between Avenues - Zero Z-fighting overlap!)
     roadGrid.forEach(z => {
-      const roadGeo = new THREE.PlaneGeometry(districtLength, roadWidth);
-      roadGeo.rotateX(-Math.PI / 2);
-      const road = new THREE.Mesh(roadGeo, roadMat);
-      road.position.set(0, 0.02, z);
-      road.rotation.y = Math.PI / 2;
-      road.receiveShadow = true;
-      this.scene.add(road);
+      blockCenters.forEach(bx => {
+        const segGeo = new THREE.PlaneGeometry(blockLength, roadWidth);
+        segGeo.rotateX(-Math.PI / 2);
+        const road = new THREE.Mesh(segGeo, roadMat);
+        road.position.set(bx, 0.02, z);
+        road.rotation.y = Math.PI / 2;
+        road.receiveShadow = true;
+        this.scene.add(road);
 
-      const curbT = new THREE.Mesh(new THREE.BoxGeometry(districtLength, 0.25, 1.4), KarachiModels.materials.sandstone);
-      curbT.position.set(0, 0.12, z - roadWidth / 2 - 0.7);
-      this.scene.add(curbT);
+        // East-West curbs along block boundaries, leaving crossroads wide open
+        const curbT = new THREE.Mesh(new THREE.BoxGeometry(blockLength, 0.25, 1.4), KarachiModels.materials.sandstone);
+        curbT.position.set(bx, 0.12, z - roadWidth / 2 - 0.7);
+        this.scene.add(curbT);
 
-      const curbB = curbT.clone();
-      curbB.position.z = z + roadWidth / 2 + 0.7;
-      this.scene.add(curbB);
+        const curbB = curbT.clone();
+        curbB.position.z = z + roadWidth / 2 + 0.7;
+        this.scene.add(curbB);
+      });
     });
   }
 
@@ -642,43 +652,31 @@ export class CityGenerator {
     if (districtLevel === 1) {
       // =========================================================
       // DISTRICT 1: TARIQ ROAD & PECHS (Level 1)
-      // Focus: Street Snatchers, Water Tanker Mafia & Dry Homes, Potholes & Trash
-      // Immediate 5-25m proximity for clear, dramatic visibility!
+      // Rapid-Testing Streamlined Forward Corridor:
+      // All 4 objectives aligned straight ahead down the central avenue (-Z)
+      // 1. Pothole #1 at 7m ahead
+      // 2. Pothole #2 at 14m ahead (slight right)
+      // 3. Mobile Snatcher at 21m ahead (slight left)
+      // 4. Water Tanker Mafia at 29m ahead
       // =========================================================
-      this.addWaterTankerScene(16.0, -14.0);
-      this.addRobberyScene(6.5, -8.0);
-      this.addRobberyScene(-10.5, 9.5);
 
-      const gutkaSpots = [[-6.0, -6.5], [12.0, 6.0], [-12.0, -12.0]];
-      gutkaSpots.forEach(([gx, gz], idx) => {
-        const gutka = KarachiModels.createGutkaPeddler();
-        gutka.position.set(gx, 0, gz);
-        this.registerEdible(gutka, 1, 400, `Gutka Peddler #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'gutka', isDistrictEvil: true });
-        this.addWaypointBeacon(gutka, '🛑');
-      });
+      // Target 1: Pothole #1 (7m North of spawn)
+      const pot1 = KarachiModels.createBrokenRoadPatch();
+      pot1.position.set(0.0, 0, -7.0);
+      this.registerEdible(pot1, 1, 80, "Road Pothole #1", 1.5, { isBadGuy: true, evilType: 'pothole', isDistrictEvil: true });
+      this.addWaypointBeacon(pot1, '🕳️');
 
-      const potholeSpots = [[-3.5, -4.5], [3.5, -4.5], [7.5, -14.0]];
-      potholeSpots.forEach(([px, pz], idx) => {
-        const pot = KarachiModels.createBrokenRoadPatch();
-        pot.position.set(px, 0, pz);
-        this.registerEdible(pot, 1, 80, `Road Pothole #${idx + 1}`, 1.4, { isBadGuy: true, evilType: 'pothole', isDistrictEvil: true });
-        this.addWaypointBeacon(pot, '🕳️');
-      });
+      // Target 2: Pothole #2 (14m North of spawn, right lane)
+      const pot2 = KarachiModels.createBrokenRoadPatch();
+      pot2.position.set(2.5, 0, -14.0);
+      this.registerEdible(pot2, 1, 80, "Road Pothole #2", 1.5, { isBadGuy: true, evilType: 'pothole', isDistrictEvil: true });
+      this.addWaypointBeacon(pot2, '🕳️');
 
-      const trashSpots = [[-5, -2], [5, -2], [-2, 4], [3, 5]];
-      trashSpots.forEach(([tx, tz], idx) => {
-        const bag = KarachiModels.createTrashBag(trashColors[idx % trashColors.length]);
-        bag.position.set(tx, 0, tz);
-        this.registerEdible(bag, 1, 25, "Trash Bag", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash', isDistrictEvil: true });
-        this.addWaypointBeacon(bag, '🧹');
-      });
+      // Target 3: Mobile Snatcher (21m North of spawn, left lane)
+      this.addRobberyScene(-2.5, -21.0);
 
-      [[-2.5, 2], [1.5, -3]].forEach(([rx, rz], idx) => {
-        const rat = KarachiModels.createSewerRat();
-        rat.position.set(rx, 0, rz);
-        rat.rotation.y = Math.random() * Math.PI * 2;
-        this.registerEdible(rat, 1, 20, "Sewer Rat (چوہا)", 0.45, { isAnimal: true, isBadGuy: true, evilType: 'trash', isDistrictEvil: true });
-      });
+      // Target 4: Water Tanker Mafia (29m North of spawn, center avenue)
+      this.addWaterTankerScene(0.0, -29.0);
     } else if (districtLevel === 2) {
       // =========================================================
       // DISTRICT 2: SADDAR & EMPRESS MARKET (Level 2)

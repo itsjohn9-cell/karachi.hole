@@ -190,6 +190,13 @@ export class UIManager {
             <span class="score-label">SCORE</span>
             <span class="score-val" id="hud-score">0</span>
           </div>
+          <div class="nav-target-pill" id="hud-nav-target" style="display: none;">
+            <span class="nav-target-badge">🎯 TARGET</span>
+            <span class="nav-target-icon" id="hud-nav-icon">🕳️</span>
+            <span class="nav-target-name" id="hud-nav-name">Pothole</span>
+            <span class="nav-target-dist" id="hud-nav-dist">7m</span>
+            <span class="nav-target-arrow" id="hud-nav-arrow">⬆️</span>
+          </div>
           <div class="combo-pill" id="hud-combo" style="display: none;">
             COMBO x<span id="hud-combo-val">2</span>! 🔥
           </div>
@@ -1383,6 +1390,7 @@ export class UIManager {
     civicPercent = 0,
     frenzyActive = false,
     nearestEvils = [],
+    targetObjective = null,
     districtConfig = null,
     districtRemaining = 0,
     districtTotal = 0,
@@ -1407,6 +1415,64 @@ export class UIManager {
         zain: '🏍️'
       };
       avatarIconEl.textContent = avatarIcons[player.avatarId] || '🇵🇰';
+    }
+
+    // Top-Center Navigation Target Compass Pill
+    const navPill = document.getElementById('hud-nav-target');
+    if (navPill) {
+      if (targetObjective) {
+        navPill.style.display = 'flex';
+        const navIcon = document.getElementById('hud-nav-icon');
+        const navName = document.getElementById('hud-nav-name');
+        const navDist = document.getElementById('hud-nav-dist');
+        const navArrow = document.getElementById('hud-nav-arrow');
+
+        if (navIcon) {
+          const evilIcons = {
+            pothole: '🕳️',
+            robber: '📱',
+            tanker: '🚰',
+            gutka: '🛑',
+            vip: '🚑',
+            ke: '⚡',
+            trash: '🧹',
+            bhatta: '📜',
+            onewheeler: '🏍️'
+          };
+          navIcon.textContent = evilIcons[targetObjective.evilType] || '🎯';
+        }
+        if (navName) navName.textContent = targetObjective.name || 'Objective';
+        if (navDist) navDist.textContent = `${targetObjective.dist}m`;
+
+        if (navArrow) {
+          const camAngle = (window.game && window.game.camAngle !== undefined) ? window.game.camAngle : Math.PI;
+          let relAngle = targetObjective.targetAngle - camAngle;
+          while (relAngle > Math.PI) relAngle -= Math.PI * 2;
+          while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+
+          let arrowChar = '⬆️';
+          if (relAngle > -Math.PI / 8 && relAngle <= Math.PI / 8) {
+            arrowChar = '⬆️';
+          } else if (relAngle > Math.PI / 8 && relAngle <= (3 * Math.PI) / 8) {
+            arrowChar = '↗️';
+          } else if (relAngle > (3 * Math.PI) / 8 && relAngle <= (5 * Math.PI) / 8) {
+            arrowChar = '➡️';
+          } else if (relAngle > (5 * Math.PI) / 8 && relAngle <= (7 * Math.PI) / 8) {
+            arrowChar = '↘️';
+          } else if (relAngle <= -Math.PI / 8 && relAngle > (-3 * Math.PI) / 8) {
+            arrowChar = '↖️';
+          } else if (relAngle <= (-3 * Math.PI) / 8 && relAngle > (-5 * Math.PI) / 8) {
+            arrowChar = '⬅️';
+          } else if (relAngle <= (-5 * Math.PI) / 8 && relAngle > (-7 * Math.PI) / 8) {
+            arrowChar = '↙️';
+          } else {
+            arrowChar = '⬇️';
+          }
+          navArrow.textContent = arrowChar;
+        }
+      } else {
+        navPill.style.display = 'none';
+      }
     }
 
     // Active Civic Crisis Challenge Card

@@ -83,74 +83,54 @@ export const TextureGenerator = {
     return texture;
   },
 
-  // 2. High-Definition Crisp Asphalt Road with Drainage Grates & Markings
+  // 2. High-Definition Crisp Asphalt Road with Sharp Markings (Zero Moiré Blur)
   createCrispRoadTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d');
 
-    // Deep dark asphalt foundation
-    ctx.fillStyle = '#1e2228';
-    ctx.fillRect(0, 0, 1024, 1024);
-
-    // Realistic granular asphalt surface noise
-    for (let i = 0; i < 15000; i++) {
-      const rx = Math.random() * 1024;
-      const ry = Math.random() * 1024;
-      const brightness = Math.random() > 0.5 ? 40 : 25;
-      ctx.fillStyle = `rgb(${brightness}, ${brightness + 4}, ${brightness + 8})`;
-      ctx.fillRect(rx, ry, 2, 2);
-    }
+    // Clean matte dark asphalt foundation (no random noise specks that cause moiré blur)
+    ctx.fillStyle = '#22262e';
+    ctx.fillRect(0, 0, 512, 512);
 
     // Curbside concrete storm drainage gutters (both sides)
-    ctx.fillStyle = '#2d333b';
-    ctx.fillRect(0, 0, 40, 1024);
-    ctx.fillRect(984, 0, 40, 1024);
+    ctx.fillStyle = '#2d333c';
+    ctx.fillRect(0, 0, 20, 512);
+    ctx.fillRect(492, 0, 20, 512);
 
-    // Sewer iron drain grates along curbs every 256px
-    ctx.fillStyle = '#121518';
-    for (let y = 60; y < 1024; y += 256) {
+    // Sewer iron drain grates along gutters every 128px
+    ctx.fillStyle = '#14181d';
+    for (let y = 30; y < 512; y += 128) {
       // Left drain grate
-      ctx.fillRect(6, y, 28, 70);
+      ctx.fillRect(4, y, 14, 36);
       ctx.strokeStyle = '#4e5661';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(6, y, 28, 70);
-      for (let s = y + 10; s < y + 65; s += 12) {
-        ctx.beginPath();
-        ctx.moveTo(8, s);
-        ctx.lineTo(32, s);
-        ctx.stroke();
-      }
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(4, y, 14, 36);
 
       // Right drain grate
-      ctx.fillRect(990, y, 28, 70);
-      ctx.strokeRect(990, y, 28, 70);
-      for (let s = y + 10; s < y + 65; s += 12) {
-        ctx.beginPath();
-        ctx.moveTo(992, s);
-        ctx.lineTo(1016, s);
-        ctx.stroke();
-      }
+      ctx.fillRect(494, y, 14, 36);
+      ctx.strokeRect(494, y, 14, 36);
     }
 
     // Crisp white solid shoulder lines
-    ctx.fillStyle = '#f1f5f9';
-    ctx.fillRect(48, 0, 12, 1024);
-    ctx.fillRect(964, 0, 12, 1024);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(24, 0, 8, 512);
+    ctx.fillRect(480, 0, 8, 512);
 
-    // Vibrant Yellow Center Dashed Divider Line
-    ctx.fillStyle = '#fbc02d';
-    for (let y = 30; y < 1024; y += 170) {
-      ctx.fillRect(504, y, 16, 100);
+    // Vibrant Yellow Center Dashed Divider Line (Sharp, clean, well-spaced)
+    ctx.fillStyle = '#ffca28';
+    for (let y = 16; y < 512; y += 128) {
+      ctx.fillRect(250, y, 12, 68);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(1, 4);
+    texture.repeat.set(1, 20); // 20 crisp repeats across 200m = 10m clean dash intervals
     texture.anisotropy = 16;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
     return texture;
   },
 

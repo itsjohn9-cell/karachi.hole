@@ -71,8 +71,8 @@ export class Hole {
     this.comboTimer = 0;
     this.kills = 0;
 
-    // Movement speed
-    this.baseSpeed = isPlayer ? 10.5 : 7.2 * diff.botSpeedMult;
+    // Movement speed (Snappy, agile GTA street traversal)
+    this.baseSpeed = isPlayer ? 13.5 : 7.2 * diff.botSpeedMult;
     this.currentSpeed = this.baseSpeed;
     this.isBoosting = false;
 

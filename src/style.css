@@ -223,6 +223,60 @@ html, body {
   font-weight: 900;
 }
 
+.nav-target-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 16, 26, 0.9);
+  border: 1.5px solid #00e5ff;
+  border-radius: 999px;
+  padding: 3px 12px;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+  animation: nav-pulse 2s infinite ease-in-out;
+}
+
+@keyframes nav-pulse {
+  0%, 100% { border-color: #00e5ff; box-shadow: 0 0 12px rgba(0, 229, 255, 0.4); }
+  50% { border-color: #ffd700; box-shadow: 0 0 18px rgba(255, 215, 0, 0.6); }
+}
+
+.nav-target-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #00e5ff;
+  letter-spacing: 0.8px;
+}
+
+.nav-target-icon {
+  font-size: 1.1rem;
+}
+
+.nav-target-name {
+  color: #f8fafc;
+  font-size: 0.82rem;
+  font-weight: 800;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-target-dist {
+  background: rgba(0, 229, 255, 0.22);
+  color: #00e5ff;
+  font-weight: 900;
+  font-size: 0.8rem;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.nav-target-arrow {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
 .politician-pill {
   display: flex;
   align-items: center;

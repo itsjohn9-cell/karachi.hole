@@ -18,6 +18,26 @@ export const DISTRICT_CONFIGS = [
     description: 'Intercept the illegal Water Tanker Mafia stealing tap water from PECHS homes, catch mobile snatchers, and repair road potholes!',
     missions: [
       {
+        id: 'm1_potholes',
+        title: 'Repair Road Potholes',
+        icon: '🕳️',
+        evilType: 'pothole',
+        targetCount: 2,
+        xpReward: 600,
+        description: 'Pave over broken road craters to restore smooth carpet roads on Tariq Road!',
+        benefitText: '🛣️ Smooth Carpet Roads Repaved!'
+      },
+      {
+        id: 'm1_robbers',
+        title: 'Catch Mobile Snatcher',
+        icon: '📱',
+        evilType: 'robber',
+        targetCount: 1,
+        xpReward: 1000,
+        description: 'Chase down and apprehend the armed mobile snatcher escaping down the avenue!',
+        benefitText: '📱 Citizen Phone Saved & Street Peace Restored!'
+      },
+      {
         id: 'm1_tanker',
         title: 'Stop Water Tanker Mafia',
         icon: '🚰',
@@ -26,46 +46,6 @@ export const DISTRICT_CONFIGS = [
         xpReward: 1400,
         description: 'Intercept the illegal tanker truck and restore tap water to PECHS residential homes!',
         benefitText: '💧 Overflowing Tap Water Restored to 2,500 Homes!'
-      },
-      {
-        id: 'm1_robbers',
-        title: 'Catch Mobile Snatchers',
-        icon: '📱',
-        evilType: 'robber',
-        targetCount: 2,
-        xpReward: 900,
-        description: 'Chase down and apprehend armed thugs escaping through side alleys!',
-        benefitText: '📱 Phones Saved & Street Peace Restored!'
-      },
-      {
-        id: 'm1_potholes',
-        title: 'Repair Broken Potholes',
-        icon: '🕳️',
-        evilType: 'pothole',
-        targetCount: 3,
-        xpReward: 500,
-        description: 'Repair dangerous asphalt craters into smooth carpet roads!',
-        benefitText: '🛣️ Smooth Carpet Roads Repaved!'
-      },
-      {
-        id: 'm1_gutka',
-        title: 'Bust Gutka Peddlers',
-        icon: '🛑',
-        evilType: 'gutka',
-        targetCount: 3,
-        xpReward: 600,
-        description: 'Stop illicit gutka peddlers selling hazardous substance near school zones!',
-        benefitText: '🚰 Clean Public Sabeel Water Station Built!'
-      },
-      {
-        id: 'm1_trash',
-        title: 'Clean Up Street Waste',
-        icon: '🧹',
-        evilType: 'trash',
-        targetCount: 4,
-        xpReward: 400,
-        description: 'Collect overflowing trash bags and transform them into jasmine planters!',
-        benefitText: '🌸 Blooming Jasmine Planters Planted!'
       }
     ]
   },

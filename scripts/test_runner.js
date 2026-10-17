@@ -427,6 +427,87 @@ async function runTestSuite() {
   recordTest('TC-10', 'Cross-Device Responsiveness on Mobile Viewport (375x667)', res10.success ? 'PASSED' : 'FAILED', Date.now() - t10Start, 'Verified clean vertical stacking, scaled radar, and zero banner collision on mobile');
 
   // -------------------------------------------------------------------------
+  // TC-11: Directional Precision & Left/Right Spin Prevention
+  // -------------------------------------------------------------------------
+  const t11Start = Date.now();
+  const res11 = await runChromeTest({
+    testId: 'TC-11',
+    screenshotName: 'tc11_directional_precision.png',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          const startBtn = document.getElementById('btn-start-patrol');
+          if (startBtn) startBtn.click();
+
+          setTimeout(() => {
+            const game = window.game;
+            const initCamAngle = game.camAngle;
+            const initPosX = game.player.position.x;
+
+            // Simulate pressing ArrowLeft
+            game.moveVector.x = -1.0;
+            game.moveVector.y = 0.0;
+            game.updatePhysics(0.1);
+            game.updateCamera(0.1);
+
+            // Assert player moved left (dx < 0)
+            if (game.player.position.x >= initPosX) {
+              throw new Error('ArrowLeft did not move player to the left: ' + game.player.position.x);
+            }
+            // Assert camera did not enter a runaway spin
+            const camDiff = Math.abs(game.camAngle - initCamAngle);
+            if (camDiff > 0.05) {
+              throw new Error('Camera spun unexpectedly on lateral ArrowLeft: ' + camDiff);
+            }
+
+            // Simulate pressing ArrowRight
+            game.moveVector.x = 1.0;
+            game.moveVector.y = 0.0;
+            game.updatePhysics(0.2);
+            game.updateCamera(0.2);
+            if (game.player.position.x <= -1.0) {
+              throw new Error('ArrowRight did not move player back to the right: ' + game.player.position.x);
+            }
+          }, 600);
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-11', 'Directional Precision & Left/Right Spin Prevention', res11.success ? 'PASSED' : 'FAILED', Date.now() - t11Start, 'Verified Left moves West, Right moves East, and camera maintains stable heading');
+
+  // -------------------------------------------------------------------------
+  // TC-12: 3D Ground Chevron & Top HUD Target Compass Guidance
+  // -------------------------------------------------------------------------
+  const t12Start = Date.now();
+  const res12 = await runChromeTest({
+    testId: 'TC-12',
+    screenshotName: 'tc12_navigation_guidance.png',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          const startBtn = document.getElementById('btn-start-patrol');
+          if (startBtn) startBtn.click();
+
+          setTimeout(() => {
+            const game = window.game;
+            const navPill = document.getElementById('hud-nav-target');
+            const navName = document.getElementById('hud-nav-name');
+            const navDist = document.getElementById('hud-nav-dist');
+            const navArrow = document.getElementById('hud-nav-arrow');
+
+            if (!game.navGuideGroup) throw new Error('3D navigation ground guide missing');
+            if (!navPill || navPill.style.display === 'none') throw new Error('HUD navigation target compass missing');
+            if (!navName || !navName.textContent) throw new Error('Target name missing in compass');
+            if (!navDist || !navDist.textContent.includes('m')) throw new Error('Target distance missing in compass');
+            if (!navArrow || !navArrow.textContent) throw new Error('Target directional arrow missing in compass');
+          }, 600);
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-12', '3D Ground Chevron & Top HUD Target Compass Guidance', res12.success ? 'PASSED' : 'FAILED', Date.now() - t12Start, 'Verified 3D ground chevron points to objective, HUD pill displays real-time distance and arrow');
+
+  // -------------------------------------------------------------------------
   // Summary Report Output
   // -------------------------------------------------------------------------
   const totalDuration = Date.now() - startTime;
