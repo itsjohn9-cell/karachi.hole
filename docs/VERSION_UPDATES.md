@@ -4,6 +4,17 @@ All notable changes to the **Karachi Hole.io: The City Savior** project are docu
 
 ---
 
+## [v2.2.1] - 2026-10-17
+
+### 🚀 Highlights & Gameplay Bug Fixes
+- **Solid AABB Building & Corner Collision Physics**: Implemented circle-to-AABB bounding box collision resolution with tangential sliding and interior pushout for all rectangular buildings, colonial tenements, food stalls, K-Electric poles, and municipal signboards. Players and avatars can no longer pass through building walls or corners.
+- **Camera-Relative Arrow Key Controls**: Transformed keyboard Arrow keys and virtual joystick inputs by the third-person camera angle (`camAngle`). ArrowUp now reliably drives the avatar forward down the corridor you are viewing, while ArrowLeft and ArrowRight turn and steer naturally.
+- **HUD Widget Overlap & Overhead Sprite De-Cluttering**: Converted `.active-crisis-card` from absolute to relative positioning within the mission checklist card to prevent overlapping. Added clean max-height and scrolling to `.hud-mission-card` to maintain a 40px buffer above the radar. Hid the player's overhead billboard nametag so third-person camera view is 100% unobstructed.
+- **Universal Civic Threat Capture Radius**: Removed strict tier blocks on district mission targets and expanded capture distance to `hole.radius + (obj.radius || 1.2)`, allowing water tankers, mobile snatchers, and gutka peddlers to be cleanly captured at Level 1.
+- **District Completion & Level 2 Transition Fix**: Added automatic district cleared polling when all threats are eliminated (`districtRemaining === 0`). Resolved the Level 2 instant-freeze glitch by resetting `isGameOver = false`, `isPaused = false`, and `timeLeft = matchDuration` in `advanceToNextDistrict()`, while cleanly purging old district evils.
+
+---
+
 ## [v2.2.0] - 2026-10-17
 
 ### 🚀 Highlights
