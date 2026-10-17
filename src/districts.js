@@ -1,23 +1,24 @@
 /**
- * Karachi Districts & Multi-Mission System
- * Defines 5 progressive Karachi districts with rich multi-mission checklists,
- * civic transformations, and curated targets.
+ * Pakistan Street Hero - Multi-City & Districts Progression System
+ * Defines authentic Pakistani cities (Karachi, Lahore, Islamabad, Quetta)
+ * with hyper-local cultures, civic missions, and environmental transformations.
  */
 
 export const DISTRICT_CONFIGS = [
   {
     level: 1,
-    id: 'tariq_road',
-    name: 'Tariq Road & PECHS',
-    urdu: 'طارق روڈ اور پی ای سی ایچ ایس',
-    tagline: 'Water Tanker Crisis & Street Snatchers',
+    id: 'karachi_clifton_dha',
+    city: 'Karachi',
+    name: 'Karachi: DHA & Clifton Sea View',
+    urdu: 'کراچی: ڈی ایچ اے اور کلفٹن سی ویو',
+    tagline: 'VIP Convoys, Water Tanker Mafia & Snatchers',
     heroTitle: 'Street Vigilante',
-    unlockedTitle: 'PECHS Neighborhood Guardian',
-    timeBonus: 60,
-    bonusScore: 3000,
+    unlockedTitle: 'Coastal Guardian',
+    timeBonus: 65,
+    bonusScore: 3500,
     holeRadiusBonus: 0.35,
     speedBonus: 0.8,
-    description: 'Intercept the illegal Water Tanker Mafia stealing tap water from PECHS homes, catch mobile snatchers, and repair road potholes!',
+    description: 'Protect Clifton citizens and DHA coastal avenues: intercept illegal water tankers, arrest mobile snatchers, and repair broken road craters!',
     missions: [
       {
         id: 'm1_potholes',
@@ -26,7 +27,7 @@ export const DISTRICT_CONFIGS = [
         evilType: 'pothole',
         targetCount: 2,
         xpReward: 600,
-        description: 'Pave over broken road craters to restore smooth carpet roads on Tariq Road!',
+        description: 'Pave over broken road craters to restore smooth carpet roads on the coastal avenue!',
         benefitText: '🛣️ Smooth Carpet Roads Repaved!'
       },
       {
@@ -46,27 +47,85 @@ export const DISTRICT_CONFIGS = [
         evilType: 'tanker',
         targetCount: 1,
         xpReward: 1400,
-        description: 'Intercept the illegal tanker truck and restore tap water to PECHS residential homes!',
+        description: 'Intercept the illegal tanker truck and restore tap water to PECHS & Clifton residential homes!',
         benefitText: '💧 Overflowing Tap Water Restored to 2,500 Homes!'
       }
     ]
   },
   {
     level: 2,
-    id: 'saddar_empress',
-    name: 'Saddar Bazaar & Empress Market',
-    urdu: 'صدر بازار اور ایمپریس مارکیٹ',
-    tagline: 'VIP Protocol Traffic Jams & Extortion Mafias',
+    id: 'karachi_lyari',
+    city: 'Karachi',
+    name: 'Karachi: Lyari Football & Culture',
+    urdu: 'کراچی: لیاری فٹ بال اور کلچر',
+    tagline: 'Bhatta Extortionists, Potholes & Street Peace',
     heroTitle: 'District Cleanser',
-    unlockedTitle: 'Bazaar Protector',
+    unlockedTitle: 'Lyari Aman Hero',
     timeBonus: 75,
     bonusScore: 5000,
     holeRadiusBonus: 0.40,
     speedBonus: 0.8,
-    description: 'Clear the VIP Protocol Prado convoy blocking the Edhi Ambulance, bust bhatta extortionists, and catch reckless street racers!',
+    description: 'Restore peace in Lyari: bust bhatta extortionists waving parchi slips, stop reckless 70cc racers, and repair street craters so children can play football!',
     missions: [
       {
-        id: 'm2_vip',
+        id: 'm2_bhatta',
+        title: 'Bust Bhatta Extortionists',
+        icon: '📜',
+        evilType: 'bhatta',
+        targetCount: 3,
+        xpReward: 1200,
+        description: 'Stop extortion thugs waving illegal extortion slips at local market shopkeepers!',
+        benefitText: '🕊️ Peaceful Open Aman Bazaar Reopened!'
+      },
+      {
+        id: 'm2_potholes',
+        title: 'Repair Lyari Street Craters',
+        icon: '🕳️',
+        evilType: 'pothole',
+        targetCount: 2,
+        xpReward: 800,
+        description: 'Level broken street potholes so youth can safely play street football!',
+        benefitText: '⚽ Safe Football Ground & Smooth Streets Created!'
+      },
+      {
+        id: 'm2_racers',
+        title: 'Stop Reckless 70cc Racers',
+        icon: '🏍️',
+        evilType: 'onewheeler',
+        targetCount: 3,
+        xpReward: 900,
+        description: 'Intercept reckless one-wheelers endangering pedestrians on narrow neighborhood roads!',
+        benefitText: '🚸 Safe Pedestrian Crossing Restored!'
+      },
+      {
+        id: 'm2_robbers',
+        title: 'Apprehend Street Snatchers',
+        icon: '🔫',
+        evilType: 'robber',
+        targetCount: 2,
+        xpReward: 1000,
+        description: 'Catch mobile snatchers escaping near the neighborhood community center!',
+        benefitText: '🛡️ Lyari Neighborhood Safe Zone Established!'
+      }
+    ]
+  },
+  {
+    level: 3,
+    id: 'karachi_saddar_burns',
+    city: 'Karachi',
+    name: 'Karachi: Saddar & Burns Road',
+    urdu: 'کراچی: صدر اور برنز روڈ',
+    tagline: 'VIP Protocol Traffic Jams & Edhi Ambulance Escorts',
+    heroTitle: 'Bazaar Protector',
+    unlockedTitle: 'Heritage Savior',
+    timeBonus: 85,
+    bonusScore: 7500,
+    holeRadiusBonus: 0.45,
+    speedBonus: 0.8,
+    description: 'Clear the VIP Protocol Prado convoys blocking the Edhi Ambulance, recycle Burns Road food street waste, and stop reckless one-wheelers!',
+    missions: [
+      {
+        id: 'm3_vip',
         title: 'Clear VIP Escorts for Ambulance',
         icon: '🚑',
         evilType: 'vip',
@@ -76,202 +135,165 @@ export const DISTRICT_CONFIGS = [
         benefitText: '🚑 Edhi Ambulance Reaches Civil Hospital Safely!'
       },
       {
-        id: 'm2_bhatta',
-        title: 'Bust Bhatta Extortionists',
-        icon: '📜',
-        evilType: 'bhatta',
-        targetCount: 3,
-        xpReward: 1200,
-        description: 'Stop extortion thugs waving illegal extortion slips at fruit and spice vendors!',
-        benefitText: '🕊️ Peaceful Open Aman Bazaar Reopened!'
-      },
-      {
-        id: 'm2_racers',
-        title: 'Stop Reckless 70cc Racers',
-        icon: '🏍️',
-        evilType: 'onewheeler',
-        targetCount: 3,
-        xpReward: 900,
-        description: 'Intercept speeding one-wheelers endangering pedestrians on Preedy Street!',
-        benefitText: '🚸 Safe Pedestrian Crossing Restored!'
-      },
-      {
-        id: 'm2_robbers',
-        title: 'Apprehend Electronics Snatchers',
-        icon: '🔫',
+        id: 'm3_snatchers',
+        title: 'Bust Empress Market Snatchers',
+        icon: '📱',
         evilType: 'robber',
         targetCount: 2,
-        xpReward: 1000,
-        description: 'Catch mobile snatchers escaping near Rainbow Center!',
-        benefitText: '🛡️ Electronics Market Safe Zone Established!'
+        xpReward: 1200,
+        description: 'Protect shoppers and foodies on Burns Road from electronics snatchers!',
+        benefitText: '🥙 Peaceful Food Street Walkway!'
       },
       {
-        id: 'm2_debris',
+        id: 'm3_debris',
         title: 'Recycle Market Debris',
         icon: '🗑️',
         evilType: 'trash',
         targetCount: 4,
-        xpReward: 500,
+        xpReward: 600,
         description: 'Clean up discarded fruit crates and plastic waste outside Empress Market!',
-        benefitText: '🌿 Green Botanical Walkway Created!'
-      }
-    ]
-  },
-  {
-    level: 3,
-    id: 'water_pump_gulshan',
-    name: 'Water Pump & Gulshan-e-Iqbal',
-    urdu: 'واٹر پمپ اور گلشن اقبال',
-    tagline: 'Mega Tanker Cartel & Sparking Power Kundas',
-    heroTitle: 'City Water Champion',
-    unlockedTitle: 'Civic Commissioner',
-    timeBonus: 85,
-    bonusScore: 8000,
-    holeRadiusBonus: 0.45,
-    speedBonus: 0.8,
-    description: 'Dismantle the industrial water tanker cartel, disconnect sparking power kundas, and tear down illegal sidewalk encroachment walls!',
-    missions: [
-      {
-        id: 'm3_tankers',
-        title: 'Dismantle Tanker Cartel',
-        icon: '💧',
-        evilType: 'tanker',
-        targetCount: 3,
-        xpReward: 2500,
-        description: 'Stop 3 commercial water tankers siphoning water from the main Gulshan water pumping station!',
-        benefitText: '🌊 High-Pressure Freshwater Pumped to 10,000 Homes!'
-      },
-      {
-        id: 'm3_kundas',
-        title: 'Remove Sparking Power Kundas',
-        icon: '⚡',
-        evilType: 'ke',
-        targetCount: 3,
-        xpReward: 1600,
-        description: 'Disconnect dangerous illegal wiring hooked over high-voltage transformers!',
-        benefitText: '💡 Clean Solar Microgrid Powers Street Lights!'
-      },
-      {
-        id: 'm3_chinacutting',
-        title: 'Tear Down Illegal Encroachment Walls',
-        icon: '📐',
-        evilType: 'chinacutting',
-        targetCount: 2,
-        xpReward: 1400,
-        description: 'Demolish unauthorized boundary walls encroaching on public footpaths!',
-        benefitText: '🌳 Shaded Pedestrian Footpath Reopened!'
-      },
-      {
-        id: 'm3_robbers',
-        title: 'Bust University Road Snatchers',
-        icon: '🔫',
-        evilType: 'robber',
-        targetCount: 2,
-        xpReward: 1100,
-        description: 'Protect Karachi University students from roadside phone snatchers!',
-        benefitText: '🎓 Safe Campus Transit Corridor!'
+        benefitText: '🌿 Clean Heritage Walkway Restored!'
       }
     ]
   },
   {
     level: 4,
-    id: 'clifton_sea_view',
-    name: 'Clifton & Sea View Coast',
-    urdu: 'کلفٹن اور سی ویو کوسٹ',
-    tagline: 'Corrupt VIP Convoys & Beachfront Land Grabbers',
-    heroTitle: 'Metropolitan Guardian',
-    unlockedTitle: 'Karachi Legend',
+    id: 'lahore_canal_bank',
+    city: 'Lahore',
+    name: 'Lahore: Androon & Canal Bank',
+    urdu: 'لاہور: اندرون لاہور اور کینال روڈ',
+    tagline: 'Smog Emitters, Chemical Dor Peddlers & Canal Peace',
+    heroTitle: 'Zinda Dil Hero',
+    unlockedTitle: 'Lahore City Guardian',
     timeBonus: 95,
-    bonusScore: 12000,
+    bonusScore: 10000,
     holeRadiusBonus: 0.50,
-    speedBonus: 0.8,
-    description: 'Catch corrupt VIP politicians fleeing with offshore briefcases, clear beach motorcades, and reclaim public mangroves!',
+    speedBonus: 0.85,
+    description: 'Enter the heart of Punjab! Catch chemical kite-string (dor) peddlers, impound smoke-spewing smog vehicles along the Canal, and clear VIP convoys!',
     missions: [
       {
-        id: 'm4_politicians',
-        title: 'Catch Corrupt VIP Politicians',
-        icon: '💰',
-        evilType: 'politician',
-        targetCount: 4,
-        xpReward: 3000,
-        description: 'Intercept corrupt politicians fleeing toward private jets with offshore money briefcases!',
-        benefitText: '🏛️ Millions Recovered for Karachi Public Schools & Hospitals!'
+        id: 'm4_dor',
+        title: 'Bust Chemical Kite-String Peddlers',
+        icon: '🪁',
+        evilType: 'chinacutting',
+        targetCount: 3,
+        xpReward: 2200,
+        description: 'Confiscate lethal glass/metal coated kite strings endangering bike riders on Mall Road!',
+        benefitText: '🕊️ Safe Skies & Protected Motorcyclists!'
+      },
+      {
+        id: 'm4_smog',
+        title: 'Impound Black Smog Emitters',
+        icon: '🏭',
+        evilType: 'tanker',
+        targetCount: 2,
+        xpReward: 2000,
+        description: 'Stop commercial smoke-belching diesel clunkers polluting the Lahore atmosphere!',
+        benefitText: '🌤️ Crisp Clean Air & Smog-Free Lahore Skies!'
       },
       {
         id: 'm4_vip',
-        title: 'Clear Sea View VIP Convoys',
+        title: 'Clear Canal Bank VIP Motorcades',
         icon: '🚨',
         evilType: 'vip',
         targetCount: 2,
-        xpReward: 2200,
-        description: 'Clear arrogant VIP escort fleets blocking citizens from enjoying Sea View beach!',
-        benefitText: '🏖️ Free Unrestricted Beachfront Promenade!'
-      },
-      {
-        id: 'm4_encroachment',
-        title: 'Evict Mangrove Land Grabbers',
-        icon: '📐',
-        evilType: 'chinacutting',
-        targetCount: 3,
-        xpReward: 1800,
-        description: 'Stop commercial developers dumping debris into protected coastal mangrove wetlands!',
-        benefitText: '🌊 Protected Coastal Mangrove Marine Sanctuary!'
-      },
-      {
-        id: 'm4_tankers',
-        title: 'Stop Coastal Water Smugglers',
-        icon: '💧',
-        evilType: 'tanker',
-        targetCount: 2,
-        xpReward: 1500,
-        description: 'Intercept tankers smuggling desalination water away from coastal fishermen villages!',
-        benefitText: '🐟 Freshwater Taps Restored to Fishermen Neighborhoods!'
+        xpReward: 2500,
+        description: 'Disband illegal VIP protocol escorts blocking regular commuters along Lahore Canal!',
+        benefitText: '🌳 Peaceful Flowering Canal Promenade!'
       }
     ]
   },
   {
     level: 5,
-    id: 'mazar_e_quaid_mega',
-    name: 'Mazar-e-Quaid Metropolis',
-    urdu: 'مزار قائد میٹروپولیس',
-    tagline: 'Total City Cleansing & Grand Victory',
-    heroTitle: 'Grand City Protector',
-    unlockedTitle: 'Supreme Karachi Savior',
+    id: 'islamabad_margalla',
+    city: 'Islamabad',
+    name: 'Islamabad: F-Sectors & Margalla',
+    urdu: 'اسلام آباد: سیکٹرز اور مارگلہ ہلز',
+    tagline: 'Midnight Street Racers & Margalla Forest Protection',
+    heroTitle: 'Federal Peacekeeper',
+    unlockedTitle: 'Margalla Sentinel',
+    timeBonus: 105,
+    bonusScore: 15000,
+    holeRadiusBonus: 0.55,
+    speedBonus: 0.85,
+    description: 'Patrol the lush green capital! Catch midnight supercar street racers on Constitution Avenue, stop illegal timber logging on Margalla Hills, and remove VIP blockades!',
+    missions: [
+      {
+        id: 'm5_racers',
+        title: 'Impound Midnight Street Racers',
+        icon: '🏎️',
+        evilType: 'onewheeler',
+        targetCount: 3,
+        xpReward: 3000,
+        description: 'Intercept dangerous luxury street racers disturbing the quiet capital avenues!',
+        benefitText: '🚦 Disciplined, Safe Federal Avenues!'
+      },
+      {
+        id: 'm5_timber',
+        title: 'Stop Margalla Timber Poachers',
+        icon: '🌲',
+        evilType: 'chinacutting',
+        targetCount: 3,
+        xpReward: 2500,
+        description: 'Protect the Margalla Hills National Park from illegal woodcutters and fire hazards!',
+        benefitText: '🌿 Flourishing Green Margalla Foothills!'
+      },
+      {
+        id: 'm5_politicians',
+        title: 'Audit Corrupt Protocol VIPs',
+        icon: '💼',
+        evilType: 'politician',
+        targetCount: 3,
+        xpReward: 3500,
+        description: 'Bring corrupt bureaucrats fleeing with public funds to justice in the capital!',
+        benefitText: '🏛️ Transparent Governance & Public Trust Restored!'
+      }
+    ]
+  },
+  {
+    level: 6,
+    id: 'quetta_hanna_valley',
+    city: 'Quetta',
+    name: 'Quetta: Liaquat Bazaar & Hanna Valley',
+    urdu: 'کوئٹہ: لیاقت بازار اور ہنہ ویلی',
+    tagline: 'Groundwater Cartels, Bazaar Mafias & Mountain Peace',
+    heroTitle: 'Supreme Mountain Champion',
+    unlockedTitle: 'Supreme Pakistan Street Hero',
     timeBonus: 120,
     bonusScore: 25000,
     holeRadiusBonus: 0.60,
-    speedBonus: 0.8,
-    description: 'Cleanse all remaining mafias and corrupt cartels to make Karachi the peaceful, thriving City of Lights!',
+    speedBonus: 0.9,
+    description: 'Reach the rugged mountain valley of Quetta! Shut down illegal groundwater boring cartels, bust bazaar extortionists, and secure sparking electrical poles!',
     missions: [
       {
-        id: 'm5_mafia_kings',
-        title: 'Arrest Cartel Kingpins',
-        icon: '👑',
-        evilType: 'politician',
-        targetCount: 5,
-        xpReward: 5000,
-        description: 'Bring the city cartel bosses to justice at the heart of Karachi!',
-        benefitText: '🌟 City of Lights Restored in Glory, Justice & Peace!'
-      },
-      {
-        id: 'm5_vip_fleets',
-        title: 'Neutralize VIP Motorcades',
-        icon: '🚨',
-        evilType: 'vip',
-        targetCount: 3,
-        xpReward: 3000,
-        description: 'Disband all VIP protocol escort squads across Mazar-e-Quaid corridors!',
-        benefitText: '🚦 Equal Traffic Rules for Every Citizen!'
-      },
-      {
-        id: 'm5_mega_tankers',
-        title: 'Free All Municipal Reservoirs',
+        id: 'm6_water',
+        title: 'Shut Illegal Boring Cartels',
         icon: '💧',
         evilType: 'tanker',
         targetCount: 3,
+        xpReward: 4000,
+        description: 'Stop commercial cartels depleting Quetta Valley freshwater aquifers!',
+        benefitText: '🏔️ Natural Hanna Valley Freshwater Streams Restored!'
+      },
+      {
+        id: 'm6_bazaar',
+        title: 'Bust Liaquat Bazaar Extortionists',
+        icon: '💰',
+        evilType: 'bhatta',
+        targetCount: 4,
+        xpReward: 3000,
+        description: 'Protect dry-fruit merchants and local Pashtun/Balochi traders from bazaar mafias!',
+        benefitText: '✨ Vibrant, Safe Liaquat Bazaar Economy!'
+      },
+      {
+        id: 'm6_transformers',
+        title: 'Secure Sparking Power Transformers',
+        icon: '⚡',
+        evilType: 'ke',
+        targetCount: 3,
         xpReward: 2500,
-        description: 'Connect all main water pipelines directly to citizen homes!',
-        benefitText: '🚰 24/7 Clean Drinking Water for All 20 Million Karachiites!'
+        description: 'Disconnect hazardous exposed wires to prevent urban fire outbreaks!',
+        benefitText: '💡 Stable Electricity & Safe Mountain City!'
       }
     ]
   }

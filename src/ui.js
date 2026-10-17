@@ -82,7 +82,7 @@ export class UIManager {
       <div class="modal-card start-mission-card">
         <div class="start-hero-header">
           <div class="city-crest">🌟</div>
-          <h1 class="start-title">KARACHI HOLE.IO</h1>
+          <h1 class="start-title">PAKISTAN STREET HERO</h1>
           <p class="start-tagline">3D Third-Person Street Patrol &amp; Civic Hero Mission</p>
         </div>
 
@@ -240,7 +240,7 @@ export class UIManager {
         <div class="hud-top-controls">
           <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
-          <button class="icon-btn ui-interactive" id="btn-open-skins" title="Change Avatar Skin">🎨</button>
+          <button class="icon-btn ui-interactive" id="btn-open-skins" title="Select Hero Outfit">🎨</button>
           <button class="icon-btn ui-interactive" id="btn-open-guide" title="Civic Guide">❓</button>
           <button class="icon-btn ui-interactive" id="btn-top-journal" title="Civic Mission Journal & District Gauges [J]">📜</button>
           <button class="icon-btn ui-interactive" id="btn-open-quiz" title="Civic Academy Challenge">🎓</button>
@@ -385,7 +385,7 @@ export class UIManager {
     this.skinModal.innerHTML = `
       <div class="modal-card">
         <div class="modal-header">
-          <h2>Select Hole Skin</h2>
+          <h2>Select Hero Outfit</h2>
           <button class="close-btn ui-interactive" id="btn-close-skins">&times;</button>
         </div>
         <div class="skin-grid">
@@ -549,7 +549,7 @@ export class UIManager {
         <div class="modal-header guide-modal-header">
           <div class="guide-title-block">
             <h2 class="guide-title">👶 WHAT TO DEVOUR?</h2>
-            <p class="guide-subtitle">A Visual Guide to Karachi Hole.io: Only Devour the Bad Guys!</p>
+            <p class="guide-subtitle">A Visual Guide to Pakistan Street Hero: Only Takedown the Bad Guys!</p>
           </div>
           <button class="close-btn ui-interactive" id="btn-close-guide">&times;</button>
         </div>

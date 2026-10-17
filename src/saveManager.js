@@ -1,9 +1,3 @@
-/**
- * Karachi Street Action & Civic Hero - Save & Progression Manager
- * Handles local persistence of player career, district restoration status,
- * environmental state changes, civic badges, and game settings.
- */
-
 const STORAGE_KEY = 'karachi_hero_save_v2';
 
 export const DEFAULT_SAVE_DATA = {
@@ -26,59 +20,16 @@ export const DEFAULT_SAVE_DATA = {
     cameraSensitivity: 1.0,
     ageTier: 'kids'
   },
+  currentCity: 'karachi',
   currentDistrictLevel: 1,
   highestDistrictUnlocked: 1,
   districts: {
-    1: {
-      status: 'unlocked', // 'locked' | 'unlocked' | 'cleared'
-      cleanliness: 35,
-      infrastructure: 40,
-      trafficFlow: 55,
-      safety: 45,
-      completedMissions: [],
-      highScore: 0,
-      environmentalStates: {}
-    },
-    2: {
-      status: 'locked',
-      cleanliness: 25,
-      infrastructure: 35,
-      trafficFlow: 30,
-      safety: 40,
-      completedMissions: [],
-      highScore: 0,
-      environmentalStates: {}
-    },
-    3: {
-      status: 'locked',
-      cleanliness: 30,
-      infrastructure: 30,
-      trafficFlow: 45,
-      safety: 35,
-      completedMissions: [],
-      highScore: 0,
-      environmentalStates: {}
-    },
-    4: {
-      status: 'locked',
-      cleanliness: 45,
-      infrastructure: 50,
-      trafficFlow: 40,
-      safety: 50,
-      completedMissions: [],
-      highScore: 0,
-      environmentalStates: {}
-    },
-    5: {
-      status: 'locked',
-      cleanliness: 20,
-      infrastructure: 25,
-      trafficFlow: 20,
-      safety: 25,
-      completedMissions: [],
-      highScore: 0,
-      environmentalStates: {}
-    }
+    1: { status: 'unlocked', cleanliness: 35, infrastructure: 40, trafficFlow: 55, safety: 45, completedMissions: [], highScore: 0, environmentalStates: {} },
+    2: { status: 'locked', cleanliness: 25, infrastructure: 35, trafficFlow: 30, safety: 40, completedMissions: [], highScore: 0, environmentalStates: {} },
+    3: { status: 'locked', cleanliness: 30, infrastructure: 30, trafficFlow: 45, safety: 35, completedMissions: [], highScore: 0, environmentalStates: {} },
+    4: { status: 'locked', cleanliness: 45, infrastructure: 50, trafficFlow: 40, safety: 50, completedMissions: [], highScore: 0, environmentalStates: {} },
+    5: { status: 'locked', cleanliness: 20, infrastructure: 25, trafficFlow: 20, safety: 25, completedMissions: [], highScore: 0, environmentalStates: {} },
+    6: { status: 'locked', cleanliness: 25, infrastructure: 30, trafficFlow: 30, safety: 30, completedMissions: [], highScore: 0, environmentalStates: {} }
   },
   badges: ['water_guardian'],
   citizenConversations: {}
@@ -89,17 +40,16 @@ class SaveManager {
     this.data = this.load();
   }
 
+  get() {
+    return this.data;
+  }
+
   load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return JSON.parse(JSON.stringify(DEFAULT_SAVE_DATA));
-
       const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') {
-        return JSON.parse(JSON.stringify(DEFAULT_SAVE_DATA));
-      }
-
-      // Merge defaults for robust schema migration
+      if (!parsed || typeof parsed !== 'object') return JSON.parse(JSON.stringify(DEFAULT_SAVE_DATA));
       return {
         ...DEFAULT_SAVE_DATA,
         ...parsed,
@@ -109,7 +59,6 @@ class SaveManager {
         badges: Array.isArray(parsed.badges) ? parsed.badges : DEFAULT_SAVE_DATA.badges
       };
     } catch (e) {
-      console.warn('[SaveManager] Failed to read localStorage, falling back to defaults:', e);
       return JSON.parse(JSON.stringify(DEFAULT_SAVE_DATA));
     }
   }
@@ -120,7 +69,6 @@ class SaveManager {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
       return true;
     } catch (e) {
-      console.warn('[SaveManager] Failed to write localStorage:', e);
       return false;
     }
   }
@@ -135,56 +83,60 @@ class SaveManager {
     );
   }
 
-  recordMissionCompleted(districtLevel, missionId, xpEarned = 1000) {
+  addPlayerXP(xp = 0) {
+    this.data.player.careerXP = (this.data.player.careerXP || 0) + xp;
+    const nextLevel = 1 + Math.floor(this.data.player.careerXP / 3500);
+    this.data.player.level = Math.max(this.data.player.level || 1, nextLevel);
+    this.save();
+  }
+
+  unlockDistrict(districtLevel) {
     if (!this.data.districts[districtLevel]) {
       this.data.districts[districtLevel] = {
-        status: 'unlocked',
-        cleanliness: 30,
-        infrastructure: 30,
-        trafficFlow: 40,
-        safety: 35,
-        completedMissions: [],
-        highScore: 0,
-        environmentalStates: {}
+        status: 'unlocked', cleanliness: 30, infrastructure: 30, trafficFlow: 35, safety: 35, completedMissions: [], highScore: 0, environmentalStates: {}
       };
     }
+    this.data.districts[districtLevel].status = 'unlocked';
+    this.data.highestDistrictUnlocked = Math.max(this.data.highestDistrictUnlocked || 1, districtLevel);
+    this.data.currentDistrictLevel = districtLevel;
+    this.save();
+  }
 
+  updateDistrictGauges(districtLevel, deltas = {}) {
+    if (!this.data.districts[districtLevel]) this.unlockDistrict(districtLevel);
+    const d = this.data.districts[districtLevel];
+    if (deltas.cleanliness) d.cleanliness = Math.min(100, (d.cleanliness || 35) + deltas.cleanliness);
+    if (deltas.infrastructure) d.infrastructure = Math.min(100, (d.infrastructure || 40) + deltas.infrastructure);
+    if (deltas.trafficFlow) d.trafficFlow = Math.min(100, (d.trafficFlow || 55) + deltas.trafficFlow);
+    if (deltas.safety) d.safety = Math.min(100, (d.safety || 45) + deltas.safety);
+    this.save();
+  }
+
+  recordMissionCompleted(districtLevel, missionId, envState = {}, xpEarned = 1000) {
+    if (!this.data.districts[districtLevel]) this.unlockDistrict(districtLevel);
     const d = this.data.districts[districtLevel];
     if (!d.completedMissions.includes(missionId)) {
       d.completedMissions.push(missionId);
     }
-
-    // Boost district civic statistics based on mission type
-    if (missionId.includes('pothole') || missionId.includes('repair')) {
-      d.infrastructure = Math.min(100, (d.infrastructure || 40) + 30);
-      d.cleanliness = Math.min(100, (d.cleanliness || 35) + 15);
-    } else if (missionId.includes('robber') || missionId.includes('safety') || missionId.includes('bhatta')) {
-      d.safety = Math.min(100, (d.safety || 45) + 30);
-    } else if (missionId.includes('tanker') || missionId.includes('water')) {
-      d.infrastructure = Math.min(100, (d.infrastructure || 40) + 25);
-      d.cleanliness = Math.min(100, (d.cleanliness || 35) + 20);
-    } else if (missionId.includes('vip') || missionId.includes('ambulance') || missionId.includes('racer')) {
-      d.trafficFlow = Math.min(100, (d.trafficFlow || 55) + 30);
-      d.safety = Math.min(100, (d.safety || 45) + 15);
-    } else {
-      d.cleanliness = Math.min(100, (d.cleanliness || 35) + 20);
+    if (envState && typeof envState === 'object') {
+      d.environmentalStates = { ...(d.environmentalStates || {}), ...envState };
     }
-
-    // Track Player Career XP & Cleansed count
-    this.data.player.careerXP = (this.data.player.careerXP || 0) + xpEarned;
     this.data.player.totalEvilsCleansed = (this.data.player.totalEvilsCleansed || 0) + 1;
+    this.addPlayerXP(xpEarned);
+  }
 
-    // Career level thresholds
-    const nextLevel = 1 + Math.floor(this.data.player.careerXP / 3500);
-    this.data.player.level = Math.max(this.data.player.level, nextLevel);
-
+  recordCitizenConversation(citizenId, choiceId) {
+    this.data.citizenConversations[citizenId] = choiceId || true;
+    this.data.player.totalCitizensHelped = (this.data.player.totalCitizensHelped || 0) + 1;
     this.save();
   }
 
+  recordCitizenTalk(citizenId) {
+    this.recordCitizenConversation(citizenId, 'talked');
+  }
+
   recordDistrictCleared(districtLevel, score = 0, heroTitle = '') {
-    if (!this.data.districts[districtLevel]) {
-      this.data.districts[districtLevel] = { status: 'cleared', highScore: score };
-    }
+    if (!this.data.districts[districtLevel]) this.unlockDistrict(districtLevel);
     const d = this.data.districts[districtLevel];
     d.status = 'cleared';
     d.highScore = Math.max(d.highScore || 0, score);
@@ -192,44 +144,13 @@ class SaveManager {
     d.infrastructure = 100;
     d.trafficFlow = 100;
     d.safety = 100;
-
-    // Unlock next district
-    const nextDistrict = districtLevel + 1;
-    if (nextDistrict <= 5) {
-      if (!this.data.districts[nextDistrict]) {
-        this.data.districts[nextDistrict] = {
-          status: 'unlocked',
-          cleanliness: 30,
-          infrastructure: 30,
-          trafficFlow: 35,
-          safety: 35,
-          completedMissions: [],
-          highScore: 0,
-          environmentalStates: {}
-        };
-      }
-      this.data.districts[nextDistrict].status = 'unlocked';
-      this.data.highestDistrictUnlocked = Math.max(this.data.highestDistrictUnlocked, nextDistrict);
+    if (districtLevel + 1 <= 10) {
+      this.unlockDistrict(districtLevel + 1);
     }
-
     if (heroTitle && !this.data.player.unlockedTitles.includes(heroTitle)) {
       this.data.player.unlockedTitles.push(heroTitle);
       this.data.player.heroTitle = heroTitle;
     }
-
-    this.save();
-  }
-
-  recordEnvironmentalState(districtLevel, objectId, state = 'restored') {
-    if (!this.data.districts[districtLevel]) return;
-    this.data.districts[districtLevel].environmentalStates[objectId] = state;
-    this.save();
-  }
-
-  recordCitizenTalk(citizenId) {
-    this.data.citizenConversations[citizenId] = (this.data.citizenConversations[citizenId] || 0) + 1;
-    this.data.player.totalCitizensHelped = (this.data.player.totalCitizensHelped || 0) + 1;
-    this.data.player.careerXP = (this.data.player.careerXP || 0) + 75; // +75 XP for talking to citizens
     this.save();
   }
 

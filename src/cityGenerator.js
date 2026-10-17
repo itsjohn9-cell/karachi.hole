@@ -20,6 +20,7 @@ export class CityGenerator {
     this.interactiveResidents = [];
     this.obstacles = [];
     this.beacons = [];
+    this.staticMeshes = [];
     this.mapSize = 320; // Expanded Karachi Metropolis Map
   }
 
@@ -96,6 +97,44 @@ export class CityGenerator {
     sea.position.set(0, -0.32, 500); // Extends south from z = 100 to z = 900
     this.scene.add(sea);
     this.seaMesh = sea;
+    this.groundMat = groundMat;
+    this.ground = ground;
+    this.plazaMat = plazaMat;
+    this.plaza = plaza;
+    this.beach = beach;
+  }
+
+  applyCityTheme(districtLevel = 1) {
+    if (!this.groundMat || !this.plazaMat) return;
+    if (districtLevel <= 3) {
+      // Karachi (DHA, Lyari, Saddar): Coastal warmth, Arabian Sea
+      this.groundMat.color.setHex(0xbdb39a);
+      this.plazaMat.color.setHex(0x242830);
+      if (this.beach) this.beach.visible = true;
+      if (this.seaMesh) this.seaMesh.visible = true;
+      if (this.scene.fog) this.scene.fog.color.setHex(0xd0d8e0);
+    } else if (districtLevel === 4) {
+      // Lahore (Androon & Canal Bank): Lush Punjab green grass, warm evening sky
+      this.groundMat.color.setHex(0x2e7d32);
+      this.plazaMat.color.setHex(0x37474f);
+      if (this.beach) this.beach.visible = false;
+      if (this.seaMesh) this.seaMesh.visible = false;
+      if (this.scene.fog) this.scene.fog.color.setHex(0xffcc80);
+    } else if (districtLevel === 5) {
+      // Islamabad (F-Sectors & Margalla): Emerald mountain green, clean dark asphalt
+      this.groundMat.color.setHex(0x1b5e20);
+      this.plazaMat.color.setHex(0x212121);
+      if (this.beach) this.beach.visible = false;
+      if (this.seaMesh) this.seaMesh.visible = false;
+      if (this.scene.fog) this.scene.fog.color.setHex(0xb2dfdb);
+    } else {
+      // Quetta (Liaquat Bazaar & Hanna Valley): Rugged mountain sandstone valley
+      this.groundMat.color.setHex(0xa1887f);
+      this.plazaMat.color.setHex(0x3e2723);
+      if (this.beach) this.beach.visible = false;
+      if (this.seaMesh) this.seaMesh.visible = false;
+      if (this.scene.fog) this.scene.fog.color.setHex(0x90caf9);
+    }
   }
 
   createRoadNetwork() {
@@ -690,11 +729,12 @@ export class CityGenerator {
 
     const trashColors = [0x1565c0, 0x212121, 0x43a047, 0xe53935];
 
+    this.applyCityTheme(districtLevel);
+
     if (districtLevel === 1) {
       // =========================================================
-      // DISTRICT 1: TARIQ ROAD & PECHS (Level 1)
+      // DISTRICT 1: KARACHI - DHA & CLIFTON SEA VIEW (Level 1)
       // Rapid-Testing Streamlined Forward Corridor:
-      // All 4 objectives aligned straight ahead down the central avenue (-Z)
       // 1. Pothole #1 at 7m ahead
       // 2. Pothole #2 at 14m ahead (slight right)
       // 3. Mobile Snatcher at 21m ahead (slight left)
@@ -720,15 +760,9 @@ export class CityGenerator {
       this.addWaterTankerScene(0.0, -29.0);
     } else if (districtLevel === 2) {
       // =========================================================
-      // DISTRICT 2: SADDAR & EMPRESS MARKET (Level 2)
-      // Focus: VIP Traffic Jams (freed traffic!), Bhatta Mafias & Racers
+      // DISTRICT 2: KARACHI - LYARI (Level 2)
+      // Focus: Bhatta Extortionists, Potholes, 70cc Racers, Snatchers
       // =========================================================
-      this.addVIPTrafficJamScene(-8.0, -14.0, Math.PI / 2);
-      this.addVIPTrafficJamScene(14.0, 12.0, 0);
-
-      this.addRobberyScene(15.0, -15.0);
-      this.addRobberyScene(-16.0, -6.0);
-
       const bhattaSpots = [[-8.5, -4.5], [8.5, 4.5], [-14.0, 18.0]];
       bhattaSpots.forEach(([bx, bz], idx) => {
         const bhatta = KarachiModels.createBhattaParchiMafia();
@@ -745,108 +779,98 @@ export class CityGenerator {
         this.addWaypointBeacon(racer, '🏍️');
       });
 
+      [[-10.0, -15.0], [12.0, 15.0]].forEach(([px, pz]) => {
+        const pot = KarachiModels.createBrokenRoadPatch();
+        pot.position.set(px, 0, pz);
+        this.registerEdible(pot, 1, 80, "Lyari Pothole", 1.5, { isBadGuy: true, evilType: 'pothole', isDistrictEvil: true });
+        this.addWaypointBeacon(pot, '🕳️');
+      });
+
+      this.addRobberyScene(15.0, -15.0);
+      this.addRobberyScene(-16.0, -6.0);
+    } else if (districtLevel === 3) {
+      // =========================================================
+      // DISTRICT 3: KARACHI - SADDAR & BURNS ROAD (Level 3)
+      // Focus: VIP Traffic Jams blocking Ambulance, Empress Snatchers, Market Debris
+      // =========================================================
+      this.addVIPTrafficJamScene(-8.0, -14.0, Math.PI / 2);
+      this.addVIPTrafficJamScene(14.0, 12.0, 0);
+
+      this.addRobberyScene(16.0, -18.0);
+      this.addRobberyScene(-12.0, 20.0);
+
       [[-6, 12], [6, 12], [-12, -8], [12, -8]].forEach(([tx, tz], idx) => {
         const bag = KarachiModels.createTrashBag(trashColors[idx % trashColors.length]);
         bag.position.set(tx, 0, tz);
-        this.registerEdible(bag, 1, 25, "Market Debris", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash', isDistrictEvil: true });
+        this.registerEdible(bag, 1, 25, "Burns Road Market Debris", 0.5, { isRubbish: true, isBadGuy: true, evilType: 'trash', isDistrictEvil: true });
         this.addWaypointBeacon(bag, '🗑️');
       });
-    } else if (districtLevel === 3) {
-      // =========================================================
-      // DISTRICT 3: WATER PUMP & GULSHAN-E-IQBAL (Level 3)
-      // Focus: Water Tanker Mafias (freshwater geysers!), K-Electric Kundas, China Cutters
-      // =========================================================
-      this.addWaterTankerScene(8.0, -16.0);
-      this.addWaterTankerScene(-18.0, 14.0);
-      this.addWaterTankerScene(22.0, -20.0);
-
-      [[-8.5, 4.5], [16.0, 6.0], [-20.0, -18.0]].forEach(([kx, kz], idx) => {
-        const ke = KarachiModels.createKElectricTransformer();
-        ke.position.set(kx, 0, kz);
-        this.registerEdible(ke, 2, 750, `K-Electric Kunda #${idx + 1}`, 2.5, { isBadGuy: true, evilType: 'ke', isDistrictEvil: true });
-      });
-
-      [[8.5, 4.5], [-14.0, 24.0]].forEach(([cx, cz], idx) => {
-        const china = KarachiModels.createChinaCuttingMafia();
-        china.position.set(cx, 0, cz);
-        this.registerEdible(china, 1, 650, `China Cutting Mafia #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'chinacutting', isDistrictEvil: true });
-      });
-
-      this.addVIPTrafficJamScene(0, -28.0, Math.PI / 2);
-      this.addVIPTrafficJamScene(-24.0, 0, 0);
-
-      this.addRobberyScene(-10.0, -25.0);
-      this.addRobberyScene(20.0, 20.0);
     } else if (districtLevel === 4) {
       // =========================================================
-      // DISTRICT 4: CLIFTON & SEA VIEW COAST (Level 4)
-      // Focus: Corrupt VIP Politicians with offshore briefcases, Coastal Land Grabbers
+      // DISTRICT 4: LAHORE - ANDROON & CANAL BANK (Level 4)
+      // Focus: Chemical Dor Peddlers, Smog Belching Trucks, VIP Motorcades
       // =========================================================
-      const polQuotes = [
-        "London flats mere nahi hain!",
-        "Mujhe kyun nikala?!",
-        "Offshore account freeze mat karo!",
-        "VIP Protocol squad alert!"
-      ];
-      [[0, -12.0], [-14.0, -25.0], [14.0, 30.0], [-25.0, 35.0]].forEach(([px, pz], idx) => {
-        const pol = KarachiModels.createPolitician({ name: `Senator #${idx + 1}`, quote: polQuotes[idx % polQuotes.length] });
+      [[-15.0, 25.0], [15.0, -25.0], [0, 40.0]].forEach(([cx, cz], idx) => {
+        const dor = KarachiModels.createChinaCuttingMafia();
+        dor.position.set(cx, 0, cz);
+        this.registerEdible(dor, 1, 750, `Chemical Dor Peddler #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'chinacutting', isDistrictEvil: true });
+        this.addWaypointBeacon(dor, '🪁');
+      });
+
+      this.addWaterTankerScene(-20.0, 30.0);
+      this.addWaterTankerScene(20.0, -30.0);
+
+      this.addVIPTrafficJamScene(0, -25.0, Math.PI / 2);
+      this.addVIPTrafficJamScene(-22.0, 0, 0);
+    } else if (districtLevel === 5) {
+      // =========================================================
+      // DISTRICT 5: ISLAMABAD - F-SECTORS & MARGALLA (Level 5)
+      // Focus: Midnight Supercar Racers, Margalla Timber Poachers, Corrupt VIPs
+      // =========================================================
+      const racerSpots = [[-18.0, -15.0], [18.0, 15.0], [0, 45.0]];
+      racerSpots.forEach(([rx, rz], idx) => {
+        const racer = KarachiModels.createOneWheelerRacer();
+        racer.position.set(rx, 0, rz);
+        this.registerEdible(racer, 1, 800, `Midnight Racer #${idx + 1}`, 1.8, { isBadGuy: true, evilType: 'onewheeler', isDistrictEvil: true });
+        this.addWaypointBeacon(racer, '🏎️');
+      });
+
+      [[-22.0, -35.0], [22.0, -35.0], [0, -50.0]].forEach(([tx, tz], idx) => {
+        const poacher = KarachiModels.createChinaCuttingMafia();
+        poacher.position.set(tx, 0, tz);
+        this.registerEdible(poacher, 1, 850, `Margalla Timber Poacher #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'chinacutting', isDistrictEvil: true });
+        this.addWaypointBeacon(poacher, '🌲');
+      });
+
+      const polQuotes = ["Constitutional immunity hai!", "File check mat karo!", "Diplomatic lane clear karo!"];
+      [[-10.0, 20.0], [10.0, 20.0], [0, -20.0]].forEach(([px, pz], idx) => {
+        const pol = KarachiModels.createPolitician({ name: `Bureaucrat VIP #${idx + 1}`, quote: polQuotes[idx % polQuotes.length] });
         pol.position.set(px, 0, pz);
-        this.registerEdible(pol, 1, 600, `VIP Politician #${idx + 1}`, 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician', isDistrictEvil: true });
-      });
-
-      this.addVIPTrafficJamScene(0, 35.0, 0);
-      this.addVIPTrafficJamScene(-30.0, -20.0, Math.PI / 2);
-
-      this.addWaterTankerScene(-22.0, 42.0);
-      this.addWaterTankerScene(25.0, 45.0);
-
-      [[-15.0, 55.0], [15.0, 55.0], [0, 60.0]].forEach(([cx, cz], idx) => {
-        const china = KarachiModels.createChinaCuttingMafia();
-        china.position.set(cx, 0, cz);
-        this.registerEdible(china, 1, 650, `Beachfront Encroacher #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'chinacutting', isDistrictEvil: true });
-      });
-
-      [[28.0, 10.0], [-28.0, 10.0]].forEach(([kx, kz], idx) => {
-        const ke = KarachiModels.createKElectricTransformer();
-        ke.position.set(kx, 0, kz);
-        this.registerEdible(ke, 2, 750, `High-Tension Kunda #${idx + 1}`, 2.5, { isBadGuy: true, evilType: 'ke', isDistrictEvil: true });
+        this.registerEdible(pol, 1, 900, `Corrupt Bureaucrat #${idx + 1}`, 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician', isDistrictEvil: true });
+        this.addWaypointBeacon(pol, '💼');
       });
     } else {
       // =========================================================
-      // DISTRICT 5: MAZAR-E-QUAID MEGA METROPOLIS (Level 5)
-      // Master Cleanse: Final showdown against corruption
+      // DISTRICT 6: QUETTA - LIAQUAT BAZAAR & HANNA VALLEY (Level 6)
+      // Focus: Groundwater Boring Cartels, Bazaar Extortionists, Sparking Transformers
       // =========================================================
-      const polQuotes = [
-        "Dollar sasta ho jayega!",
-        "Tabdeeli aa chuki hai!",
-        "Security escort kahan hai?!",
-        "Swiss account ka password bhool gaya!",
-        "Ghabrana nahi hai bilkul!",
-        "Parliament session late hai!"
-      ];
-      [[0, -30.0], [-20.0, -45.0], [20.0, -45.0], [-35.0, -20.0], [35.0, -20.0], [0, -60.0]].forEach(([px, pz], idx) => {
-        const pol = KarachiModels.createPolitician({ name: `Federal VIP #${idx + 1}`, quote: polQuotes[idx % polQuotes.length] });
-        pol.position.set(px, 0, pz);
-        this.registerEdible(pol, 1, 600, `Federal VIP #${idx + 1}`, 1.2, { isPolitician: true, isBadGuy: true, evilType: 'politician', isDistrictEvil: true });
-      });
+      this.addWaterTankerScene(-18.0, -35.0);
+      this.addWaterTankerScene(18.0, -35.0);
+      this.addWaterTankerScene(0, 30.0);
 
-      this.addVIPTrafficJamScene(0, -18.0, 0);
-      this.addVIPTrafficJamScene(-25.0, -35.0, Math.PI / 2);
-      this.addVIPTrafficJamScene(25.0, -35.0, -Math.PI / 2);
-
-      this.addWaterTankerScene(-15.0, -50.0);
-      this.addWaterTankerScene(15.0, -50.0);
-      this.addWaterTankerScene(0, 15.0);
-
-      [[-10.0, -25.0], [10.0, -25.0], [0, -40.0]].forEach(([bx, bz], idx) => {
+      [[-14.0, -10.0], [14.0, -10.0], [-20.0, 20.0], [20.0, 20.0]].forEach(([bx, bz], idx) => {
         const bhatta = KarachiModels.createBhattaParchiMafia();
         bhatta.position.set(bx, 0, bz);
-        this.registerEdible(bhatta, 1, 700, `Bhatta Don #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'bhatta', isDistrictEvil: true });
+        this.registerEdible(bhatta, 1, 950, `Bazaar Extortionist #${idx + 1}`, 1.5, { isBadGuy: true, evilType: 'bhatta', isDistrictEvil: true });
+        this.addWaypointBeacon(bhatta, '💰');
       });
 
-      this.addRobberyScene(-20.0, -15.0);
-      this.addRobberyScene(20.0, -15.0);
-      this.addRobberyScene(0, -5.0);
+      [[-10.0, 10.0], [10.0, 10.0], [0, -45.0]].forEach(([kx, kz], idx) => {
+        const ke = KarachiModels.createKElectricTransformer();
+        ke.position.set(kx, 0, kz);
+        this.registerEdible(ke, 2, 850, `Sparking Transformer #${idx + 1}`, 2.5, { isBadGuy: true, evilType: 'ke', isDistrictEvil: true });
+        this.addWaypointBeacon(ke, '⚡');
+      });
     }
 
     this.currentDistrictEvils = this.badGuys.filter(b => b.isDistrictEvil && b.state !== 'swallowed');
@@ -856,6 +880,51 @@ export class CityGenerator {
       interactiveTraffic: this.interactiveTraffic,
       interactiveResidents: this.interactiveResidents
     };
+  }
+
+  // Finds a guaranteed open street/sidewalk coordinate that never overlaps buildings or other props
+  findSafeSpawnPoint(minClearance = 2.5) {
+    const roadCoords = [-96, -48, 0, 48, 96];
+    for (let attempt = 0; attempt < 40; attempt++) {
+      // Pick either along a North-South avenue or East-West boulevard or open sidewalk
+      const onNS = Math.random() > 0.5;
+      const roadLine = roadCoords[Math.floor(Math.random() * roadCoords.length)];
+      const laneOffset = (Math.random() - 0.5) * 11.0;
+      const alongPos = (Math.random() - 0.5) * 176.0;
+
+      const x = onNS ? (roadLine + laneOffset) : alongPos;
+      const z = onNS ? alongPos : (roadLine + laneOffset);
+
+      // Avoid immediate player spawn crossroads (0,0)
+      if (Math.hypot(x, z) < 9.0) continue;
+
+      // Check against all registered solid obstacles (buildings & stalls)
+      let blocked = false;
+      for (let i = 0; i < this.obstacles.length; i++) {
+        const obs = this.obstacles[i];
+        if (!obs) continue;
+        if (obs.isBox) {
+          if (
+            x >= obs.minX - minClearance &&
+            x <= obs.maxX + minClearance &&
+            z >= obs.minZ - minClearance &&
+            z <= obs.maxZ + minClearance
+          ) {
+            blocked = true;
+            break;
+          }
+        } else if (obs.position) {
+          const dist = Math.hypot(x - obs.position.x, z - obs.position.z);
+          if (dist < (obs.radius || 2.5) + minClearance) {
+            blocked = true;
+            break;
+          }
+        }
+      }
+
+      if (!blocked) return { x, z };
+    }
+    return { x: -48, z: (Math.random() - 0.5) * 150 };
   }
 
   populateZones() {
@@ -1068,9 +1137,8 @@ export class CityGenerator {
     // 45 Auto-Rickshaws
     for (let i = 0; i < 45; i++) {
       const rickshaw = KarachiModels.createAutoRickshaw();
-      const rx = (Math.random() - 0.5) * 175;
-      const rz = (Math.random() - 0.5) * 175;
-      rickshaw.position.set(rx, 0, rz);
+      const pos = this.findSafeSpawnPoint(2.2);
+      rickshaw.position.set(pos.x, 0, pos.z);
       rickshaw.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(rickshaw, 2, 90, "Auto-Rickshaw", 1.8, { isTransport: true, isBadGuy: false });
     }
@@ -1078,9 +1146,8 @@ export class CityGenerator {
     // 55 CD-70 Bikes
     for (let i = 0; i < 55; i++) {
       const bike = KarachiModels.createMotorbike();
-      const bx = (Math.random() - 0.5) * 175;
-      const bz = (Math.random() - 0.5) * 175;
-      bike.position.set(bx, 0, bz);
+      const pos = this.findSafeSpawnPoint(1.8);
+      bike.position.set(pos.x, 0, pos.z);
       bike.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(bike, 1, 35, "CD-70 Motorbike", 1.1, { isTransport: true, isBadGuy: false });
     }
@@ -1088,9 +1155,8 @@ export class CityGenerator {
     // 45 Pedestrians (Innocent Karachi Citizens)
     for (let i = 0; i < 45; i++) {
       const ped = KarachiModels.createPedestrian();
-      const px = (Math.random() - 0.5) * 175;
-      const pz = (Math.random() - 0.5) * 175;
-      ped.position.set(px, 0, pz);
+      const pos = this.findSafeSpawnPoint(1.5);
+      ped.position.set(pos.x, 0, pos.z);
       ped.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(ped, 1, 30, "Citizen", 0.65, { isCitizen: true, isBadGuy: false });
     }
@@ -1098,9 +1164,8 @@ export class CityGenerator {
     // 18 Friendly Desi Stray Dogs (Karachi Street Puppies - Protect & Pet!)
     for (let i = 0; i < 18; i++) {
       const dog = KarachiModels.createStrayDog();
-      const dx = (Math.random() - 0.5) * 175;
-      const dz = (Math.random() - 0.5) * 175;
-      dog.position.set(dx, 0, dz);
+      const pos = this.findSafeSpawnPoint(1.5);
+      dog.position.set(pos.x, 0, pos.z);
       dog.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(dog, 1, 30, "Friendly Stray Dog", 0.7, { isPet: true, isBadGuy: false });
     }
@@ -1108,9 +1173,8 @@ export class CityGenerator {
     // 16 Friendly Street Cats (Billi - Protect & Pet!)
     for (let i = 0; i < 16; i++) {
       const cat = KarachiModels.createStreetCat();
-      const cx = (Math.random() - 0.5) * 175;
-      const cz = (Math.random() - 0.5) * 175;
-      cat.position.set(cx, 0, cz);
+      const pos = this.findSafeSpawnPoint(1.5);
+      cat.position.set(pos.x, 0, pos.z);
       cat.rotation.y = Math.random() * Math.PI * 2;
       this.registerEdible(cat, 1, 30, "Friendly Street Cat", 0.6, { isPet: true, isBadGuy: false });
     }

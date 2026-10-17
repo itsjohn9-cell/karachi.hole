@@ -46,6 +46,10 @@ const materials = {
   charminarStone: new THREE.MeshStandardMaterial({ color: 0xebd8be, roughness: 0.6 }), // Bahadurabad Charminar stone
   kmcRedStone: new THREE.MeshStandardMaterial({ color: 0xb73a2e, roughness: 0.65 }), // KMC Building red Jodhpur stone
   mcbGlass: new THREE.MeshStandardMaterial({ color: 0x1e88e5, roughness: 0.1, metalness: 0.85 }), // MCB Tower glazed curtain wall
+  tintedGlass: new THREE.MeshStandardMaterial({ color: 0x1a334d, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.85 }),
+  shalwarGrey: new THREE.MeshStandardMaterial({ color: 0x90a4ae, roughness: 0.6 }),
+  woodBench: new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.75 }),
+  truckRed: new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.4 }),
   truckArtTexture: TextureGenerator.createTruckArtTexture(),
   truckTajTexture: TextureGenerator.createTruckTajTexture(),
   ajrakTexture: TextureGenerator.createAjrakTexture(),
@@ -914,6 +918,7 @@ export const KarachiModels = {
     cone.castShadow = true;
     group.add(cone);
 
+    const whiteBand = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.18, 8), materials.whiteMarble);
     whiteBand.position.y = 0.32;
     group.add(whiteBand);
 

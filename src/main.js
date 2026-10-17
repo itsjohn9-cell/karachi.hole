@@ -1024,10 +1024,26 @@ class Game {
           if (len > 0.1) {
             const normX = fleeX / len;
             const normZ = fleeZ / len;
-            // Relaxed fleeing speed so player (speed ~9.5) can chase, observe, and read!
             const fleeSpeed = ud?.runSpeed || (bg.evilType === 'vip' ? 5.8 : bg.evilType === 'tanker' ? 5.2 : 4.4);
-            bgPos.x += normX * dt * fleeSpeed;
-            bgPos.z += normZ * dt * fleeSpeed;
+            let nextX = THREE.MathUtils.clamp(bgPos.x + normX * dt * fleeSpeed, -92, 92);
+            let nextZ = THREE.MathUtils.clamp(bgPos.z + normZ * dt * fleeSpeed, -92, 92);
+
+            // Prevent fleeing bad guys from entering solid buildings
+            const obstacles = this.cityGen?.obstacles || [];
+            const pad = 1.4;
+            for (let o = 0; o < obstacles.length; o++) {
+              const obs = obstacles[o];
+              if (!obs) continue;
+              if (obs.isBox) {
+                if (nextX > obs.minX - pad && nextX < obs.maxX + pad && nextZ > obs.minZ - pad && nextZ < obs.maxZ + pad) {
+                  // Slide along building wall instead of penetrating
+                  if (bgPos.x <= obs.minX - pad || bgPos.x >= obs.maxX + pad) nextX = bgPos.x;
+                  if (bgPos.z <= obs.minZ - pad || bgPos.z >= obs.maxZ + pad) nextZ = bgPos.z;
+                }
+              }
+            }
+            bgPos.x = nextX;
+            bgPos.z = nextZ;
             bgMesh.rotation.y = Math.atan2(normX, normZ);
           }
 
@@ -1363,14 +1379,19 @@ class Game {
           this.triggerDevourScream(obj, hole);
         }
 
-        // Gravitational magnetic suction towards hole center
-        objPos.x += (hole.position.x - objPos.x) * dt * (pullSpeed * 0.65);
-        objPos.z += (hole.position.z - objPos.z) * dt * (pullSpeed * 0.65);
+        // Gravitational magnetic pull / street tackle towards hero
+        objPos.x += (hole.position.x - objPos.x) * dt * (pullSpeed * 0.72);
+        objPos.z += (hole.position.z - objPos.z) * dt * (pullSpeed * 0.72);
 
-        // Dramatic comic struggle wobble & tilt
-        obj.mesh.rotation.y += dt * 8.0;
-        obj.mesh.rotation.z = Math.sin(obj.suctionProgress * 18.0) * 0.4;
-        objPos.y -= dt * 2.2;
+        // Street hero action takedown at ground level (stay grounded, not sinking into sewer hole)
+        if (obj.isBadGuy || obj.isDistrictEvil) {
+          objPos.y = 0; // Grounded street takedown
+          obj.mesh.rotation.y += dt * 10.0;
+        } else {
+          obj.mesh.rotation.y += dt * 8.0;
+          obj.mesh.rotation.z = Math.sin(obj.suctionProgress * 18.0) * 0.4;
+          objPos.y -= dt * 2.2;
+        }
 
         // Flail limbs wildly if character
         const ud = obj.mesh.userData;
@@ -1419,13 +1440,23 @@ class Game {
 
             // Trigger Uplifting Civic Cleanse Audio & Particle Transformation
             audio.playCleanseTransformation();
-            this.particles.createCleanseSparkleBurst(hole.position, 35);
+            this.particles.createCleanseSparkleBurst(hole.position, 45);
 
             // Spawn the "AFTER" Cleaned Monument right where the bad guy was!
             const replacement = KarachiModels.createCleanedReplacement(obj.evilType);
-            replacement.position.set(objPos.x, -0.6, objPos.z);
+            replacement.position.set(objPos.x, 0, objPos.z);
             this.scene.add(replacement);
             this.cleanedMonuments.push(replacement);
+
+            // Trigger nearby citizens to celebrate with Bhangra dance!
+            if (this.citizens) {
+              this.citizens.forEach(c => {
+                if (c && c.position && Math.hypot(c.position.x - objPos.x, c.position.z - objPos.z) < 20) {
+                  c.isDancing = true;
+                  c.danceTimer = 4.0;
+                }
+              });
+            }
 
             // Track recent cleaned location for the Mini-Map
             this.recentCleaned.push({
@@ -1560,9 +1591,9 @@ class Game {
                   v.userData.freedSpeed = 5.5 + Math.random() * 2.5;
                   if (v.userData.drawTrafficBubble) {
                     const happyPhrases = [
-                      "🥳 TRAFFIC FREED! VIP culture murdabad! Shukriya Hero!",
-                      "🏥 Hospital ka rasta khul gaya! Zindabad Gutter Hero!",
-                      "🚗 Wah Gutter Hero wah! Ab hum time pe pohanchengy!"
+                      "🥳 TRAFFIC FREED! VIP culture murdabad! Shukriya Street Hero!",
+                      "🏥 Hospital ka rasta khul gaya! Zindabad Street Hero!",
+                      "🚗 Wah Street Hero wah! Ab hum time pe pohanchengy!"
                     ];
                     v.userData.drawTrafficBubble(happyPhrases[vIdx % happyPhrases.length], true);
                   }
