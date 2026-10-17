@@ -450,11 +450,47 @@ export class CityGenerator {
     if (item.isBadGuy) this.badGuys.push(item);
     if (isFoodStall) {
       this.foodStalls.push(item);
-      this.obstacles.push({ position: mesh.position, radius: 2.2, mesh });
+      let obsData = { position: mesh.position, radius: 2.2, mesh };
+      try {
+        mesh.updateMatrixWorld(true);
+        const bbox = new THREE.Box3().setFromObject(mesh);
+        if (isFinite(bbox.min.x) && bbox.max.x > bbox.min.x) {
+          obsData = {
+            isBox: true,
+            minX: bbox.min.x,
+            maxX: bbox.max.x,
+            minZ: bbox.min.z,
+            maxZ: bbox.max.z,
+            cx: (bbox.min.x + bbox.max.x) / 2,
+            cz: (bbox.min.z + bbox.max.z) / 2,
+            position: mesh.position,
+            mesh
+          };
+        }
+      } catch (e) {}
+      this.obstacles.push(obsData);
     }
     if (isBuilding) {
       this.buildings.push(item);
-      this.obstacles.push({ position: mesh.position, radius: Math.max(2.4, (radius || 3.0) * 0.75), mesh });
+      let obsData = { position: mesh.position, radius: Math.max(3.2, (radius || 3.5) * 0.85), mesh };
+      try {
+        mesh.updateMatrixWorld(true);
+        const bbox = new THREE.Box3().setFromObject(mesh);
+        if (isFinite(bbox.min.x) && bbox.max.x > bbox.min.x) {
+          obsData = {
+            isBox: true,
+            minX: bbox.min.x,
+            maxX: bbox.max.x,
+            minZ: bbox.min.z,
+            maxZ: bbox.max.z,
+            cx: (bbox.min.x + bbox.max.x) / 2,
+            cz: (bbox.min.z + bbox.max.z) / 2,
+            position: mesh.position,
+            mesh
+          };
+        }
+      } catch (e) {}
+      this.obstacles.push(obsData);
     }
     if (isCitizen) this.citizens.push(item);
     if (isPet) {
@@ -467,41 +503,38 @@ export class CityGenerator {
   // 3D Glowing Waypoint Beacon attached overhead to mission targets
   addWaypointBeacon(mesh, icon = '🎯') {
     if (!mesh) return null;
+    // If target already carries a rich target decal, skip duplicate overhead badge
+    if (mesh.userData && mesh.userData.targetDecal) return null;
+
     const beaconGroup = new THREE.Group();
     beaconGroup.name = 'WaypointBeacon';
 
-    const diamondGeo = new THREE.OctahedronGeometry(0.48, 0);
-    const diamondMat = new THREE.MeshBasicMaterial({ color: 0xffd700, wireframe: false });
-    const diamond = new THREE.Mesh(diamondGeo, diamondMat);
-    diamond.position.y = 3.6;
-    beaconGroup.add(diamond);
-
     const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
+    canvas.width = 96;
+    canvas.height = 96;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.95)';
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
     ctx.beginPath();
-    ctx.arc(64, 64, 56, 0, Math.PI * 2);
+    ctx.arc(48, 48, 42, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3;
     ctx.strokeStyle = '#ffffff';
     ctx.stroke();
 
-    ctx.font = '64px sans-serif';
+    ctx.font = '48px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(icon, 64, 68);
+    ctx.fillText(icon, 48, 52);
 
     const tex = new THREE.CanvasTexture(canvas);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
-    sprite.position.y = 4.8;
-    sprite.scale.set(1.4, 1.4, 1);
+    sprite.position.y = 2.4;
+    sprite.scale.set(0.9, 0.9, 1);
     beaconGroup.add(sprite);
 
     mesh.add(beaconGroup);
     mesh.userData.beacon = beaconGroup;
-    this.beacons.push({ diamond, sprite, group: beaconGroup });
+    this.beacons.push({ sprite, group: beaconGroup });
     return beaconGroup;
   }
 
@@ -566,15 +599,16 @@ export class CityGenerator {
     // 1. Purge previous dynamic district evils from scene and tracking arrays
     if (this.currentDistrictEvils) {
       this.currentDistrictEvils.forEach(obj => {
-        if (obj.mesh && obj.mesh.parent) {
-          obj.mesh.parent.remove(obj.mesh);
+        if (obj && obj.mesh) {
+          if (obj.mesh.parent) obj.mesh.parent.remove(obj.mesh);
+          this.scene.remove(obj.mesh);
         }
         const idx = this.edibleObjects.indexOf(obj);
         if (idx !== -1) this.edibleObjects.splice(idx, 1);
-        const bgIdx = this.badGuys.indexOf(obj);
-        if (bgIdx !== -1) this.badGuys.splice(bgIdx, 1);
       });
     }
+    // Purge all old district evil references from badGuys array
+    this.badGuys = (this.badGuys || []).filter(b => !b.isDistrictEvil);
     this.currentDistrictEvils = [];
 
     // Clear previous interactive victims, traffic, homes, and residents if any
@@ -776,7 +810,7 @@ export class CityGenerator {
       this.addRobberyScene(0, -5.0);
     }
 
-    this.currentDistrictEvils = this.badGuys.filter(b => b.isDistrictEvil);
+    this.currentDistrictEvils = this.badGuys.filter(b => b.isDistrictEvil && b.state !== 'swallowed');
     return {
       districtEvils: this.currentDistrictEvils,
       interactiveVictims: this.interactiveVictims,
@@ -925,6 +959,7 @@ export class CityGenerator {
       const kePole = KarachiModels.createKElectricTransformerPole();
       kePole.position.set(kx, 0, kz);
       this.scene.add(kePole);
+      this.obstacles.push({ position: { x: kx, y: 0, z: kz }, radius: 1.2 });
     });
 
     // 18. Karachi Municipal Green Directional Signboards on Street Corners
@@ -937,6 +972,7 @@ export class CityGenerator {
       const sign = KarachiModels.createKarachiGreenStreetSign(s.ave, s.ur, s.cr, s.cru);
       sign.position.set(s.pos[0], 0, s.pos[1]);
       this.scene.add(sign);
+      this.obstacles.push({ position: { x: s.pos[0], y: 0, z: s.pos[1] }, radius: 1.0 });
     });
 
     // 19. Commercial Plazas and Clifton Bungalows

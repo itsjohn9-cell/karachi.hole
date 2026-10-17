@@ -1960,4 +1960,10 @@ export class UIManager {
       this.districtClearedModal.style.display = 'none';
     }
   }
+
+  hideGameOverModal() {
+    if (this.gameOverModal) {
+      this.gameOverModal.style.display = 'none';
+    }
+  }
 }

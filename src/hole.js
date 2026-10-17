@@ -98,7 +98,7 @@ export class Hole {
     this.group.position.copy(this.position);
 
     // Build 3D Character Avatar with authentic Karachi outfits
-    this.avatarMesh = AvatarBuilder.createAvatarMesh(this.avatarId);
+    this.avatarMesh = AvatarBuilder.createAvatarMesh(this.avatarId, this.isPlayer);
     this.group.add(this.avatarMesh);
 
     // Ground interaction trigger radius indicator (subtle glowing neon street circle)
@@ -128,7 +128,7 @@ export class Hole {
     if (this.avatarMesh && this.avatarMesh.parent) {
       this.group.remove(this.avatarMesh);
     }
-    this.avatarMesh = AvatarBuilder.createAvatarMesh(newAvatarId);
+    this.avatarMesh = AvatarBuilder.createAvatarMesh(newAvatarId, this.isPlayer);
     this.group.add(this.avatarMesh);
   }
 
@@ -244,27 +244,56 @@ export class Hole {
     let nextZ = this.position.z + dz * speed * dt;
 
     // Solid Obstacle Collision Prevention (Buildings, Stalls, Monuments)
-    const avatarBodyRadius = 0.65;
+    const avatarBodyRadius = 0.70;
     if (obstacles && obstacles.length > 0) {
       for (let i = 0; i < obstacles.length; i++) {
         const obs = obstacles[i];
         if (!obs) continue;
-        const oPos = obs.position || (obs.mesh && obs.mesh.position);
-        if (!oPos) continue;
 
-        // Effective obstacle boundary radius
-        const oRad = obs.radius || obs.collisionRadius || 2.8;
-        const totalClearance = oRad + avatarBodyRadius;
+        if (obs.isBox) {
+          // Circle vs AABB Obstacle Collision with sliding and interior pushout
+          const clampX = Math.max(obs.minX, Math.min(nextX, obs.maxX));
+          const clampZ = Math.max(obs.minZ, Math.min(nextZ, obs.maxZ));
 
-        const distSq = (nextX - oPos.x) * (nextX - oPos.x) + (nextZ - oPos.z) * (nextZ - oPos.z);
-        if (distSq < totalClearance * totalClearance) {
-          const dist = Math.sqrt(distSq);
-          const normX = (nextX - oPos.x) / (dist || 1);
-          const normZ = (nextZ - oPos.z) / (dist || 1);
+          const diffX = nextX - clampX;
+          const diffZ = nextZ - clampZ;
+          const distSq = diffX * diffX + diffZ * diffZ;
 
-          // Push character out to boundary perimeter and slide tangentially
-          nextX = oPos.x + normX * totalClearance;
-          nextZ = oPos.z + normZ * totalClearance;
+          if (distSq < avatarBodyRadius * avatarBodyRadius) {
+            if (distSq > 0.0001) {
+              const dist = Math.sqrt(distSq);
+              const pushDist = avatarBodyRadius - dist;
+              nextX += (diffX / dist) * pushDist;
+              nextZ += (diffZ / dist) * pushDist;
+            } else {
+              // Avatar center is completely inside building box: eject to nearest outer face
+              const dLeft = Math.abs(nextX - obs.minX);
+              const dRight = Math.abs(obs.maxX - nextX);
+              const dTop = Math.abs(nextZ - obs.minZ);
+              const dBottom = Math.abs(obs.maxZ - nextZ);
+              const minDist = Math.min(dLeft, dRight, dTop, dBottom);
+              if (minDist === dLeft) nextX = obs.minX - avatarBodyRadius;
+              else if (minDist === dRight) nextX = obs.maxX + avatarBodyRadius;
+              else if (minDist === dTop) nextZ = obs.minZ - avatarBodyRadius;
+              else nextZ = obs.maxZ + avatarBodyRadius;
+            }
+          }
+        } else {
+          // Circular obstacle (poles, round monuments, kiosks)
+          const oPos = obs.position || (obs.mesh && obs.mesh.position);
+          if (!oPos) continue;
+
+          const oRad = obs.radius || obs.collisionRadius || 2.4;
+          const totalClearance = oRad + avatarBodyRadius;
+
+          const diffX = nextX - oPos.x;
+          const diffZ = nextZ - oPos.z;
+          const distSq = diffX * diffX + diffZ * diffZ;
+          if (distSq < totalClearance * totalClearance) {
+            const dist = Math.sqrt(distSq) || 1;
+            nextX = oPos.x + (diffX / dist) * totalClearance;
+            nextZ = oPos.z + (diffZ / dist) * totalClearance;
+          }
         }
       }
     }

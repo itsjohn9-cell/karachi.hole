@@ -94,7 +94,7 @@ export class AvatarBuilder {
   /**
    * Build a 3D procedural humanoid character model
    */
-  static createAvatarMesh(avatarId = 'tariq') {
+  static createAvatarMesh(avatarId = 'tariq', isPlayer = false) {
     const profile = AVATAR_PROFILES.find(a => a.id === avatarId) || AVATAR_PROFILES[0];
     const { colors } = profile;
 
@@ -267,6 +267,9 @@ export class AvatarBuilder {
     nameSprite.position.set(0, 2.1, 0);
     nameSprite.scale.set(1.4, 0.35, 1);
     group.add(nameSprite);
+    if (isPlayer) {
+      nameSprite.visible = false;
+    }
 
     group.userData = {
       avatarId,

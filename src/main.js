@@ -473,6 +473,17 @@ class Game {
   advanceToNextDistrict() {
     this.currentDistrictLevel++;
     this.districtClearing = false;
+    this.isGameOver = false;
+    this.isPaused = false;
+    this.isGameStarted = true;
+    this.timeLeft = this.matchDuration || 240.0;
+    this.frenzyTriggered = false;
+    this.frenzyTimer = 0;
+
+    if (this.ui) {
+      this.ui.hideGameOverModal();
+      this.ui.hideDistrictClearedModal();
+    }
 
     // Repopulate dynamic district evils for the new level
     const result = this.cityGen.populateDistrict(this.currentDistrictLevel);
@@ -536,9 +547,24 @@ class Game {
       }
     }
 
-    // Move Player across expanded 200m map with solid building obstacle collisions
+    // Camera-relative 3D movement: Arrow keys & joystick move relative to player third-person view
     if (this.moveVector.x !== 0 || this.moveVector.y !== 0) {
-      this.player.move(this.moveVector.x, this.moveVector.y, dt, 96.0, this.cityGen.obstacles || []);
+      const camAngle = this.camAngle !== undefined ? this.camAngle : Math.PI;
+      const fwdX = Math.sin(camAngle);
+      const fwdZ = Math.cos(camAngle);
+      const rightX = -Math.cos(camAngle);
+      const rightZ = Math.sin(camAngle);
+
+      // Invert moveVector.y because -1 is Forward/Up
+      const inputForward = -this.moveVector.y;
+      const inputRight = this.moveVector.x;
+
+      const worldDx = inputRight * rightX + inputForward * fwdX;
+      const worldDz = inputRight * rightZ + inputForward * fwdZ;
+
+      if (Math.abs(worldDx) > 0.001 || Math.abs(worldDz) > 0.001) {
+        this.player.move(worldDx, worldDz, dt, 96.0, this.cityGen.obstacles || []);
+      }
     }
 
     // =============================================================
@@ -989,14 +1015,16 @@ class Game {
           const hole = this.holes[h];
           if (!hole.isAlive) continue;
 
-          // Can hole swallow this tier?
-          if (obj.tier <= hole.level) {
+          // Universal Civic Cleansing Rule:
+          // District mission targets and evils can always be cleansed by the player & holes!
+          const canEat = obj.isDistrictEvil || obj.isBadGuy || (obj.tier <= hole.level);
+          if (canEat) {
             const dx = hole.position.x - objPos.x;
             const dz = hole.position.z - objPos.z;
-            const r = hole.radius;
+            const captureRadius = hole.radius + Math.max(1.2, (obj.radius || 1.2) * 0.85);
 
             // Fast bounding box reject first
-            if (Math.abs(dx) <= r && Math.abs(dz) <= r && (dx * dx + dz * dz < r * r)) {
+            if (Math.abs(dx) <= captureRadius && Math.abs(dz) <= captureRadius && (dx * dx + dz * dz < captureRadius * captureRadius)) {
               obj.state = 'sucking';
               obj.suckingHole = hole;
               obj.suctionProgress = 0;
@@ -1073,9 +1101,11 @@ class Game {
           });
 
           // Civic Cleanser System: Devouring Karachi evils and mafias!
-          if (hole.isPlayer && obj.isBadGuy) {
-            this.civicCleansed++;
-            this.districtRemaining = this.districtEvils.filter(b => b.state !== 'swallowed').length;
+          if (obj.isBadGuy || obj.isDistrictEvil) {
+            if (hole.isPlayer) {
+              this.civicCleansed++;
+            }
+            this.districtRemaining = this.districtEvils.filter(b => b && b.state !== 'swallowed').length;
 
             // Trigger Uplifting Civic Cleanse Audio & Particle Transformation
             audio.playCleanseTransformation();
@@ -1094,23 +1124,24 @@ class Game {
               time: performance.now()
             });
 
-            // Before / After descriptions
-            const beforeAfterMap = {
-              pothole: { before: "Broken Road Pothole", after: "Smooth Asphalt Repaired!" },
-              trash: { before: "Overflowing Trash Heap", after: "Blooming Jasmine Planter!" },
-              gutka: { before: "Shady Gutka Peddler", after: "Chilled Sabeel Water Cooler!" },
-              robber: { before: "Armed Mobile Robbery", after: "Crime-Free Safe Zone!" },
-              vip: { before: "2-Hour VIP Traffic Jam", after: "Free Flowing Road!" },
-              tanker: { before: "Illegal Water Tanker", after: "Free Sabeel-e-Aab Fountain!" },
-              ke: { before: "Dangerous Kundas & Sparks", after: "Clean Solar Energy Kiosk!" },
-              chinacutting: { before: "Illegal Footpath Wall", after: "Public Pedestrian Walkway!" },
-              bhatta: { before: "Extortion Bhatta Parchi", after: "Peaceful Aman Bazaar!" },
-              onewheeler: { before: "Reckless 70cc Racer", after: "Safe Driving Street!" },
-              politician: { before: "Corrupt VIP Politician", after: "Public Welfare & Library Fund!" }
-            };
+            if (hole.isPlayer) {
+              const beforeAfterMap = {
+                pothole: { before: "Broken Road Pothole", after: "Smooth Asphalt Repaired!" },
+                trash: { before: "Overflowing Trash Heap", after: "Blooming Jasmine Planter!" },
+                gutka: { before: "Shady Gutka Peddler", after: "Chilled Sabeel Water Cooler!" },
+                robber: { before: "Armed Mobile Robbery", after: "Crime-Free Safe Zone!" },
+                vip: { before: "2-Hour VIP Traffic Jam", after: "Free Flowing Road!" },
+                tanker: { before: "Illegal Water Tanker", after: "Free Sabeel-e-Aab Fountain!" },
+                ke: { before: "Dangerous Kundas & Sparks", after: "Clean Solar Energy Kiosk!" },
+                chinacutting: { before: "Illegal Footpath Wall", after: "Public Pedestrian Walkway!" },
+                bhatta: { before: "Extortion Bhatta Parchi", after: "Peaceful Aman Bazaar!" },
+                onewheeler: { before: "Reckless 70cc Racer", after: "Safe Driving Street!" },
+                politician: { before: "Corrupt VIP Politician", after: "Public Welfare & Library Fund!" }
+              };
 
-            const ba = beforeAfterMap[obj.evilType] || { before: "Civic Crime", after: "Karachi Restored!" };
-            this.ui.showBeforeAfterToast(ba.before, ba.after);
+              const ba = beforeAfterMap[obj.evilType] || { before: "Civic Crime", after: "Karachi Restored!" };
+              this.ui.showBeforeAfterToast(ba.before, ba.after);
+            }
 
             if (this.districtRemaining === 0 && !this.districtClearing) {
               this.handleDistrictCleared();
@@ -1452,7 +1483,7 @@ class Game {
       let angleDiff = this.player.facingAngle - this.camAngle;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      this.camAngle += angleDiff * Math.min(1.0, dt * 5.0);
+      this.camAngle += angleDiff * Math.min(1.0, dt * 7.5);
     }
 
     // Camera position behind the character
@@ -1460,9 +1491,9 @@ class Game {
     const targetCamY = Math.max(1.85, this.player.position.y + camHeight);
     const targetCamZ = this.player.position.z - Math.cos(this.camAngle) * camDist;
 
-    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, dt * 7.5);
-    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, dt * 6.0);
-    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, dt * 7.5);
+    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, dt * 9.0);
+    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, dt * 8.0);
+    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, dt * 9.0);
 
     // Look target ahead down the street corridor
     const lookAheadDist = 7.0;
@@ -1543,6 +1574,15 @@ class Game {
             });
           }
         }
+      }
+    }
+
+    // Automatic district completion check: if all threats eliminated, advance immediately!
+    if (this.isGameStarted && !this.isGameOver && !this.districtClearing && this.districtTotal > 0) {
+      const activeThreats = (this.districtEvils || []).filter(b => b && b.state !== 'swallowed').length;
+      this.districtRemaining = activeThreats;
+      if (activeThreats === 0) {
+        this.handleDistrictCleared();
       }
     }
 
