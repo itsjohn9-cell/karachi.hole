@@ -8,6 +8,8 @@ import {
   getChallengeByCategoryAndTier,
   getRandomChallenge
 } from './educationalChallenges.js';
+import { saveManager } from './saveManager.js';
+import { CITIZEN_DIALOGUES, dialogueSystem } from './dialogueSystem.js';
 
 if (typeof window !== 'undefined') {
   window.getChallengeByCategoryAndTier = getChallengeByCategoryAndTier;
@@ -24,7 +26,11 @@ export class UIManager {
     onResolveEducationalQuiz,
     onResumeGame,
     onPauseGame,
-    onNextLevel
+    onNextLevel,
+    onJump,
+    onInteractCitizen,
+    onOpenMissionJournal,
+    onContinueCareer
   }) {
     this.onStartGame = onStartGame;
     this.onSelectSkin = onSelectSkin;
@@ -36,6 +42,10 @@ export class UIManager {
     this.onResumeGame = onResumeGame;
     this.onPauseGame = onPauseGame;
     this.onNextLevel = onNextLevel;
+    this.onJump = onJump;
+    this.onInteractCitizen = onInteractCitizen;
+    this.onOpenMissionJournal = onOpenMissionJournal;
+    this.onContinueCareer = onContinueCareer;
 
     this.playerName = 'Karachi Hero';
     this.currentSkin = 'gutter';
@@ -46,6 +56,7 @@ export class UIManager {
     this.completedQuizIds = new Set();
     this.activeQuizChallenge = null;
     this.isAutoPaused = false;
+    this.activeDialogueCitizen = null;
 
     this.createStartMissionModal();
     this.createHUD();
@@ -55,6 +66,8 @@ export class UIManager {
     this.createAutoPauseModal();
     this.createGameOverModal();
     this.createDistrictClearedModal();
+    this.createCitizenDialogueModal();
+    this.createMissionJournalModal();
     this.bindEvents();
   }
 
@@ -154,13 +167,31 @@ export class UIManager {
               <span>🧩 <strong>Interactive Civic Puzzles:</strong> Solve age-tailored puzzles to resume patrol and earn medals!</span>
             </div>
           </div>
+        <div class="start-action-row" id="start-actions-container">
+          <button class="primary-btn ui-interactive start-mission-btn" id="btn-start-patrol">
+            🚀 START PATROL ➔
+          </button>
+          <button class="secondary-btn ui-interactive continue-career-btn" id="btn-continue-career" style="display: none;">
+            💾 CONTINUE CAREER (Lv. <span id="continue-career-level">1</span>)
+          </button>
         </div>
-
-        <button class="primary-btn ui-interactive start-mission-btn" id="btn-start-patrol">
-          🚀 START PATROL ➔
-        </button>
       </div>
     `;
+
+    // Check if previous career save exists and update continue button
+    try {
+      if (saveManager && saveManager.hasExistingProgress()) {
+        const savedData = saveManager.get();
+        const continueBtn = this.startModal.querySelector('#btn-continue-career');
+        const levelSpan = this.startModal.querySelector('#continue-career-level');
+        if (continueBtn) {
+          if (levelSpan) levelSpan.textContent = savedData.player.level || 1;
+          continueBtn.style.display = 'inline-block';
+        }
+      }
+    } catch (e) {
+      console.warn("Save manager check:", e);
+    }
 
     document.body.appendChild(this.startModal);
   }
@@ -211,6 +242,7 @@ export class UIManager {
           <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
           <button class="icon-btn ui-interactive" id="btn-open-skins" title="Change Avatar Skin">🎨</button>
           <button class="icon-btn ui-interactive" id="btn-open-guide" title="Civic Guide">❓</button>
+          <button class="icon-btn ui-interactive" id="btn-top-journal" title="Civic Mission Journal & District Gauges [J]">📜</button>
           <button class="icon-btn ui-interactive" id="btn-open-quiz" title="Civic Academy Challenge">🎓</button>
           <button class="icon-btn ui-interactive" id="btn-manual-pause" title="Pause Game">⏸️</button>
         </div>
@@ -281,9 +313,16 @@ export class UIManager {
         </div>
       </div>
 
-      <!-- Bottom-Right: Sprint Boost Button (bottom: 18px, right: 18px) -->
+      <!-- Bottom-Right: Traversal & Mission Controls (bottom: 18px, right: 18px) -->
       <div class="hud-controls-bottom-right">
-        <button class="sprint-btn ui-interactive" id="btn-sprint">⚡ SPRINT</button>
+        <button class="jump-btn ui-interactive" id="btn-jump" title="Parkour Jump Traversal [Space]">🦘 JUMP</button>
+        <button class="sprint-btn ui-interactive" id="btn-sprint" title="Sprint Boost [Shift]">⚡ SPRINT</button>
+        <button class="journal-btn ui-interactive" id="btn-journal" title="Mission Journal & District Gauges [J]">📜 JOURNAL</button>
+      </div>
+
+      <!-- Proximity Action Prompt (Appears dynamically when near friendly citizens) -->
+      <div class="hud-interaction-prompt" id="hud-talk-prompt" style="display: none;">
+        <button class="talk-prompt-btn ui-interactive" id="btn-talk">💬 TALK [E]</button>
       </div>
 
       <!-- Before ➔ After Civic Transformation Toast -->
@@ -1116,6 +1155,294 @@ export class UIManager {
     });
   }
 
+  // Create Citizen Dialogue Modal
+  createCitizenDialogueModal() {
+    this.dialogueModal = document.createElement('div');
+    this.dialogueModal.className = 'modal-backdrop citizen-dialogue-backdrop';
+    this.dialogueModal.id = 'modal-citizen-dialogue';
+    this.dialogueModal.style.display = 'none';
+
+    this.dialogueModal.innerHTML = `
+      <div class="modal-card citizen-dialogue-card">
+        <div class="citizen-dialogue-header">
+          <div class="citizen-avatar-badge" id="dialogue-citizen-icon">☕</div>
+          <div class="citizen-info-col">
+            <h2 class="citizen-name" id="dialogue-citizen-name">Uncle Shamim</h2>
+            <span class="citizen-role" id="dialogue-citizen-role">Burns Road Food Street Master</span>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-dialogue">&times;</button>
+        </div>
+
+        <div class="citizen-speech-bubble">
+          <div class="speech-urdu" id="dialogue-text-urdu">"السلام علیکم بیٹا! گرما گرم کڑک چائے پیو..."</div>
+          <div class="speech-english" id="dialogue-text-english">"Assalam-o-Alaikum son! Have a hot cup of Karak Chai..."</div>
+        </div>
+
+        <div class="dialogue-feedback-banner" id="dialogue-feedback-banner" style="display: none;"></div>
+
+        <div class="dialogue-choices-list" id="dialogue-choices-container">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="dialogue-footer-hint">
+          <span>💡 Street Wisdom: Speak with local residents to discover district problems and earn bonus XP!</span>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(this.dialogueModal);
+  }
+
+  // Create Mission Journal & District Restoration Gauges Modal
+  createMissionJournalModal() {
+    this.journalModal = document.createElement('div');
+    this.journalModal.className = 'modal-backdrop mission-journal-backdrop';
+    this.journalModal.id = 'modal-mission-journal';
+    this.journalModal.style.display = 'none';
+
+    this.journalModal.innerHTML = `
+      <div class="modal-card mission-journal-card">
+        <div class="modal-header journal-header">
+          <div class="journal-title-row">
+            <span class="journal-crest">📜</span>
+            <div>
+              <h2 class="journal-main-title">KARACHI CIVIC JOURNAL</h2>
+              <span class="journal-sub-title" id="journal-district-subtitle">District 1: Tariq Road & PECHS</span>
+            </div>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-journal">&times;</button>
+        </div>
+
+        <!-- District Restoration Gauges -->
+        <div class="journal-section restoration-section">
+          <h3 class="section-title">🏙️ DISTRICT RESTORATION GAUGES</h3>
+          <div class="restoration-grid">
+            <div class="gauge-card">
+              <div class="gauge-head">
+                <span>🧹 Cleanliness</span>
+                <span class="gauge-pct" id="gauge-cleanliness-val">65%</span>
+              </div>
+              <div class="gauge-bar-track">
+                <div class="gauge-bar-fill fill-cleanliness" id="gauge-cleanliness-bar" style="width: 65%"></div>
+              </div>
+            </div>
+
+            <div class="gauge-card">
+              <div class="gauge-head">
+                <span>🚧 Infrastructure</span>
+                <span class="gauge-pct" id="gauge-infra-val">50%</span>
+              </div>
+              <div class="gauge-bar-track">
+                <div class="gauge-bar-fill fill-infra" id="gauge-infra-bar" style="width: 50%"></div>
+              </div>
+            </div>
+
+            <div class="gauge-card">
+              <div class="gauge-head">
+                <span>🚦 Traffic Flow</span>
+                <span class="gauge-pct" id="gauge-traffic-val">70%</span>
+              </div>
+              <div class="gauge-bar-track">
+                <div class="gauge-bar-fill fill-traffic" id="gauge-traffic-bar" style="width: 70%"></div>
+              </div>
+            </div>
+
+            <div class="gauge-card">
+              <div class="gauge-head">
+                <span>🕊️ Peace & Safety</span>
+                <span class="gauge-pct" id="gauge-safety-val">80%</span>
+              </div>
+              <div class="gauge-bar-track">
+                <div class="gauge-bar-fill fill-safety" id="gauge-safety-bar" style="width: 80%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Missions Checklist -->
+        <div class="journal-section">
+          <h3 class="section-title">🎯 DISTRICT CIVIC TASKS</h3>
+          <div class="journal-missions-list" id="journal-missions-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Civic Badges Showcase -->
+        <div class="journal-section">
+          <h3 class="section-title">🎖️ KARACHI CIVIC BADGES</h3>
+          <div class="journal-badges-grid" id="journal-badges-grid">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div class="journal-footer">
+          <button class="primary-btn ui-interactive" id="btn-journal-resume">
+            ▶ RESUME STREET PATROL
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(this.journalModal);
+  }
+
+  setTalkPrompt(visible, citizenName = '') {
+    const prompt = document.getElementById('hud-talk-prompt');
+    const btnTalk = document.getElementById('btn-talk');
+    if (!prompt) return;
+    if (visible) {
+      if (btnTalk) btnTalk.textContent = citizenName ? `💬 TALK TO ${citizenName.toUpperCase()} [E]` : '💬 TALK [E]';
+      prompt.style.display = 'block';
+    } else {
+      prompt.style.display = 'none';
+    }
+  }
+
+  showCitizenDialogue(citizenId, onReward, onClose) {
+    const citizen = CITIZEN_DIALOGUES[citizenId];
+    if (!citizen || !this.dialogueModal) return;
+
+    audio.playDialogueChime();
+    this.activeDialogueCitizen = citizenId;
+    this.onDialogueReward = onReward;
+    this.onDialogueClose = onClose;
+
+    const iconEl = document.getElementById('dialogue-citizen-icon');
+    const nameEl = document.getElementById('dialogue-citizen-name');
+    const roleEl = document.getElementById('dialogue-citizen-role');
+    const urduEl = document.getElementById('dialogue-text-urdu');
+    const engEl = document.getElementById('dialogue-text-english');
+    const feedbackEl = document.getElementById('dialogue-feedback-banner');
+    const choicesContainer = document.getElementById('dialogue-choices-container');
+
+    if (iconEl) iconEl.textContent = citizen.avatarEmoji || '👤';
+    if (nameEl) nameEl.textContent = citizen.name;
+    if (roleEl) roleEl.textContent = `${citizen.role} • ${citizen.neighborhood}`;
+    if (urduEl) urduEl.textContent = `"${citizen.dialogue.greetingUrdu}"`;
+    if (engEl) engEl.textContent = `"${citizen.dialogue.greetingEn}"`;
+    if (feedbackEl) feedbackEl.style.display = 'none';
+
+    if (choicesContainer) {
+      choicesContainer.innerHTML = '';
+      citizen.dialogue.choices.forEach(ch => {
+        const btn = document.createElement('button');
+        btn.className = 'dialogue-choice-btn ui-interactive';
+        btn.innerHTML = `
+          <div class="choice-text-col">
+            <span class="choice-text-en">${ch.textEn}</span>
+            <span class="choice-text-urdu">${ch.textUrdu}</span>
+          </div>
+          <span class="choice-xp-pill">+${ch.xpBonus || 50} XP</span>
+        `;
+        btn.addEventListener('click', () => {
+          audio.playClick();
+          if (urduEl) urduEl.textContent = `"${ch.responseUrdu}"`;
+          if (engEl) engEl.textContent = `"${ch.responseEn}"`;
+          if (feedbackEl) {
+            feedbackEl.innerHTML = `<span>${ch.civicTip}</span>`;
+            feedbackEl.style.display = 'block';
+          }
+          if (this.onDialogueReward) {
+            this.onDialogueReward(citizenId, ch);
+          }
+        });
+        choicesContainer.appendChild(btn);
+      });
+    }
+
+    this.dialogueModal.style.display = 'flex';
+  }
+
+  closeCitizenDialogue() {
+    if (this.dialogueModal) {
+      this.dialogueModal.style.display = 'none';
+    }
+    this.activeDialogueCitizen = null;
+    if (this.onDialogueClose) {
+      this.onDialogueClose();
+    }
+  }
+
+  showMissionJournal(districtData, careerStats, badges, onClose) {
+    if (!this.journalModal) return;
+    audio.playClick();
+    this.onJournalClose = onClose;
+
+    const subTitle = document.getElementById('journal-district-subtitle');
+    if (subTitle && districtData) {
+      subTitle.textContent = `${districtData.name || 'District 1'} • ${districtData.subtitle || 'Karachi'}`;
+    }
+
+    // Gauges
+    const gauges = (districtData && districtData.gauges) || {
+      cleanliness: 65,
+      infrastructure: 50,
+      trafficFlow: 70,
+      safety: 80
+    };
+
+    const setGauge = (idVal, idBar, val) => {
+      const vEl = document.getElementById(idVal);
+      const bEl = document.getElementById(idBar);
+      const clampVal = Math.max(0, Math.min(100, Math.round(val)));
+      if (vEl) vEl.textContent = `${clampVal}%`;
+      if (bEl) bEl.style.width = `${clampVal}%`;
+    };
+
+    setGauge('gauge-cleanliness-val', 'gauge-cleanliness-bar', gauges.cleanliness);
+    setGauge('gauge-infra-val', 'gauge-infra-bar', gauges.infrastructure);
+    setGauge('gauge-traffic-val', 'gauge-traffic-bar', gauges.trafficFlow);
+    setGauge('gauge-safety-val', 'gauge-safety-bar', gauges.safety);
+
+    // Missions List
+    const mList = document.getElementById('journal-missions-list');
+    if (mList && districtData && districtData.missions) {
+      mList.innerHTML = '';
+      districtData.missions.forEach(m => {
+        const item = document.createElement('div');
+        item.className = `journal-mission-row ${m.completed ? 'completed' : 'pending'}`;
+        item.innerHTML = `
+          <span class="jm-icon">${m.completed ? '✅' : '⏳'}</span>
+          <div class="jm-info">
+            <span class="jm-title">${m.title}</span>
+            <span class="jm-desc">${m.desc}</span>
+          </div>
+          <span class="jm-reward">+${m.rewardXP || 200} XP</span>
+        `;
+        mList.appendChild(item);
+      });
+    }
+
+    // Badges Showcase
+    const bGrid = document.getElementById('journal-badges-grid');
+    if (bGrid) {
+      bGrid.innerHTML = '';
+      CIVIC_BADGES.forEach(badge => {
+        const hasIt = badges ? badges.has(badge.id) : this.unlockedBadges.has(badge.id);
+        const card = document.createElement('div');
+        card.className = `journal-badge-card ${hasIt ? 'unlocked' : 'locked'}`;
+        card.innerHTML = `
+          <span class="jb-icon">${badge.icon}</span>
+          <span class="jb-name">${badge.name}</span>
+          <span class="jb-desc">${badge.desc}</span>
+          <span class="jb-status">${hasIt ? 'UNLOCKED' : 'LOCKED'}</span>
+        `;
+        bGrid.appendChild(card);
+      });
+    }
+
+    this.journalModal.style.display = 'flex';
+  }
+
+  closeMissionJournal() {
+    if (this.journalModal) {
+      this.journalModal.style.display = 'none';
+    }
+    if (this.onJournalClose) {
+      this.onJournalClose();
+    }
+  }
+
   // Bind All Event Listeners
   bindEvents() {
     // 1. Start Mission Button
@@ -1129,6 +1456,24 @@ export class UIManager {
         }
         this.startModal.style.display = 'none';
         if (this.onStartGame) {
+          this.onStartGame({
+            playerName: this.playerName,
+            ageTier: this.currentAgeTier,
+            avatarId: this.selectedAvatar || 'tariq'
+          });
+        }
+      });
+    }
+
+    // Continue Career Button
+    const btnContinueCareer = document.getElementById('btn-continue-career');
+    if (btnContinueCareer) {
+      btnContinueCareer.addEventListener('click', () => {
+        audio.playClick();
+        this.startModal.style.display = 'none';
+        if (this.onContinueCareer) {
+          this.onContinueCareer(saveManager.get());
+        } else if (this.onStartGame) {
           this.onStartGame({
             playerName: this.playerName,
             ageTier: this.currentAgeTier,
@@ -1174,6 +1519,56 @@ export class UIManager {
       btnSprint.addEventListener('mouseup', () => { window.isBoostPressed = false; });
       btnSprint.addEventListener('touchstart', (e) => { e.preventDefault(); window.isBoostPressed = true; });
       btnSprint.addEventListener('touchend', (e) => { e.preventDefault(); window.isBoostPressed = false; });
+    }
+
+    // Jump Button (Mobile Traversal)
+    const btnJump = document.getElementById('btn-jump');
+    if (btnJump) {
+      const doJump = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        audio.playJump();
+        if (this.onJump) this.onJump();
+      };
+      btnJump.addEventListener('click', doJump);
+      btnJump.addEventListener('touchstart', doJump, { passive: false });
+    }
+
+    // Talk Button Prompt (Interactive Citizen Dialogues)
+    const btnTalk = document.getElementById('btn-talk');
+    if (btnTalk) {
+      const doTalk = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (this.onInteractCitizen) this.onInteractCitizen();
+      };
+      btnTalk.addEventListener('click', doTalk);
+      btnTalk.addEventListener('touchstart', doTalk, { passive: false });
+    }
+
+    // Mission Journal Buttons
+    const openJournal = () => {
+      audio.playClick();
+      if (this.onOpenMissionJournal) this.onOpenMissionJournal();
+    };
+    const btnJournal = document.getElementById('btn-journal');
+    if (btnJournal) btnJournal.addEventListener('click', openJournal);
+    const btnTopJournal = document.getElementById('btn-top-journal');
+    if (btnTopJournal) btnTopJournal.addEventListener('click', openJournal);
+
+    const closeJournal = () => {
+      audio.playClick();
+      this.closeMissionJournal();
+    };
+    const btnCloseJournal = document.getElementById('btn-close-journal');
+    if (btnCloseJournal) btnCloseJournal.addEventListener('click', closeJournal);
+    const btnJournalResume = document.getElementById('btn-journal-resume');
+    if (btnJournalResume) btnJournalResume.addEventListener('click', closeJournal);
+
+    const btnCloseDialogue = document.getElementById('btn-close-dialogue');
+    if (btnCloseDialogue) {
+      btnCloseDialogue.addEventListener('click', () => {
+        audio.playClick();
+        this.closeCitizenDialogue();
+      });
     }
 
     // 2. Sound & Music

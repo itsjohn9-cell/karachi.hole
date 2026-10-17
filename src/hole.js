@@ -80,6 +80,11 @@ export class Hole {
     this.isAlive = true;
     this.respawnTimer = 0;
 
+    // Street Parkour & Jump Traversal
+    this.velocityY = 0;
+    this.isGrounded = true;
+    this.jumpCooldown = 0;
+
     // AI navigation variables
     this.aiTarget = null;
     this.aiState = 'roam';
@@ -88,6 +93,16 @@ export class Hole {
 
     this.createCharacterMesh();
     this.createNameTag();
+  }
+
+  /**
+   * Jump traversal mechanic (Space / Mobile Jump button)
+   */
+  jump(strength = 6.2) {
+    if (!this.isAlive || !this.isGrounded) return false;
+    this.velocityY = strength;
+    this.isGrounded = false;
+    return true;
   }
 
   /**
@@ -328,6 +343,17 @@ export class Hole {
         }
       }
       this.position.z = nextZ;
+    }
+
+    // Vertical Jump & Gravity Traversal
+    if (!this.isGrounded || this.position.y > 0 || this.velocityY !== 0) {
+      this.velocityY -= 18.0 * dt;
+      this.position.y += this.velocityY * dt;
+      if (this.position.y <= 0) {
+        this.position.y = 0;
+        this.velocityY = 0;
+        this.isGrounded = true;
+      }
     }
 
     // Boundary walls clamp

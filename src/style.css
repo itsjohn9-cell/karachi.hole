@@ -3192,5 +3192,490 @@ html, body {
   }
 }
 
+/* ==========================================================================
+   AUTHENTIC CITIZEN DIALOGUE MODAL
+   ========================================================================== */
+.citizen-dialogue-backdrop {
+  z-index: 9999;
+  background: rgba(4, 12, 10, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.citizen-dialogue-card {
+  max-width: 580px;
+  width: 92%;
+  background: linear-gradient(145deg, rgba(14, 28, 24, 0.96), rgba(8, 16, 14, 0.98));
+  border: 1.5px solid rgba(0, 230, 118, 0.45);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.85), 0 0 24px rgba(0, 230, 118, 0.25);
+  border-radius: 20px;
+  padding: 22px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: dialogueCardPop 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes dialogueCardPop {
+  0% { transform: scale(0.92) translateY(18px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.citizen-dialogue-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 12px;
+}
+
+.citizen-avatar-badge {
+  font-size: 2.2rem;
+  background: rgba(0, 230, 118, 0.15);
+  border: 1.5px solid rgba(0, 230, 118, 0.4);
+  border-radius: 50%;
+  width: 58px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(0, 230, 118, 0.35);
+}
+
+.citizen-info-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.citizen-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #00e676;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.citizen-role {
+  font-size: 0.82rem;
+  color: #b0bec5;
+  font-weight: 600;
+}
+
+.citizen-speech-bubble {
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 4px solid #00e676;
+  border-radius: 0 12px 12px 0;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.speech-urdu {
+  font-size: 1.12rem;
+  line-height: 1.6;
+  color: #80deea;
+  direction: rtl;
+  font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', serif;
+}
+
+.speech-english {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: #eceff1;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.dialogue-feedback-banner {
+  background: rgba(0, 230, 118, 0.12);
+  border: 1px solid rgba(0, 230, 118, 0.35);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #c8e6c9;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.dialogue-choices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dialogue-choice-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.dialogue-choice-btn:hover {
+  background: rgba(0, 230, 118, 0.18);
+  border-color: #00e676;
+  transform: translateX(4px);
+  box-shadow: 0 4px 16px rgba(0, 230, 118, 0.25);
+}
+
+.choice-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.choice-text-en {
+  font-size: 0.92rem;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.choice-text-urdu {
+  font-size: 0.86rem;
+  color: #80deea;
+  direction: rtl;
+}
+
+.choice-xp-pill {
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid #ffd700;
+  color: #ffd700;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-left: 10px;
+  white-space: nowrap;
+}
+
+.dialogue-footer-hint {
+  font-size: 0.78rem;
+  color: #90a4ae;
+  text-align: center;
+}
+
+/* ==========================================================================
+   MISSION JOURNAL & DISTRICT RESTORATION MODAL
+   ========================================================================== */
+.mission-journal-backdrop {
+  z-index: 9999;
+  background: rgba(4, 10, 20, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mission-journal-card {
+  max-width: 660px;
+  width: 92%;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: linear-gradient(150deg, rgba(16, 24, 38, 0.98), rgba(8, 14, 22, 0.98));
+  border: 1.5px solid rgba(0, 229, 255, 0.45);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.9), 0 0 28px rgba(0, 229, 255, 0.25);
+  border-radius: 20px;
+  padding: 24px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.journal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.journal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.journal-crest {
+  font-size: 2.2rem;
+}
+
+.journal-main-title {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #00e5ff;
+  letter-spacing: 0.8px;
+  margin: 0;
+}
+
+.journal-sub-title {
+  font-size: 0.85rem;
+  color: #ffd700;
+  font-weight: 700;
+}
+
+.journal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #b0bec5;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.restoration-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.gauge-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gauge-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #eceff1;
+}
+
+.gauge-pct {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: #ffd700;
+}
+
+.gauge-bar-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.gauge-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.fill-cleanliness { background: linear-gradient(90deg, #00b0ff, #00e676); }
+.fill-infra { background: linear-gradient(90deg, #ff9100, #ffd700); }
+.fill-traffic { background: linear-gradient(90deg, #00e5ff, #1de9b6); }
+.fill-safety { background: linear-gradient(90deg, #7c4dff, #b388ff); }
+
+.journal-missions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.journal-mission-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.journal-mission-row.completed {
+  border-color: rgba(0, 230, 118, 0.4);
+  background: rgba(0, 230, 118, 0.06);
+}
+
+.jm-icon {
+  font-size: 1.25rem;
+}
+
+.jm-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jm-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.jm-desc {
+  font-size: 0.78rem;
+  color: #b0bec5;
+}
+
+.jm-reward {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffd700;
+  white-space: nowrap;
+}
+
+.journal-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.journal-badge-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.journal-badge-card.unlocked {
+  border-color: rgba(255, 215, 0, 0.4);
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.jb-icon {
+  font-size: 1.6rem;
+}
+
+.jb-name {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.jb-desc {
+  font-size: 0.68rem;
+  color: #90a4ae;
+  line-height: 1.2;
+}
+
+.jb-status {
+  font-size: 0.64rem;
+  font-weight: 900;
+  color: #ffd700;
+  margin-top: 4px;
+}
+
+.journal-footer {
+  margin-top: 6px;
+}
+
+/* ==========================================================================
+   HUD BUTTONS: JUMP, JOURNAL, TALK PROMPT, CONTINUE CAREER
+   ========================================================================== */
+.jump-btn {
+  background: linear-gradient(135deg, #00b0ff, #00e5ff);
+  color: #002233;
+  font-weight: 900;
+  font-size: 0.88rem;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  box-shadow: 0 4px 18px rgba(0, 229, 255, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.jump-btn:active {
+  transform: translateY(2px) scale(0.95);
+  box-shadow: 0 2px 8px rgba(0, 229, 255, 0.25);
+}
+
+.journal-btn {
+  background: linear-gradient(135deg, #ff8f00, #ffd700);
+  color: #2b1700;
+  font-weight: 900;
+  font-size: 0.88rem;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  box-shadow: 0 4px 18px rgba(255, 215, 0, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.journal-btn:active {
+  transform: translateY(2px) scale(0.95);
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.25);
+}
+
+.hud-interaction-prompt {
+  position: fixed;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 250;
+  animation: promptPulse 1.4s infinite ease-in-out;
+}
+
+@keyframes promptPulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.06); }
+}
+
+.talk-prompt-btn {
+  background: linear-gradient(135deg, #00e676, #00c853);
+  color: #003314;
+  font-weight: 900;
+  font-size: 0.95rem;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  padding: 11px 24px;
+  box-shadow: 0 6px 24px rgba(0, 230, 118, 0.6);
+  cursor: pointer;
+  letter-spacing: 0.5px;
+}
+
+.start-action-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.continue-career-btn {
+  flex: 1;
+  background: linear-gradient(135deg, #00b0ff, #00e5ff);
+  color: #002233;
+  font-weight: 900;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 18px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 229, 255, 0.4);
+  transition: transform 0.18s ease;
+}
+
+.continue-career-btn:hover {
+  transform: translateY(-2px);
+}
+
+
 
 

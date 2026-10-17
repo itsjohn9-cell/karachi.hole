@@ -13,6 +13,7 @@ export class CityGenerator {
     this.foodStalls = [];
     this.buildings = [];
     this.citizens = [];
+    this.keyCitizens = [];
     this.coastalBays = [];
     this.interactiveVictims = [];
     this.interactiveTraffic = [];
@@ -28,6 +29,7 @@ export class CityGenerator {
     this.createPerimeterBoundaries();
     this.createDistantCitySkyline();
     this.populateZones();
+    this.spawnKeyCitizens();
     return {
       edibleObjects: this.edibleObjects,
       politicians: this.politicians,
@@ -37,6 +39,7 @@ export class CityGenerator {
       foodStalls: this.foodStalls,
       buildings: this.buildings,
       citizens: this.citizens,
+      keyCitizens: this.keyCitizens,
       coastalBays: this.coastalBays,
       interactiveVictims: this.interactiveVictims,
       interactiveTraffic: this.interactiveTraffic,
@@ -1127,5 +1130,76 @@ export class CityGenerator {
       palm.position.set(px, 0, 91);
       this.registerEdible(palm, 2, 70, "Clifton Seawall Palm", 1.8, { isBadGuy: false });
     }
+  }
+
+  /**
+   * Spawn Key Authentic Karachi Story Citizens with Interactive Dialogue Beacons
+   */
+  spawnKeyCitizens() {
+    this.keyCitizens = [];
+
+    const citizensData = [
+      {
+        id: 'uncle_shamim',
+        name: 'Uncle Shamim',
+        role: 'Burns Road Chai Wala',
+        pos: [-22, 0, -18],
+        badgeLabel: '☕ UNCLE SHAMIM • TALK [E]',
+      },
+      {
+        id: 'baji_fatima',
+        name: 'Baji Fatima',
+        role: 'Community Educator',
+        pos: [22, 0, -18],
+        badgeLabel: '📚 BAJI FATIMA • TALK [E]',
+      },
+      {
+        id: 'ustad_kareem',
+        name: 'Ustad Kareem',
+        role: 'Veteran Rickshaw Pilot',
+        pos: [-6, 0, 10],
+        badgeLabel: '🛺 USTAD KAREEM • TALK [E]',
+      },
+      {
+        id: 'inspector_farooq',
+        name: 'Inspector Farooq',
+        role: 'Honest Traffic Warden',
+        pos: [8, 0, -2],
+        badgeLabel: '👮 INSPECTOR FAROOQ • TALK [E]',
+      },
+      {
+        id: 'dr_alvi',
+        name: 'Dr. Alvi',
+        role: 'Civil Hospital Paramedic',
+        pos: [30, 0, 30],
+        badgeLabel: '🩺 DR. ALVI • TALK [E]',
+      }
+    ];
+
+    citizensData.forEach(c => {
+      const npc = KarachiModels.createPedestrian();
+      npc.name = `Citizen_${c.id}`;
+      npc.position.set(c.pos[0], c.pos[1], c.pos[2]);
+
+      // Remove default pedestrian decal and create custom prominent talk decal
+      if (npc.userData && npc.userData.friendlyDecal) {
+        npc.remove(npc.userData.friendlyDecal);
+      }
+
+      const customDecal = KarachiModels.createFriendlyDecal('citizen', c.badgeLabel);
+      npc.add(customDecal);
+
+      npc.userData = {
+        isKeyCitizen: true,
+        citizenId: c.id,
+        name: c.name,
+        role: c.role,
+        friendlyDecal: customDecal,
+        talkCooldown: 0
+      };
+
+      this.scene.add(npc);
+      this.keyCitizens.push(npc);
+    });
   }
 }

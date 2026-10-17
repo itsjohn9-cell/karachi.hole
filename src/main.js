@@ -7,6 +7,8 @@ import { ParticleSystem } from './particles.js';
 import { UIManager } from './ui.js';
 import { audio } from './audio.js';
 import { KarachiModels } from './karachiModels.js';
+import { saveManager } from './saveManager.js';
+import { CITIZEN_DIALOGUES } from './dialogueSystem.js';
 
 class Game {
   constructor() {
@@ -117,6 +119,7 @@ class Game {
     this.foodStalls = generated.foodStalls || [];
     this.buildings = generated.buildings || [];
     this.citizens = generated.citizens || [];
+    this.keyCitizens = generated.keyCitizens || [];
     this.interactiveVictims = generated.interactiveVictims || [];
     this.interactiveTraffic = generated.interactiveTraffic || [];
     this.interactiveResidents = generated.interactiveResidents || [];
@@ -181,6 +184,15 @@ class Game {
       },
       onBoost: (boosting) => {
         this.isBoosting = boosting;
+      },
+      onJump: () => {
+        this.performJump();
+      },
+      onInteract: () => {
+        this.interactWithNearbyCitizen();
+      },
+      onJournal: () => {
+        this.openMissionJournal();
       }
     });
   }
@@ -200,6 +212,18 @@ class Game {
         this.clock.getDelta();
         audio.startMusic();
         this.ui.showAnnouncement(`🚀 PATROL STARTED: WELCOME ${this.player.name.toUpperCase()}!`, '#00e5ff');
+      },
+      onContinueCareer: (saveData) => {
+        this.loadCareerSave(saveData);
+      },
+      onJump: () => {
+        this.performJump();
+      },
+      onInteractCitizen: () => {
+        this.interactWithNearbyCitizen();
+      },
+      onOpenMissionJournal: () => {
+        this.openMissionJournal();
       },
       onNextLevel: () => {
         this.advanceToNextDistrict();
@@ -252,6 +276,130 @@ class Game {
     this.isPaused = false;
     this.clock.getDelta(); // Reset clock delta so physics doesn't leap
     audio.playClick();
+  }
+
+  /**
+   * Agile Street Parkour Traversal Jump Mechanic
+   */
+  performJump() {
+    if (!this.player || !this.isGameStarted || this.isPaused) return;
+    const jumped = this.player.jump(6.2);
+    if (jumped) {
+      audio.playJump();
+      this.particles.createDevourSparkles(this.player.position, 6, 0x00e5ff);
+    }
+  }
+
+  /**
+   * Interactive Citizen Dialogue Interaction
+   */
+  interactWithNearbyCitizen() {
+    if (!this.player || !this.isGameStarted || this.isPaused) return;
+    const nearby = this.findNearbyKeyCitizen(4.5);
+    if (nearby && nearby.userData && nearby.userData.citizenId) {
+      this.pauseGame();
+      this.ui.showCitizenDialogue(
+        nearby.userData.citizenId,
+        (citizenId, choice) => {
+          if (this.player && choice.xpBonus) {
+            this.player.addXP(choice.xpBonus);
+            audio.playDialogueChime();
+            this.particles.createCelebrationConfetti(this.player.position, 25);
+            this.ui.showFloatingFeedback(`+${choice.xpBonus} XP • CITIZEN ALLY`, this.player.position, '#00e676');
+          }
+          saveManager.recordCitizenConversation(citizenId, choice.id);
+          saveManager.addPlayerXP(choice.xpBonus || 50);
+          saveManager.updateDistrictGauges(this.currentDistrictLevel, { safety: 5, cleanliness: 3 });
+          saveManager.save();
+        },
+        () => {
+          this.resumeGame();
+        }
+      );
+    }
+  }
+
+  findNearbyKeyCitizen(maxDistance = 4.5) {
+    if (!this.keyCitizens || !this.player) return null;
+    let closest = null;
+    let closestDistSq = maxDistance * maxDistance;
+
+    for (let i = 0; i < this.keyCitizens.length; i++) {
+      const npc = this.keyCitizens[i];
+      if (!npc || !npc.position) continue;
+      const dx = this.player.position.x - npc.position.x;
+      const dz = this.player.position.z - npc.position.z;
+      const distSq = dx * dx + dz * dz;
+      if (distSq < closestDistSq) {
+        closestDistSq = distSq;
+        closest = npc;
+      }
+    }
+    return closest;
+  }
+
+  /**
+   * Mission Journal & District Restoration Gauges Modal
+   */
+  openMissionJournal() {
+    if (!this.isGameStarted) return;
+    this.pauseGame();
+
+    const dConfig = DISTRICT_CONFIGS[this.currentDistrictLevel] || DISTRICT_CONFIGS[1];
+    const savedDistrict = (saveManager.get().districts && saveManager.get().districts[this.currentDistrictLevel]) || {};
+
+    const districtData = {
+      name: dConfig.name,
+      subtitle: dConfig.subtitle,
+      gauges: {
+        cleanliness: savedDistrict.cleanliness || 45,
+        infrastructure: savedDistrict.infrastructure || 40,
+        trafficFlow: savedDistrict.trafficFlow || 55,
+        safety: savedDistrict.safety || 60
+      },
+      missions: (dConfig.missions || []).map(m => ({
+        ...m,
+        completed: (savedDistrict.completedMissions || []).includes(m.id)
+      }))
+    };
+
+    const careerStats = saveManager.get().player;
+    const badges = new Set(saveManager.get().badges || ['water_guardian']);
+
+    this.ui.showMissionJournal(districtData, careerStats, badges, () => {
+      this.resumeGame();
+    });
+  }
+
+  /**
+   * Resume Previous Player Career Progression
+   */
+  loadCareerSave(saveData) {
+    if (!saveData || !saveData.player) return;
+    if (this.player) {
+      this.player.name = saveData.player.name || 'Karachi Hero';
+      if (saveData.player.avatarId) {
+        this.player.setAvatar(saveData.player.avatarId);
+      }
+      this.player.level = Math.max(1, saveData.player.level || 1);
+      this.player.xp = saveData.player.careerXP || 0;
+      this.player.score = saveData.player.careerXP || 0;
+      const targetRadius = (LEVEL_CONFIG[Math.min(this.player.level - 1, LEVEL_CONFIG.length - 1)] || LEVEL_CONFIG[0]).radius;
+      this.player.radius = targetRadius;
+      this.player.targetRadius = targetRadius;
+      this.player.updateNameTag();
+    }
+
+    const targetDistrict = Math.min(saveData.highestDistrictUnlocked || 1, Object.keys(DISTRICT_CONFIGS).length);
+    if (targetDistrict > 1) {
+      this.currentDistrictLevel = targetDistrict - 1;
+      this.advanceToNextDistrict();
+    }
+
+    this.isGameStarted = true;
+    this.clock.getDelta();
+    audio.startMusic();
+    this.ui.showAnnouncement(`💾 CAREER RESUMED: WELCOME ${this.player.name.toUpperCase()} (LV.${this.player.level})!`, '#00e5ff');
   }
 
   initAudioTriggers() {
@@ -496,6 +644,16 @@ class Game {
           this.ui.showCrisisCompleteBanner(mission);
           this.timeLeft += 25;
 
+          // Record restoration progress in local save
+          saveManager.recordMissionCompleted(this.currentDistrictLevel, mission.id, { [mission.evilType]: 'restored' });
+          const gaugeDeltas = { cleanliness: 4, infrastructure: 4, trafficFlow: 4, safety: 4 };
+          if (mission.evilType === 'tanker') gaugeDeltas.infrastructure += 10;
+          if (mission.evilType === 'pothole') gaugeDeltas.infrastructure += 8;
+          if (mission.evilType === 'vip') gaugeDeltas.trafficFlow += 12;
+          if (mission.evilType === 'robber') gaugeDeltas.safety += 12;
+          saveManager.updateDistrictGauges(this.currentDistrictLevel, gaugeDeltas);
+          saveManager.save();
+
           // Check if this was the last remaining mission
           const willFinishAll = this.crisisChallenges.every(m => m.completed);
           if (!willFinishAll) {
@@ -664,6 +822,11 @@ class Game {
       `🚀 ENTERED DISTRICT ${cfg.level}: ${cfg.name.toUpperCase()} (${cfg.urdu})!`,
       '#00e5ff'
     );
+
+    // Save district progression to local storage
+    saveManager.unlockDistrict(this.currentDistrictLevel);
+    saveManager.addPlayerXP(400);
+    saveManager.save();
   }
 
   updatePhysics(dt) {
@@ -1817,6 +1980,24 @@ class Game {
 
       this.updateCamera(dt);
       this.updateNavigationGuide(dt, elapsedTime);
+
+      // Check proximity to key story citizens and toggle HUD prompt
+      const nearbyCitizen = this.findNearbyKeyCitizen(4.5);
+      if (nearbyCitizen && nearbyCitizen.userData) {
+        this.ui.setTalkPrompt(true, nearbyCitizen.userData.name);
+      } else {
+        this.ui.setTalkPrompt(false);
+      }
+
+      // Gentle floating animation for citizen dialogue beacons
+      if (this.keyCitizens) {
+        this.keyCitizens.forEach((npc, i) => {
+          if (npc.userData && npc.userData.friendlyDecal) {
+            npc.userData.friendlyDecal.position.y = 1.95 + Math.sin(elapsedTime * 2.5 + i) * 0.08;
+            npc.userData.friendlyDecal.rotation.y = elapsedTime * 1.2;
+          }
+        });
+      }
 
       // Calculate nearest active crimes & evils for HUD Radar Compass
       const playerPos = this.player ? this.player.position : new THREE.Vector3();

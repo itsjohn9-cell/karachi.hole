@@ -1,9 +1,12 @@
 export class VirtualJoystick {
-  constructor({ containerId = 'joystick-zone', onMove, onEnd, onBoost }) {
+  constructor({ containerId = 'joystick-zone', onMove, onEnd, onBoost, onJump, onInteract, onJournal }) {
     this.container = document.getElementById(containerId) || document.body;
     this.onMove = onMove;
     this.onEnd = onEnd;
     this.onBoost = onBoost;
+    this.onJump = onJump;
+    this.onInteract = onInteract;
+    this.onJournal = onJournal;
 
     this.active = false;
     this.touchId = null;
@@ -16,7 +19,8 @@ export class VirtualJoystick {
     this.keys = {
       KeyW: false, KeyS: false, KeyA: false, KeyD: false,
       ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
-      Space: false
+      Space: false, ShiftLeft: false, ShiftRight: false,
+      KeyE: false, KeyJ: false
     };
 
     this.createDOM();
@@ -157,6 +161,15 @@ export class VirtualJoystick {
   handleKeyDown(e) {
     if (this.keys.hasOwnProperty(e.code)) {
       this.keys[e.code] = true;
+      if (e.code === 'Space' && this.onJump) {
+        this.onJump();
+      }
+      if (e.code === 'KeyE' && this.onInteract) {
+        this.onInteract();
+      }
+      if (e.code === 'KeyJ' && this.onJournal) {
+        this.onJournal();
+      }
       this.updateKeyboardVector();
     }
   }
@@ -193,7 +206,7 @@ export class VirtualJoystick {
     }
 
     if (this.onBoost) {
-      this.onBoost(this.keys.Space);
+      this.onBoost(this.keys.Space || this.keys.ShiftLeft || this.keys.ShiftRight);
     }
   }
 

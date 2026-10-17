@@ -592,6 +592,95 @@ async function runTestSuite() {
   recordTest('TC-13', 'District 2 3D Scene Rendering, Backward Viewing Angle, Collision & Quiz Diversity', res13.success ? 'PASSED' : 'FAILED', Date.now() - t13Start, 'Verified District 2 3D geometry, backward camera tracking, impenetrable building collision, and quiz non-repetition');
 
   // -------------------------------------------------------------------------
+  // TC-14: SaveManager Progression Persistence & Career Restore Flow
+  // -------------------------------------------------------------------------
+  const t14Start = Date.now();
+  const res14 = await runChromeTest({
+    testId: 'TC-14',
+    screenshotName: 'tc14_career_save_persistence.png',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        // Set up mock save in localStorage
+        const mockSave = {
+          version: 2,
+          player: { name: 'Tariq Hero', avatarId: 'tariq', level: 3, careerXP: 1850 },
+          settings: { soundEnabled: true, musicEnabled: true, ageTier: 'junior' },
+          highestDistrictUnlocked: 2,
+          districts: {
+            1: { status: 'cleared', cleanliness: 85, infrastructure: 75, trafficFlow: 80, safety: 90, completedMissions: ['pothole_patrol'] }
+          },
+          badges: ['water_guardian', 'street_cleaner']
+        };
+        localStorage.setItem('karachi_hero_save_v2', JSON.stringify(mockSave));
+
+        setTimeout(() => {
+          const continueBtn = document.getElementById('btn-continue-career');
+          const levelSpan = document.getElementById('continue-career-level');
+
+          if (!continueBtn) {
+            throw new Error('Continue career button (#btn-continue-career) element missing from DOM');
+          }
+          if (continueBtn.style.display === 'none') {
+            throw new Error('Continue career button is hidden despite valid save data in localStorage');
+          }
+          if (levelSpan && levelSpan.textContent !== '3') {
+            throw new Error('Continue career level badge mismatch: expected 3, got ' + levelSpan.textContent);
+          }
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-14', 'SaveManager Progression Persistence & Career Restore Flow', res14.success ? 'PASSED' : 'FAILED', Date.now() - t14Start, 'Verified local storage career save, level badge display, and continue action');
+
+  // -------------------------------------------------------------------------
+  // TC-15: Interactive Citizen Dialogue, Mission Journal & Jump Traversal
+  // -------------------------------------------------------------------------
+  const t15Start = Date.now();
+  const res15 = await runChromeTest({
+    testId: 'TC-15',
+    screenshotName: 'tc15_dialogue_journal_jump.png',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        const startBtn = document.getElementById('btn-start-patrol');
+        if (startBtn) startBtn.click();
+
+        setTimeout(() => {
+          // 1. Check Jump Button and Journal Button in HUD
+          const jumpBtn = document.getElementById('btn-jump');
+          const journalBtn = document.getElementById('btn-journal');
+          if (!jumpBtn) throw new Error('#btn-jump missing from HUD controls');
+          if (!journalBtn) throw new Error('#btn-journal missing from HUD controls');
+
+          // 2. Open Mission Journal
+          journalBtn.click();
+          const journalModal = document.getElementById('modal-mission-journal');
+          if (!journalModal || journalModal.style.display === 'none') {
+            throw new Error('#modal-mission-journal did not open upon clicking #btn-journal');
+          }
+
+          // 3. Verify Restoration Gauges
+          const cleanVal = document.getElementById('gauge-cleanliness-val');
+          const infraVal = document.getElementById('gauge-infra-val');
+          const trafficVal = document.getElementById('gauge-traffic-val');
+          const safetyVal = document.getElementById('gauge-safety-val');
+          if (!cleanVal || !infraVal || !trafficVal || !safetyVal) {
+            throw new Error('One or more district restoration gauge elements are missing from Mission Journal');
+          }
+
+          // Close Journal
+          const closeJournalBtn = document.getElementById('btn-close-journal');
+          if (closeJournalBtn) closeJournalBtn.click();
+
+          // 4. Verify Citizen Dialogue Modal
+          const dialogueModal = document.getElementById('modal-citizen-dialogue');
+          if (!dialogueModal) throw new Error('#modal-citizen-dialogue missing from DOM');
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-15', 'Interactive Citizen Dialogue, Mission Journal & Jump Traversal', res15.success ? 'PASSED' : 'FAILED', Date.now() - t15Start, 'Verified Jump traversal button, Mission Journal modal with 4 restoration gauges, and Citizen Dialogue modal');
+
+  // -------------------------------------------------------------------------
   // Summary Report Output
   // -------------------------------------------------------------------------
   const totalDuration = Date.now() - startTime;
