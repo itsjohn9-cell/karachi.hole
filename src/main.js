@@ -1777,11 +1777,13 @@ class Game {
   updateCamera(dt) {
     if (!this.player) return;
 
-    // GTA Street-Level Third-Person Perspective
-    // Camera is positioned at street eye-level behind avatar, dynamically tracking
-    // the avatar's orientation so turns into side roads and avenues give clear forward view!
-    const camDist = 4.4;
-    const camHeight = 2.35;
+    // Dynamic perspective: in mobile portrait (narrow width, tall height), raise
+    // and pull back the camera so avatar doesn't block the street corridor ahead!
+    const isPortrait = (window.innerHeight || 1) > (window.innerWidth || 1);
+    const camDist = isPortrait ? 5.8 : 4.4;
+    const camHeight = isPortrait ? 3.2 : 2.35;
+    const lookAheadDist = isPortrait ? 8.0 : 7.0;
+    const lookTargetY = isPortrait ? 1.6 : 1.35;
 
     // Initialize camera tracking angle
     if (this.camAngle === undefined) {
@@ -1802,7 +1804,7 @@ class Game {
 
     // Safety guard against NaN
     if (!isFinite(this.camera.position.x) || !isFinite(this.camera.position.z)) {
-      this.camera.position.set(this.player.position.x, 2.35, this.player.position.z + camDist);
+      this.camera.position.set(this.player.position.x, camHeight, this.player.position.z + camDist);
     }
 
     // Camera position behind the character
@@ -1817,10 +1819,9 @@ class Game {
     }
 
     // Look target ahead down the street corridor
-    const lookAheadDist = 7.0;
     const lookTarget = new THREE.Vector3(
       this.player.position.x + Math.sin(this.camAngle) * lookAheadDist,
-      1.35,
+      lookTargetY,
       this.player.position.z + Math.cos(this.camAngle) * lookAheadDist
     );
     if (isFinite(lookTarget.x) && isFinite(lookTarget.z)) {

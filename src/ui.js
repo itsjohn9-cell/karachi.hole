@@ -248,11 +248,13 @@ export class UIManager {
         </div>
       </div>
 
-      <!-- Left Panel: District Missions Checklist Card (Zero overlap, top: 72px, left: 16px) -->
+      <!-- Left Panel: District Missions Checklist Card (Collapsible, top: 72px, left: 16px) -->
       <div class="hud-mission-card" id="district-mission-banner">
-        <div class="mission-card-header">
+        <div class="mission-card-header" id="mission-card-header-toggle" title="Tap to expand/collapse missions">
           <span class="district-badge-pill" id="hud-district-badge">DISTRICT 1</span>
           <span class="district-name-text" id="hud-district-title">Tariq Road &amp; PECHS</span>
+          <span class="district-mini-counter" id="hud-district-mini-counter">🎯 5 LEFT</span>
+          <button class="mission-toggle-btn ui-interactive" id="btn-toggle-mission-card" title="Collapse / Expand Missions">▼</button>
         </div>
 
         <!-- Dynamic Mission Checklist Items -->
@@ -1291,7 +1293,13 @@ export class UIManager {
     const btnTalk = document.getElementById('btn-talk');
     if (!prompt) return;
     if (visible) {
-      if (btnTalk) btnTalk.textContent = citizenName ? `💬 TALK TO ${citizenName.toUpperCase()} [E]` : '💬 TALK [E]';
+      const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window);
+      const keySuffix = isMobile ? '' : ' [E]';
+      if (btnTalk) {
+        btnTalk.textContent = citizenName
+          ? `💬 TALK TO ${citizenName.toUpperCase()}${keySuffix}`
+          : `💬 TALK${keySuffix}`;
+      }
       prompt.style.display = 'block';
     } else {
       prompt.style.display = 'none';
@@ -1542,6 +1550,38 @@ export class UIManager {
       };
       btnTalk.addEventListener('click', doTalk);
       btnTalk.addEventListener('touchstart', doTalk, { passive: false });
+    }
+
+    // Toggle Collapse / Expand District Missions Card
+    const missionCard = document.getElementById('district-mission-banner');
+    const btnToggleMission = document.getElementById('btn-toggle-mission-card');
+    const headerToggle = document.getElementById('mission-card-header-toggle');
+
+    const toggleMissionCard = () => {
+      if (!missionCard) return;
+      const isCollapsed = missionCard.classList.toggle('collapsed');
+      if (btnToggleMission) {
+        btnToggleMission.textContent = isCollapsed ? '▼' : '▲';
+        btnToggleMission.title = isCollapsed ? 'Expand Missions' : 'Collapse Missions';
+      }
+    };
+
+    if (btnToggleMission) {
+      btnToggleMission.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleMissionCard();
+      });
+    }
+    if (headerToggle) {
+      headerToggle.addEventListener('click', toggleMissionCard);
+    }
+
+    // On mobile screens or touch devices, collapse by default to unblock screen
+    if (window.innerWidth <= 768 || ('ontouchstart' in window)) {
+      if (missionCard) {
+        missionCard.classList.add('collapsed');
+        if (btnToggleMission) btnToggleMission.textContent = '▼';
+      }
     }
 
     // Mission Journal Buttons
@@ -1913,6 +1953,8 @@ export class UIManager {
       if (badgeEl) badgeEl.textContent = `DISTRICT ${districtConfig.level}`;
       if (titleEl) titleEl.textContent = districtConfig.name;
       if (remNumEl) remNumEl.textContent = districtRemaining;
+      const miniRemEl = document.getElementById('hud-district-mini-counter');
+      if (miniRemEl) miniRemEl.textContent = `🎯 ${districtRemaining} LEFT`;
 
       const pct = districtTotal > 0 ? Math.min(100, Math.round(((districtTotal - districtRemaining) / districtTotal) * 100)) : 0;
       if (progressEl) progressEl.style.width = `${pct}%`;

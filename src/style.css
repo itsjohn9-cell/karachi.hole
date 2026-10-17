@@ -2604,6 +2604,16 @@ html, body {
   }
 }
 
+/* Top Bar Action Controls */
+.hud-top-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+
 /* Left Panel: Non-Overlapping District Mission Checklist Card */
 .hud-mission-card {
   position: fixed;
@@ -2624,6 +2634,7 @@ html, body {
   flex-direction: column;
   gap: 8px;
   pointer-events: auto;
+  transition: all 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.2);
 }
 
 .mission-card-header {
@@ -2632,6 +2643,66 @@ html, body {
   gap: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding-bottom: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.district-mini-counter {
+  display: none;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #ffd700;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  white-space: nowrap;
+}
+
+.mission-toggle-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  color: #00e5ff;
+  border-radius: 999px;
+  width: 24px;
+  height: 24px;
+  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: auto;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.mission-toggle-btn:hover {
+  background: rgba(0, 229, 255, 0.25);
+  transform: scale(1.08);
+}
+
+/* Collapsed Mini State for Clear Unobstructed Screen */
+.hud-mission-card.collapsed {
+  width: auto !important;
+  max-width: 320px !important;
+  padding: 6px 12px !important;
+  border-radius: 999px !important;
+  gap: 0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 229, 255, 0.2) !important;
+}
+
+.hud-mission-card.collapsed .district-mini-counter {
+  display: inline-block;
+}
+
+.hud-mission-card.collapsed .mission-checklist,
+.hud-mission-card.collapsed .active-crisis-card,
+.hud-mission-card.collapsed .mission-card-footer {
+  display: none !important;
+}
+
+.hud-mission-card.collapsed .mission-card-header {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
 }
 
 .mission-checklist {
@@ -2655,7 +2726,8 @@ html, body {
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.mission-item.mission-done {
+.mission-item.mission-done,
+.mission-item.completed {
   color: #00e676;
   background: rgba(0, 230, 118, 0.1);
   border-color: rgba(0, 230, 118, 0.3);
@@ -2676,7 +2748,8 @@ html, body {
   text-overflow: ellipsis;
 }
 
-.mission-item .m-count {
+.mission-item .m-count,
+.mission-item .m-progress {
   font-size: 0.75rem;
   font-weight: 800;
   color: #ffd700;
@@ -2701,6 +2774,11 @@ html, body {
   border-radius: 20px !important;
   border: 1.5px solid rgba(0, 229, 255, 0.45) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 229, 255, 0.25) !important;
+  pointer-events: none !important;
+}
+
+.gta-radar-card * {
+  pointer-events: none !important;
 }
 
 /* Bottom-Right Sprint Button */
@@ -3056,26 +3134,76 @@ html, body {
    ============================================================== */
 @media (max-width: 768px) {
   .hud-top-bar {
-    gap: 8px;
+    gap: 6px;
+    align-items: center;
   }
 
   .hud-left {
-    transform: scale(0.9);
+    transform: scale(0.85);
     transform-origin: top left;
   }
 
   .hud-center {
-    transform: scale(0.9);
+    transform: scale(0.85);
   }
 
   .hud-right {
-    transform: scale(0.9);
+    transform: scale(0.85);
     transform-origin: top right;
   }
 
+  .hud-top-controls {
+    gap: 4px;
+    flex-wrap: nowrap;
+  }
+
+  .hud-top-controls .icon-btn {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.82rem !important;
+    padding: 0 !important;
+  }
+
+  .hud-mission-card {
+    top: 62px;
+    left: 10px;
+    max-width: min(290px, 86vw);
+    padding: 8px 10px;
+  }
+
+  .hud-interaction-prompt {
+    bottom: 110px;
+    right: 16px;
+    left: auto;
+    transform: none;
+  }
+
+  .talk-prompt-btn {
+    font-size: 0.82rem !important;
+    padding: 8px 16px !important;
+  }
+
+  .gta-radar-card {
+    bottom: 12px !important;
+    left: 12px !important;
+    transform: scale(0.85);
+    transform-origin: bottom left;
+  }
+
+  .hud-controls-bottom-right {
+    bottom: 14px;
+    right: 12px;
+    gap: 6px;
+  }
+
+  .hud-controls-bottom-right button {
+    padding: 8px 12px;
+    font-size: 0.78rem;
+  }
+
   .minimap-card canvas {
-    width: 100px !important;
-    height: 100px !important;
+    width: 95px !important;
+    height: 95px !important;
   }
 
   .leaderboard-card {
@@ -3628,15 +3756,16 @@ html, body {
 .hud-interaction-prompt {
   position: fixed;
   bottom: 84px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 24px;
+  left: auto;
+  transform: none;
   z-index: 250;
   animation: promptPulse 1.4s infinite ease-in-out;
 }
 
 @keyframes promptPulse {
-  0%, 100% { transform: translateX(-50%) scale(1); }
-  50% { transform: translateX(-50%) scale(1.06); }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 .talk-prompt-btn {
