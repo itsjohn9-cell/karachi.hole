@@ -129,7 +129,9 @@ async function runTestSuite() {
   // -------------------------------------------------------------------------
   const t02Start = Date.now();
   try {
-    const buildOutput = execSync('npm run build', { cwd: rootDir, stdio: 'pipe' }).toString();
+    const extraPath = '/Users/mohammadjhone/.gemini/antigravity-ide/bin';
+    const env = { ...process.env, PATH: `${extraPath}:${process.env.PATH || ''}` };
+    const buildOutput = execSync('npm run build', { cwd: rootDir, env, stdio: 'pipe' }).toString();
     const isSuccess = buildOutput.includes('built in') || fs.existsSync(path.join(rootDir, 'dist/index.html'));
     if (isSuccess) {
       recordTest('TC-02', 'Vite Production Bundle Compilation', 'PASSED', Date.now() - t02Start, 'Compiled dist/index.html and optimized JS/CSS chunks');
