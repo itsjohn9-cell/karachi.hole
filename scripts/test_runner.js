@@ -683,6 +683,72 @@ async function runTestSuite() {
   recordTest('TC-15', 'Interactive Citizen Dialogue, Mission Journal & Jump Traversal', res15.success ? 'PASSED' : 'FAILED', Date.now() - t15Start, 'Verified Jump traversal button, Mission Journal modal with 4 restoration gauges, and Citizen Dialogue modal');
 
   // -------------------------------------------------------------------------
+  // TC-16: Comprehensive Game Menu & Settings Hub Navigation Flow
+  // -------------------------------------------------------------------------
+  const t16Start = Date.now();
+  const res16 = await runChromeTest({
+    testId: 'TC-16',
+    screenshotName: 'tc16_game_menu_hub.png',
+    extraStyle: '#modal-start-mission { display: none !important; } #modal-game-menu { display: flex !important; }',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        const startBtn = document.getElementById('btn-start-patrol');
+        if (startBtn) startBtn.click();
+
+        setTimeout(() => {
+          // 1. Verify Top HUD Menu Button
+          const menuBtn = document.getElementById('btn-open-game-menu');
+          if (!menuBtn) throw new Error('#btn-open-game-menu missing from top HUD controls');
+
+          // 2. Open Game Menu Modal
+          menuBtn.click();
+          const menuModal = document.getElementById('modal-game-menu');
+          if (!menuModal || menuModal.style.display === 'none') {
+            throw new Error('#modal-game-menu failed to open upon clicking #btn-open-game-menu');
+          }
+
+          // 3. Verify Primary Action Buttons
+          const btnResume = document.getElementById('btn-menu-resume');
+          const btnRestart = document.getElementById('btn-menu-restart');
+          const btnExitTitle = document.getElementById('btn-menu-exit-title');
+          if (!btnResume || !btnRestart || !btnExitTitle) {
+            throw new Error('Primary action buttons (Resume, Restart, Main Menu) missing from Game Menu');
+          }
+
+          // 4. Verify Sub-Menu Hub Tiles
+          const tileJournal = document.getElementById('btn-menu-open-journal');
+          const tileSkins = document.getElementById('btn-menu-open-skins');
+          const tileQuiz = document.getElementById('btn-menu-open-quiz');
+          const tileGuide = document.getElementById('btn-menu-open-guide');
+          if (!tileJournal || !tileSkins || !tileQuiz || !tileGuide) {
+            throw new Error('One or more Sub-Menu Hub tiles missing from Game Menu');
+          }
+
+          // 5. Verify Settings Panel Elements
+          const sfxToggle = document.getElementById('btn-menu-toggle-sfx');
+          const musicToggle = document.getElementById('btn-menu-toggle-music');
+          const agePills = document.querySelectorAll('#menu-age-pills .tier-pill-btn');
+          const camStreet = document.getElementById('btn-cam-street');
+          const camWide = document.getElementById('btn-cam-wide');
+          if (!sfxToggle || !musicToggle || agePills.length < 3 || !camStreet || !camWide) {
+            throw new Error('Settings panel controls (SFX, Music, Age Tiers, Camera) missing or incomplete');
+          }
+
+          // 6. Verify Return to Main Menu Functionality
+          if (typeof window.game.returnToMainMenu !== 'function') {
+            throw new Error('window.game.returnToMainMenu is not a function');
+          }
+          if (typeof window.game.ui.returnToMainMenu !== 'function') {
+            throw new Error('window.game.ui.returnToMainMenu is not a function');
+          }
+          // Menu stays open for visual screenshot verification
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-16', 'Comprehensive Game Menu & Settings Hub Navigation Flow', res16.success ? 'PASSED' : 'FAILED', Date.now() - t16Start, 'Verified HUD menu button, modal opening, sub-menus hub, settings controls, and return to main menu flow');
+
+  // -------------------------------------------------------------------------
   // Summary Report Output
   // -------------------------------------------------------------------------
   const totalDuration = Date.now() - startTime;

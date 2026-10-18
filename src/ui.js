@@ -30,7 +30,8 @@ export class UIManager {
     onJump,
     onInteractCitizen,
     onOpenMissionJournal,
-    onContinueCareer
+    onContinueCareer,
+    onReturnToMainMenu
   }) {
     this.onStartGame = onStartGame;
     this.onSelectSkin = onSelectSkin;
@@ -46,6 +47,7 @@ export class UIManager {
     this.onInteractCitizen = onInteractCitizen;
     this.onOpenMissionJournal = onOpenMissionJournal;
     this.onContinueCareer = onContinueCareer;
+    this.onReturnToMainMenu = onReturnToMainMenu;
 
     this.playerName = 'Karachi Hero';
     this.currentSkin = 'gutter';
@@ -64,6 +66,7 @@ export class UIManager {
     this.createGoodVsBadModal();
     this.createEducationalQuizModal();
     this.createAutoPauseModal();
+    this.createGameMenuModal();
     this.createGameOverModal();
     this.createDistrictClearedModal();
     this.createCitizenDialogueModal();
@@ -238,13 +241,14 @@ export class UIManager {
         </div>
 
         <div class="hud-top-controls">
+          <button class="menu-pill-btn ui-interactive" id="btn-open-game-menu" title="Open Game Menu & Settings [Esc]">☰ MENU</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
           <button class="icon-btn ui-interactive" id="btn-open-skins" title="Select Hero Outfit">🎨</button>
           <button class="icon-btn ui-interactive" id="btn-open-guide" title="Civic Guide">❓</button>
           <button class="icon-btn ui-interactive" id="btn-top-journal" title="Civic Mission Journal & District Gauges [J]">📜</button>
           <button class="icon-btn ui-interactive" id="btn-open-quiz" title="Civic Academy Challenge">🎓</button>
-          <button class="icon-btn ui-interactive" id="btn-manual-pause" title="Pause Game">⏸️</button>
+          <button class="icon-btn ui-interactive" id="btn-manual-pause" title="Pause Game [Esc]">⏸️</button>
         </div>
       </div>
 
@@ -366,13 +370,172 @@ export class UIManager {
         <div class="pause-icon">⏸️</div>
         <h2 class="pause-title">GAME PAUSED</h2>
         <p class="pause-desc">You switched tabs or moved away from the screen. Karachi patrol is safely on hold.</p>
-        <button class="primary-btn ui-interactive resume-patrol-btn" id="btn-auto-resume">
-          ▶ RESUME PATROL
-        </button>
+        <div class="pause-actions-col">
+          <button class="primary-btn ui-interactive resume-patrol-btn" id="btn-auto-resume">
+            ▶ RESUME PATROL
+          </button>
+          <button class="secondary-btn ui-interactive" id="btn-pause-open-menu">
+            ☰ OPEN GAME MENU &amp; SETTINGS
+          </button>
+          <button class="ghost-btn ui-interactive" id="btn-pause-exit-title">
+            🏠 RETURN TO MAIN MENU
+          </button>
+        </div>
       </div>
     `;
 
     document.body.appendChild(this.autoPauseModal);
+  }
+
+  // 3b. Comprehensive Game Menu & Settings Modal
+  createGameMenuModal() {
+    this.gameMenuModal = document.createElement('div');
+    this.gameMenuModal.className = 'modal-backdrop game-menu-backdrop';
+    this.gameMenuModal.id = 'modal-game-menu';
+    this.gameMenuModal.style.display = 'none';
+
+    this.gameMenuModal.innerHTML = `
+      <div class="modal-card game-menu-card">
+        <div class="game-menu-header">
+          <div class="menu-title-block">
+            <span class="menu-crest-icon">🎮</span>
+            <div>
+              <h2 class="menu-title">GAME MENU &amp; SETTINGS</h2>
+              <p class="menu-subtitle" id="menu-hero-summary">Karachi Street Hero • Civic Vice Hub</p>
+            </div>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-game-menu">&times;</button>
+        </div>
+
+        <!-- Hero & Career Summary Strip -->
+        <div class="menu-hero-card">
+          <div class="menu-hero-badge" id="menu-avatar-icon">🇵🇰</div>
+          <div class="menu-hero-details">
+            <div class="menu-hero-name-row">
+              <span class="menu-hero-name" id="menu-player-name">Karachi Hero</span>
+              <span class="menu-badge" id="menu-level-badge">LV 1</span>
+            </div>
+            <div class="menu-hero-badges-row">
+              <span class="menu-tag" id="menu-district-badge">District 1: DHA</span>
+              <span class="menu-tag score-tag" id="menu-score-badge">SCORE: 0</span>
+              <span class="menu-tag age-tag" id="menu-age-badge">KIDS (5-8)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Action Navigation -->
+        <div class="menu-primary-actions">
+          <button class="primary-btn ui-interactive menu-action-btn" id="btn-menu-resume">
+            ▶ RESUME PATROL
+          </button>
+          <button class="secondary-btn ui-interactive menu-action-btn" id="btn-menu-restart">
+            🔄 RESTART DISTRICT
+          </button>
+          <button class="danger-btn ui-interactive menu-action-btn" id="btn-menu-exit-title">
+            🏠 MAIN MENU
+          </button>
+        </div>
+
+        <!-- Hub to Access All Other Game Screens -->
+        <div class="menu-section-header">
+          <span class="menu-section-title">🗺️ ALL GAME MENUS &amp; MODES</span>
+        </div>
+        <div class="menu-hub-grid">
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-journal">
+            <span class="hub-tile-icon">📜</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">Mission Journal</span>
+              <span class="hub-tile-sub">4 District Restoration Gauges</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-skins">
+            <span class="hub-tile-icon">🎭</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">Hero Avatars</span>
+              <span class="hub-tile-sub">Change 3D Karachi Character</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-quiz">
+            <span class="hub-tile-icon">🎓</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">Civic Academy</span>
+              <span class="hub-tile-sub">Educational Dilemmas &amp; XP</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-guide">
+            <span class="hub-tile-icon">❓</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">How to Play</span>
+              <span class="hub-tile-sub">Good vs Bad &amp; Street Rules</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+        </div>
+
+        <!-- Interactive Settings Panel -->
+        <div class="menu-section-header">
+          <span class="menu-section-title">⚙️ AUDIO &amp; GAMEPLAY SETTINGS</span>
+        </div>
+        <div class="menu-settings-container">
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Sound Effects (SFX)</span>
+              <span class="settings-hint">Sirens, celebrations, whistles, and chatter</span>
+            </div>
+            <button class="setting-pill-toggle ui-interactive active" id="btn-menu-toggle-sfx">
+              🔊 SFX: ON
+            </button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Background Music</span>
+              <span class="settings-hint">Energetic Karachi street beats &amp; tunes</span>
+            </div>
+            <button class="setting-pill-toggle ui-interactive active" id="btn-menu-toggle-music">
+              🎵 MUSIC: ON
+            </button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Age Group &amp; Tier</span>
+              <span class="settings-hint">Customizes quiz dilemmas and guidance speed</span>
+            </div>
+            <div class="tier-pill-group" id="menu-age-pills">
+              <button class="tier-pill-btn active ui-interactive" data-age="kids">🐣 Kids (5-8)</button>
+              <button class="tier-pill-btn ui-interactive" data-age="junior">🎒 Junior (9-12)</button>
+              <button class="tier-pill-btn ui-interactive" data-age="senior">🏆 Teens (13+)</button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Camera Perspective</span>
+              <span class="settings-hint">Toggle between Street Chase &amp; Elevated Wide view</span>
+            </div>
+            <div class="tier-pill-group" id="menu-camera-pills">
+              <button class="tier-pill-btn active ui-interactive" id="btn-cam-street">Street Chase</button>
+              <button class="tier-pill-btn ui-interactive" id="btn-cam-wide">Extra Wide Drone</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-footer">
+          <button class="primary-btn ui-interactive close-menu-footer-btn" id="btn-menu-footer-close">
+            CLOSE &amp; CONTINUE PATROL
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(this.gameMenuModal);
   }
 
   // 4. Hole Skin Selection Modal
@@ -1734,12 +1897,12 @@ export class UIManager {
       });
     }
 
-    // Manual Pause button on HUD
+    // Manual Pause button on HUD (Opens full Game Menu & Settings)
     const btnManualPause = document.getElementById('btn-manual-pause');
     if (btnManualPause) {
       btnManualPause.addEventListener('click', () => {
         audio.playClick();
-        this.showAutoPauseModal();
+        this.showGameMenuModal();
       });
     }
 
@@ -1750,6 +1913,200 @@ export class UIManager {
         this.hideAutoPauseModal();
       });
     }
+
+    // Auto-Pause modal actions: Open Menu & Exit to Main Menu
+    const btnPauseOpenMenu = document.getElementById('btn-pause-open-menu');
+    if (btnPauseOpenMenu) {
+      btnPauseOpenMenu.addEventListener('click', () => {
+        this.hideAutoPauseModal();
+        this.showGameMenuModal();
+      });
+    }
+
+    const btnPauseExitTitle = document.getElementById('btn-pause-exit-title');
+    if (btnPauseExitTitle) {
+      btnPauseExitTitle.addEventListener('click', () => {
+        this.hideAutoPauseModal();
+        if (this.onReturnToMainMenu) {
+          this.onReturnToMainMenu();
+        } else {
+          this.returnToMainMenu();
+        }
+      });
+    }
+
+    // 7. Comprehensive Game Menu & Settings Hub Buttons
+    const btnOpenGameMenu = document.getElementById('btn-open-game-menu');
+    if (btnOpenGameMenu) {
+      btnOpenGameMenu.addEventListener('click', () => {
+        this.showGameMenuModal();
+      });
+    }
+
+    const btnCloseGameMenu = document.getElementById('btn-close-game-menu');
+    if (btnCloseGameMenu) {
+      btnCloseGameMenu.addEventListener('click', () => {
+        this.hideGameMenuModal();
+      });
+    }
+
+    const btnMenuResume = document.getElementById('btn-menu-resume');
+    if (btnMenuResume) {
+      btnMenuResume.addEventListener('click', () => {
+        this.hideGameMenuModal();
+      });
+    }
+
+    const btnMenuFooterClose = document.getElementById('btn-menu-footer-close');
+    if (btnMenuFooterClose) {
+      btnMenuFooterClose.addEventListener('click', () => {
+        this.hideGameMenuModal();
+      });
+    }
+
+    const btnMenuRestart = document.getElementById('btn-menu-restart');
+    if (btnMenuRestart) {
+      btnMenuRestart.addEventListener('click', () => {
+        this.hideGameMenuModal();
+        if (this.onRestartGame) this.onRestartGame();
+      });
+    }
+
+    const btnMenuExitTitle = document.getElementById('btn-menu-exit-title');
+    if (btnMenuExitTitle) {
+      btnMenuExitTitle.addEventListener('click', () => {
+        if (this.onReturnToMainMenu) {
+          this.onReturnToMainMenu();
+        } else {
+          this.returnToMainMenu();
+        }
+      });
+    }
+
+    // Game Menu Hub Navigation to other sub-menus
+    const btnMenuJournal = document.getElementById('btn-menu-open-journal');
+    if (btnMenuJournal) {
+      btnMenuJournal.addEventListener('click', () => {
+        this.hideGameMenuModal();
+        openJournal();
+      });
+    }
+
+    const btnMenuSkins = document.getElementById('btn-menu-open-skins');
+    if (btnMenuSkins) {
+      btnMenuSkins.addEventListener('click', () => {
+        this.hideGameMenuModal();
+        if (this.skinModal) this.skinModal.style.display = 'flex';
+      });
+    }
+
+    const btnMenuQuiz = document.getElementById('btn-menu-open-quiz');
+    if (btnMenuQuiz) {
+      btnMenuQuiz.addEventListener('click', () => {
+        this.hideGameMenuModal();
+        this.openEducationalQuiz();
+      });
+    }
+
+    const btnMenuGuide = document.getElementById('btn-menu-open-guide');
+    if (btnMenuGuide) {
+      btnMenuGuide.addEventListener('click', () => {
+        this.hideGameMenuModal();
+        if (this.guideModal) this.guideModal.style.display = 'flex';
+      });
+    }
+
+    // Settings SFX & Music toggles inside Game Menu
+    const btnMenuToggleSfx = document.getElementById('btn-menu-toggle-sfx');
+    if (btnMenuToggleSfx) {
+      btnMenuToggleSfx.addEventListener('click', () => {
+        const enabled = audio.toggleSound();
+        btnMenuToggleSfx.textContent = enabled ? '🔊 SFX: ON' : '🔇 SFX: OFF';
+        btnMenuToggleSfx.classList.toggle('active', enabled);
+        if (btnSound) btnSound.textContent = enabled ? '🔊' : '🔇';
+      });
+    }
+
+    const btnMenuToggleMusic = document.getElementById('btn-menu-toggle-music');
+    if (btnMenuToggleMusic) {
+      btnMenuToggleMusic.addEventListener('click', () => {
+        const enabled = audio.toggleMusic();
+        btnMenuToggleMusic.textContent = enabled ? '🎵 MUSIC: ON' : '⏹ MUSIC: OFF';
+        btnMenuToggleMusic.classList.toggle('active', enabled);
+        if (btnMusic) btnMusic.textContent = enabled ? '🎵' : '⏹';
+      });
+    }
+
+    // Age Tier Pills inside Game Menu
+    const menuAgePills = document.querySelectorAll('#menu-age-pills .tier-pill-btn');
+    menuAgePills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        audio.playClick();
+        menuAgePills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        this.currentAgeTier = pill.dataset.age;
+        this.difficulty = (this.currentAgeTier === 'kids') ? 'kidsEasy' : 'classic';
+        if (this.onSelectDifficulty) this.onSelectDifficulty(this.difficulty);
+
+        const ageBadge = document.getElementById('menu-age-badge');
+        if (ageBadge) {
+          const labels = { kids: 'KIDS (5-8)', junior: 'JUNIOR (9-12)', senior: 'TEENS (13+)' };
+          ageBadge.textContent = labels[this.currentAgeTier] || 'KIDS (5-8)';
+        }
+
+        const startAgeCards = document.querySelectorAll('#start-age-grid .age-card');
+        startAgeCards.forEach(c => {
+          if (c.dataset.age === this.currentAgeTier) c.classList.add('active');
+          else c.classList.remove('active');
+        });
+        const quizTabs = document.querySelectorAll('.age-tab');
+        quizTabs.forEach(t => {
+          if (t.dataset.age === this.currentAgeTier) t.classList.add('active');
+          else t.classList.remove('active');
+        });
+      });
+    });
+
+    // Camera Perspective mode inside Game Menu
+    const btnCamStreet = document.getElementById('btn-cam-street');
+    const btnCamWide = document.getElementById('btn-cam-wide');
+    if (btnCamStreet && btnCamWide) {
+      btnCamStreet.addEventListener('click', () => {
+        audio.playClick();
+        btnCamStreet.classList.add('active');
+        btnCamWide.classList.remove('active');
+        if (window.game) window.game.cameraWideMode = false;
+      });
+      btnCamWide.addEventListener('click', () => {
+        audio.playClick();
+        btnCamWide.classList.add('active');
+        btnCamStreet.classList.remove('active');
+        if (window.game) window.game.cameraWideMode = true;
+      });
+    }
+
+    // Keyboard shortcut [Esc] for toggling Game Menu
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.code === 'Escape') {
+        if (this.gameMenuModal && this.gameMenuModal.style.display !== 'none') {
+          this.hideGameMenuModal();
+        } else if (this.autoPauseModal && this.autoPauseModal.style.display !== 'none') {
+          this.hideAutoPauseModal();
+        } else if (this.skinModal && this.skinModal.style.display !== 'none') {
+          this.skinModal.style.display = 'none';
+          if (this.onResumeGame) this.onResumeGame();
+        } else if (this.guideModal && this.guideModal.style.display !== 'none') {
+          this.guideModal.style.display = 'none';
+          if (this.onResumeGame) this.onResumeGame();
+        } else if (this.journalModal && this.journalModal.style.display !== 'none') {
+          this.closeMissionJournal();
+        } else if (this.quizModal && this.quizModal.style.display !== 'none') {
+          this.closeEducationalQuiz();
+        } else if (window.game && window.game.isGameStarted && !this.isAutoPaused) {
+          this.showGameMenuModal();
+        }
+      }
+    });
 
     // Boost button
     const btnBoost = document.getElementById('btn-boost');
@@ -1818,6 +2175,97 @@ export class UIManager {
     }
     if (this.onResumeGame) {
       this.onResumeGame();
+    }
+  }
+
+  showGameMenuModal() {
+    if (!this.gameMenuModal) return;
+    audio.playClick();
+    if (this.onPauseGame) this.onPauseGame();
+
+    // Sync current player stats
+    if (window.game && window.game.player) {
+      const p = window.game.player;
+      const avatarIcons = { tariq: '🇵🇰', ayesha: '🌸', farooq: '👮', bilal: '🚑', zain: '🎒' };
+      const iconEl = document.getElementById('menu-avatar-icon');
+      if (iconEl) iconEl.textContent = avatarIcons[p.avatarId] || '🇵🇰';
+      const nameEl = document.getElementById('menu-player-name');
+      if (nameEl) nameEl.textContent = p.name || 'Karachi Hero';
+      const lvlEl = document.getElementById('menu-level-badge');
+      if (lvlEl) lvlEl.textContent = `LV ${p.level || 1}`;
+      const scoreEl = document.getElementById('menu-score-badge');
+      if (scoreEl) scoreEl.textContent = `SCORE: ${p.score || 0}`;
+      const distEl = document.getElementById('menu-district-badge');
+      if (distEl) distEl.textContent = `District ${window.game.currentDistrictLevel || 1}`;
+      const summaryEl = document.getElementById('menu-hero-summary');
+      if (summaryEl) summaryEl.textContent = `${p.heroTitle || 'Street Patrol Hero'} • District ${window.game.currentDistrictLevel || 1}`;
+    }
+
+    // Sync SFX / Music buttons
+    const sfxBtn = document.getElementById('btn-menu-toggle-sfx');
+    if (sfxBtn) {
+      const sOn = audio.soundEnabled;
+      sfxBtn.textContent = sOn ? '🔊 SFX: ON' : '🔇 SFX: OFF';
+      sfxBtn.classList.toggle('active', sOn);
+    }
+    const musBtn = document.getElementById('btn-menu-toggle-music');
+    if (musBtn) {
+      const mOn = audio.musicEnabled;
+      musBtn.textContent = mOn ? '🎵 MUSIC: ON' : '⏹ MUSIC: OFF';
+      musBtn.classList.toggle('active', mOn);
+    }
+
+    // Sync Age pills
+    const agePills = document.querySelectorAll('#menu-age-pills .tier-pill-btn');
+    agePills.forEach(pill => {
+      if (pill.dataset.age === this.currentAgeTier) pill.classList.add('active');
+      else pill.classList.remove('active');
+    });
+
+    // Sync Camera pills
+    const camWide = window.game && window.game.cameraWideMode;
+    const btnStreet = document.getElementById('btn-cam-street');
+    const btnWide = document.getElementById('btn-cam-wide');
+    if (btnStreet) btnStreet.classList.toggle('active', !camWide);
+    if (btnWide) btnWide.classList.toggle('active', !!camWide);
+
+    this.gameMenuModal.style.display = 'flex';
+  }
+
+  hideGameMenuModal() {
+    if (!this.gameMenuModal) return;
+    audio.playClick();
+    this.gameMenuModal.style.display = 'none';
+    if (this.onResumeGame) this.onResumeGame();
+  }
+
+  returnToMainMenu() {
+    if (this.gameMenuModal) this.gameMenuModal.style.display = 'none';
+    if (this.autoPauseModal) this.autoPauseModal.style.display = 'none';
+    if (this.skinModal) this.skinModal.style.display = 'none';
+    if (this.guideModal) this.guideModal.style.display = 'none';
+    if (this.quizModal) this.quizModal.style.display = 'none';
+    if (this.journalModal) this.journalModal.style.display = 'none';
+    if (this.citizenDialogueModal) this.citizenDialogueModal.style.display = 'none';
+
+    if (this.onPauseGame) this.onPauseGame();
+    if (window.game) window.game.isGameStarted = false;
+
+    // Refresh Continue Career button on start modal
+    try {
+      if (typeof saveManager !== 'undefined' && saveManager.get) {
+        const save = saveManager.get();
+        const btnContinue = document.getElementById('btn-continue-career');
+        const continueLevel = document.getElementById('continue-career-level');
+        if (btnContinue && save && save.player) {
+          btnContinue.style.display = 'flex';
+          if (continueLevel) continueLevel.textContent = save.player.level || 1;
+        }
+      }
+    } catch (e) {}
+
+    if (this.startModal) {
+      this.startModal.style.display = 'flex';
     }
   }
 

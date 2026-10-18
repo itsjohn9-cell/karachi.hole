@@ -258,6 +258,9 @@ class Game {
       },
       onPauseGame: () => {
         this.pauseGame();
+      },
+      onReturnToMainMenu: () => {
+        this.returnToMainMenu();
       }
     });
   }
@@ -276,6 +279,21 @@ class Game {
     this.isPaused = false;
     this.clock.getDelta(); // Reset clock delta so physics doesn't leap
     audio.playClick();
+  }
+
+  returnToMainMenu() {
+    this.pauseGame();
+    this.isGameStarted = false;
+    audio.playClick();
+    if (this.ui) {
+      this.ui.returnToMainMenu();
+    }
+    // Also save current career state
+    try {
+      if (typeof saveManager !== 'undefined' && saveManager.save) {
+        saveManager.save();
+      }
+    } catch (e) {}
   }
 
   /**
@@ -1983,9 +2001,10 @@ class Game {
 
     // Zoomed-out street chase perspective: expanded FOV and height so surroundings and street grid are crystal clear!
     const isPortrait = (window.innerHeight || 1) > (window.innerWidth || 1);
-    const camDist = isPortrait ? 6.8 : 5.8;
-    const camHeight = isPortrait ? 4.2 : 3.4;
-    const lookAheadDist = isPortrait ? 9.5 : 8.5;
+    const wideMult = this.cameraWideMode ? 1.35 : 1.0;
+    const camDist = (isPortrait ? 6.8 : 5.8) * wideMult;
+    const camHeight = (isPortrait ? 4.2 : 3.4) * (this.cameraWideMode ? 1.25 : 1.0);
+    const lookAheadDist = (isPortrait ? 9.5 : 8.5) * (this.cameraWideMode ? 1.2 : 1.0);
     const lookTargetY = isPortrait ? 1.8 : 1.5;
 
     if (this.camAngle === undefined) this.camAngle = Math.PI;
