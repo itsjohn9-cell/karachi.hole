@@ -75,6 +75,7 @@ export class UIManager {
     this.createDistrictClearedModal();
     this.createCitizenDialogueModal();
     this.createMissionJournalModal();
+    this.createDevModeUI();
     this.bindEvents();
   }
 
@@ -1671,9 +1672,9 @@ export class UIManager {
           <span class="jm-icon">${m.completed ? '✅' : '⏳'}</span>
           <div class="jm-info">
             <span class="jm-title">${m.title}</span>
-            <span class="jm-desc">${m.desc}</span>
+            <span class="jm-desc">${m.description || m.desc || ''}</span>
           </div>
-          <span class="jm-reward">+${m.rewardXP || 200} XP</span>
+          <span class="jm-reward">+${m.xpReward || m.rewardXP || 1000} XP</span>
         `;
         mList.appendChild(item);
       });
@@ -3298,6 +3299,288 @@ export class UIManager {
   hideGameOverModal() {
     if (this.gameOverModal) {
       this.gameOverModal.style.display = 'none';
+    }
+  }
+
+  // =========================================================================
+  // DEV MODE OBSERVER HUD & TELEMETRY CONTROLS
+  // =========================================================================
+  createDevModeUI() {
+    if (typeof document === 'undefined') return;
+
+    // 1. Floating Toggle Pill (Always reachable)
+    this.devToggleBtn = document.createElement('button');
+    this.devToggleBtn.id = 'dev-mode-toggle-btn';
+    this.devToggleBtn.className = 'ui-interactive';
+    this.devToggleBtn.innerHTML = `🛠️ <span>DEV MODE [F2]</span>`;
+    this.devToggleBtn.title = "Toggle Developer Observer HUD (Shortcut: F2 or ~)";
+    document.body.appendChild(this.devToggleBtn);
+
+    // 2. Dev Mode Floating Observer Panel
+    this.devPanel = document.createElement('div');
+    this.devPanel.id = 'dev-mode-panel';
+    this.devPanel.style.display = 'none';
+
+    this.devPanel.innerHTML = `
+      <div class="dev-panel-header">
+        <div class="dev-header-title">
+          <span>🛠️</span>
+          <span>DEV MODE OBSERVER</span>
+        </div>
+        <div class="dev-header-actions">
+          <button class="dev-icon-btn" id="btn-dev-minimize" title="Minimize Panel">_</button>
+          <button class="dev-icon-btn" id="btn-dev-close" title="Close Dev Mode">&times;</button>
+        </div>
+      </div>
+      <div class="dev-panel-body" id="dev-panel-body">
+        <!-- Live Metrics Grid -->
+        <div class="dev-metrics-grid">
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">FPS / Perf</span>
+            <span class="dev-metric-val" id="dev-val-fps">60 FPS</span>
+          </div>
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">Current Level</span>
+            <span class="dev-metric-val" id="dev-val-level">District 1</span>
+          </div>
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">Match Timer</span>
+            <span class="dev-metric-val status-running" id="dev-val-timer">240.0s [RUNNING]</span>
+          </div>
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">Player Position</span>
+            <span class="dev-metric-val" id="dev-val-pos">X: 0.0, Z: 0.0</span>
+          </div>
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">Hole Radius</span>
+            <span class="dev-metric-val" id="dev-val-radius">1.60m (Lv.1)</span>
+          </div>
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">Threats Remaining</span>
+            <span class="dev-metric-val status-alert" id="dev-val-threats">4 Left</span>
+          </div>
+        </div>
+
+        <!-- Quick District Warps -->
+        <span class="dev-section-title">🚀 Fast District Level Jump</span>
+        <div class="dev-actions-grid">
+          <button class="dev-btn" data-warp="1">Lv 1: Clifton</button>
+          <button class="dev-btn" data-warp="2">Lv 2: Lyari</button>
+          <button class="dev-btn" data-warp="3">Lv 3: Saddar</button>
+          <button class="dev-btn" data-warp="4">Lv 4: Lahore</button>
+          <button class="dev-btn" data-warp="5">Lv 5: Islamabad</button>
+          <button class="dev-btn" data-warp="6">Lv 6: Quetta</button>
+        </div>
+
+        <!-- Live Cheats & Mechanics Controls -->
+        <span class="dev-section-title">⚡ Mechanics & Teleport Actions</span>
+        <div class="dev-actions-grid">
+          <button class="dev-btn btn-accent" id="btn-dev-toggle-timer">⏸️ Pause / Run Timer</button>
+          <button class="dev-btn" id="btn-dev-add-time">+60s Time</button>
+          <button class="dev-btn btn-accent" id="btn-dev-warp-threat">📍 Warp to Threat</button>
+          <button class="dev-btn" id="btn-dev-freeze-threats">🛑 Freeze Fleeing</button>
+          <button class="dev-btn btn-success" id="btn-dev-resolve-threat">⚡ Devour Threat</button>
+          <button class="dev-btn" id="btn-dev-grow-hole">⭕ Grow Hole +1m</button>
+          <button class="dev-btn btn-success" id="btn-dev-clear-level">🏆 Clear Level</button>
+          <button class="dev-btn" id="btn-dev-copy-telemetry">📋 Copy Telemetry</button>
+        </div>
+
+        <!-- Live Devour / Event Log -->
+        <span class="dev-section-title">📋 Live Event &amp; Devour Log</span>
+        <div class="dev-log-container" id="dev-log-container">
+          <div class="dev-log-line log-info">[INIT] Dev Mode Observer initialized. Ready for gameplay inspection.</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(this.devPanel);
+
+    // Initial state check
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasParam = urlParams.get('dev') === 'true' || urlParams.get('debug') === 'true';
+      const hasSaved = localStorage.getItem('karachi_dev_mode') === 'true';
+      this.isDevModeActive = hasParam || hasSaved;
+      if (this.isDevModeActive) {
+        this.devPanel.style.display = 'flex';
+        this.devToggleBtn.style.background = '#00e5ff';
+        this.devToggleBtn.style.color = '#050b14';
+      }
+    } catch (e) {
+      this.isDevModeActive = false;
+    }
+
+    // Bind Dev UI Event Listeners
+    this.devToggleBtn.addEventListener('click', () => {
+      this.toggleDevMode();
+    });
+
+    document.getElementById('btn-dev-close')?.addEventListener('click', () => {
+      this.toggleDevMode(false);
+    });
+
+    const bodyEl = document.getElementById('dev-panel-body');
+    document.getElementById('btn-dev-minimize')?.addEventListener('click', () => {
+      if (bodyEl) {
+        bodyEl.style.display = (bodyEl.style.display === 'none') ? 'flex' : 'none';
+      }
+    });
+
+    // District Warp Buttons
+    this.devPanel.querySelectorAll('[data-warp]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const lvl = parseInt(btn.dataset.warp, 10);
+        if (window.game && window.game.loadDistrictLevel) {
+          window.game.loadDistrictLevel(lvl);
+          this.showDevToast(`🚀 Warped to District ${lvl}!`);
+        }
+      });
+    });
+
+    document.getElementById('btn-dev-toggle-timer')?.addEventListener('click', () => {
+      if (window.game) {
+        window.game.isPaused = !window.game.isPaused;
+        const state = window.game.isPaused ? 'PAUSED' : 'RUNNING';
+        this.showDevToast(`⏱️ Timer is now ${state}`);
+      }
+    });
+
+    document.getElementById('btn-dev-add-time')?.addEventListener('click', () => {
+      if (window.game) {
+        window.game.timeLeft = (window.game.timeLeft || 0) + 60;
+        this.showDevToast(`⏳ Added +60s! New Time: ${Math.round(window.game.timeLeft)}s`);
+      }
+    });
+
+    document.getElementById('btn-dev-warp-threat')?.addEventListener('click', () => {
+      if (window.game && window.game.devWarpToNearestThreat) {
+        window.game.devWarpToNearestThreat();
+      }
+    });
+
+    document.getElementById('btn-dev-freeze-threats')?.addEventListener('click', (e) => {
+      window.__DEV_FREEZE_THREATS__ = !window.__DEV_FREEZE_THREATS__;
+      const btn = e.currentTarget;
+      btn.textContent = window.__DEV_FREEZE_THREATS__ ? '🏃 Unfreeze Fleeing' : '🛑 Freeze Fleeing';
+      this.showDevToast(window.__DEV_FREEZE_THREATS__ ? '🛑 Threat fleeing FROZEN!' : '🏃 Threat fleeing RESUMED!');
+    });
+
+    document.getElementById('btn-dev-resolve-threat')?.addEventListener('click', () => {
+      if (window.game && window.game.devResolveNearestThreat) {
+        window.game.devResolveNearestThreat();
+      }
+    });
+
+    document.getElementById('btn-dev-grow-hole')?.addEventListener('click', () => {
+      if (window.game && window.game.player) {
+        window.game.player.targetRadius = (window.game.player.targetRadius || 1.6) + 1.0;
+        window.game.player.radius = window.game.player.targetRadius;
+        this.showDevToast(`⭕ Hole radius expanded to ${window.game.player.radius.toFixed(2)}m!`);
+      }
+    });
+
+    document.getElementById('btn-dev-clear-level')?.addEventListener('click', () => {
+      if (window.game && window.game.handleDistrictCleared) {
+        window.game.handleDistrictCleared();
+        this.showDevToast(`🏆 Level Cleared!`);
+      }
+    });
+
+    document.getElementById('btn-dev-copy-telemetry')?.addEventListener('click', () => {
+      const data = window.__DEV_TELEMETRY__ || { error: 'No telemetry available yet' };
+      const str = JSON.stringify(data, null, 2);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(str).then(() => {
+          this.showDevToast('📋 Telemetry JSON copied to clipboard!');
+        }).catch(() => {
+          console.log('__DEV_TELEMETRY__:', data);
+          this.showDevToast('📋 Telemetry logged to console!');
+        });
+      } else {
+        console.log('__DEV_TELEMETRY__:', data);
+        this.showDevToast('📋 Telemetry logged to console!');
+      }
+    });
+
+    // Global Key Listener for F2 and ~
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F2' || e.key === '`') {
+        this.toggleDevMode();
+      }
+    });
+  }
+
+  toggleDevMode(forceState) {
+    this.isDevModeActive = (forceState !== undefined) ? forceState : !this.isDevModeActive;
+    if (this.devPanel) {
+      this.devPanel.style.display = this.isDevModeActive ? 'flex' : 'none';
+    }
+    if (this.devToggleBtn) {
+      if (this.isDevModeActive) {
+        this.devToggleBtn.style.background = '#00e5ff';
+        this.devToggleBtn.style.color = '#050b14';
+      } else {
+        this.devToggleBtn.style.background = 'rgba(10, 15, 24, 0.88)';
+        this.devToggleBtn.style.color = '#00e5ff';
+      }
+    }
+    try {
+      localStorage.setItem('karachi_dev_mode', this.isDevModeActive ? 'true' : 'false');
+    } catch (e) {}
+    this.showDevToast(this.isDevModeActive ? '🛠️ DEV MODE ACTIVATED [F2]' : '🛠️ Dev Mode Minimized');
+  }
+
+  showDevToast(msg) {
+    if (typeof document === 'undefined') return;
+    const toast = document.createElement('div');
+    toast.className = 'dev-toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 1800);
+  }
+
+  appendDevLog(text, level = 'info') {
+    const container = document.getElementById('dev-log-container');
+    if (!container) return;
+    const line = document.createElement('div');
+    line.className = `dev-log-line log-${level}`;
+    const time = new Date().toTimeString().split(' ')[0];
+    line.textContent = `[${time}] ${text}`;
+    container.appendChild(line);
+    while (container.childNodes.length > 25) {
+      container.removeChild(container.firstChild);
+    }
+    container.scrollTop = container.scrollHeight;
+  }
+
+  updateDevModeHUD(t) {
+    if (!this.isDevModeActive || !t) return;
+
+    const fpsEl = document.getElementById('dev-val-fps');
+    if (fpsEl) fpsEl.textContent = `${t.fps || 60} FPS`;
+
+    const lvlEl = document.getElementById('dev-val-level');
+    if (lvlEl) lvlEl.textContent = `District ${t.level || 1}`;
+
+    const timerEl = document.getElementById('dev-val-timer');
+    if (timerEl) {
+      const isRunning = !t.isPaused && !t.isGameOver && t.timeLeft > 0;
+      timerEl.textContent = `${(t.timeLeft || 0).toFixed(1)}s [${isRunning ? 'RUNNING' : 'PAUSED'}]`;
+      timerEl.className = `dev-metric-val ${isRunning ? 'status-running' : 'status-paused'}`;
+    }
+
+    const posEl = document.getElementById('dev-val-pos');
+    if (posEl && t.player) {
+      posEl.textContent = `X: ${t.player.x.toFixed(1)}, Z: ${t.player.z.toFixed(1)}`;
+    }
+
+    const radEl = document.getElementById('dev-val-radius');
+    if (radEl && t.player) {
+      radEl.textContent = `${t.player.radius.toFixed(2)}m (Lv.${t.player.level || 1})`;
+    }
+
+    const threatsEl = document.getElementById('dev-val-threats');
+    if (threatsEl) {
+      threatsEl.textContent = `${t.threatsRemaining || 0} Left (${t.threatsTotal || 0} Total)`;
     }
   }
 }

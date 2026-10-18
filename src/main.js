@@ -376,12 +376,12 @@ class Game {
     if (!this.isGameStarted) return;
     this.pauseGame();
 
-    const dConfig = DISTRICT_CONFIGS[this.currentDistrictLevel] || DISTRICT_CONFIGS[1];
+    const dConfig = getDistrictConfig(this.currentDistrictLevel);
     const savedDistrict = (saveManager.get().districts && saveManager.get().districts[this.currentDistrictLevel]) || {};
 
     const districtData = {
       name: dConfig.name,
-      subtitle: dConfig.subtitle,
+      subtitle: dConfig.tagline || dConfig.urdu || 'Civic Cleansing',
       gauges: {
         cleanliness: savedDistrict.cleanliness || 45,
         infrastructure: savedDistrict.infrastructure || 40,
@@ -821,14 +821,32 @@ class Game {
           this.timeLeft += 25;
 
           // Record restoration progress in local save
-          saveManager.recordMissionCompleted(this.currentDistrictLevel, mission.id, { [mission.evilType]: 'restored' });
+          saveManager.recordMissionCompleted(this.currentDistrictLevel, mission.id, { [mission.evilType]: 'restored' }, mission.xpReward || 1000);
           const gaugeDeltas = { cleanliness: 4, infrastructure: 4, trafficFlow: 4, safety: 4 };
           if (mission.evilType === 'tanker') gaugeDeltas.infrastructure += 10;
           if (mission.evilType === 'pothole') gaugeDeltas.infrastructure += 8;
           if (mission.evilType === 'vip') gaugeDeltas.trafficFlow += 12;
           if (mission.evilType === 'robber') gaugeDeltas.safety += 12;
+          if (mission.evilType === 'bhatta') { gaugeDeltas.safety += 14; gaugeDeltas.cleanliness += 8; }
+          if (mission.evilType === 'onewheeler') { gaugeDeltas.trafficFlow += 14; gaugeDeltas.safety += 8; }
+          if (mission.evilType === 'chinacutting') { gaugeDeltas.infrastructure += 12; gaugeDeltas.safety += 8; }
+          if (mission.evilType === 'politician') { gaugeDeltas.cleanliness += 15; gaugeDeltas.infrastructure += 10; }
+          if (mission.evilType === 'ke') { gaugeDeltas.infrastructure += 14; gaugeDeltas.safety += 10; }
+          if (mission.evilType === 'gutka') { gaugeDeltas.cleanliness += 12; gaugeDeltas.safety += 10; }
           saveManager.updateDistrictGauges(this.currentDistrictLevel, gaugeDeltas);
+
+          // Unlock relevant civic achievement badges
+          if (mission.evilType === 'tanker') saveManager.unlockBadge('water_guardian');
+          if (mission.evilType === 'onewheeler') saveManager.unlockBadge('road_safety');
+          if (mission.evilType === 'pothole' || mission.evilType === 'trash') saveManager.unlockBadge('clean_green');
+          if (mission.evilType === 'vip') saveManager.unlockBadge('lifesaver');
+          if (mission.evilType === 'ke') saveManager.unlockBadge('power_saver');
+          if (mission.evilType === 'chinacutting') saveManager.unlockBadge('green_planter');
           saveManager.save();
+
+          if (this.ui?.appendDevLog) {
+            this.ui.appendDevLog(`[MISSION] Cleared: ${mission.title} (+${mission.xpReward || 1000} XP)`, 'info');
+          }
 
           // Check if this was the last remaining mission
           const willFinishAll = this.crisisChallenges.every(m => m.completed);
@@ -1240,6 +1258,7 @@ class Game {
   handleDistrictCleared() {
     if (this.districtClearing) return;
     this.districtClearing = true;
+    this.isPaused = true; // Pause match timer while victory modal is active so user time is never drained!
 
     audio.playDistrictClearedFanfare();
     this.particles.createCelebrationConfetti(this.player.position, 65);
@@ -1301,11 +1320,18 @@ class Game {
     this.timeLeft = this.matchDuration || 240.0;
     this.frenzyTriggered = false;
     this.frenzyTimer = 0;
+    this.clock.getDelta(); // Crucial: clear pending delta so timer and physics tick smoothly from frame 1!
 
     if (this.ui) {
+      this.ui.isAutoPaused = false;
+      this.ui.hideAutoPauseModal();
       this.ui.hideGameOverModal();
       this.ui.hideDistrictClearedModal();
+      if (this.ui.appendDevLog) {
+        this.ui.appendDevLog(`[LEVEL_LOAD] District ${this.currentDistrictLevel} loaded. Timer set to ${this.timeLeft}s`, 'info');
+      }
     }
+    audio.resumeAudio();
 
     // Repopulate dynamic district evils for the new level
     const result = this.cityGen.populateDistrict(this.currentDistrictLevel);
@@ -1606,13 +1632,14 @@ class Game {
             politician: 7.0
           };
           const baseFleeSpeed = ud?.runSpeed || speedMap[bg.evilType] || 7.0;
-          // Proximity surge when chased at medium distance, but drops to 0 when intercepted
+          const isDevFrozen = (typeof window !== 'undefined' && window.__DEV_FREEZE_THREATS__);
+          // Proximity surge when chased at medium distance, but drops to 0 when intercepted or dev frozen
           const proximitySurge = (playerDist < 12.0 && playerDist > interceptRange + 0.8) ? 1.15 : 1.0;
-          const effectiveFleeSpeed = isIntercepted ? 0 : baseFleeSpeed * proximitySurge;
+          const effectiveFleeSpeed = (isIntercepted || isDevFrozen) ? 0 : baseFleeSpeed * proximitySurge;
 
-          // 2. Road Network Corridor Navigation for Vehicles
+          // 2. Road Network Corridor Navigation for Vehicles (Avenues & Connecting Cross-Streets)
           if (isVehicle) {
-            const roadGrid = [-96, -48, 0, 48, 96];
+            const roadGrid = [-96, -72, -48, -24, 0, 24, 48, 72, 96];
 
             let bestRx = roadGrid[0];
             let minDiffX = Math.abs(bgPos.x - bestRx);
@@ -1673,13 +1700,18 @@ class Game {
               let nextX = bgPos.x + moveDirX * dt * effectiveFleeSpeed;
               let nextZ = bgPos.z + moveDirZ * dt * effectiveFleeSpeed;
 
-              // Road lane clamping - vehicle stays strictly within the 14m road corridor!
+              // Road lane clamping - vehicle stays strictly within the asphalt road corridor!
+              const isMajorRoadX = (bestRx % 48 === 0);
+              const isMajorRoadZ = (bestRz % 48 === 0);
+              const halfCorridorX = isMajorRoadX ? 5.2 : 3.2;
+              const halfCorridorZ = isMajorRoadZ ? 5.2 : 3.2;
+
               if (bg.roadAxis === 'NS') {
-                nextX = THREE.MathUtils.clamp(nextX, bestRx - 5.2, bestRx + 5.2);
+                nextX = THREE.MathUtils.clamp(nextX, bestRx - halfCorridorX, bestRx + halfCorridorX);
                 nextZ = THREE.MathUtils.clamp(nextZ, -88, 88);
               } else {
                 nextX = THREE.MathUtils.clamp(nextX, -88, 88);
-                nextZ = THREE.MathUtils.clamp(nextZ, bestRz - 5.2, bestRz + 5.2);
+                nextZ = THREE.MathUtils.clamp(nextZ, bestRz - halfCorridorZ, bestRz + halfCorridorZ);
               }
 
               bgPos.x = nextX;
@@ -2085,7 +2117,11 @@ class Game {
 
           // Target radius adjustment (large vehicles like tanker are ~3.0m)
           const isLargeTarget = (obj.evilType === 'tanker' || obj.evilType === 'vip' || (obj.radius && obj.radius >= 2.5));
-          const onTopThreshold = Math.max(1.3, this.player.radius * 0.94 + (isLargeTarget ? 0.9 : 0.0));
+          // Strict "UPON THEM" center-dwell condition: player must genuinely center the hole directly over the target!
+          // Eliminates devouring when merely near/passing adjacent to an object.
+          const onTopThreshold = isLargeTarget
+            ? Math.max(1.15, this.player.radius * 0.65)
+            : Math.max(0.70, this.player.radius * 0.52);
           const isOnTop = (distSq <= onTopThreshold * onTopThreshold);
 
           // If hero reaches proximity of moving target, trigger interception hold immediately
@@ -2164,7 +2200,7 @@ class Game {
           if (canEat) {
             const dx = hole.position.x - objPos.x;
             const dz = hole.position.z - objPos.z;
-            const captureRadius = hole.radius + Math.max(1.2, (obj.radius || 1.2) * 0.85);
+            const captureRadius = Math.max(0.70, hole.radius * 0.72);
 
             // Fast bounding box reject first
             if (Math.abs(dx) <= captureRadius && Math.abs(dz) <= captureRadius && (dx * dx + dz * dz < captureRadius * captureRadius)) {
@@ -2770,14 +2806,120 @@ class Game {
           activeCrisis,
           missions: this.crisisChallenges
         });
+
+        // Real-Time Dev Mode Telemetry Bridge
+        if (!this.__frameCount) this.__frameCount = 0;
+        this.__frameCount++;
+        if (!this.__lastFpsTime) this.__lastFpsTime = performance.now();
+        const now = performance.now();
+        if (now - this.__lastFpsTime >= 500) {
+          this.currentFPS = Math.round((this.__frameCount * 1000) / (now - this.__lastFpsTime));
+          this.__frameCount = 0;
+          this.__lastFpsTime = now;
+        }
+
+        const activeThreatsList = (this.districtEvils || [])
+          .filter(e => e && e.state !== 'swallowed')
+          .map(e => ({
+            type: e.evilType || 'unknown',
+            name: e.name || e.evilType,
+            x: Number((e.mesh?.position?.x || 0).toFixed(2)),
+            z: Number((e.mesh?.position?.z || 0).toFixed(2)),
+            dist: Number((this.player ? this.player.position.distanceTo(e.mesh.position) : 0).toFixed(2)),
+            isBraking: !!e.isInterceptionBraking,
+            state: e.state
+          }));
+
+        window.__DEV_TELEMETRY__ = {
+          timestamp: new Date().toISOString(),
+          fps: this.currentFPS || 60,
+          level: this.currentDistrictLevel,
+          isPaused: this.isPaused,
+          isGameOver: this.isGameOver,
+          isGameStarted: this.isGameStarted,
+          gameMode: this.gameMode,
+          timeLeft: Number(this.timeLeft.toFixed(2)),
+          player: {
+            x: Number((this.player?.position?.x || 0).toFixed(2)),
+            z: Number((this.player?.position?.z || 0).toFixed(2)),
+            radius: Number((this.player?.radius || 1.6).toFixed(2)),
+            level: this.player?.level || 1,
+            score: this.player?.score || 0,
+            xp: this.player?.xp || 0,
+            speed: Number((this.player?.currentSpeed || 13.5).toFixed(2)),
+            combo: this.player?.comboCount || 0
+          },
+          threatsRemaining: activeThreatsList.length,
+          threatsTotal: this.districtTotal,
+          nearestThreat: activeThreatsList[0] || null,
+          activeThreats: activeThreatsList,
+          missions: (this.crisisChallenges || []).map(m => ({
+            id: m.id,
+            title: m.title,
+            evilType: m.evilType,
+            current: m.current || 0,
+            targetCount: m.targetCount,
+            completed: !!m.completed
+          }))
+        };
+
+        if (this.ui?.updateDevModeHUD) {
+          this.ui.updateDevModeHUD(window.__DEV_TELEMETRY__);
+        }
       }
     } catch (e) {
       console.error('Error during animate loop:', e);
+      if (this.ui?.appendDevLog) {
+        this.ui.appendDevLog(`[ERROR] ${e.message}`, 'err');
+      }
     }
 
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
     }
+  }
+
+  // =========================================================================
+  // DEV MODE OBSERVER ACTION METHODS
+  // =========================================================================
+  devWarpToNearestThreat() {
+    if (!this.player || !this.districtEvils) return;
+    const active = this.districtEvils.filter(e => e && e.state !== 'swallowed');
+    if (active.length === 0) {
+      if (this.ui?.showDevToast) this.ui.showDevToast('No active threats remaining in current district!');
+      return;
+    }
+    let nearest = active[0];
+    let minDist = this.player.position.distanceTo(nearest.mesh.position);
+    for (let i = 1; i < active.length; i++) {
+      const d = this.player.position.distanceTo(active[i].mesh.position);
+      if (d < minDist) {
+        minDist = d;
+        nearest = active[i];
+      }
+    }
+    const tPos = nearest.mesh.position;
+    this.player.position.set(tPos.x, 0, tPos.z);
+    this.player.group.position.copy(this.player.position);
+    if (this.ui?.showDevToast) this.ui.showDevToast(`📍 Warped upon ${nearest.name || nearest.evilType}!`);
+    if (this.ui?.appendDevLog) this.ui.appendDevLog(`[WARP] Teleported player to ${nearest.name || nearest.evilType} @ (${tPos.x.toFixed(1)}, ${tPos.z.toFixed(1)})`, 'info');
+  }
+
+  devResolveNearestThreat() {
+    if (!this.player || !this.districtEvils) return;
+    const active = this.districtEvils.filter(e => e && e.state !== 'swallowed');
+    if (active.length === 0) return;
+    let nearest = active[0];
+    let minDist = this.player.position.distanceTo(nearest.mesh.position);
+    for (let i = 1; i < active.length; i++) {
+      const d = this.player.position.distanceTo(active[i].mesh.position);
+      if (d < minDist) {
+        minDist = d;
+        nearest = active[i];
+      }
+    }
+    this.resolveDistrictThreat(nearest, this.player);
+    if (this.ui?.showDevToast) this.ui.showDevToast(`⚡ Resolved ${nearest.name || nearest.evilType}!`);
   }
 }
 

@@ -154,27 +154,50 @@ export class CityGenerator {
     const blockCenters = [-72, -24, 24, 72]; // Center of blocks between avenues
     const blockLength = 34; // 48 - roadWidth (14) = 34m clean block span
 
-    // 1. Continuous North-South Avenues (Elevation y = 0.02)
+    // 1. Continuous North-South Avenues (Elevation y = 0.020)
     roadGrid.forEach(x => {
       const roadGeo = new THREE.PlaneGeometry(roadWidth, districtLength);
       roadGeo.rotateX(-Math.PI / 2);
       const road = new THREE.Mesh(roadGeo, roadMat);
-      road.position.set(x, 0.02, 0);
+      road.position.set(x, 0.020, 0);
       road.receiveShadow = true;
       this.scene.add(road);
     });
 
-    // 2. Segmented East-West Boulevards (Between Avenues - Zero Z-fighting overlap!)
+    // 2. Continuous East-West Boulevards (Elevation y = 0.021 - zero Z-fighting with full asphalt coverage!)
     roadGrid.forEach(z => {
-      blockCenters.forEach(bx => {
-        const segGeo = new THREE.PlaneGeometry(blockLength, roadWidth);
-        segGeo.rotateX(-Math.PI / 2);
-        const road = new THREE.Mesh(segGeo, roadMat);
-        road.position.set(bx, 0.02, z);
-        road.rotation.y = Math.PI / 2;
-        road.receiveShadow = true;
-        this.scene.add(road);
-      });
+      const roadGeo = new THREE.PlaneGeometry(districtLength, roadWidth);
+      roadGeo.rotateX(-Math.PI / 2);
+      const road = new THREE.Mesh(roadGeo, roadMat);
+      road.position.set(0, 0.021, z);
+      road.receiveShadow = true;
+      this.scene.add(road);
+    });
+
+    // 2b. Intermediate Connecting Cross-Streets (8m wide asphalt connecting neighborhood blocks)
+    const crossTexture = roadTexture;
+    const crossMat = new THREE.MeshLambertMaterial({
+      map: crossTexture,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1
+    });
+    blockCenters.forEach(bx => {
+      // Cross-street NS
+      const cGeoNS = new THREE.PlaneGeometry(8, districtLength);
+      cGeoNS.rotateX(-Math.PI / 2);
+      const cRoadNS = new THREE.Mesh(cGeoNS, crossMat);
+      cRoadNS.position.set(bx, 0.022, 0);
+      cRoadNS.receiveShadow = true;
+      this.scene.add(cRoadNS);
+
+      // Cross-street EW
+      const cGeoEW = new THREE.PlaneGeometry(districtLength, 8);
+      cGeoEW.rotateX(-Math.PI / 2);
+      const cRoadEW = new THREE.Mesh(cGeoEW, crossMat);
+      cRoadEW.position.set(0, 0.023, bx);
+      cRoadEW.receiveShadow = true;
+      this.scene.add(cRoadEW);
     });
 
     // 3. Iconic Pakistani Yellow & Black Hazard Striped Curbs (Need for Speed / GTA style)
