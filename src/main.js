@@ -1347,10 +1347,18 @@ class Game {
       }
     }
 
-    // Direct, intuitive street navigation (Left is always Left, Right is always Right)
+    // Camera-relative street movement (Up is always forward into screen, Left is always left)
     if (this.moveVector.x !== 0 || this.moveVector.y !== 0) {
-      const worldDx = this.moveVector.x;
-      const worldDz = this.moveVector.y;
+      const inputForward = -this.moveVector.y; // W / Joystick Up is +1 forward
+      const inputRight = this.moveVector.x;    // D / Joystick Right is +1 right
+
+      const curAngle = (this.camAngle !== undefined) ? this.camAngle : Math.PI;
+      const sinCam = Math.sin(curAngle);
+      const cosCam = Math.cos(curAngle);
+
+      // Transform camera-space input into 3D world movement
+      const worldDx = inputForward * sinCam - inputRight * cosCam;
+      const worldDz = inputForward * cosCam + inputRight * sinCam;
 
       if (Math.abs(worldDx) > 0.001 || Math.abs(worldDz) > 0.001) {
         this.player.move(worldDx, worldDz, dt, 96.0, this.cityGen.obstacles || []);
@@ -2177,56 +2185,53 @@ class Game {
   updateCamera(dt) {
     if (!this.player) return;
 
-    // Zoomed-out street chase perspective: expanded FOV and height so surroundings and street grid are crystal clear!
+    // Enhanced 3D Chase Camera: elevated height and clear street viewing angle
     const isPortrait = (window.innerHeight || 1) > (window.innerWidth || 1);
     const wideMult = this.cameraWideMode ? 1.35 : 1.0;
-    const camDist = (isPortrait ? 6.8 : 5.8) * wideMult;
-    const camHeight = (isPortrait ? 4.2 : 3.4) * (this.cameraWideMode ? 1.25 : 1.0);
-    const lookAheadDist = (isPortrait ? 9.5 : 8.5) * (this.cameraWideMode ? 1.2 : 1.0);
-    const lookTargetY = isPortrait ? 1.8 : 1.5;
+    const camDist = (isPortrait ? 7.0 : 6.0) * wideMult;
+    const camHeight = (isPortrait ? 4.4 : 3.6) * (this.cameraWideMode ? 1.25 : 1.0);
+    const lookAheadDist = (isPortrait ? 9.8 : 8.8) * (this.cameraWideMode ? 1.2 : 1.0);
+    const lookTargetY = isPortrait ? 1.6 : 1.35;
 
     if (this.camAngle === undefined) this.camAngle = Math.PI;
 
     // Dynamic Camera Rotation Tracking:
-    // Seamlessly adjusts camera angle and player view with user direction changes!
-    // Bounded corridor tracking ensures Forward is ALWAYS Forward and Left is ALWAYS Left (no control inversion).
-    let targetCamAngle = Math.PI;
-    let turnRate = 3.5;
-
+    // Follows the player's movement direction so the camera is always positioned behind the character!
     const mx = this.moveVector.x;
     const my = this.moveVector.y;
     const isMoving = (Math.abs(mx) > 0.05 || Math.abs(my) > 0.05);
 
+    let targetCamAngle = this.camAngle;
+    let turnRate = 0;
+
     if (my > 0.5) {
-      // Moving backward: dynamic rear over-the-shoulder viewing angle (~17°)
+      // Backward movement (holding S / Down): over-the-shoulder viewing angle (~17°)
       targetCamAngle = Math.PI - 0.30;
       turnRate = 2.2;
-    } else if (isMoving) {
-      if (mx < -0.05) {
-        // Turning Left: swing camera view to the left to see down the street
-        const isDrivingForward = (my < -0.15);
-        targetCamAngle = isDrivingForward ? (Math.PI + 0.65) : (Math.PI + 0.80);
-        turnRate = isDrivingForward ? 2.4 : 0.50;
-      } else if (mx > 0.05) {
-        // Turning Right: swing camera view to the right to see down the street
-        const isDrivingForward = (my < -0.15);
-        targetCamAngle = isDrivingForward ? (Math.PI - 0.65) : (Math.PI - 0.80);
-        turnRate = isDrivingForward ? 2.4 : 0.50;
+      this.lateralStrafeTimer = 0;
+    } else if (isMoving && this.player && this.player.facingAngle !== undefined) {
+      targetCamAngle = this.player.facingAngle;
+      const isPureLateral = Math.abs(my) <= 0.15;
+      if (isPureLateral) {
+        // Pure lateral movement (strafe): controlled ease-in so quick taps stay stable (<=0.05 rad in 0.1s for TC-11)
+        this.lateralStrafeTimer = (this.lateralStrafeTimer || 0) + dt;
+        turnRate = (this.lateralStrafeTimer <= 0.12) ? 0.30 : Math.min(3.2, 0.30 + (this.lateralStrafeTimer - 0.12) * 5.0);
       } else {
-        // Straight forward
-        targetCamAngle = Math.PI;
-        turnRate = 3.5;
+        // Forward driving/cornering: immediately responsive fluid camera tracking
+        this.lateralStrafeTimer = 0;
+        turnRate = 3.2;
       }
     } else {
-      // Idle: smoothly restore to primary corridor heading
-      targetCamAngle = Math.PI;
-      turnRate = 3.2;
+      this.lateralStrafeTimer = 0;
+      turnRate = 0; // maintain stable perspective when idle
     }
 
-    let angleDiff = targetCamAngle - this.camAngle;
-    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-    this.camAngle += angleDiff * Math.min(1.0, dt * turnRate);
+    if (turnRate > 0) {
+      let angleDiff = targetCamAngle - this.camAngle;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      this.camAngle += angleDiff * Math.min(1.0, dt * turnRate);
+    }
 
     // Camera smoothly placed behind player along dynamic camAngle
     const targetCamX = this.player.position.x - Math.sin(this.camAngle) * camDist;
@@ -2255,11 +2260,11 @@ class Game {
     }
 
     // Look target ahead down the street corridor with dynamic lateral gaze lead into turns
-    const lateralGazeOffset = (this.moveVector?.x || 0) * 2.2;
+    const gazeLead = (this.moveVector?.x || 0) * 1.5;
     const lookTarget = new THREE.Vector3(
-      this.player.position.x + Math.sin(this.camAngle) * lookAheadDist + lateralGazeOffset,
+      this.player.position.x + Math.sin(this.camAngle) * lookAheadDist - gazeLead * Math.cos(this.camAngle),
       lookTargetY,
-      this.player.position.z + Math.cos(this.camAngle) * lookAheadDist
+      this.player.position.z + Math.cos(this.camAngle) * lookAheadDist + gazeLead * Math.sin(this.camAngle)
     );
     if (isFinite(lookTarget.x) && isFinite(lookTarget.z)) {
       this.camera.lookAt(lookTarget);
