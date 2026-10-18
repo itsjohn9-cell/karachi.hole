@@ -2188,16 +2188,44 @@ class Game {
     if (this.camAngle === undefined) this.camAngle = Math.PI;
 
     // Dynamic Camera Rotation Tracking:
-    // When moving backward, tilts smoothly to a bounded rear-quarter perspective (~17°)
-    // When moving forward or idle, smoothly restores to primary corridor heading (Math.PI).
-    // The camera NEVER flips 180° so Forward is ALWAYS Forward and Left is ALWAYS Left!
-    const isMovingBackward = (this.moveVector.y > 0.5);
-    const targetCamAngle = isMovingBackward ? (Math.PI - 0.30) : Math.PI;
+    // Seamlessly adjusts camera angle and player view with user direction changes!
+    // Bounded corridor tracking ensures Forward is ALWAYS Forward and Left is ALWAYS Left (no control inversion).
+    let targetCamAngle = Math.PI;
+    let turnRate = 3.5;
+
+    const mx = this.moveVector.x;
+    const my = this.moveVector.y;
+    const isMoving = (Math.abs(mx) > 0.05 || Math.abs(my) > 0.05);
+
+    if (my > 0.5) {
+      // Moving backward: dynamic rear over-the-shoulder viewing angle (~17°)
+      targetCamAngle = Math.PI - 0.30;
+      turnRate = 2.2;
+    } else if (isMoving) {
+      if (mx < -0.05) {
+        // Turning Left: swing camera view to the left to see down the street
+        const isDrivingForward = (my < -0.15);
+        targetCamAngle = isDrivingForward ? (Math.PI + 0.65) : (Math.PI + 0.80);
+        turnRate = isDrivingForward ? 2.4 : 0.50;
+      } else if (mx > 0.05) {
+        // Turning Right: swing camera view to the right to see down the street
+        const isDrivingForward = (my < -0.15);
+        targetCamAngle = isDrivingForward ? (Math.PI - 0.65) : (Math.PI - 0.80);
+        turnRate = isDrivingForward ? 2.4 : 0.50;
+      } else {
+        // Straight forward
+        targetCamAngle = Math.PI;
+        turnRate = 3.5;
+      }
+    } else {
+      // Idle: smoothly restore to primary corridor heading
+      targetCamAngle = Math.PI;
+      turnRate = 3.2;
+    }
+
     let angleDiff = targetCamAngle - this.camAngle;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
-    const turnRate = isMovingBackward ? 2.2 : 4.0;
     this.camAngle += angleDiff * Math.min(1.0, dt * turnRate);
 
     // Camera smoothly placed behind player along dynamic camAngle
@@ -2226,9 +2254,10 @@ class Game {
       this.camera.position.z += (Math.random() - 0.5) * shakeMag;
     }
 
-    // Look target ahead down the street corridor
+    // Look target ahead down the street corridor with dynamic lateral gaze lead into turns
+    const lateralGazeOffset = (this.moveVector?.x || 0) * 2.2;
     const lookTarget = new THREE.Vector3(
-      this.player.position.x + Math.sin(this.camAngle) * lookAheadDist,
+      this.player.position.x + Math.sin(this.camAngle) * lookAheadDist + lateralGazeOffset,
       lookTargetY,
       this.player.position.z + Math.cos(this.camAngle) * lookAheadDist
     );
@@ -2236,11 +2265,11 @@ class Game {
       this.camera.lookAt(lookTarget);
     }
 
-    // Subtle bank tilt when turning corners
+    // Dynamic bank tilt when turning corners
     this.camera.rotation.z = THREE.MathUtils.lerp(
       this.camera.rotation.z,
-      -(this.moveVector?.x || 0) * 0.035,
-      dt * 5.0
+      -(this.moveVector?.x || 0) * 0.045,
+      dt * 6.0
     );
 
     // =========================================================
