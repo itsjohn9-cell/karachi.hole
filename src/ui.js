@@ -3092,7 +3092,8 @@ export class UIManager {
       trash: '🌿 ENCLOSING TRASH DUMP...',
       ke: '⚡ DISCONNECTING DANGEROUS KUNDAS...',
       chinacutting: '🧱 DEMOLISHING ENCROACHMENT...',
-      politician: '⚖️ ARRESTING CORRUPT VIP...'
+      politician: '⚖️ ARRESTING CORRUPT VIP...',
+      gutka: '🛑 CONFISCATING ILLEGAL GUTKA...'
     };
 
     const text = titles[evilType] || '🔧 RESTORING STREET CRISIS...';

@@ -1578,7 +1578,9 @@ class Game {
                 onewheeler: "🛑 ENGINE CUT! Bike grounded!",
                 robber: "🛑 CORNERED! Hands in the air!",
                 bhatta: "🛑 HALT! Bhatta slips confiscated!",
-                politician: "🛑 STOPPED! Anti-corruption interception!"
+                politician: "🛑 STOPPED! Anti-corruption interception!",
+                chinacutting: "🛑 HALT! Encroachment seized!",
+                gutka: "🛑 CORNERED! Contraband seized!"
               };
               const phrase = brakePhrases[bg.evilType] || "🛑 INTERCEPTED! Target halted!";
               if (ud && ud.drawBubble) {
@@ -2104,7 +2106,8 @@ class Game {
 
             const isMobileOrVehicle = (obj.evilType === 'tanker' || obj.evilType === 'vip' ||
                                        obj.evilType === 'onewheeler' || obj.evilType === 'robber' ||
-                                       obj.evilType === 'bhatta' || obj.evilType === 'politician');
+                                       obj.evilType === 'bhatta' || obj.evilType === 'politician' ||
+                                       obj.evilType === 'chinacutting' || obj.evilType === 'gutka');
             const REQUIRED_RESOLVE_TIME = isMobileOrVehicle ? 1.1 : 1.4;
             obj.resolveTimer += dt;
             const progress = Math.min(1.0, obj.resolveTimer / REQUIRED_RESOLVE_TIME);
