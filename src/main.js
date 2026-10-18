@@ -2332,24 +2332,22 @@ class Game {
             item.isGhost = true;
             bMesh.traverse(child => {
               if (child.isMesh && child.material) {
-                if (Array.isArray(child.material)) {
-                  child.material.forEach(m => { m.transparent = true; m.opacity = 0.18; });
-                } else {
-                  child.material.transparent = true;
-                  child.material.opacity = 0.18;
+                if (!child.userData.origMaterial) {
+                  child.userData.origMaterial = child.material;
+                  child.material = Array.isArray(child.material)
+                    ? child.material.map(m => m.clone())
+                    : child.material.clone();
                 }
+                const mats = Array.isArray(child.material) ? child.material : [child.material];
+                mats.forEach(m => { m.transparent = true; m.opacity = 0.20; });
               }
             });
           } else if (!isOccluding && item.isGhost) {
             item.isGhost = false;
             bMesh.traverse(child => {
-              if (child.isMesh && child.material) {
-                if (Array.isArray(child.material)) {
-                  child.material.forEach(m => { m.opacity = 1.0; m.transparent = false; });
-                } else {
-                  child.material.opacity = 1.0;
-                  child.material.transparent = false;
-                }
+              if (child.isMesh && child.userData.origMaterial) {
+                child.material = child.userData.origMaterial;
+                child.userData.origMaterial = null;
               }
             });
           }

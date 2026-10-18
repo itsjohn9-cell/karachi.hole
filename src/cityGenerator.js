@@ -162,17 +162,6 @@ export class CityGenerator {
       road.position.set(x, 0.02, 0);
       road.receiveShadow = true;
       this.scene.add(road);
-
-      // Sidewalk curbs placed ONLY along city blocks, NEVER crossing intersections!
-      blockCenters.forEach(bz => {
-        const curbL = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, blockLength), KarachiModels.materials.sandstone);
-        curbL.position.set(x - roadWidth / 2 - 0.7, 0.12, bz);
-        this.scene.add(curbL);
-
-        const curbR = curbL.clone();
-        curbR.position.x = x + roadWidth / 2 + 0.7;
-        this.scene.add(curbR);
-      });
     });
 
     // 2. Segmented East-West Boulevards (Between Avenues - Zero Z-fighting overlap!)
@@ -185,15 +174,102 @@ export class CityGenerator {
         road.rotation.y = Math.PI / 2;
         road.receiveShadow = true;
         this.scene.add(road);
+      });
+    });
 
-        // East-West curbs along block boundaries, leaving crossroads wide open
-        const curbT = new THREE.Mesh(new THREE.BoxGeometry(blockLength, 0.25, 1.4), KarachiModels.materials.sandstone);
-        curbT.position.set(bx, 0.12, z - roadWidth / 2 - 0.7);
+    // 3. Iconic Pakistani Yellow & Black Hazard Striped Curbs (Need for Speed / GTA style)
+    const curbCanvas = document.createElement('canvas');
+    curbCanvas.width = 64;
+    curbCanvas.height = 32;
+    const cctx = curbCanvas.getContext('2d');
+    cctx.fillStyle = '#111111';
+    cctx.fillRect(0, 0, 64, 32);
+    cctx.fillStyle = '#ffca28'; // Vibrant Karachi curb hazard yellow
+    cctx.fillRect(0, 0, 32, 32);
+    const curbTex = new THREE.CanvasTexture(curbCanvas);
+    curbTex.wrapS = THREE.RepeatWrapping;
+    curbTex.wrapT = THREE.RepeatWrapping;
+    curbTex.repeat.set(6, 1);
+    const curbMat = new THREE.MeshStandardMaterial({ map: curbTex, roughness: 0.6 });
+
+    // North-South curbs along block boundaries
+    roadGrid.forEach(x => {
+      blockCenters.forEach(bz => {
+        const curbL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.24, blockLength), curbMat);
+        curbL.position.set(x - roadWidth / 2 - 0.6, 0.12, bz);
+        this.scene.add(curbL);
+
+        const curbR = curbL.clone();
+        curbR.position.x = x + roadWidth / 2 + 0.6;
+        this.scene.add(curbR);
+      });
+    });
+
+    // East-West curbs along block boundaries
+    roadGrid.forEach(z => {
+      blockCenters.forEach(bx => {
+        const curbT = new THREE.Mesh(new THREE.BoxGeometry(blockLength, 0.24, 1.2), curbMat);
+        curbT.position.set(bx, 0.12, z - roadWidth / 2 - 0.6);
         this.scene.add(curbT);
 
         const curbB = curbT.clone();
-        curbB.position.z = z + roadWidth / 2 + 0.7;
+        curbB.position.z = z + roadWidth / 2 + 0.6;
         this.scene.add(curbB);
+      });
+    });
+
+    // 4. Elevated 16 City Block Pedestrian Platforms (Paved Sidewalk level)
+    const blockPlazaMat = new THREE.MeshLambertMaterial({ color: 0x333842, roughness: 0.85 });
+    blockCenters.forEach(bx => {
+      blockCenters.forEach(bz => {
+        const plazaGeo = new THREE.PlaneGeometry(blockLength - 0.2, blockLength - 0.2);
+        plazaGeo.rotateX(-Math.PI / 2);
+        const bPlaza = new THREE.Mesh(plazaGeo, blockPlazaMat);
+        bPlaza.position.set(bx, 0.028, bz);
+        bPlaza.receiveShadow = true;
+        this.scene.add(bPlaza);
+      });
+    });
+
+    // 5. White Pedestrian Zebra Crossings at Major Intersections
+    const zebraCanvas = document.createElement('canvas');
+    zebraCanvas.width = 128;
+    zebraCanvas.height = 64;
+    const zctx = zebraCanvas.getContext('2d');
+    zctx.fillStyle = '#22262e';
+    zctx.fillRect(0, 0, 128, 64);
+    zctx.fillStyle = '#f8fafc';
+    for (let x = 6; x < 128; x += 18) {
+      zctx.fillRect(x, 4, 10, 56);
+    }
+    const zebraTex = new THREE.CanvasTexture(zebraCanvas);
+    zebraTex.wrapS = THREE.RepeatWrapping;
+    zebraTex.wrapT = THREE.RepeatWrapping;
+    const zebraMat = new THREE.MeshBasicMaterial({ map: zebraTex, transparent: true, opacity: 0.92 });
+
+    roadGrid.forEach(rx => {
+      roadGrid.forEach(rz => {
+        // North Crosswalk
+        const cwN = new THREE.Mesh(new THREE.PlaneGeometry(12.0, 2.2), zebraMat);
+        cwN.rotateX(-Math.PI / 2);
+        cwN.position.set(rx, 0.024, rz - 8.2);
+        this.scene.add(cwN);
+
+        // South Crosswalk
+        const cwS = cwN.clone();
+        cwS.position.z = rz + 8.2;
+        this.scene.add(cwS);
+
+        // West Crosswalk
+        const cwW = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 12.0), zebraMat);
+        cwW.rotateX(-Math.PI / 2);
+        cwW.position.set(rx - 8.2, 0.024, rz);
+        this.scene.add(cwW);
+
+        // East Crosswalk
+        const cwE = cwW.clone();
+        cwE.position.x = rx + 8.2;
+        this.scene.add(cwE);
       });
     });
   }
@@ -552,11 +628,13 @@ export class CityGenerator {
     }
     if (isBuilding) {
       this.buildings.push(item);
-      let obsData = { position: mesh.position, radius: Math.max(3.2, (radius || 3.5) * 0.85), mesh };
+      let obsData = { position: mesh.position, radius: Math.max(3.5, (radius || 4.5) * 0.85), mesh, item };
       try {
         mesh.updateMatrixWorld(true);
         const bbox = new THREE.Box3().setFromObject(mesh);
         if (isFinite(bbox.min.x) && bbox.max.x > bbox.min.x && (bbox.max.x - bbox.min.x) >= 2.0) {
+          const hw = (bbox.max.x - bbox.min.x) / 2;
+          const hd = (bbox.max.z - bbox.min.z) / 2;
           obsData = {
             isBox: true,
             minX: bbox.min.x,
@@ -565,13 +643,16 @@ export class CityGenerator {
             maxZ: bbox.max.z,
             cx: (bbox.min.x + bbox.max.x) / 2,
             cz: (bbox.min.z + bbox.max.z) / 2,
+            halfW: hw,
+            halfD: hd,
             position: mesh.position,
-            mesh
+            mesh,
+            item
           };
         }
       } catch (e) {}
       if (!obsData.isBox) {
-        const halfR = Math.max(3.2, (radius || 4.0) * 0.85);
+        const halfR = Math.max(3.5, (radius || 4.5) * 0.85);
         obsData = {
           isBox: true,
           minX: mesh.position.x - halfR,
@@ -580,8 +661,11 @@ export class CityGenerator {
           maxZ: mesh.position.z + halfR,
           cx: mesh.position.x,
           cz: mesh.position.z,
+          halfW: halfR,
+          halfD: halfR,
           position: mesh.position,
-          mesh
+          mesh,
+          item
         };
       }
       this.obstacles.push(obsData);
@@ -978,74 +1062,74 @@ export class CityGenerator {
     this.populateDistrict(1);
 
     // =============================================================
-    // 11. ICONIC KARACHI LANDMARKS & URBAN MONUMENTS
-    // =============================================================
-    // AUTHENTIC KARACHI LANDMARKS & HISTORIC MONUMENTS
+    // 11. ICONIC KARACHI LANDMARKS & URBAN MONUMENTS (GTA / NFS SIDES-OF-STREET LAYOUT)
+    // 100% of buildings, plazas, and shops are positioned inside the 16 city blocks on the sides of streets!
+    // Roads and intersections are 100% clear of obstruction!
     // =============================================================
 
-    // 1. Teen Talwar Chowrangi (Three Swords Monument, Clifton) - Clifton Chowrangi Island Park (x: 24, z: -24)
+    // 1. Teen Talwar Chowrangi - Clifton Island Park (Block [24, -24])
     const teenTalwar = KarachiModels.createTeenTalwarChowrangi();
     teenTalwar.position.set(24, 0, -24);
     this.registerEdible(teenTalwar, 4, 1500, "Teen Talwar Monument", 9.5, { isBuilding: true, isBadGuy: false });
 
-    // 2. Bahadurabad Charminar Chowrangi (Four Minarets Monument) - Bahadurabad Chowrangi Island (x: 24, z: 48)
+    // 2. Bahadurabad Charminar - Pedestrian Roundabout Plaza (Block [24, 24])
     const charminar = KarachiModels.createBahadurabadCharminar();
-    charminar.position.set(24, 0, 48);
+    charminar.position.set(24, 0, 24);
     this.registerEdible(charminar, 4, 1600, "Bahadurabad Charminar", 10.0, { isBuilding: true, isBadGuy: false });
 
     // 3. Shahrah-e-Faisal Overhead Green Steel Pedestrian Bridge (with Shan Biryani & Tapal Danedar Billboards) at z = 48
     const pedBridge = KarachiModels.createOverheadPedestrianBridge(26);
     pedBridge.position.set(0, 0, 48);
     this.scene.add(pedBridge);
-    this.obstacles.push({ position: { x: -13.5, y: 0, z: 48 }, radius: 1.4 });
-    this.obstacles.push({ position: { x: 13.5, y: 0, z: 48 }, radius: 1.4 });
+    this.obstacles.push({ position: { x: -12.5, y: 0, z: 48 }, radius: 1.4 });
+    this.obstacles.push({ position: { x: 12.5, y: 0, z: 48 }, radius: 1.4 });
 
-    // 4. Mazar-e-Quaid (Jinnah's Mausoleum) - Northern Avenue Axis at z = -84
+    // 4. Mazar-e-Quaid (Jinnah's Mausoleum) - Jinnah Memorial Park (Block [24, -72])
     const mazar = KarachiModels.createMazarEQuaid();
-    mazar.position.set(0, 0, -84);
+    mazar.position.set(24, 0, -72);
     this.registerEdible(mazar, 5, 3500, "Mazar-e-Quaid Mausoleum", 14.0, { isBuilding: true, isBadGuy: false });
 
-    // 5. Empress Market Saddar - Victorian Anglo-Mughal Clock Tower (x: -48, z: -48)
+    // 5. Empress Market Saddar - Victorian Anglo-Mughal Clock Tower (Block [-72, -72])
     const empress = KarachiModels.createEmpressMarket();
-    empress.position.set(-48, 0, -48);
+    empress.position.set(-72, 0, -72);
     this.registerEdible(empress, 4, 2000, "Empress Market Saddar", 10.5, { isBuilding: true, isBadGuy: false });
 
-    // 6. KMC Building (Karachi Municipal Corporation, M.A. Jinnah Road) at (x: -74, z: -48)
+    // 6. KMC Building (Karachi Municipal Corporation, M.A. Jinnah Road) in Municipal Block (Block [-24, -72])
     const kmc = KarachiModels.createKMCBuilding();
-    kmc.position.set(-74, 0, -48);
+    kmc.position.set(-24, 0, -72);
     this.registerEdible(kmc, 5, 2600, "KMC Heritage Building", 11.5, { isBuilding: true, isBadGuy: false });
 
-    // 7. Habib Bank Plaza (HBL Plaza, I.I. Chundrigar Road) - Modernist Skyscraper at (x: 48, z: -48)
+    // 7. Habib Bank Plaza (HBL Plaza, I.I. Chundrigar Road) - Modernist Skyscraper (Block [72, -72])
     const hbl = KarachiModels.createHabibBankPlaza();
-    hbl.position.set(48, 0, -48);
+    hbl.position.set(65, 0, -72);
     this.registerEdible(hbl, 5, 2800, "Habib Bank Plaza (HBL)", 9.0, { isBuilding: true, isBadGuy: false });
 
-    // 8. MCB Tower (29-Story Skyscraper - I.I. Chundrigar Road) at (x: 74, z: -48)
+    // 8. MCB Tower (29-Story Skyscraper - I.I. Chundrigar Road) in Financial Block (Block [72, -72])
     const mcb = KarachiModels.createMCBTower();
-    mcb.position.set(74, 0, -48);
+    mcb.position.set(78, 0, -68);
     this.registerEdible(mcb, 5, 3000, "MCB Tower Chundrigar", 9.5, { isBuilding: true, isBadGuy: false });
 
-    // 9. Mohatta Palace Museum - Rajasthani Pink Sandstone Heritage Palace (x: 48, z: 15)
+    // 9. Mohatta Palace Museum - Rajasthani Pink Sandstone Heritage Palace (Block [72, 24])
     const mohatta = KarachiModels.createMohattaPalace();
-    mohatta.position.set(48, 0, 15);
+    mohatta.position.set(72, 0, 24);
     this.registerEdible(mohatta, 4, 1800, "Mohatta Palace Museum", 11.0, { isBuilding: true, isBadGuy: false });
 
-    // 10. Frere Hall Sadequain Gallery - Venetian-Gothic Yellow Gizri Limestone (x: -48, z: 15)
+    // 10. Frere Hall Sadequain Gallery - Venetian-Gothic Yellow Gizri Limestone (Block [-72, 24])
     const frere = KarachiModels.createFrereHall();
-    frere.position.set(-48, 0, 15);
+    frere.position.set(-72, 0, 24);
     this.registerEdible(frere, 4, 1800, "Frere Hall Gardens", 11.0, { isBuilding: true, isBadGuy: false });
 
-    // 11. Sakhi Hasan Water Hydrant Station (Water Tanker filling gantry in Gulshan quadrant) at (x: -48, z: 48)
+    // 11. Sakhi Hasan Water Hydrant Station (Water Logistics Center) (Block [-24, 24])
     const hydrant = KarachiModels.createSakhiHasanWaterHydrant();
-    hydrant.position.set(-48, 0, 48);
+    hydrant.position.set(-28, 0, 24);
     this.registerEdible(hydrant, 4, 1500, "Sakhi Hasan Water Hydrant", 8.5, { isBuilding: true, isBadGuy: false });
 
-    // 12. Burns Road Food Street Colonial Heritage Tenements (lining west side of central avenue)
+    // 12. Burns Road Food Street Colonial Heritage Tenements (lining sidewalk frontage of Block [-24, -24] and [-24, 24])
     const burnsRoadShops = [
-      { pos: [-26, -18], name: "Dilpasand Sweets", ur: "Famous Traditional Sweets & Bakery", col: "#b71c1c" },
-      { pos: [-26, 6], name: "Karachi Haleem Centre", ur: "Traditional Haleem Centre • Saddar", col: "#004d40" },
-      { pos: [-26, -34], name: "Student Biryani", ur: "Legendary Biryani • Burns Road", col: "#d84315" },
-      { pos: [-48, -18], name: "Rehmat-e-Shereen", ur: "Premium Sweets & Bakers", col: "#4a148c" }
+      { pos: [-18, -32], name: "Dilpasand Sweets", ur: "Famous Traditional Sweets & Bakery", col: "#b71c1c" },
+      { pos: [-18, 18], name: "Karachi Haleem Centre", ur: "Traditional Haleem Centre • Saddar", col: "#004d40" },
+      { pos: [-18, -18], name: "Student Biryani", ur: "Legendary Biryani • Burns Road", col: "#d84315" },
+      { pos: [-72, -14], name: "Rehmat-e-Shereen", ur: "Premium Sweets & Bakers", col: "#4a148c" }
     ];
     burnsRoadShops.forEach(s => {
       const bldg = KarachiModels.createBurnsRoadColonialBuilding(s.name, s.ur, s.col);
@@ -1054,11 +1138,11 @@ export class CityGenerator {
       this.registerEdible(bldg, 4, 1100, `Burns Road: ${s.name}`, 7.0, { isBuilding: true, isBadGuy: false });
     });
 
-    // 13. Tariq Road & PECHS Fashion Plazas (lining east side of central avenue)
+    // 13. Tariq Road & PECHS Fashion Plazas (lining sidewalk frontage of Block [24, -24] and [24, 24])
     const tariqRoadPlazas = [
-      { pos: [26, -18], name: "J. JUNAID JAMSHED", ur: "Fashion & Lifestyle Store" },
-      { pos: [26, 6], name: "KURTA CORNER", ur: "Traditional Apparel Plaza" },
-      { pos: [26, -34], name: "KHAADI LAWN", ur: "Karachi Fashion Mall" }
+      { pos: [18, -32], name: "J. JUNAID JAMSHED", ur: "Fashion & Lifestyle Store" },
+      { pos: [18, 18], name: "KURTA CORNER", ur: "Traditional Apparel Plaza" },
+      { pos: [18, -18], name: "KHAADI LAWN", ur: "Karachi Fashion Mall" }
     ];
     tariqRoadPlazas.forEach(p => {
       const plaza = KarachiModels.createTariqRoadFashionPlaza(p.name, p.ur);
@@ -1072,12 +1156,12 @@ export class CityGenerator {
     victoria.position.set(16, 0, 92);
     this.registerEdible(victoria, 3, 240, "Sea View Victoria Buggy", 2.8, { isTransport: true, isBadGuy: false });
 
-    // 15. Classic Roadside Paan Khokhas on Street Corners
+    // 15. Classic Roadside Paan Khokhas on Street Corners (safely on sidewalks)
     [
-      [-8.8, 0, -2],
-      [8.8, 0, 18],
-      [-8.8, 0, 38],
-      [8.8, 0, 48]
+      [-8.8, 0, -3],
+      [8.8, 0, 17],
+      [-8.8, 0, 37],
+      [8.8, 0, -37]
     ].forEach((pos, idx) => {
       const khokha = KarachiModels.createRoadsidePaanKhokha();
       khokha.position.set(pos[0], pos[1], pos[2]);
@@ -1093,8 +1177,8 @@ export class CityGenerator {
       this.registerEdible(camel, 2, 85, `Sea View Beach Camel #${idx + 1}`, 1.8, { isPet: true, isBadGuy: false });
     });
 
-    // 17. K-Electric Poles with Wire Nests & 440V Danger Plates
-    [[-8.5, -14], [8.5, -14], [-8.5, 34], [8.5, 34]].forEach(([kx, kz]) => {
+    // 17. K-Electric Poles with Wire Nests & 440V Danger Plates (on sidewalks)
+    [[-8.5, -15], [8.5, -15], [-8.5, 35], [8.5, 35]].forEach(([kx, kz]) => {
       const kePole = KarachiModels.createKElectricTransformerPole();
       kePole.position.set(kx, 0, kz);
       this.scene.add(kePole);
@@ -1114,52 +1198,53 @@ export class CityGenerator {
       this.obstacles.push({ position: { x: s.pos[0], y: 0, z: s.pos[1] }, radius: 1.0 });
     });
 
-    // 19. Commercial Plazas and Clifton Bungalows
+    // 19. Commercial Plazas and Clifton Bungalows (Inside City Blocks)
     const plazas = [
-      { pos: [48, -20], name: "Kababjees Highway", sign: "KABABJEES HIGHWAY", sub: "EXPRESS DINING" },
-      { pos: [48, 48], name: "Burns Road Super Mart", sign: "BURNS ROAD SUPER MART", sub: "AUTHENTIC KARACHI" },
-      { pos: [-48, -20], name: "Jahangir Autos", sign: "JAHANGIR AUTOS", sub: "CHUNDRIGAR ROAD" },
-      { pos: [-48, 72], name: "Agha's Supermarket", sign: "AGHA'S SUPERMARKET", sub: "CLIFTON KARACHI" }
+      { pos: [72, 0, -24], name: "Kababjees Highway", sign: "KABABJEES HIGHWAY", sub: "EXPRESS DINING" },
+      { pos: [72, 0, 72], name: "Burns Road Super Mart", sign: "BURNS ROAD SUPER MART", sub: "AUTHENTIC KARACHI" },
+      { pos: [-72, 0, -24], name: "Jahangir Autos", sign: "JAHANGIR AUTOS", sub: "CHUNDRIGAR ROAD" },
+      { pos: [-72, 0, 72], name: "Agha's Supermarket", sign: "AGHA'S SUPERMARKET", sub: "CLIFTON KARACHI" }
     ];
     plazas.forEach(p => {
       const plaza = KarachiModels.createCommercialPlaza(p.sign, p.sub);
-      plaza.position.set(p.pos[0], 0, p.pos[1]);
+      plaza.position.set(p.pos[0], 0, p.pos[2]);
       this.registerEdible(plaza, 4, 900, p.name, 6.5, { isBuilding: true, isBadGuy: false });
     });
 
-    // Clifton Residential Bungalows in southeast residential quadrant
-    for (let bx = 36; bx <= 76; bx += 18) {
-      for (let bz = 36; bz <= 76; bz += 18) {
-        const bungalow = KarachiModels.createResidentialBungalow();
-        bungalow.position.set(bx, 0, bz);
-        this.registerEdible(bungalow, 3, 380, "Clifton Villa", 5.0, { isBuilding: true, isBadGuy: false });
-      }
-    }
+    // Clifton Residential Bungalows in residential quadrant blocks
+    const villas = [
+      [-26, 0, 68], [-22, 0, 78],
+      [22, 0, 68], [28, 0, 78]
+    ];
+    villas.forEach((v, idx) => {
+      const bungalow = KarachiModels.createResidentialBungalow();
+      bungalow.position.set(v[0], 0, v[2]);
+      this.registerEdible(bungalow, 3, 380, `Clifton Villa #${idx + 1}`, 5.0, { isBuilding: true, isBadGuy: false });
+    });
 
-
-    // 14 Truck-Art Bedford Trucks & 10 W-11 Mini-Buses (Karachi Transport Heritage)
+    // 14 Truck-Art Bedford Trucks & 10 W-11 Mini-Buses (Parked Curbside parallel to lanes)
     const truckPositions = [
-      [-75, 0, -20], [-75, 0, 30], [0, 0, -75], [0, 0, 75],
-      [75, 0, 20], [75, 0, -30], [-25, 0, 75], [35, 0, 75],
-      [-48, 0, 0], [48, 0, 0], [0, 0, 48], [0, 0, -48],
-      [-75, 0, 60], [75, 0, 60]
+      [-5.2, 0, -38, 0], [5.2, 0, -56, 0], [-5.2, 0, 38, Math.PI], [5.2, 0, 56, Math.PI],
+      [-42.8, 0, -22, 0], [-53.2, 0, 22, Math.PI], [42.8, 0, -22, 0], [53.2, 0, 22, Math.PI],
+      [-22, 0, -5.2, Math.PI / 2], [22, 0, 5.2, -Math.PI / 2], [-68, 0, -5.2, Math.PI / 2], [68, 0, 5.2, -Math.PI / 2],
+      [-75, 0, 56, 0], [75, 0, 56, Math.PI]
     ];
     truckPositions.forEach((tp, idx) => {
       const truck = KarachiModels.createBedfordTruck();
-      truck.position.set(...tp);
-      truck.rotation.y = Math.random() > 0.5 ? 0 : Math.PI / 2;
+      truck.position.set(tp[0], tp[1], tp[2]);
+      truck.rotation.y = tp[3];
       this.registerEdible(truck, 3, 260, `Truck-Art Bedford #${idx + 1}`, 3.5, { isTransport: true, isBadGuy: false });
     });
 
     const busPositions = [
-      [-90, 0, -48], [-90, 0, 48], [90, 0, -48], [90, 0, 48],
-      [-48, 0, -90], [48, 0, 90], [-20, 0, 90], [20, 0, -90],
-      [-48, 0, 48], [48, 0, -48]
+      [-90, 0, -42.8, 0], [-90, 0, 53.2, Math.PI], [90, 0, -42.8, 0], [90, 0, 53.2, Math.PI],
+      [-42.8, 0, -90, 0], [42.8, 0, 90, Math.PI], [-22, 0, 90, Math.PI], [22, 0, -90, 0],
+      [-42.8, 0, 42.8, 0], [42.8, 0, -42.8, 0]
     ];
     busPositions.forEach((bp, idx) => {
       const bus = KarachiModels.createW11MiniBus();
-      bus.position.set(...bp);
-      bus.rotation.y = idx % 2 === 0 ? 0 : Math.PI / 2;
+      bus.position.set(bp[0], bp[1], bp[2]);
+      bus.rotation.y = bp[3];
       this.registerEdible(bus, 3, 210, `W-11 Mini-Bus #${idx + 1}`, 3.4, { isTransport: true, isBadGuy: false });
     });
 
