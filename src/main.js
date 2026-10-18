@@ -202,7 +202,7 @@ class Game {
 
   initUI() {
     this.ui = new UIManager({
-      onStartGame: ({ playerName, ageTier, avatarId }) => {
+      onStartGame: ({ playerName, ageTier, avatarId, districtLevel }) => {
         if (this.player) {
           this.player.name = playerName || "Karachi Hero";
           if (avatarId) {
@@ -211,13 +211,21 @@ class Game {
           this.player.updateNameTag();
         }
         this.difficulty = ageTier === 'kids' ? 'kidsEasy' : 'classic';
-        this.isGameStarted = true;
-        this.clock.getDelta();
-        audio.startMusic();
-        this.ui.showAnnouncement(`🚀 PATROL STARTED: WELCOME ${this.player.name.toUpperCase()}!`, '#00e5ff');
+        const targetLevel = districtLevel ? parseInt(districtLevel) : 1;
+        if (targetLevel && targetLevel !== this.currentDistrictLevel) {
+          this.loadDistrictLevel(targetLevel);
+        } else {
+          this.isGameStarted = true;
+          this.clock.getDelta();
+          audio.startMusic();
+          this.ui.showAnnouncement(`🚀 PATROL STARTED: WELCOME ${this.player.name.toUpperCase()}!`, '#00e5ff');
+        }
       },
       onContinueCareer: (saveData) => {
         this.loadCareerSave(saveData);
+      },
+      onSelectDistrict: (level) => {
+        this.loadDistrictLevel(level);
       },
       onJump: () => {
         this.performJump();
@@ -871,6 +879,7 @@ class Game {
   resolveDistrictThreat(obj, hole) {
     if (!obj || obj.state === 'resolving' || obj.state === 'swallowed') return;
     obj.state = 'resolving';
+    if (this.ui) this.ui.hideInterventionProgress();
 
     const objPos = (obj.mesh && obj.mesh.position) ? obj.mesh.position : (obj.position || { x: 0, y: 0, z: 0 });
     const evilType = obj.evilType || 'evil';
@@ -1280,7 +1289,11 @@ class Game {
   }
 
   advanceToNextDistrict() {
-    this.currentDistrictLevel++;
+    this.loadDistrictLevel(this.currentDistrictLevel + 1);
+  }
+
+  loadDistrictLevel(targetLevel) {
+    this.currentDistrictLevel = Math.max(1, targetLevel);
     this.districtClearing = false;
     this.isGameOver = false;
     this.isPaused = false;
@@ -1849,6 +1862,7 @@ class Game {
     }
 
     // 4. Animate Glowing Evil Target Decals (Pulse rings and bob overhead billboards)
+    let activeResolvingThreat = false;
     for (let i = 0; i < this.edibleObjects.length; i++) {
       const obj = this.edibleObjects[i];
       if (obj.state === 'swallowed') continue;
@@ -1958,13 +1972,68 @@ class Game {
       }
 
       // District Evils and Bad Guys: Must ONLY be resolved by the human player via active hero intervention!
+      // CRITICAL USER REQUIREMENT: Player must be DIRECTLY ON TOP of the issue and dwell for animation duration to resolve it.
       if (obj.isDistrictEvil || obj.isBadGuy) {
         if (obj.state === 'idle' && this.player && this.player.isAlive) {
           const dx = this.player.position.x - objPos.x;
           const dz = this.player.position.z - objPos.z;
-          const captureRadius = this.player.radius + Math.max(1.3, (obj.radius || 1.3) * 0.95);
-          if (Math.abs(dx) <= captureRadius && Math.abs(dz) <= captureRadius && (dx * dx + dz * dz < captureRadius * captureRadius)) {
-            this.resolveDistrictThreat(obj, this.player);
+          const distSq = dx * dx + dz * dz;
+
+          // Must be directly ON TOP of the object (inside player hole opening)
+          const onTopThreshold = Math.max(1.1, this.player.radius * 0.88);
+          const isOnTop = (distSq <= onTopThreshold * onTopThreshold);
+
+          if (isOnTop) {
+            activeResolvingThreat = true;
+            if (obj.resolveTimer === undefined || obj.resolveTimer === null) {
+              obj.resolveTimer = 0;
+              obj.baseY = (obj.mesh && obj.mesh.position) ? obj.mesh.position.y : objPos.y;
+              if (obj.mesh && obj.mesh.scale) {
+                obj.baseScaleY = obj.mesh.scale.y;
+              }
+            }
+
+            const REQUIRED_RESOLVE_TIME = 1.5; // ~1.5 seconds active dwell
+            obj.resolveTimer += dt;
+            const progress = Math.min(1.0, obj.resolveTimer / REQUIRED_RESOLVE_TIME);
+
+            // Active visual feedback: mesh vibrations, rotation, sinking slightly
+            if (obj.mesh) {
+              obj.mesh.rotation.y += dt * (3.0 + progress * 8.0);
+              obj.mesh.position.y = (obj.baseY !== undefined ? obj.baseY : objPos.y) - (progress * 0.35);
+              const scaleDown = Math.max(0.72, 1.0 - progress * 0.22);
+              obj.mesh.scale.set(scaleDown, scaleDown, scaleDown);
+            }
+
+            // Sparkle particles & periodic haptic pulses
+            if (Math.random() < 0.35) {
+              this.particles.createCleanseSparkleBurst(objPos, 3);
+            }
+            if (!obj.lastHaptic || performance.now() - obj.lastHaptic > 320) {
+              audio.vibrate(15);
+              obj.lastHaptic = performance.now();
+            }
+
+            if (this.ui) {
+              this.ui.showInterventionProgress(obj.evilType || 'evil', progress);
+            }
+
+            // Once dwell time completes, officially resolve the threat!
+            if (progress >= 1.0) {
+              if (this.ui) this.ui.hideInterventionProgress();
+              this.resolveDistrictThreat(obj, this.player);
+            }
+          } else {
+            // Player moved off the object: decay resolve timer
+            if (obj.resolveTimer && obj.resolveTimer > 0) {
+              obj.resolveTimer = Math.max(0, obj.resolveTimer - dt * 3.5);
+              if (obj.resolveTimer === 0) {
+                if (obj.mesh) {
+                  obj.mesh.position.y = obj.baseY !== undefined ? obj.baseY : objPos.y;
+                  obj.mesh.scale.set(1, 1, 1);
+                }
+              }
+            }
           }
         }
         continue; // BOTS CAN NEVER EAT OR SUCK DISTRICT EVILS!
@@ -2088,6 +2157,10 @@ class Game {
           }
         }
       }
+    }
+
+    if (!activeResolvingThreat && this.ui) {
+      this.ui.hideInterventionProgress();
     }
 
     // Update Particles

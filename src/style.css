@@ -1109,14 +1109,15 @@ html, body {
 .district-cleared-card {
   max-width: 480px;
   width: 90%;
+  max-height: min(92vh, 92dvh);
+  overflow-y: auto;
   border: 2px solid #ffd700;
   box-shadow: 0 0 50px rgba(255, 215, 0, 0.35), 0 20px 45px rgba(0, 0, 0, 0.7);
   background: linear-gradient(180deg, #121c2e, #090e18);
-  padding: 30px;
+  padding: clamp(16px, 2.5vh, 26px);
   border-radius: 24px;
   text-align: center;
   position: relative;
-  overflow: hidden;
   animation: scaleUpCard 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 
@@ -4348,6 +4349,362 @@ html, body {
   }
   .action-res-desc {
     font-size: 0.72rem;
+  }
+}
+
+/* ==============================================================
+   DISTRICT / LEVEL SELECTION GRID (START MISSION MODAL)
+   ============================================================== */
+.district-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.district-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.2);
+  text-align: left;
+}
+
+.district-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 229, 255, 0.6);
+}
+
+.district-card.active {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(255, 215, 0, 0.12));
+  border-color: #00e5ff;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
+}
+
+.d-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.d-badge {
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.15);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.d-badge.lv2-badge {
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.15);
+}
+
+.d-badge.lv3-badge {
+  color: #e040fb;
+  background: rgba(224, 64, 251, 0.15);
+}
+
+.d-status.unlocked-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #00e676;
+}
+
+.d-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.d-sub {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  line-height: 1.2;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.start-hint-strip {
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px dashed rgba(0, 229, 255, 0.35);
+  border-radius: 10px;
+  padding: 6px 12px;
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ==============================================================
+   GAME MENU QUICK LEVEL SELECT ROW
+   ============================================================== */
+.menu-level-select-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.level-select-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 8px 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #ffffff;
+}
+
+.level-select-btn:hover {
+  border-color: #00e5ff;
+  transform: translateY(-2px);
+}
+
+.level-select-btn.active {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(255, 215, 0, 0.15));
+  border-color: #ffd700;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.35);
+}
+
+.level-select-btn .lvl-num {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #ffd700;
+}
+
+.level-select-btn .lvl-name {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #f8fafc;
+  margin-top: 2px;
+}
+
+/* ==============================================================
+   DISTRICT CLEARED LEVEL PILLS ROW
+   ============================================================== */
+.dc-level-selector-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.dc-level-pill {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dc-level-pill:hover, .dc-level-pill.active-pill {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(255, 215, 0, 0.2));
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+/* ==============================================================
+   FLOATING CIVIC RESTORATION PROGRESS METER (DWELL ANIMATION)
+   ============================================================== */
+.hud-intervention-pill {
+  position: fixed;
+  top: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 550;
+  background: linear-gradient(135deg, rgba(14, 22, 38, 0.95), rgba(8, 14, 26, 0.98));
+  border: 2px solid #00e5ff;
+  box-shadow: 0 8px 30px rgba(0, 229, 255, 0.45), 0 0 20px rgba(0, 0, 0, 0.85);
+  border-radius: 16px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+  animation: pulseIntervention 1s ease-in-out infinite alternate;
+  max-width: 90vw;
+}
+
+@keyframes pulseIntervention {
+  0% { transform: translateX(-50%) scale(0.98); }
+  100% { transform: translateX(-50%) scale(1.02); }
+}
+
+.hud-intervention-pill .intervention-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.hud-intervention-pill .intervention-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.hud-intervention-pill .intervention-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hud-intervention-pill .intervention-title {
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.hud-intervention-pill .intervention-pct {
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #00e5ff;
+}
+
+.hud-intervention-pill .intervention-bar-track {
+  width: 100%;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.hud-intervention-pill .intervention-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00e5ff, #ffd700);
+  border-radius: 999px;
+  transition: width 0.08s linear;
+}
+
+/* ==============================================================
+   FIRST-GLANCE ZERO-SCROLL RESPONSIVE VIEWPORT OPTIMIZATIONS
+   ============================================================== */
+@media (max-height: 760px) {
+  .start-mission-card {
+    padding: 10px 14px !important;
+    gap: 5px !important;
+    max-height: 96vh !important;
+  }
+  .city-crest {
+    font-size: 1.8rem !important;
+  }
+  .start-title {
+    font-size: 1.25rem !important;
+  }
+  .start-tagline {
+    font-size: 0.72rem !important;
+  }
+  .form-group {
+    gap: 4px !important;
+  }
+  .form-label {
+    font-size: 0.72rem !important;
+  }
+  .input-with-icon {
+    padding: 2px 10px !important;
+  }
+  .text-input {
+    font-size: 0.88rem !important;
+    padding: 3px 0 !important;
+  }
+  .district-card {
+    padding: 5px 7px !important;
+  }
+  .d-title {
+    font-size: 0.74rem !important;
+  }
+  .d-sub {
+    font-size: 0.62rem !important;
+  }
+  .age-card {
+    padding: 5px 3px !important;
+    gap: 1px !important;
+  }
+  .age-card-icon {
+    font-size: 1.2rem !important;
+  }
+  .age-card-title {
+    font-size: 0.78rem !important;
+  }
+  .age-card-desc {
+    display: none !important;
+  }
+  .avatar-card {
+    padding: 5px 3px !important;
+  }
+  .avatar-card-icon {
+    font-size: 1.2rem !important;
+  }
+  .avatar-card-title {
+    font-size: 0.75rem !important;
+  }
+  .avatar-card-desc {
+    display: none !important;
+  }
+  .start-hint-strip {
+    font-size: 0.68rem !important;
+    padding: 3px 8px !important;
+  }
+  .start-mission-btn {
+    font-size: 0.95rem !important;
+    padding: 10px !important;
+  }
+
+  .district-cleared-card {
+    padding: 12px 16px !important;
+  }
+  .trophy-glow-icon {
+    font-size: 2.2rem !important;
+    margin-bottom: 2px !important;
+  }
+  .dc-title {
+    font-size: 1.2rem !important;
+    margin-bottom: 2px !important;
+  }
+  .dc-desc {
+    font-size: 0.76rem !important;
+    margin-bottom: 6px !important;
+  }
+  .dc-rewards-grid {
+    gap: 4px !important;
+    margin-bottom: 6px !important;
+  }
+  .dc-reward-box {
+    padding: 4px 6px !important;
+  }
+  .dc-reward-val {
+    font-size: 0.9rem !important;
+  }
+  .dc-resolved-breakdown {
+    max-height: 75px !important;
+    margin-bottom: 6px !important;
+    padding: 6px 8px !important;
+  }
+  .dc-next-preview {
+    margin-bottom: 6px !important;
+    padding: 4px 8px !important;
+  }
+  .dc-advance-btn {
+    padding: 10px 16px !important;
+    font-size: 0.95rem !important;
   }
 }
 

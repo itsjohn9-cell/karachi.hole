@@ -17,6 +17,33 @@ class AudioManager {
     } catch (e) {
       // fallback
     }
+
+    // Direct lifecycle listeners: Automatically mute and stop music when tab/screen/app is inactive
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden || document.visibilityState === 'hidden') {
+          this.pauseAudio();
+        } else {
+          if (typeof window !== 'undefined' && window.game && window.game.isGameStarted && !window.game.isPaused && !window.game.isGameOver) {
+            this.resumeAudio();
+          }
+        }
+      });
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('blur', () => {
+        this.pauseAudio();
+      });
+      window.addEventListener('focus', () => {
+        if (window.game && window.game.isGameStarted && !window.game.isPaused && !window.game.isGameOver) {
+          this.resumeAudio();
+        }
+      });
+      window.addEventListener('pagehide', () => {
+        this.pauseAudio();
+      });
+    }
   }
 
   initContext() {

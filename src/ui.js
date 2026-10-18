@@ -31,6 +31,7 @@ export class UIManager {
     onInteractCitizen,
     onOpenMissionJournal,
     onContinueCareer,
+    onSelectDistrict,
     onReturnToMainMenu
   }) {
     this.onStartGame = onStartGame;
@@ -47,6 +48,7 @@ export class UIManager {
     this.onInteractCitizen = onInteractCitizen;
     this.onOpenMissionJournal = onOpenMissionJournal;
     this.onContinueCareer = onContinueCareer;
+    this.onSelectDistrict = onSelectDistrict;
     this.onReturnToMainMenu = onReturnToMainMenu;
 
     this.playerName = 'Karachi Hero';
@@ -54,6 +56,7 @@ export class UIManager {
     this.gameMode = 'battleRoyale'; // 'battleRoyale' or 'sandbox'
     this.difficulty = 'kidsEasy'; // 'kidsEasy' or 'classic'
     this.currentAgeTier = 'kids'; // 'kids', 'junior', 'senior'
+    this.selectedDistrictLevel = 1; // Default: District 1 (DHA & Clifton)
     this.unlockedBadges = new Set(['water_guardian']);
     this.completedQuizIds = new Set();
     this.activeQuizChallenge = null;
@@ -85,14 +88,14 @@ export class UIManager {
     this.startModal.innerHTML = `
       <div class="modal-card start-mission-card">
         <div class="start-hero-header">
-          <div class="city-crest">🌟</div>
+          <div class="city-crest">🇵🇰</div>
           <h1 class="start-title">PAKISTAN STREET HERO</h1>
           <p class="start-tagline">3D Third-Person Street Patrol &amp; Civic Hero Mission</p>
         </div>
 
         <div class="start-form-section">
           <!-- Player / Game Name Input -->
-          <div class="form-group">
+          <div class="form-group start-name-group">
             <label class="form-label" for="player-name-input">👤 PLAYER / HERO NAME:</label>
             <div class="input-with-icon">
               <span class="input-icon">👑</span>
@@ -100,80 +103,103 @@ export class UIManager {
             </div>
           </div>
 
+          <!-- District / Level Selection -->
+          <div class="form-group start-district-group">
+            <label class="form-label">📍 SELECT PATROL DISTRICT (LEVEL):</label>
+            <div class="district-selection-grid" id="start-district-grid">
+              <div class="district-card active ui-interactive" data-level="1" id="start-dist-1">
+                <div class="d-header-row">
+                  <span class="d-badge">LV 1</span>
+                  <span class="d-status unlocked-tag">SELECTED</span>
+                </div>
+                <span class="d-title">DHA &amp; Clifton Sea View</span>
+                <span class="d-sub">Water Tankers, Snatchers &amp; Craters</span>
+              </div>
+              <div class="district-card ui-interactive" data-level="2" id="start-dist-2">
+                <div class="d-header-row">
+                  <span class="d-badge lv2-badge">LV 2</span>
+                  <span class="d-status unlocked-tag">AVAILABLE</span>
+                </div>
+                <span class="d-title">Lyari Football &amp; Culture</span>
+                <span class="d-sub">Bhatta Mafia, Racers &amp; Peace</span>
+              </div>
+              <div class="district-card ui-interactive" data-level="3" id="start-dist-3">
+                <div class="d-header-row">
+                  <span class="d-badge lv3-badge">LV 3</span>
+                  <span class="d-status unlocked-tag">AVAILABLE</span>
+                </div>
+                <span class="d-title">Saddar &amp; Empress Market</span>
+                <span class="d-sub">Heritage, VIPs &amp; Encroachments</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Age Group Selection -->
-          <div class="form-group">
+          <div class="form-group start-age-group">
             <label class="form-label">👶 SELECT YOUR AGE GROUP:</label>
             <div class="age-selection-grid" id="start-age-grid">
               <div class="age-card active ui-interactive" data-age="kids">
                 <span class="age-card-icon">🐣</span>
                 <span class="age-card-title">Kids</span>
                 <span class="age-card-sub">Ages 5–8</span>
-                <span class="age-card-desc">Visual picture cues &amp; gentle hints</span>
+                <span class="age-card-desc">Visual picture cues</span>
               </div>
               <div class="age-card ui-interactive" data-age="junior">
                 <span class="age-card-icon">🎒</span>
                 <span class="age-card-title">Junior</span>
                 <span class="age-card-sub">Ages 9–12</span>
-                <span class="age-card-desc">Street safety &amp; civic awareness</span>
+                <span class="age-card-desc">Street safety &amp; civic rules</span>
               </div>
               <div class="age-card ui-interactive" data-age="senior">
                 <span class="age-card-icon">🏆</span>
                 <span class="age-card-title">Teens &amp; Adults</span>
                 <span class="age-card-sub">Ages 13+</span>
-                <span class="age-card-desc">City leadership &amp; public ethics</span>
+                <span class="age-card-desc">City leadership &amp; ethics</span>
               </div>
             </div>
           </div>
 
           <!-- 3D Karachi Avatar Selection -->
-          <div class="form-group">
-            <label class="form-label">🦸 CHOOSE YOUR 3D KARACHI HERO AVATAR:</label>
+          <div class="form-group start-avatar-group">
+            <label class="form-label">🦸 CHOOSE 3D KARACHI HERO AVATAR:</label>
             <div class="avatar-selection-grid" id="start-avatar-grid">
               <div class="avatar-card active ui-interactive" data-avatar="tariq">
                 <span class="avatar-card-icon">🇵🇰</span>
                 <span class="avatar-card-title">Tariq</span>
-                <span class="avatar-card-sub">Street Hero</span>
-                <span class="avatar-card-desc">Green Shalwar Kameez (+10% Speed)</span>
+                <span class="avatar-card-sub">Shalwar Kameez</span>
               </div>
               <div class="avatar-card ui-interactive" data-avatar="ayesha">
                 <span class="avatar-card-icon">🌸</span>
                 <span class="avatar-card-title">Ayesha</span>
-                <span class="avatar-card-sub">Civic Crusader</span>
-                <span class="avatar-card-desc">Sindhi Ajrak Scarf (+15% Reach)</span>
+                <span class="avatar-card-sub">Ajrak Scarf</span>
               </div>
               <div class="avatar-card ui-interactive" data-avatar="farooq">
                 <span class="avatar-card-icon">👮‍♂️</span>
-                <span class="avatar-card-title">Inspector Farooq</span>
+                <span class="avatar-card-title">Farooq</span>
                 <span class="avatar-card-sub">Traffic Police</span>
-                <span class="avatar-card-desc">Karachi Police Uniform (Stuns Evils)</span>
               </div>
               <div class="avatar-card ui-interactive" data-avatar="bilal">
                 <span class="avatar-card-icon">🚑</span>
                 <span class="avatar-card-title">Bilal</span>
-                <span class="avatar-card-sub">Edhi Volunteer</span>
-                <span class="avatar-card-desc">Rescue Medical Vest (Double XP Rescues)</span>
+                <span class="avatar-card-sub">Rescue 1122</span>
               </div>
               <div class="avatar-card ui-interactive" data-avatar="zain">
                 <span class="avatar-card-icon">🎒</span>
                 <span class="avatar-card-title">Zain</span>
                 <span class="avatar-card-sub">Eco Cadet</span>
-                <span class="avatar-card-desc">School Blazer &amp; Cape (Bonus Sorting)</span>
               </div>
             </div>
           </div>
 
-          <!-- Quick Mission Briefing -->
-          <div class="mission-brief-box">
-            <div class="brief-title">🎯 GTA KARACHI STREET MISSION:</div>
-            <div class="brief-points">
-              <span>🧹 <strong>Street-Level Patrol:</strong> Run through Karachi avenues &amp; alleys to resolve urban crises!</span>
-              <span>🚧 <strong>Solid Obstacles:</strong> Real-life physics apply—you cannot walk through buildings or walls!</span>
-              <span>🧩 <strong>Interactive Civic Puzzles:</strong> Solve age-tailored puzzles to resume patrol and earn medals!</span>
-            </div>
+          <!-- Compact Mission Guidance -->
+          <div class="start-hint-strip">
+            <span>🛡️ Drive directly on top of road craters, water tankers &amp; robbers to restore Karachi!</span>
           </div>
+        </div>
+
         <div class="start-action-row" id="start-actions-container">
-          <button class="primary-btn ui-interactive start-mission-btn" id="btn-start-patrol">
-            🚀 START PATROL ➔
+          <button class="primary-btn ui-interactive start-mission-btn pulse-glow" id="btn-start-patrol">
+            🚀 START PATROL (LEVEL 1) ➔
           </button>
           <button class="secondary-btn ui-interactive continue-career-btn" id="btn-continue-career" style="display: none;">
             💾 CONTINUE CAREER (Lv. <span id="continue-career-level">1</span>)
@@ -361,6 +387,20 @@ export class UIManager {
         </div>
       </div>
 
+      <!-- Floating Civic Restoration Progress Meter (Dwell Animation) -->
+      <div class="hud-intervention-pill" id="hud-intervention-progress" style="display: none;">
+        <span class="intervention-icon" id="intervention-icon">🔧</span>
+        <div class="intervention-text-col">
+          <div class="intervention-top-row">
+            <span class="intervention-title" id="intervention-title">REPAIRING HAZARD...</span>
+            <span class="intervention-pct" id="intervention-pct">0%</span>
+          </div>
+          <div class="intervention-bar-track">
+            <div class="intervention-bar-fill" id="intervention-fill" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Floating Feedbacks Container -->
       <div id="floating-feedbacks"></div>
 
@@ -486,6 +526,25 @@ export class UIManager {
               <span class="hub-tile-sub">Good vs Bad &amp; Street Rules</span>
             </div>
             <span class="hub-tile-arrow">➔</span>
+          </button>
+        </div>
+
+        <!-- Level / District Quick Select -->
+        <div class="menu-section-header">
+          <span class="menu-section-title">📍 PATROL DISTRICT / LEVEL SELECT</span>
+        </div>
+        <div class="menu-level-select-row" id="menu-level-select-row">
+          <button class="level-select-btn ui-interactive" data-level="1" id="btn-menu-level-1">
+            <span class="lvl-num">LV 1</span>
+            <span class="lvl-name">DHA &amp; Clifton</span>
+          </button>
+          <button class="level-select-btn ui-interactive" data-level="2" id="btn-menu-level-2">
+            <span class="lvl-num">LV 2</span>
+            <span class="lvl-name">Lyari Football</span>
+          </button>
+          <button class="level-select-btn ui-interactive" data-level="3" id="btn-menu-level-3">
+            <span class="lvl-num">LV 3</span>
+            <span class="lvl-name">Saddar Empress</span>
           </button>
         </div>
 
@@ -946,13 +1005,20 @@ export class UIManager {
 
         <div class="dc-next-preview">
           <span class="next-label">NEXT LEVEL DESTINATION:</span>
-          <span class="next-name" id="dc-modal-nextname">District 2: Saddar &amp; Empress Market</span>
+          <span class="next-name" id="dc-modal-nextname">District 2: Lyari Football &amp; Culture</span>
         </div>
 
         <!-- The Prominent Next Level Button requested by user -->
         <button class="primary-btn ui-interactive dc-advance-btn pulse-glow" id="btn-next-district">
-          🚀 GO TO NEXT LEVEL ➔
+          🚀 GO TO NEXT LEVEL: LEVEL 2 ➔
         </button>
+
+        <!-- Direct Level Select Options -->
+        <div class="dc-level-selector-row" id="dc-level-selector-row">
+          <button class="dc-level-pill ui-interactive" data-level="1">Replay Lv 1</button>
+          <button class="dc-level-pill ui-interactive active-pill" data-level="2">Advance to Lv 2</button>
+          <button class="dc-level-pill ui-interactive" data-level="3">Jump to Lv 3</button>
+        </div>
       </div>
     `;
 
@@ -1659,7 +1725,8 @@ export class UIManager {
           this.onStartGame({
             playerName: this.playerName,
             ageTier: this.currentAgeTier,
-            avatarId: this.selectedAvatar || 'tariq'
+            avatarId: this.selectedAvatar || 'tariq',
+            districtLevel: this.selectedDistrictLevel || 1
           });
         }
       });
@@ -1677,11 +1744,26 @@ export class UIManager {
           this.onStartGame({
             playerName: this.playerName,
             ageTier: this.currentAgeTier,
-            avatarId: this.selectedAvatar || 'tariq'
+            avatarId: this.selectedAvatar || 'tariq',
+            districtLevel: this.selectedDistrictLevel || 1
           });
         }
       });
     }
+
+    // District / Level Cards selection on start modal
+    const startDistrictCards = document.querySelectorAll('#start-district-grid .district-card');
+    startDistrictCards.forEach(card => {
+      card.addEventListener('click', () => {
+        audio.playClick();
+        startDistrictCards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        this.selectedDistrictLevel = parseInt(card.dataset.level) || 1;
+        if (btnStartPatrol) {
+          btnStartPatrol.textContent = `🚀 START PATROL (LEVEL ${this.selectedDistrictLevel}) ➔`;
+        }
+      });
+    });
 
     // Age cards selection on start modal
     const startAgeCards = document.querySelectorAll('#start-age-grid .age-card');
@@ -2045,6 +2127,20 @@ export class UIManager {
       });
     }
 
+    // District / Level Direct Select inside Game Menu
+    [1, 2, 3].forEach(lvl => {
+      const btn = document.getElementById(`btn-menu-level-${lvl}`);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          audio.playClick();
+          this.hideGameMenuModal();
+          if (window.game && window.game.loadDistrictLevel) {
+            window.game.loadDistrictLevel(lvl);
+          }
+        });
+      }
+    });
+
     // Settings SFX & Music toggles inside Game Menu
     const btnMenuToggleSfx = document.getElementById('btn-menu-toggle-sfx');
     if (btnMenuToggleSfx) {
@@ -2195,6 +2291,8 @@ export class UIManager {
 
     // CRITICAL REQUIREMENT: Robust Auto-Pause when user switches tabs, minimizes window, or moves away
     const triggerAutoPause = () => {
+      // Unconditionally silence audio whenever the user moves away
+      audio.pauseAudio();
       // If the game has not started yet or is already over, do not auto-pause
       if (window.game && (!window.game.isGameStarted || window.game.isGameOver)) return;
       this.showAutoPauseModal();
@@ -2295,6 +2393,15 @@ export class UIManager {
     const btnWide = document.getElementById('btn-cam-wide');
     if (btnStreet) btnStreet.classList.toggle('active', !camWide);
     if (btnWide) btnWide.classList.toggle('active', !!camWide);
+
+    // Sync District / Level direct buttons
+    const curLevel = (window.game && window.game.currentDistrictLevel) || 1;
+    [1, 2, 3].forEach(lvl => {
+      const btn = document.getElementById(`btn-menu-level-${lvl}`);
+      if (btn) {
+        btn.classList.toggle('active', curLevel === lvl);
+      }
+    });
 
     this.gameMenuModal.style.display = 'flex';
   }
@@ -2967,6 +3074,42 @@ export class UIManager {
     }, 2800);
   }
 
+  showInterventionProgress(evilType, progressRatio) {
+    const el = document.getElementById('hud-intervention-progress');
+    if (!el) return;
+    const iconEl = document.getElementById('intervention-icon');
+    const titleEl = document.getElementById('intervention-title');
+    const fillEl = document.getElementById('intervention-fill');
+    const pctEl = document.getElementById('intervention-pct');
+
+    const titles = {
+      pothole: '🕳️ BOLTING MANHOLE COVER...',
+      tanker: '🚰 IMPOUNDING WATER TANKER...',
+      robber: '📱 CORNERING MOBILE SNATCHER...',
+      vip: '🛑 HALTING VIP PROTOCOL CONVOY...',
+      bhatta: '📜 CONFISCATING BHATTA PARCHI...',
+      onewheeler: '🏍️ GROUNDING RECKLESS RACER...',
+      trash: '🌿 ENCLOSING TRASH DUMP...',
+      ke: '⚡ DISCONNECTING DANGEROUS KUNDAS...',
+      chinacutting: '🧱 DEMOLISHING ENCROACHMENT...',
+      politician: '⚖️ ARRESTING CORRUPT VIP...'
+    };
+
+    const text = titles[evilType] || '🔧 RESTORING STREET CRISIS...';
+    if (iconEl) iconEl.textContent = text.slice(0, 2);
+    if (titleEl) titleEl.textContent = text;
+    const pct = Math.min(100, Math.round(progressRatio * 100));
+    if (fillEl) fillEl.style.width = `${pct}%`;
+    if (pctEl) pctEl.textContent = `${pct}%`;
+
+    el.style.display = 'flex';
+  }
+
+  hideInterventionProgress() {
+    const el = document.getElementById('hud-intervention-progress');
+    if (el) el.style.display = 'none';
+  }
+
   showAnnouncement(text, color = '#ffd700') {
     const el = document.getElementById('hud-announcement');
     el.innerHTML = text;
@@ -3112,13 +3255,26 @@ export class UIManager {
     const nextBtn = document.getElementById('btn-next-district');
     nextBtn.textContent = isFinalDistrict
       ? `👑 CELEBRATE VICTORY ➔`
-      : `🚀 GO TO NEXT LEVEL ➔`;
+      : `🚀 GO TO NEXT LEVEL: DISTRICT ${level + 1} ➔`;
 
     nextBtn.onclick = () => {
       audio.playClick();
       this.hideDistrictClearedModal();
       if (onNextDistrict) onNextDistrict();
     };
+
+    // Direct Level Selector pills
+    const pills = this.districtClearedModal.querySelectorAll('.dc-level-pill');
+    pills.forEach(pill => {
+      pill.onclick = () => {
+        audio.playClick();
+        this.hideDistrictClearedModal();
+        const targetLvl = parseInt(pill.dataset.level) || (level + 1);
+        if (window.game && window.game.loadDistrictLevel) {
+          window.game.loadDistrictLevel(targetLvl);
+        }
+      };
+    });
 
     this.districtClearedModal.style.display = 'flex';
   }
