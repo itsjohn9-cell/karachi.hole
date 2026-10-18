@@ -93,7 +93,7 @@ export class UIManager {
         <div class="start-hero-header">
           <div class="city-crest">🇵🇰</div>
           <h1 class="start-title">PAKISTAN STREET HERO</h1>
-          <p class="start-tagline">3D Third-Person Street Patrol &amp; Civic Hero Mission</p>
+          <p class="start-tagline">Point A ➔ Point B Commute: Soldier Bazar to PECHS (Tariq Road)</p>
         </div>
 
         <div class="start-form-section">
@@ -115,8 +115,8 @@ export class UIManager {
                   <span class="d-badge">LV 1</span>
                   <span class="d-status unlocked-tag">SELECTED</span>
                 </div>
-                <span class="d-title">DHA &amp; Clifton Sea View</span>
-                <span class="d-sub">Water Tankers, Snatchers &amp; Craters</span>
+                <span class="d-title">Soldier Bazar to PECHS (Tariq Road)</span>
+                <span class="d-sub">Commute: Gutters, 70cc Robbers &amp; NASCAR Crates</span>
               </div>
               <div class="district-card ui-interactive" data-level="2" id="start-dist-2">
                 <div class="d-header-row">

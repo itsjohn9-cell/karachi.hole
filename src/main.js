@@ -75,6 +75,7 @@ class Game {
     this.initUI();
     this.initAudioTriggers();
     this.initGodModeComms();
+    this.loadDistrictLevel(1, false);
 
     // Start Game Loop
     this.animate = this.animate.bind(this);
@@ -237,14 +238,9 @@ class Game {
         }
         this.difficulty = ageTier === 'kids' ? 'kidsEasy' : 'classic';
         const targetLevel = districtLevel ? parseInt(districtLevel) : 1;
-        if (targetLevel && targetLevel !== this.currentDistrictLevel) {
-          this.loadDistrictLevel(targetLevel);
-        } else {
-          this.isGameStarted = true;
-          this.clock.getDelta();
-          audio.startMusic();
-          this.ui.showAnnouncement(`🚀 PATROL STARTED: WELCOME ${this.player.name.toUpperCase()}!`, '#00e5ff');
-        }
+        this.loadDistrictLevel(targetLevel, true);
+        audio.startMusic();
+        this.ui.showAnnouncement(`🚦 COMMUTE SURVIVAL: SOLDIER BAZAR ➔ PECHS TARIQ ROAD! WATCH FOR GUTTERS & ROBBERS!`, '#00e5ff');
       },
       onContinueCareer: (saveData) => {
         this.loadCareerSave(saveData);
@@ -1478,12 +1474,14 @@ class Game {
     this.loadDistrictLevel(this.currentDistrictLevel + 1);
   }
 
-  loadDistrictLevel(targetLevel) {
+  loadDistrictLevel(targetLevel, autoStart = true) {
     this.currentDistrictLevel = Math.max(1, targetLevel);
     this.districtClearing = false;
     this.isGameOver = false;
     this.isPaused = false;
-    this.isGameStarted = true;
+    if (autoStart) {
+      this.isGameStarted = true;
+    }
     this.timeLeft = this.matchDuration || 240.0;
     this.frenzyTriggered = false;
     this.frenzyTimer = 0;
@@ -1519,16 +1517,15 @@ class Game {
     }
     this.recentCleaned = [];
 
-    // Reset player position smoothly back to center crossroads and blast celebration
-    this.player.position.set(0, 0, 0);
-    this.player.group.position.set(0, 0, 0);
+    // Reset player position smoothly: Soldier Bazar (Z=70) for District 1 commute, center for others
+    const startZ = (this.currentDistrictLevel === 1) ? 70.0 : 0.0;
+    this.player.position.set(0, 0, startZ);
+    this.player.group.position.set(0, 0, startZ);
     this.player.facingAngle = Math.PI;
     this.player.targetRotationY = Math.PI;
     this.player.group.rotation.y = Math.PI;
     this.moveVector = { x: 0, y: 0 };
-    if (!isFinite(this.player.targetRadius) || this.player.targetRadius <= 0) {
-      this.player.targetRadius = 1.6;
-    }
+    this.player.targetRadius = 1.45;
     if (!isFinite(this.player.baseSpeed) || this.player.baseSpeed <= 0) {
       this.player.baseSpeed = 13.5;
     }
@@ -1551,8 +1548,8 @@ class Game {
     this.backwardBaseAngle = null;
     this.smoothGazeLead = 0;
     this.cameraBankX = 0;
-    this.camera.position.set(0, 2.35, 4.4);
-    this.camera.lookAt(0, 1.35, -7.0);
+    this.camera.position.set(0, 2.35, startZ + 4.4);
+    this.camera.lookAt(0, 1.35, startZ - 7.0);
     this.camera.updateMatrixWorld(true);
 
     this.particles.createLevelUpShockwave(this.player.position, 18);
@@ -1562,7 +1559,7 @@ class Game {
     this.initDistrictChallenges(cfg);
     audio.playLevelUp();
     this.ui.showAnnouncement(
-      `🚀 ENTERED DISTRICT ${cfg.level}: ${cfg.name.toUpperCase()} (${cfg.urdu})!`,
+      `🚀 COMMUTE ROUTE: ${cfg.name.toUpperCase()} (${cfg.urdu})!`,
       '#00e5ff'
     );
 
@@ -1582,17 +1579,22 @@ class Game {
     }
 
     if (this.currentDistrictLevel === 1) {
-      this.spawnPECHSFinishGate(0, -85);
+      this.spawnPECHSFinishGate(0, -82);
       // Spawn authentic open gutters along the Soldier Bazar -> PECHS avenue
-      this.spawnGutterHazard(2.2, -14, 1.6);
-      this.spawnGutterHazard(-2.8, -38, 1.7);
-      this.spawnGutterHazard(1.8, -58, 1.6);
-      this.spawnGutterHazard(-2.2, 28, 1.5);
+      this.spawnGutterHazard(1.8, 52, 1.5);
+      this.spawnGutterHazard(-2.2, 34, 1.6);
+      this.spawnGutterHazard(2.2, 12, 1.6);
+      this.spawnGutterHazard(-2.0, -14, 1.6);
+      this.spawnGutterHazard(2.0, -38, 1.7);
+      this.spawnGutterHazard(-1.8, -58, 1.6);
 
       // Spawn NASCAR / Mario Kart style mystery crates along the route
-      this.spawnMysteryCrate(0, -8, 'nitro');
-      this.spawnMysteryCrate(-1.8, -26, 'mystery');
-      this.spawnMysteryCrate(1.5, -46, 'shield');
+      this.spawnMysteryCrate(0, 60, 'biryani');
+      this.spawnMysteryCrate(-1.5, 42, 'nitro');
+      this.spawnMysteryCrate(1.5, 22, 'jump');
+      this.spawnMysteryCrate(0, -2, 'mystery');
+      this.spawnMysteryCrate(-1.8, -26, 'shield');
+      this.spawnMysteryCrate(1.5, -46, 'nitro');
       this.spawnMysteryCrate(0, -68, 'horn');
     }
   }
@@ -2556,7 +2558,7 @@ class Game {
               if (obj.mesh && obj.mesh.parent) {
                 this.scene.remove(obj.mesh);
               }
-              audio.playSwallow(1);
+              audio.playScore();
               audio.vibrate(15);
               this.particles.createCleanseSparkleBurst(objPos, 8);
               if (this.player.triggerDevourPulse) {
@@ -2568,13 +2570,13 @@ class Game {
               this.score = (this.score || 0) + points;
               this.player.addXP(points);
 
-              // Grow player hero hole visibly!
-              this.player.targetRadius = Math.min(6.5, this.player.targetRadius + 0.015);
+              // Maintain nimble commuter profile
+              this.player.targetRadius = 1.45;
 
               // Floating score feedback
               if (this.ui && this.ui.showFloatingFeedback) {
                 const screenPos = this.worldToScreen(new THREE.Vector3(objPos.x, objPos.y + 0.8, objPos.z));
-                this.ui.showFloatingFeedback(`+${points} ${obj.name || ''}`, screenPos.x, screenPos.y);
+                this.ui.showFloatingFeedback(`+${points} 📦 ${obj.name || 'CIVIC AID'}`, screenPos.x, screenPos.y, '#00e676');
               }
             }
           }
@@ -3261,11 +3263,11 @@ class Game {
       const districtConfig = getDistrictConfig(this.currentDistrictLevel);
       const activeCrisis = this.crisisChallenges ? this.crisisChallenges[this.currentCrisisIndex] : null;
 
-      // Calculate Route Progress from Soldier Bazar (Z = +80) to PECHS (Z = -80)
-      const startZ = 80.0;
-      const destZ = -80.0;
-      const totalSpan = 160.0;
-      const pZ = this.player ? this.player.position.z : 0;
+      // Calculate Route Progress from Soldier Bazar (Z = +70) to PECHS (Z = -82)
+      const startZ = 70.0;
+      const destZ = -82.0;
+      const totalSpan = 152.0;
+      const pZ = this.player ? this.player.position.z : startZ;
       const routePct = Math.min(100, Math.max(0, Math.round(((startZ - pZ) / totalSpan) * 100)));
       const distLeft = Math.max(0, Math.round(pZ - destZ));
 
