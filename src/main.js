@@ -1545,114 +1545,216 @@ class Game {
         });
       }
 
-      // If mobile bad guy (politician, robber, gutka, chinacutting, bhatta, onewheeler, tanker, vip)
-      const isMobile = bg.evilType === 'politician' || bg.evilType === 'robber' ||
-                       bg.evilType === 'gutka' || bg.evilType === 'chinacutting' ||
-                       bg.evilType === 'bhatta' || bg.evilType === 'onewheeler' ||
-                       bg.evilType === 'tanker' || bg.evilType === 'vip';
+      // Mobile targets: vehicles (tanker, vip, onewheeler) and pedestrian runners (politician, robber, gutka, chinacutting, bhatta)
+      const isVehicle = (bg.evilType === 'tanker' || bg.evilType === 'vip' || bg.evilType === 'onewheeler');
+      const isMobile = isVehicle || (bg.evilType === 'politician' || bg.evilType === 'robber' ||
+                       bg.evilType === 'gutka' || bg.evilType === 'chinacutting' || bg.evilType === 'bhatta');
 
       if (isMobile && this.player && this.player.isAlive) {
         const playerDist = this.player.position.distanceTo(bgPos);
-        const alertRange = (bg.evilType === 'vip' || bg.evilType === 'tanker' || bg.evilType === 'onewheeler') ? 26.0 : 20.0;
+        const alertRange = isVehicle ? 26.0 : 20.0;
+        const interceptRange = this.player.radius + (isVehicle ? 1.6 : 1.2);
 
-        // GTA-Style Active Pursuit State when Hero approaches
+        // Active Pursuit & Interception State
         if (playerDist < alertRange && bg.state === 'idle') {
           bg.isAlerted = true;
-          const fleeX = bgPos.x - this.player.position.x;
-          const fleeZ = bgPos.z - this.player.position.z;
-          const len = Math.hypot(fleeX, fleeZ);
 
-          if (len > 0.1) {
-            let normX = fleeX / len;
-            let normZ = fleeZ / len;
+          // 1. Interception Braking Check: Hero caught up to the target!
+          const isIntercepted = (playerDist <= interceptRange) || (bg.resolveTimer && bg.resolveTimer > 0) || (bg.interceptHoldTimer && bg.interceptHoldTimer > 0);
 
-            // Energetic, challenging GTA-style getaway speeds
-            const speedMap = {
-              onewheeler: 10.4,
-              vip: 9.6,
-              tanker: 8.5,
-              robber: 8.2,
-              bhatta: 7.8,
-              politician: 7.4
-            };
-            const fleeSpeed = ud?.runSpeed || speedMap[bg.evilType] || 7.2;
+          if (playerDist <= interceptRange || (bg.resolveTimer && bg.resolveTimer > 0)) {
+            bg.isInterceptionBraking = true;
+            bg.interceptHoldTimer = 3.0; // Stays fully immobilized for 3 seconds so player can position over it
 
-            // Smart Corridor Navigation: If approaching a building within 3.5m, steer 90 deg down an open avenue!
-            const obstacles = this.cityGen?.obstacles || [];
-            const checkDist = 3.5;
-            let forwardBlocked = false;
-            const lookX = bgPos.x + normX * checkDist;
-            const lookZ = bgPos.z + normZ * checkDist;
+            if (!bg.hasTriggeredInterceptBrake) {
+              bg.hasTriggeredInterceptBrake = true;
+              audio.playBrakeScreech();
+              audio.vibrate(25);
+              this.particles.createSkidSmoke(bgPos, 8);
 
-            for (let o = 0; o < obstacles.length; o++) {
-              const obs = obstacles[o];
-              if (!obs || !obs.isBox) continue;
-              if (lookX > obs.minX - 1.2 && lookX < obs.maxX + 1.2 && lookZ > obs.minZ - 1.2 && lookZ < obs.maxZ + 1.2) {
-                forwardBlocked = true;
-                break;
+              const brakePhrases = {
+                tanker: "🛑 TIRES LOCKED! Tanker immobilized!",
+                vip: "🛑 ROADBLOCK! VIP convoy halted!",
+                onewheeler: "🛑 ENGINE CUT! Bike grounded!",
+                robber: "🛑 CORNERED! Hands in the air!",
+                bhatta: "🛑 HALT! Bhatta slips confiscated!",
+                politician: "🛑 STOPPED! Anti-corruption interception!"
+              };
+              const phrase = brakePhrases[bg.evilType] || "🛑 INTERCEPTED! Target halted!";
+              if (ud && ud.drawBubble) {
+                ud.drawBubble(phrase);
               }
             }
+          } else if (playerDist > 16.0) {
+            // Player moved far away; release interception hold
+            bg.isInterceptionBraking = false;
+            bg.hasTriggeredInterceptBrake = false;
+            bg.interceptHoldTimer = 0;
+          } else if (bg.interceptHoldTimer > 0) {
+            bg.interceptHoldTimer -= dt;
+          }
 
-            if (forwardBlocked) {
-              // Evasively turn down the cross-street avenue
-              const altX = -normZ;
-              const altZ = normX;
-              normX = altX;
-              normZ = altZ;
+          // Speeds
+          const speedMap = {
+            onewheeler: 9.8,
+            vip: 9.0,
+            tanker: 8.0,
+            robber: 7.8,
+            bhatta: 7.4,
+            politician: 7.0
+          };
+          const baseFleeSpeed = ud?.runSpeed || speedMap[bg.evilType] || 7.0;
+          // Proximity surge when chased at medium distance, but drops to 0 when intercepted
+          const proximitySurge = (playerDist < 12.0 && playerDist > interceptRange + 0.8) ? 1.15 : 1.0;
+          const effectiveFleeSpeed = isIntercepted ? 0 : baseFleeSpeed * proximitySurge;
+
+          // 2. Road Network Corridor Navigation for Vehicles
+          if (isVehicle) {
+            const roadGrid = [-96, -48, 0, 48, 96];
+
+            let bestRx = roadGrid[0];
+            let minDiffX = Math.abs(bgPos.x - bestRx);
+            for (let r = 1; r < roadGrid.length; r++) {
+              const d = Math.abs(bgPos.x - roadGrid[r]);
+              if (d < minDiffX) { minDiffX = d; bestRx = roadGrid[r]; }
             }
 
-            // Subtle lateral weaving for agile runners & racers
-            const weave = (bg.evilType === 'onewheeler' || bg.evilType === 'robber') ? Math.sin(nowTime * 4.5 + i) * 0.25 : 0;
-            const finalDirX = normX + (-normZ) * weave;
-            const finalDirZ = normZ + (normX) * weave;
-            const finalLen = Math.hypot(finalDirX, finalDirZ) || 1.0;
+            let bestRz = roadGrid[0];
+            let minDiffZ = Math.abs(bgPos.z - bestRz);
+            for (let r = 1; r < roadGrid.length; r++) {
+              const d = Math.abs(bgPos.z - roadGrid[r]);
+              if (d < minDiffZ) { minDiffZ = d; bestRz = roadGrid[r]; }
+            }
 
-            // Proximity speed surge: if hero is breathing down their neck (<8m), they hit the gas / sprint frantically!
-            const proximitySurge = (playerDist < 8.0) ? 1.25 : 1.0;
-            const effectiveFleeSpeed = fleeSpeed * proximitySurge;
+            if (!bg.roadAxis) {
+              bg.roadAxis = (minDiffX <= minDiffZ) ? 'NS' : 'EW';
+            }
 
-            let nextX = THREE.MathUtils.clamp(bgPos.x + (finalDirX / finalLen) * dt * effectiveFleeSpeed, -92, 92);
-            let nextZ = THREE.MathUtils.clamp(bgPos.z + (finalDirZ / finalLen) * dt * effectiveFleeSpeed, -92, 92);
+            if (effectiveFleeSpeed > 0) {
+              let moveDirX = 0;
+              let moveDirZ = 0;
 
-            // Wall slide collision guard
-            const pad = 1.4;
-            for (let o = 0; o < obstacles.length; o++) {
-              const obs = obstacles[o];
-              if (!obs || !obs.isBox) continue;
-              if (nextX > obs.minX - pad && nextX < obs.maxX + pad && nextZ > obs.minZ - pad && nextZ < obs.maxZ + pad) {
-                if (bgPos.x <= obs.minX - pad || bgPos.x >= obs.maxX + pad) nextX = bgPos.x;
-                if (bgPos.z <= obs.minZ - pad || bgPos.z >= obs.maxZ + pad) nextZ = bgPos.z;
+              if (bg.roadAxis === 'NS') {
+                let dirZ = (this.player.position.z > bgPos.z) ? -1 : 1;
+                const nearIntersection = (minDiffZ < 5.0);
+                const nearBoundary = (bgPos.z < -82 && dirZ < 0) || (bgPos.z > 82 && dirZ > 0);
+
+                if (nearIntersection && nearBoundary) {
+                  bg.roadAxis = 'EW';
+                  let dirX = (this.player.position.x > bgPos.x) ? -1 : 1;
+                  moveDirX = dirX;
+                  moveDirZ = 0;
+                } else {
+                  moveDirZ = dirZ;
+                  const laneOffset = (i % 2 === 0 ? 1.6 : -1.6);
+                  const targetX = bestRx + laneOffset;
+                  moveDirX = THREE.MathUtils.clamp((targetX - bgPos.x) * 2.2, -1.0, 1.0);
+                }
+              } else {
+                let dirX = (this.player.position.x > bgPos.x) ? -1 : 1;
+                const nearIntersection = (minDiffX < 5.0);
+                const nearBoundary = (bgPos.x < -82 && dirX < 0) || (bgPos.x > 82 && dirX > 0);
+
+                if (nearIntersection && nearBoundary) {
+                  bg.roadAxis = 'NS';
+                  let dirZ = (this.player.position.z > bgPos.z) ? -1 : 1;
+                  moveDirZ = dirZ;
+                  moveDirX = 0;
+                } else {
+                  moveDirX = dirX;
+                  const laneOffset = (i % 2 === 0 ? 1.6 : -1.6);
+                  const targetZ = bestRz + laneOffset;
+                  moveDirZ = THREE.MathUtils.clamp((targetZ - bgPos.z) * 2.2, -1.0, 1.0);
+                }
+              }
+
+              let nextX = bgPos.x + moveDirX * dt * effectiveFleeSpeed;
+              let nextZ = bgPos.z + moveDirZ * dt * effectiveFleeSpeed;
+
+              // Road lane clamping - vehicle stays strictly within the 14m road corridor!
+              if (bg.roadAxis === 'NS') {
+                nextX = THREE.MathUtils.clamp(nextX, bestRx - 5.2, bestRx + 5.2);
+                nextZ = THREE.MathUtils.clamp(nextZ, -88, 88);
+              } else {
+                nextX = THREE.MathUtils.clamp(nextX, -88, 88);
+                nextZ = THREE.MathUtils.clamp(nextZ, bestRz - 5.2, bestRz + 5.2);
+              }
+
+              bgPos.x = nextX;
+              bgPos.z = nextZ;
+
+              const targetRotY = Math.atan2(moveDirX, moveDirZ);
+              let diff = targetRotY - bgMesh.rotation.y;
+              while (diff > Math.PI) diff -= Math.PI * 2;
+              while (diff < -Math.PI) diff += Math.PI * 2;
+              bgMesh.rotation.y += diff * Math.min(1.0, dt * 10.0);
+
+              if (bg.evilType === 'onewheeler') {
+                bgMesh.rotation.x = -0.32; // Wheelie!
+              }
+
+              if (Math.random() < 0.28) {
+                this.particles.createSkidSmoke(bgPos, 3);
+              }
+            } else {
+              // Intercepted / Halted vehicle state
+              if (Math.random() < 0.12) {
+                this.particles.createSkidSmoke(bgPos, 2);
+              }
+              if (bg.evilType === 'onewheeler') {
+                bgMesh.rotation.x = 0;
               }
             }
+          } else {
+            // 3. Pedestrian Runners (Robbers, Bhatta Collectors, Corrupt Officials)
+            if (effectiveFleeSpeed > 0) {
+              const fleeX = bgPos.x - this.player.position.x;
+              const fleeZ = bgPos.z - this.player.position.z;
+              const len = Math.hypot(fleeX, fleeZ) || 1.0;
+              let normX = fleeX / len;
+              let normZ = fleeZ / len;
 
-            bgPos.x = nextX;
-            bgPos.z = nextZ;
-            bgMesh.rotation.y = Math.atan2(finalDirX, finalDirZ);
+              let nextX = THREE.MathUtils.clamp(bgPos.x + normX * dt * effectiveFleeSpeed, -88, 88);
+              let nextZ = THREE.MathUtils.clamp(bgPos.z + normZ * dt * effectiveFleeSpeed, -88, 88);
 
-            // Vehicle animations & stunts
-            if (bg.evilType === 'onewheeler') {
-              bgMesh.rotation.x = -0.32; // Wheelie!
-            }
+              // Slide smoothly along box obstacles without vibrating into corners
+              const obstacles = this.cityGen?.obstacles || [];
+              const pad = 1.3;
+              for (let o = 0; o < obstacles.length; o++) {
+                const obs = obstacles[o];
+                if (!obs || !obs.isBox || obs.item === bg) continue;
+                if (nextX > obs.minX - pad && nextX < obs.maxX + pad && nextZ > obs.minZ - pad && nextZ < obs.maxZ + pad) {
+                  if (Math.abs(normX) > Math.abs(normZ)) {
+                    nextX = (bgPos.x < obs.cx) ? obs.minX - pad : obs.maxX + pad;
+                  } else {
+                    nextZ = (bgPos.z < obs.cz) ? obs.minZ - pad : obs.maxZ + pad;
+                  }
+                }
+              }
 
-            // Tire skid smoke puffs as fleeing vehicles peel out down the road
-            if ((bg.evilType === 'vip' || bg.evilType === 'tanker' || bg.evilType === 'onewheeler') && Math.random() < 0.28) {
-              this.particles.createSkidSmoke(bgPos, 3);
+              bgPos.x = nextX;
+              bgPos.z = nextZ;
+              bgMesh.rotation.y = Math.atan2(normX, normZ);
+
+              if (ud && ud.legL && ud.legR) {
+                ud.runCycle = (ud.runCycle || 0) + dt * 22;
+                ud.legL.rotation.x = Math.sin(ud.runCycle) * 1.1;
+                ud.legR.rotation.x = -Math.sin(ud.runCycle) * 1.1;
+                if (ud.armL && ud.armR) {
+                  ud.armL.rotation.z = 1.4 + Math.sin(ud.runCycle) * 0.6;
+                  ud.armR.rotation.z = -1.4 - Math.sin(ud.runCycle) * 0.6;
+                }
+              }
+            } else {
+              // Intercepted / Cornered suspect raises hands in surrender
+              if (ud && ud.armL && ud.armR) {
+                ud.armL.rotation.z = 2.4;
+                ud.armR.rotation.z = -2.4;
+              }
             }
           }
 
-          // Flailing limb panic animations for human runners
-          if (ud && ud.legL && ud.legR) {
-            const panicMult = (playerDist < 8.0) ? 1.4 : 1.0;
-            ud.runCycle = (ud.runCycle || 0) + dt * 24 * panicMult;
-            ud.legL.rotation.x = Math.sin(ud.runCycle) * 1.1;
-            ud.legR.rotation.x = -Math.sin(ud.runCycle) * 1.1;
-            if (ud.armL && ud.armR) {
-              ud.armL.rotation.z = 1.4 + Math.sin(ud.runCycle) * 0.6;
-              ud.armR.rotation.z = -1.4 - Math.sin(ud.runCycle) * 0.6;
-            }
-          }
-
-          // Dynamic GTA escape speech bubble & audio alert
+          // Initial escape alert speech & sound
           if (!bg.hasPanickedEscape) {
             bg.hasPanickedEscape = true;
             if (bg.evilType === 'vip') audio.playVIPHooter();
@@ -1979,9 +2081,16 @@ class Game {
           const dz = this.player.position.z - objPos.z;
           const distSq = dx * dx + dz * dz;
 
-          // Must be directly ON TOP of the object (inside player hole opening)
-          const onTopThreshold = Math.max(1.1, this.player.radius * 0.88);
+          // Target radius adjustment (large vehicles like tanker are ~3.0m)
+          const isLargeTarget = (obj.evilType === 'tanker' || obj.evilType === 'vip' || (obj.radius && obj.radius >= 2.5));
+          const onTopThreshold = Math.max(1.3, this.player.radius * 0.94 + (isLargeTarget ? 0.9 : 0.0));
           const isOnTop = (distSq <= onTopThreshold * onTopThreshold);
+
+          // If hero reaches proximity of moving target, trigger interception hold immediately
+          if (distSq <= (this.player.radius + 1.8) * (this.player.radius + 1.8)) {
+            obj.isInterceptionBraking = true;
+            obj.interceptHoldTimer = 3.0;
+          }
 
           if (isOnTop) {
             activeResolvingThreat = true;
@@ -1993,7 +2102,10 @@ class Game {
               }
             }
 
-            const REQUIRED_RESOLVE_TIME = 1.5; // ~1.5 seconds active dwell
+            const isMobileOrVehicle = (obj.evilType === 'tanker' || obj.evilType === 'vip' ||
+                                       obj.evilType === 'onewheeler' || obj.evilType === 'robber' ||
+                                       obj.evilType === 'bhatta' || obj.evilType === 'politician');
+            const REQUIRED_RESOLVE_TIME = isMobileOrVehicle ? 1.1 : 1.4;
             obj.resolveTimer += dt;
             const progress = Math.min(1.0, obj.resolveTimer / REQUIRED_RESOLVE_TIME);
 
@@ -2009,7 +2121,7 @@ class Game {
             if (Math.random() < 0.35) {
               this.particles.createCleanseSparkleBurst(objPos, 3);
             }
-            if (!obj.lastHaptic || performance.now() - obj.lastHaptic > 320) {
+            if (!obj.lastHaptic || performance.now() - obj.lastHaptic > 300) {
               audio.vibrate(15);
               obj.lastHaptic = performance.now();
             }
@@ -2024,9 +2136,9 @@ class Game {
               this.resolveDistrictThreat(obj, this.player);
             }
           } else {
-            // Player moved off the object: decay resolve timer
+            // Player moved off the object: decay gently so minor thumb adjustments don't wipe out progress
             if (obj.resolveTimer && obj.resolveTimer > 0) {
-              obj.resolveTimer = Math.max(0, obj.resolveTimer - dt * 3.5);
+              obj.resolveTimer = Math.max(0, obj.resolveTimer - dt * 1.0);
               if (obj.resolveTimer === 0) {
                 if (obj.mesh) {
                   obj.mesh.position.y = obj.baseY !== undefined ? obj.baseY : objPos.y;

@@ -598,7 +598,7 @@ export class CityGenerator {
       } catch (e) {}
       this.obstacles.push(obsData);
     }
-    if (isTransport || (item.isBadGuy && (item.evilType === 'tanker' || item.evilType === 'vip'))) {
+    if (isTransport && !item.isBadGuy && !item.isDistrictEvil) {
       if (!this.transportVehicles) this.transportVehicles = [];
       this.transportVehicles.push(item);
       let obsData = { position: mesh.position, radius: Math.max(1.4, (radius || 1.8) * 0.9), mesh, item };

@@ -270,6 +270,7 @@ export class Hole {
           const obs = obstacles[i];
           if (!obs) continue;
           if (obs.mesh && (obs.mesh.userData?.isSwallowed || obs.mesh.parent === null || obs.mesh.visible === false || obs.item?.state === 'swallowed')) continue;
+          if (obs.item && (obs.item.isDistrictEvil || obs.item.isBadGuy)) continue;
 
           if (obs.isBox) {
             let minX = obs.minX, maxX = obs.maxX, minZ = obs.minZ, maxZ = obs.maxZ;
