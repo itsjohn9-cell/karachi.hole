@@ -5262,3 +5262,151 @@ html, body {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ==========================================================================
+   GOD MODE IN-GAME DRAWER & CONTROLS
+   ========================================================================== */
+#god-mode-toggle-btn {
+  position: fixed;
+  bottom: 164px;
+  right: 14px;
+  z-index: 99998;
+  background: rgba(18, 12, 32, 0.92);
+  border: 1.5px solid #ffd700;
+  color: #ffd700;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(8px);
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+#god-mode-toggle-btn:hover {
+  background: #ffd700;
+  color: #050b14;
+  box-shadow: 0 0 22px rgba(255, 215, 0, 0.85);
+  transform: scale(1.05);
+}
+
+#god-mode-panel {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  width: 380px;
+  max-width: calc(100vw - 28px);
+  max-height: calc(100vh - 28px);
+  z-index: 99999;
+  background: rgba(12, 16, 28, 0.96);
+  border: 1.5px solid #ffd700;
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(255, 215, 0, 0.3);
+  color: #f0f6fc;
+  font-family: 'Outfit', -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+  animation: slideInGod 0.25s ease-out;
+}
+
+@keyframes slideInGod {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.god-inpanel-header {
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.18) 0%, rgba(0, 229, 255, 0.12) 100%);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.god-inpanel-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffd700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.5px;
+}
+
+.god-inpanel-body {
+  padding: 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 120px);
+}
+
+.god-inpanel-section {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.god-inpanel-sec-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffd700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.god-inpanel-btn-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.god-inpanel-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.god-inpanel-btn:hover {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #ffd700;
+  color: #ffd700;
+}
+.god-inpanel-btn.btn-dash-link {
+  grid-column: span 2;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.2) 0%, rgba(0, 255, 157, 0.18) 100%);
+  border: 1px solid #00e5ff;
+  color: #00e5ff;
+  font-weight: 700;
+  padding: 10px;
+  text-decoration: none;
+}
+.god-inpanel-btn.btn-dash-link:hover {
+  background: linear-gradient(135deg, #00e5ff 0%, #00ff9d 100%);
+  color: #050b14;
+}
+

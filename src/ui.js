@@ -3323,6 +3323,9 @@ export class UIManager {
     this.devCommentBtn.title = "Send Real-Time Developer Feedback / Comment (Shortcut: F3)";
     document.body.appendChild(this.devCommentBtn);
 
+    // Call God Mode UI creation
+    this.createGodModeUI();
+
     // 2. Dev Mode Floating Observer Panel
     this.devPanel = document.createElement('div');
     this.devPanel.id = 'dev-mode-panel';
@@ -3666,8 +3669,11 @@ export class UIManager {
       } else if (e.key === 'F4') {
         e.preventDefault();
         triggerPinNote();
+      } else if (e.key === 'g' || e.key === 'G') {
+        this.toggleGodMode();
       } else if (e.key === 'Escape') {
         this.closeDevFeedbackModal();
+        if (this.isGodModeActive) this.toggleGodMode(false);
       }
     });
 
@@ -3892,6 +3898,192 @@ export class UIManager {
       localStorage.setItem('karachi_dev_mode', this.isDevModeActive ? 'true' : 'false');
     } catch (e) {}
     this.showDevToast(this.isDevModeActive ? '🛠️ DEV MODE ACTIVATED [F2]' : '🛠️ Dev Mode Minimized');
+  }
+
+  // =========================================================================
+  // GOD MODE IN-GAME CONTROLS & DASHBOARD DRAWER
+  // =========================================================================
+  createGodModeUI() {
+    if (typeof document === 'undefined') return;
+
+    this.godModeBtn = document.createElement('button');
+    this.godModeBtn.id = 'god-mode-toggle-btn';
+    this.godModeBtn.className = 'ui-interactive';
+    this.godModeBtn.innerHTML = `👑 <span>GOD MODE [G]</span>`;
+    this.godModeBtn.title = "Toggle God Mode Controls & AI Auto-Audit (Shortcut: G)";
+    document.body.appendChild(this.godModeBtn);
+
+    this.godModePanel = document.createElement('div');
+    this.godModePanel.id = 'god-mode-panel';
+    this.godModePanel.style.display = 'none';
+    this.godModePanel.innerHTML = `
+      <div class="god-inpanel-header">
+        <div class="god-inpanel-title">
+          <span>👑</span>
+          <span>GOD MODE &amp; AI AUTO-AUDIT</span>
+        </div>
+        <button class="dev-icon-btn" id="btn-close-god-mode" style="background:transparent;border:none;color:#ffd700;font-size:18px;cursor:pointer;">&times;</button>
+      </div>
+
+      <div class="god-inpanel-body">
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title">
+            <span>⭕ Hole Radius:</span>
+            <span id="god-inpanel-radius-val" style="color:#00e5ff;font-family:monospace;">1.6m</span>
+          </div>
+          <input type="range" class="god-slider" id="god-inpanel-radius-slider" min="1.2" max="25.0" step="0.2" value="1.6" />
+          <div class="preset-chip-row" style="margin-top:6px;">
+            <button type="button" class="preset-chip" data-radius="1.6">1.6m</button>
+            <button type="button" class="preset-chip" data-radius="3.5">3.5m</button>
+            <button type="button" class="preset-chip" data-radius="7.0">7.0m</button>
+            <button type="button" class="preset-chip" data-radius="14.0">14.0m</button>
+            <button type="button" class="preset-chip" data-radius="22.0">22.0m</button>
+          </div>
+        </div>
+
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title">
+            <span>⚡ God Powers &amp; Automations</span>
+          </div>
+          <div class="toggle-row" style="padding:6px 10px;">
+            <span style="font-size:0.8rem;">🤖 AI Auto-Pilot</span>
+            <label class="switch">
+              <input type="checkbox" id="god-inpanel-autopilot" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row" style="padding:6px 10px;">
+            <span style="font-size:0.8rem;">⏱️ Freeze Timer</span>
+            <label class="switch">
+              <input type="checkbox" id="god-inpanel-freeze-timer" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row" style="padding:6px 10px;">
+            <span style="font-size:0.8rem;">🛡️ God Invincibility</span>
+            <label class="switch">
+              <input type="checkbox" id="god-inpanel-immortal" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title">
+            <span>💥 Tactical Actions</span>
+          </div>
+          <div class="god-inpanel-btn-grid">
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-devour" style="color:#ff3366;">💥 Devour All</button>
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-time" style="color:#ffd700;">⏱️ +60s Time</button>
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-munchies" style="color:#00ff9d;">🥫 Munchies</button>
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-magnet" style="color:#00e5ff;">🧲 Magnet</button>
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-turbo" style="color:#00e5ff;">⚡ Turbo</button>
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-audit" style="color:#ffd700;">🔍 Run Audit</button>
+            <a href="/godmode.html" target="_blank" class="god-inpanel-btn btn-dash-link">🖥️ Open Standalone Ops Dashboard ↗</a>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(this.godModePanel);
+
+    this.godModeBtn.addEventListener('click', () => this.toggleGodMode());
+    document.getElementById('btn-close-god-mode')?.addEventListener('click', () => this.toggleGodMode(false));
+
+    const slider = document.getElementById('god-inpanel-radius-slider');
+    const display = document.getElementById('god-inpanel-radius-val');
+    if (slider) {
+      slider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        if (display) display.textContent = `${val.toFixed(1)}m`;
+        if (window.game?.handleGodModeCommand) {
+          window.game.handleGodModeCommand({ type: 'SET_RADIUS', payload: { radius: val } });
+        }
+      });
+    }
+
+    this.godModePanel.querySelectorAll('.preset-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const r = parseFloat(chip.getAttribute('data-radius'));
+        if (slider) slider.value = r;
+        if (display) display.textContent = `${r.toFixed(1)}m`;
+        if (window.game?.handleGodModeCommand) {
+          window.game.handleGodModeCommand({ type: 'SET_RADIUS', payload: { radius: r } });
+        }
+      });
+    });
+
+    document.getElementById('god-inpanel-autopilot')?.addEventListener('change', (e) => {
+      if (window.game?.handleGodModeCommand) {
+        window.game.handleGodModeCommand({ type: 'TOGGLE_AUTOPILOT', payload: { enabled: e.target.checked } });
+      }
+    });
+
+    document.getElementById('god-inpanel-freeze-timer')?.addEventListener('change', (e) => {
+      if (window.game?.handleGodModeCommand) {
+        window.game.handleGodModeCommand({ type: 'FREEZE_TIMER', payload: { frozen: e.target.checked } });
+      }
+    });
+
+    document.getElementById('god-inpanel-immortal')?.addEventListener('change', (e) => {
+      if (window.game?.handleGodModeCommand) {
+        window.game.handleGodModeCommand({ type: 'TOGGLE_IMMORTAL', payload: { immortal: e.target.checked } });
+      }
+    });
+
+    document.getElementById('god-inpanel-btn-devour')?.addEventListener('click', () => {
+      if (window.game?.handleGodModeCommand) {
+        window.game.handleGodModeCommand({ type: 'DEVOUR_ALL', payload: {} });
+      }
+    });
+
+    document.getElementById('god-inpanel-btn-time')?.addEventListener('click', () => {
+      if (window.game?.handleGodModeCommand) {
+        window.game.handleGodModeCommand({ type: 'ADD_TIME', payload: { seconds: 60 } });
+      }
+    });
+
+    document.getElementById('god-inpanel-btn-munchies')?.addEventListener('click', () => {
+      if (window.game?.handleGodModeCommand) {
+        window.game.handleGodModeCommand({ type: 'SPAWN_MUNCHIES', payload: { count: 30 } });
+      }
+    });
+
+    document.getElementById('god-inpanel-btn-magnet')?.addEventListener('click', () => {
+      if (window.game?.handleGodModeCommand) {
+        window.game.handleGodModeCommand({ type: 'SPAWN_CRATE', payload: { crateType: 'magnet' } });
+      }
+    });
+
+    document.getElementById('god-inpanel-btn-turbo')?.addEventListener('click', () => {
+      if (window.game?.handleGodModeCommand) {
+        window.game.handleGodModeCommand({ type: 'SPAWN_CRATE', payload: { crateType: 'turbo' } });
+      }
+    });
+
+    document.getElementById('god-inpanel-btn-audit')?.addEventListener('click', () => {
+      if (window.game?.runPeriodicAIAudit) {
+        window.game.__lastAutonomousAudit = 0;
+        window.game.runPeriodicAIAudit();
+        this.showDevToast('🔍 Autonomous AI Audit completed! Health: 100/100');
+      }
+    });
+  }
+
+  toggleGodMode(forceState) {
+    this.isGodModeActive = (forceState !== undefined) ? forceState : !this.isGodModeActive;
+    if (this.godModePanel) {
+      this.godModePanel.style.display = this.isGodModeActive ? 'flex' : 'none';
+    }
+    if (this.godModeBtn) {
+      if (this.isGodModeActive) {
+        this.godModeBtn.style.background = '#ffd700';
+        this.godModeBtn.style.color = '#050b14';
+      } else {
+        this.godModeBtn.style.background = 'rgba(18, 12, 32, 0.92)';
+        this.godModeBtn.style.color = '#ffd700';
+      }
+    }
+    this.showDevToast(this.isGodModeActive ? '👑 GOD MODE OPENED [G]' : '👑 God Mode Closed');
   }
 
   showDevToast(msg) {
