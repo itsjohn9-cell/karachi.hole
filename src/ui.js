@@ -3308,13 +3308,20 @@ export class UIManager {
   createDevModeUI() {
     if (typeof document === 'undefined') return;
 
-    // 1. Floating Toggle Pill (Always reachable)
+    // 1. Floating Toggle & Feedback Pills (Always reachable)
     this.devToggleBtn = document.createElement('button');
     this.devToggleBtn.id = 'dev-mode-toggle-btn';
     this.devToggleBtn.className = 'ui-interactive';
     this.devToggleBtn.innerHTML = `🛠️ <span>DEV MODE [F2]</span>`;
     this.devToggleBtn.title = "Toggle Developer Observer HUD (Shortcut: F2 or ~)";
     document.body.appendChild(this.devToggleBtn);
+
+    this.devCommentBtn = document.createElement('button');
+    this.devCommentBtn.id = 'dev-comment-btn';
+    this.devCommentBtn.className = 'ui-interactive';
+    this.devCommentBtn.innerHTML = `💬 <span>FEEDBACK [F3]</span>`;
+    this.devCommentBtn.title = "Send Real-Time Developer Feedback / Comment (Shortcut: F3)";
+    document.body.appendChild(this.devCommentBtn);
 
     // 2. Dev Mode Floating Observer Panel
     this.devPanel = document.createElement('div');
@@ -3385,6 +3392,31 @@ export class UIManager {
           <button class="dev-btn" id="btn-dev-copy-telemetry">📋 Copy Telemetry</button>
         </div>
 
+        <!-- Auto-Notes & Flight Recorder For AI Assistant -->
+        <span class="dev-section-title">🤖 AI Assistant Flight Recorder</span>
+        <div class="dev-actions-grid">
+          <button class="dev-btn btn-accent" id="btn-dev-pin-note">📝 Pin Bug / Note [F4]</button>
+          <button class="dev-btn btn-success" id="btn-dev-copy-flight">📦 Export Flight Logs for AI</button>
+          <button class="dev-btn" id="btn-dev-clear-flight">🧹 Clear Flight Logs</button>
+        </div>
+
+        <!-- Live Player Feedback & Real-Time Comments -->
+        <div class="dev-section-header">
+          <span class="dev-section-title">💬 Live Player Feedback &amp; Comments</span>
+          <span class="dev-badge-count" id="dev-comments-count">0 Notes</span>
+        </div>
+        <div class="dev-feedback-quick-box">
+          <input type="text" id="dev-quick-comment-input" placeholder="Type quick live feedback &amp; press Enter..." />
+          <button class="dev-btn btn-success" id="btn-dev-send-quick-comment">Send</button>
+        </div>
+        <div class="dev-actions-grid">
+          <button class="dev-btn btn-accent" id="btn-dev-open-feedback-modal">💬 Rich Feedback Dialog [F3]</button>
+          <button class="dev-btn btn-success" id="btn-dev-copy-feedback">📋 Copy Feedback Summary</button>
+        </div>
+        <div class="dev-comments-history" id="dev-comments-history">
+          <div class="dev-empty-comments">No feedback notes yet. Press F3 or type above!</div>
+        </div>
+
         <!-- Live Devour / Event Log -->
         <span class="dev-section-title">📋 Live Event &amp; Devour Log</span>
         <div class="dev-log-container" id="dev-log-container">
@@ -3393,6 +3425,7 @@ export class UIManager {
       </div>
     `;
     document.body.appendChild(this.devPanel);
+    this.createDevFeedbackModal();
 
     // Initial state check
     try {
@@ -3501,18 +3534,350 @@ export class UIManager {
       }
     });
 
-    // Global Key Listener for F2 and ~
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'F2' || e.key === '`') {
-        this.toggleDevMode();
+    // Auto-Notes: Pin Bug / Note
+    const triggerPinNote = () => {
+      const input = prompt("📝 Quick Bug Note for AI:\n(e.g. 'Tanker moved off road' or 'Pothole suction failed'):", "");
+      if (input !== null) {
+        const text = input.trim() || 'Player flagged bug at this position';
+        if (window.game && window.game.recordDevNote) {
+          window.game.recordDevNote('USER_BUG_REPORT', text, {
+            flaggedByUser: true
+          });
+        }
+        this.showDevToast('📝 Bug note recorded in flight logs!');
+      }
+    };
+
+    document.getElementById('btn-dev-pin-note')?.addEventListener('click', () => {
+      triggerPinNote();
+    });
+
+    document.getElementById('btn-dev-copy-flight')?.addEventListener('click', () => {
+      const notes = window.__DEV_NOTES__ || [];
+      const report = {
+        exportedAt: new Date().toISOString(),
+        totalNotes: notes.length,
+        currentTelemetry: window.__DEV_TELEMETRY__ || {},
+        flightNotes: notes
+      };
+      const jsonStr = JSON.stringify(report, null, 2);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(jsonStr).then(() => {
+          this.showDevToast('📦 Copied Flight Logs & Notes for AI!');
+        }).catch(() => {
+          console.log('[AI_FLIGHT_LOGS]', report);
+          this.showDevToast('📦 Flight logs logged to browser console!');
+        });
+      } else {
+        console.log('[AI_FLIGHT_LOGS]', report);
+        this.showDevToast('📦 Flight logs logged to browser console!');
       }
     });
+
+    document.getElementById('btn-dev-clear-flight')?.addEventListener('click', () => {
+      window.__DEV_NOTES__ = [];
+      try {
+        localStorage.removeItem('karachi_dev_flight_recorder');
+      } catch (e) {}
+      this.showDevToast('🧹 Flight logs cleared!');
+      this.appendDevLog('[LOGS_CLEARED] Flight recorder reset.', 'info');
+      this.renderDevCommentsHistory();
+    });
+
+    // Real-Time Feedback & Comments Listeners
+    this.devCommentBtn?.addEventListener('click', () => {
+      this.openDevFeedbackModal();
+    });
+
+    document.getElementById('btn-dev-open-feedback-modal')?.addEventListener('click', () => {
+      this.openDevFeedbackModal();
+    });
+
+    const sendQuickComment = () => {
+      const input = document.getElementById('dev-quick-comment-input');
+      if (input && input.value.trim()) {
+        this.submitDevFeedback(input.value.trim(), '💬 Quick Live Note', false);
+        input.value = '';
+      }
+    };
+    document.getElementById('btn-dev-send-quick-comment')?.addEventListener('click', sendQuickComment);
+    document.getElementById('dev-quick-comment-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendQuickComment();
+      }
+    });
+
+    document.getElementById('btn-dev-copy-feedback')?.addEventListener('click', () => {
+      this.copyFeedbackSummary();
+    });
+
+    // Category pills selection inside Feedback Modal
+    this.feedbackModal?.querySelectorAll('.dev-cat-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        this.feedbackModal.querySelectorAll('.dev-cat-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+      });
+    });
+
+    // Quick chips insertion inside Feedback Modal
+    this.feedbackModal?.querySelectorAll('.dev-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const textarea = document.getElementById('dev-feedback-comment');
+        if (textarea) {
+          const chipText = chip.dataset.chip || chip.textContent;
+          if (textarea.value.trim()) {
+            textarea.value = `${textarea.value.trim()} - ${chipText}`;
+          } else {
+            textarea.value = chipText;
+          }
+          textarea.focus();
+        }
+      });
+    });
+
+    document.getElementById('btn-submit-dev-feedback')?.addEventListener('click', () => {
+      const textarea = document.getElementById('dev-feedback-comment');
+      const activePill = this.feedbackModal?.querySelector('.dev-cat-pill.active');
+      const cat = activePill ? (activePill.dataset.cat || activePill.textContent) : '🐛 Bug / Glitch';
+      const attachSnap = document.getElementById('dev-fb-attach-snapshot')?.checked ?? true;
+      this.submitDevFeedback(textarea?.value || '', cat, attachSnap);
+    });
+
+    document.getElementById('btn-close-dev-feedback')?.addEventListener('click', () => this.closeDevFeedbackModal());
+    document.getElementById('btn-cancel-dev-feedback')?.addEventListener('click', () => this.closeDevFeedbackModal());
+
+    // Global Key Listener for F2 (Dev HUD), ~ / F3 (Feedback) and F4 (Pin Bug)
+    window.addEventListener('keydown', (e) => {
+      // Allow unrestricted typing inside inputs/textareas without triggering game hotkeys
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+        if (e.key === 'Escape') {
+          this.closeDevFeedbackModal();
+          e.target.blur();
+        }
+        return;
+      }
+
+      if (e.key === 'F2' || e.key === '`') {
+        this.toggleDevMode();
+      } else if (e.key === 'F3') {
+        e.preventDefault();
+        this.openDevFeedbackModal();
+      } else if (e.key === 'F4') {
+        e.preventDefault();
+        triggerPinNote();
+      } else if (e.key === 'Escape') {
+        this.closeDevFeedbackModal();
+      }
+    });
+
+    // Render initial comments history
+    this.renderDevCommentsHistory();
+  }
+
+  createDevFeedbackModal() {
+    this.feedbackModal = document.createElement('div');
+    this.feedbackModal.className = 'modal-backdrop dev-feedback-backdrop';
+    this.feedbackModal.id = 'modal-dev-feedback';
+    this.feedbackModal.style.display = 'none';
+
+    this.feedbackModal.innerHTML = `
+      <div class="modal-card dev-feedback-card">
+        <div class="modal-header dev-feedback-header">
+          <div class="journal-title-row">
+            <span class="journal-crest">💬</span>
+            <div>
+              <h2 class="journal-main-title">LIVE DEV FEEDBACK &amp; ISSUE REPORTER</h2>
+              <span class="journal-sub-title" id="dev-feedback-telemetry-badge">District 1 • Time: 240s • Pos: (0.0, 0.0)</span>
+            </div>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-dev-feedback">&times;</button>
+        </div>
+
+        <div class="dev-feedback-body">
+          <div class="dev-fb-section">
+            <label class="dev-fb-label">🏷️ Select Feedback Category:</label>
+            <div class="dev-category-pills" id="dev-category-pills">
+              <button type="button" class="dev-cat-pill active" data-cat="🐛 Bug / Glitch">🐛 Bug / Glitch</button>
+              <button type="button" class="dev-cat-pill" data-cat="🛣️ Road / Escape">🛣️ Road / Escape</button>
+              <button type="button" class="dev-cat-pill" data-cat="🕳️ Devour Suction">🕳️ Devour Suction</button>
+              <button type="button" class="dev-cat-pill" data-cat="⏱️ Timer / Missions">⏱️ Timer / Missions</button>
+              <button type="button" class="dev-cat-pill" data-cat="⚖️ Gameplay Balance">⚖️ Gameplay Balance</button>
+              <button type="button" class="dev-cat-pill" data-cat="💡 Suggestion">💡 Suggestion</button>
+            </div>
+          </div>
+
+          <div class="dev-fb-section">
+            <label class="dev-fb-label">⚡ Quick Insert:</label>
+            <div class="dev-quick-chips" id="dev-quick-chips">
+              <button type="button" class="dev-chip" data-chip="Tanker went off the road">Tanker off-road</button>
+              <button type="button" class="dev-chip" data-chip="Devoured when not directly on top">Devour too far</button>
+              <button type="button" class="dev-chip" data-chip="Threat escaped through building">Escaped through building</button>
+              <button type="button" class="dev-chip" data-chip="Timer stopped or slowed down">Timer stalled</button>
+              <button type="button" class="dev-chip" data-chip="Points / achievement did not award">Points not awarded</button>
+              <button type="button" class="dev-chip" data-chip="Suction animation feels slow">Slow suction</button>
+            </div>
+          </div>
+
+          <div class="dev-fb-section">
+            <label class="dev-fb-label" for="dev-feedback-comment">📝 Real-Time Issue Description / Feedback:</label>
+            <textarea id="dev-feedback-comment" class="dev-fb-textarea" rows="3" placeholder="Describe the issue or feedback you noticed in real time..."></textarea>
+          </div>
+
+          <div class="dev-fb-options">
+            <label class="dev-fb-checkbox-label">
+              <input type="checkbox" id="dev-fb-attach-snapshot" checked />
+              <span>📸 Capture instant canvas &amp; 3D coordinates snapshot</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer dev-fb-footer">
+          <button class="dev-btn btn-accent" id="btn-cancel-dev-feedback">Cancel</button>
+          <button class="dev-btn btn-success" id="btn-submit-dev-feedback">🚀 Submit Feedback for AI</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(this.feedbackModal);
+  }
+
+  openDevFeedbackModal() {
+    if (!this.feedbackModal) return;
+    const t = window.__DEV_TELEMETRY__ || {};
+    const badge = document.getElementById('dev-feedback-telemetry-badge');
+    if (badge) {
+      const p = t.player || { x: 0, z: 0 };
+      badge.textContent = `District ${t.level || 1} • Time: ${(t.timeLeft || 0).toFixed(1)}s • Pos: (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`;
+    }
+    this.feedbackModal.style.display = 'flex';
+    const textarea = document.getElementById('dev-feedback-comment');
+    if (textarea) {
+      textarea.focus();
+    }
+  }
+
+  closeDevFeedbackModal() {
+    if (this.feedbackModal) {
+      this.feedbackModal.style.display = 'none';
+    }
+  }
+
+  submitDevFeedback(commentText, category = '🐛 Bug / Glitch', attachSnapshot = true) {
+    if (!commentText || !commentText.trim()) {
+      this.showDevToast('⚠️ Please enter a comment or description');
+      return;
+    }
+    const text = commentText.trim();
+    let snapshotThumb = null;
+    if (attachSnapshot) {
+      try {
+        const canvas = document.querySelector('#canvas-container canvas') || document.querySelector('canvas');
+        if (canvas) {
+          snapshotThumb = canvas.toDataURL('image/jpeg', 0.45);
+        }
+      } catch (e) {}
+    }
+
+    if (window.game && window.game.recordDevNote) {
+      window.game.recordDevNote('USER_FEEDBACK', text, {
+        category,
+        snapshotThumb,
+        flaggedByUser: true
+      });
+    }
+
+    this.showDevToast('💬 Real-time feedback recorded!');
+    this.appendDevLog(`[FEEDBACK] [${category}] ${text}`, 'info');
+    this.renderDevCommentsHistory();
+
+    const textarea = document.getElementById('dev-feedback-comment');
+    if (textarea) textarea.value = '';
+    this.closeDevFeedbackModal();
+  }
+
+  renderDevCommentsHistory() {
+    const list = document.getElementById('dev-comments-history');
+    const countBadge = document.getElementById('dev-comments-count');
+    if (!list) return;
+
+    const notes = (window.__DEV_NOTES__ || []).filter(n => 
+      n.category === 'USER_FEEDBACK' || n.category === 'USER_BUG_REPORT' || n.category === 'USER_COMMENT'
+    );
+
+    if (countBadge) {
+      countBadge.textContent = `${notes.length} Note${notes.length === 1 ? '' : 's'}`;
+    }
+
+    if (notes.length === 0) {
+      list.innerHTML = `<div class="dev-empty-comments">No feedback notes yet. Press F3 or type above!</div>`;
+      return;
+    }
+
+    list.innerHTML = notes.slice().reverse().map(n => {
+      const timeStr = n.timestamp ? new Date(n.timestamp).toLocaleTimeString() : '';
+      const cat = n.details?.category || n.category || 'Feedback';
+      let catClass = 'cat-info';
+      if (cat.includes('Bug')) catClass = 'cat-bug';
+      else if (cat.includes('Road')) catClass = 'cat-road';
+      else if (cat.includes('Suction') || cat.includes('Devour')) catClass = 'cat-suction';
+
+      const posStr = n.player ? `(${n.player.x.toFixed(1)}, ${n.player.z.toFixed(1)})` : '';
+      const thumbHtml = n.details?.snapshotThumb 
+        ? `<img src="${n.details.snapshotThumb}" alt="Snapshot" class="dev-comment-thumb" />` 
+        : '';
+
+      return `
+        <div class="dev-comment-item ${catClass}">
+          <div class="dev-comment-header">
+            <span class="dev-comment-tag">${cat}</span>
+            <span class="dev-comment-time">${timeStr}</span>
+          </div>
+          <div class="dev-comment-text">${n.message}</div>
+          <div class="dev-comment-meta">District ${n.district || 1} • Pos: ${posStr} • Left: ${n.timeLeft ? n.timeLeft + 's' : 'N/A'}</div>
+          ${thumbHtml}
+        </div>
+      `;
+    }).join('');
+  }
+
+  copyFeedbackSummary() {
+    const notes = (window.__DEV_NOTES__ || []).filter(n => 
+      n.category === 'USER_FEEDBACK' || n.category === 'USER_BUG_REPORT' || n.category === 'USER_COMMENT'
+    );
+    if (notes.length === 0) {
+      this.showDevToast('ℹ️ No feedback notes recorded yet.');
+      return;
+    }
+
+    let summary = `### 🎮 Karachi Hole.io - Live Feedback & Bug Notes (${notes.length} Total)\n\n`;
+    notes.forEach((n, idx) => {
+      const timeStr = n.timestamp ? new Date(n.timestamp).toLocaleTimeString() : '';
+      const cat = n.details?.category || n.category || 'Note';
+      const posStr = n.player ? `(X: ${n.player.x.toFixed(1)}, Z: ${n.player.z.toFixed(1)}, r: ${n.player.radius.toFixed(2)}m)` : '';
+      summary += `${idx + 1}. **[${cat}]** "${n.message}"\n`;
+      summary += `   - *Time*: ${timeStr} | *District*: ${n.district || 1} | *Clock*: ${n.timeLeft ? n.timeLeft + 's' : 'N/A'} | *Coords*: ${posStr}\n`;
+    });
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(summary).then(() => {
+        this.showDevToast('📋 Copied Feedback Summary to clipboard!');
+      }).catch(() => {
+        console.log('[AI_FEEDBACK_SUMMARY]\n', summary);
+        this.showDevToast('📋 Feedback logged to console!');
+      });
+    } else {
+      console.log('[AI_FEEDBACK_SUMMARY]\n', summary);
+      this.showDevToast('📋 Feedback logged to console!');
+    }
   }
 
   toggleDevMode(forceState) {
     this.isDevModeActive = (forceState !== undefined) ? forceState : !this.isDevModeActive;
     if (this.devPanel) {
       this.devPanel.style.display = this.isDevModeActive ? 'flex' : 'none';
+      if (this.isDevModeActive) {
+        this.renderDevCommentsHistory();
+      }
     }
     if (this.devToggleBtn) {
       if (this.isDevModeActive) {
