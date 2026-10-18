@@ -59,6 +59,7 @@ export class UIManager {
     this.activeQuizChallenge = null;
     this.isAutoPaused = false;
     this.activeDialogueCitizen = null;
+    this.civicQuizEnabled = (typeof localStorage !== 'undefined' && localStorage.getItem('hole_karachi_civic_quiz_enabled') === 'true');
 
     this.createStartMissionModal();
     this.createHUD();
@@ -510,6 +511,16 @@ export class UIManager {
             </div>
             <button class="setting-pill-toggle ui-interactive active" id="btn-menu-toggle-music">
               🎵 MUSIC: ON
+            </button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Civic Moral Questions &amp; Dilemmas</span>
+              <span class="settings-hint">Optional interactive quizzes after solving crises (Default: OFF)</span>
+            </div>
+            <button class="setting-pill-toggle ui-interactive ${this.civicQuizEnabled ? 'active' : ''}" id="btn-menu-toggle-quiz">
+              ${this.civicQuizEnabled ? '🎓 QUIZ: ON' : '🎓 QUIZ: OFF'}
             </button>
           </div>
 
@@ -2055,6 +2066,27 @@ export class UIManager {
       });
     }
 
+    // Civic Moral Dilemmas / Quiz Toggle (Default: OFF per user instruction)
+    const btnMenuToggleQuiz = document.getElementById('btn-menu-toggle-quiz');
+    if (btnMenuToggleQuiz) {
+      btnMenuToggleQuiz.addEventListener('click', () => {
+        audio.playClick();
+        this.civicQuizEnabled = !this.civicQuizEnabled;
+        try {
+          localStorage.setItem('hole_karachi_civic_quiz_enabled', this.civicQuizEnabled ? 'true' : 'false');
+        } catch (e) {}
+        if (window.game) {
+          window.game.civicQuizEnabled = this.civicQuizEnabled;
+        }
+        btnMenuToggleQuiz.textContent = this.civicQuizEnabled ? '🎓 QUIZ: ON' : '🎓 QUIZ: OFF';
+        btnMenuToggleQuiz.classList.toggle('active', this.civicQuizEnabled);
+        this.showAnnouncement(
+          this.civicQuizEnabled ? '🎓 Civic Moral Dilemmas Enabled' : '🎓 Civic Questions Disabled (Patrol Flow Focus)',
+          this.civicQuizEnabled ? '#00e5ff' : '#94a3b8'
+        );
+      });
+    }
+
     // Age Tier Pills inside Game Menu
     const menuAgePills = document.querySelectorAll('#menu-age-pills .tier-pill-btn');
     menuAgePills.forEach(pill => {
@@ -2242,6 +2274,12 @@ export class UIManager {
       const mOn = audio.musicEnabled;
       musBtn.textContent = mOn ? '🎵 MUSIC: ON' : '⏹ MUSIC: OFF';
       musBtn.classList.toggle('active', mOn);
+    }
+
+    const quizToggleBtn = document.getElementById('btn-menu-toggle-quiz');
+    if (quizToggleBtn) {
+      quizToggleBtn.textContent = this.civicQuizEnabled ? '🎓 QUIZ: ON' : '🎓 QUIZ: OFF';
+      quizToggleBtn.classList.toggle('active', this.civicQuizEnabled);
     }
 
     // Sync Age pills

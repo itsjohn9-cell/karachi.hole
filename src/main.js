@@ -30,6 +30,9 @@ class Game {
     this.districtTotal = 0;
     this.districtRemaining = 0;
 
+    // Optional Civic Quiz Dilemmas: Disabled by default per user request (Opt-in via Settings)
+    this.civicQuizEnabled = (typeof localStorage !== 'undefined' && localStorage.getItem('hole_karachi_civic_quiz_enabled') === 'true');
+
     // Before & After Transformation Monuments and Mini-Map Tracker
     this.cleanedMonuments = [];
     this.recentCleaned = [];
@@ -821,8 +824,8 @@ class Game {
 
           // Check if this was the last remaining mission
           const willFinishAll = this.crisisChallenges.every(m => m.completed);
-          if (!willFinishAll) {
-            // Mid-game educational challenge for completed crisis
+          if (!willFinishAll && this.civicQuizEnabled) {
+            // Mid-game educational challenge for completed crisis (ONLY IF EXPLICITLY ENABLED IN SETTINGS)
             setTimeout(() => {
               let quizCategory = 'cleanliness';
               if (mission.evilType === 'vip') quizCategory = 'ambulance';
