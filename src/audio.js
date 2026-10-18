@@ -1106,6 +1106,66 @@ class AudioManager {
     this.vibrate([25, 15, 35]);
   }
 
+  // Metallic Heavy Slam (Heavy iron manhole cover slamming shut, industrial valve shut)
+  playMetallicSlam() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+
+    // Dual harmonic impact
+    [180, 520, 840].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = idx === 0 ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq * 0.35), t + 0.32);
+      gain.gain.setValueAtTime(0.45 / (idx + 1), t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.32);
+    });
+    this.vibrate([40, 20, 50]);
+  }
+
+  // Sudden Vehicle Brake Screech & Roadblock Halt
+  playBrakeScreech() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+
+    // High frequency screeching friction
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1800, t);
+    osc.frequency.linearRampToValueAtTime(750, t + 0.28);
+    gain.gain.setValueAtTime(0.32, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.3);
+
+    // Deep thud of vehicle stopping
+    const thud = this.ctx.createOscillator();
+    const thudGain = this.ctx.createGain();
+    thud.type = 'triangle';
+    thud.frequency.setValueAtTime(120, t + 0.15);
+    thud.frequency.exponentialRampToValueAtTime(45, t + 0.38);
+    thudGain.gain.setValueAtTime(0.5, t + 0.15);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+    thud.connect(thudGain);
+    thudGain.connect(this.ctx.destination);
+    thud.start(t + 0.15);
+    thud.stop(t + 0.38);
+
+    this.vibrate([30, 40, 70]);
+  }
+
   stopMusic() {
     this.isPlayingMusic = false;
     if (this.musicInterval) {

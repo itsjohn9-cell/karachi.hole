@@ -410,6 +410,8 @@ export class Hole {
           const idx = Math.floor(Math.random() * edibleObjects.length);
           const obj = edibleObjects[idx];
           if (obj && obj.state !== 'swallowed' && obj.mesh) {
+            // CRITICAL: AI Bots must NEVER target or consume District Evils, Threats, or Bad Guys!
+            if (obj.isBadGuy || obj.isDistrictEvil) continue;
             const d = this.position.distanceTo(obj.mesh.position);
             if (d < closestDist && d < 45.0) {
               closestDist = d;
@@ -432,12 +434,14 @@ export class Hole {
         moveDir.set(tx / len, tz / len);
       }
 
-      // If reached target, collect it
+      // If reached target, collect ambient prop (never district threats)
       if (len < 1.8) {
-        this.addXP(this.aiTarget.points || 150);
-        this.aiTarget.state = 'swallowed';
-        if (this.aiTarget.mesh && this.aiTarget.mesh.parent) {
-          this.aiTarget.mesh.parent.remove(this.aiTarget.mesh);
+        if (!this.aiTarget.isBadGuy && !this.aiTarget.isDistrictEvil) {
+          this.addXP(this.aiTarget.points || 150);
+          this.aiTarget.state = 'swallowed';
+          if (this.aiTarget.mesh && this.aiTarget.mesh.parent) {
+            this.aiTarget.mesh.parent.remove(this.aiTarget.mesh);
+          }
         }
         this.aiTarget = null;
       }

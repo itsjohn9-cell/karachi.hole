@@ -857,6 +857,322 @@ class Game {
     }
   }
 
+  /**
+   * Practical, tactile street resolution for District Evils and Threats.
+   * Eliminates the passive "standing around waiting to sink into hole" feel.
+   * Hands-on interventions: slamming manhole covers shut, clamping tanker wheels,
+   * deploying KMC roadblocks to halt VIP convoys, grounding reckless racers, etc.
+   */
+  resolveDistrictThreat(obj, hole) {
+    if (!obj || obj.state === 'resolving' || obj.state === 'swallowed') return;
+    obj.state = 'resolving';
+
+    const objPos = (obj.mesh && obj.mesh.position) ? obj.mesh.position : (obj.position || { x: 0, y: 0, z: 0 });
+    const evilType = obj.evilType || 'evil';
+
+    // 1. Visceral GTA Hit-Stop Camera Shake
+    this.cameraShakeTimer = 0.24;
+
+    // 2. Tactile Audio & Practical 3D Street Model Deployment
+    let actionInfo = {
+      icon: '🛡️',
+      tag: 'THREAT RESOLVED',
+      title: 'STREET THREAT RESOLVED!',
+      desc: 'Karachi Hero restored civic safety and peace to the neighborhood!',
+      color: '#00e5ff'
+    };
+
+    if (evilType === 'pothole') {
+      audio.playMetallicSlam();
+      this.particles.createImpactDust(objPos, 28);
+
+      // Heavy KMC Iron Manhole Cover slammed shut
+      const cover = KarachiModels.createHeavyManholeCover();
+      cover.position.set(objPos.x, 0.04, objPos.z);
+      this.scene.add(cover);
+
+      actionInfo = {
+        icon: '🔒',
+        tag: 'OPEN SEWER SEALED',
+        title: 'MANHOLE COVER SLAMMED & BOLTED SHUT!',
+        desc: 'Hazardous gutter sealed with heavy cast-iron cover. Pedestrian risk eliminated!',
+        color: '#00e5ff'
+      };
+    } else if (evilType === 'vip') {
+      audio.playBrakeScreech();
+      audio.playVIPHooter();
+      this.particles.createSkidSmoke(objPos, 24);
+
+      // Deploy high-visibility KMC Roadblock Barricades flanking the convoy
+      const barrierF = KarachiModels.createKMCBarrier();
+      barrierF.position.set(objPos.x, 0, objPos.z + 3.2);
+      barrierF.rotation.y = Math.PI / 2;
+      this.scene.add(barrierF);
+
+      const barrierR = KarachiModels.createKMCBarrier();
+      barrierR.position.set(objPos.x, 0, objPos.z - 3.2);
+      barrierR.rotation.y = Math.PI / 2;
+      this.scene.add(barrierR);
+
+      // Free stuck traffic vehicles
+      const stuckVehicles = obj.mesh.userData?.stuckVehicles;
+      if (stuckVehicles && stuckVehicles.length > 0) {
+        stuckVehicles.forEach((v, vIdx) => {
+          v.userData.isFreed = true;
+          v.userData.freedSpeed = 5.5 + Math.random() * 2.5;
+          if (v.userData.drawTrafficBubble) {
+            const happyPhrases = [
+              "🥳 TRAFFIC FREED! VIP culture murdabad! Shukriya Street Hero!",
+              "🏥 Hospital ka rasta khul gaya! Zindabad Street Hero!",
+              "🚗 Wah Street Hero wah! Ab hum time pe pohanchengy!"
+            ];
+            v.userData.drawTrafficBubble(happyPhrases[vIdx % happyPhrases.length], true);
+          }
+          this.particles.createCelebrationConfetti(v.position, 25);
+        });
+      }
+
+      actionInfo = {
+        icon: '🛑',
+        tag: 'VIP PROTOCOL INTERCEPTED',
+        title: 'VIP CONVOY HALTED & ROADWAY RESTORED!',
+        desc: 'Unlawful protocol escort intercepted. Blocked emergency ambulances and citizen commuters are now moving freely!',
+        color: '#ff3d00'
+      };
+    } else if (evilType === 'tanker') {
+      audio.playBrakeScreech();
+      audio.playFreshwaterEruption();
+      audio.playWaterTankerDevour();
+      this.particles.createFreshwaterGeyser(objPos, 55);
+
+      // Remove illegal suction hoses & booster motor
+      const hoseGroup = obj.mesh.userData?.hoseGroup;
+      if (hoseGroup && hoseGroup.parent) {
+        hoseGroup.parent.remove(hoseGroup);
+      }
+
+      // Police Heavy Steel Wheel Clamp on tanker wheels
+      const clamp = KarachiModels.createPoliceWheelClamp();
+      clamp.position.set(objPos.x - 1.2, 0.25, objPos.z);
+      this.scene.add(clamp);
+
+      // Restore water to dry homes
+      const dryHomes = obj.mesh.userData?.dryHomes;
+      if (dryHomes && dryHomes.length > 0) {
+        dryHomes.forEach(home => {
+          home.userData.isRestored = true;
+          if (home.userData.updateWaterBillboard) home.userData.updateWaterBillboard(true);
+          this.particles.createWaterFlowStream(hole.position, home.position, 32);
+          if (home.userData.rooftopTank) {
+            const tankWorldPos = new THREE.Vector3();
+            home.userData.rooftopTank.getWorldPosition(tankWorldPos);
+            setTimeout(() => {
+              this.particles.createRooftopWaterOverflow(tankWorldPos, 45);
+              this.particles.createHeartBurst(tankWorldPos, 16);
+            }, 250);
+          }
+          const res = home.userData.resident;
+          if (res && res.userData && res.userData.drawBubble) {
+            res.userData.drawBubble("🌊 Tap water is back! Taps are full! Thank you Hero!", true);
+            this.particles.createHeartBurst(res.position, 14);
+          }
+        });
+      }
+
+      // Thirsty residents celebrate
+      const residents = obj.mesh.userData?.thirstyResidents;
+      if (residents && residents.length > 0) {
+        residents.forEach((r, rIdx) => {
+          r.userData.isWaterReceived = true;
+          if (r.userData.drawBubble) {
+            const waterPhrases = [
+              "💧 PANI MIL GAYA! Free water for Karachi! Zindabad!",
+              "🌊 Tanker mafia doob gaya! Karachi ko pani mil gaya!"
+            ];
+            r.userData.drawBubble(waterPhrases[rIdx % waterPhrases.length], true);
+          }
+          this.particles.createHeartBurst(r.position, 14);
+          this.particles.createCelebrationConfetti(r.position, 20);
+        });
+      }
+
+      actionInfo = {
+        icon: '🚰',
+        tag: 'WATER THEFT INTERCEPTED',
+        title: 'ILLEGAL TANKER IMPOUNDED & VALVES SEALED!',
+        desc: 'Pirate suction pipelines severed and closed. Sweet water pumped to neighborhood dry taps!',
+        color: '#00e5ff'
+      };
+    } else if (evilType === 'onewheeler') {
+      audio.playBrakeScreech();
+      audio.playOneWheelerImpound();
+      this.particles.createSkidSmoke(objPos, 14);
+
+      // Deploy tactical traffic safety cones cluster
+      const cones = KarachiModels.createTrafficConesCluster();
+      cones.position.set(objPos.x, 0, objPos.z);
+      this.scene.add(cones);
+
+      actionInfo = {
+        icon: '🏍️',
+        tag: 'STREET RACER IMPOUNDED',
+        title: 'RECKLESS 70cc RACER GROUNDED!',
+        desc: 'Hazardous one-wheeling halted. Traffic police safety cones placed and narrow streets secured!',
+        color: '#ffea00'
+      };
+    } else if (evilType === 'robber') {
+      audio.playRobberDevour();
+      audio.playRescuedCitizenCheer();
+      this.particles.createMoneyBurst(objPos, 35);
+      this.particles.createCelebrationConfetti(objPos, 35);
+
+      const victim = obj.mesh.userData?.victimCitizen;
+      if (victim) {
+        victim.userData.isRescued = true;
+        if (victim.userData.drawBubble) {
+          victim.userData.drawBubble("🎉 PRAISE BE! My phone is saved! Hero zindabad!", true);
+        }
+        this.particles.createCelebrationConfetti(victim.position, 35);
+        this.particles.createHeartBurst(victim.position, 16);
+      }
+
+      actionInfo = {
+        icon: '📱',
+        tag: 'STREET SNATCHER ARRESTED',
+        title: 'ROBBER APPREHENDED & PHONES RECOVERED!',
+        desc: 'Armed mugger cornered. Snatched mobile phones and wallets safely handed back to victims!',
+        color: '#00e676'
+      };
+    } else if (evilType === 'bhatta') {
+      audio.playBhattaConfiscate();
+      this.particles.createMoneyBurst(objPos, 35);
+
+      actionInfo = {
+        icon: '💼',
+        tag: 'EXTORTION MAFIA BUSTED',
+        title: 'BHATTA MAFIA DISMANTLED & CHITS SEIZED!',
+        desc: 'Extortion slip network confiscated. Local bazaar shopkeepers freed from illegal extortion threats!',
+        color: '#e040fb'
+      };
+    } else if (evilType === 'ke') {
+      audio.playMetallicSlam();
+      audio.playKESpark();
+      this.particles.createImpactDust(objPos, 24);
+
+      actionInfo = {
+        icon: '⚡',
+        tag: 'ELECTRICAL HAZARD GROUNDED',
+        title: 'DANGEROUS WIRES ISOLATED & CUT!',
+        desc: 'High-voltage dangling kundas disconnected and safely grounded into solar utility station!',
+        color: '#ffea00'
+      };
+    } else if (evilType === 'chinacutting') {
+      audio.playChinaCuttingDemolish();
+      this.particles.createImpactDust(objPos, 36);
+
+      actionInfo = {
+        icon: '🧱',
+        tag: 'ENCROACHMENT CLEARED',
+        title: 'ILLEGAL FOOTPATH WALL DEMOLISHED!',
+        desc: 'Encroaching concrete wall torn down. Wide public sidewalk reopened for pedestrians!',
+        color: '#ff9800'
+      };
+    } else if (evilType === 'politician') {
+      audio.playPoliticianSwallow();
+      audio.playRescuedCitizenCheer();
+      this.particles.createMoneyBurst(objPos, 45);
+      const pName = obj.mesh.userData?.name || "VIP Politician";
+      actionInfo = {
+        icon: '⚖️',
+        tag: 'CORRUPTION HALTED',
+        title: `${pName.toUpperCase()} APPREHENDED!`,
+        desc: 'Embezzled public funds frozen and redirected to free neighborhood dispensary!',
+        color: '#ffd700'
+      };
+    } else if (evilType === 'trash') {
+      audio.playMetallicSlam();
+      this.particles.createCleanseSparkleBurst(objPos, 25);
+      actionInfo = {
+        icon: '🌿',
+        tag: 'ILLEGAL DUMP CLEARED',
+        title: 'ROT PILE ENCLOSED & JASMINE PLANTED!',
+        desc: 'Waste sealed in modern compactor containers. Fragrant jasmine planter installed!',
+        color: '#00e676'
+      };
+    }
+
+    // 3. Show prominent HUD Action Resolution Banner
+    this.ui.showActionResolution(actionInfo);
+
+    // 4. Civic Cleanse Audio & Particle Transformation
+    audio.playCleanseTransformation();
+    this.particles.createCleanseSparkleBurst(hole.position, 45);
+
+    // 5. Spawn permanent civic upgrade monument
+    const replacement = KarachiModels.createCleanedReplacement(evilType);
+    replacement.position.set(objPos.x, 0, objPos.z);
+    this.scene.add(replacement);
+    this.cleanedMonuments.push(replacement);
+
+    // 6. Nearby citizens celebrate
+    if (this.citizens) {
+      this.citizens.forEach(c => {
+        if (c && c.position && Math.hypot(c.position.x - objPos.x, c.position.z - objPos.z) < 22) {
+          c.isDancing = true;
+          c.danceTimer = 4.5;
+        }
+      });
+    }
+
+    // 7. Mini-map tracking
+    this.recentCleaned.push({
+      x: objPos.x,
+      z: objPos.z,
+      time: performance.now()
+    });
+
+    // 8. Before / After Toast
+    const beforeAfterMap = {
+      pothole: { before: "Broken Road Pothole", after: "Smooth Asphalt Repaired!" },
+      trash: { before: "Overflowing Trash Heap", after: "Blooming Jasmine Planter!" },
+      gutka: { before: "Shady Gutka Peddler", after: "Chilled Sabeel Water Cooler!" },
+      robber: { before: "Armed Mobile Robbery", after: "Crime-Free Safe Zone!" },
+      vip: { before: "2-Hour VIP Traffic Jam", after: "Free Flowing Road!" },
+      tanker: { before: "Illegal Water Tanker", after: "Free Sabeel-e-Aab Fountain!" },
+      ke: { before: "Dangerous Kundas & Sparks", after: "Clean Solar Energy Kiosk!" },
+      chinacutting: { before: "Illegal Footpath Wall", after: "Public Pedestrian Walkway!" },
+      bhatta: { before: "Extortion Bhatta Parchi", after: "Peaceful Aman Bazaar!" },
+      onewheeler: { before: "Reckless 70cc Racer", after: "Safe Driving Street!" },
+      politician: { before: "Corrupt VIP Politician", after: "Public Welfare & Library Fund!" }
+    };
+    const ba = beforeAfterMap[evilType] || { before: "Civic Crime", after: "Karachi Restored!" };
+    this.ui.showBeforeAfterToast(ba.before, ba.after);
+
+    // 9. Update civic counts & Crisis Progress
+    this.civicCleansed++;
+    this.handleCrisisProgress(evilType);
+
+    // 10. Award XP & Points
+    let points = obj.points || 600;
+    if (this.frenzyTimer > 0) points *= 2;
+    if (hole.comboCount > 1) points = Math.round(points * (1 + hole.comboCount * 0.25));
+    hole.addXP(points, (h) => {
+      if (h.isPlayer) this.handlePlayerLevelUp(h);
+    });
+
+    // 11. Remove enemy mesh
+    obj.state = 'swallowed';
+    if (obj.mesh && obj.mesh.parent) {
+      this.scene.remove(obj.mesh);
+    }
+
+    // 12. Check District Completion
+    this.districtRemaining = this.districtEvils.filter(b => b && b.state !== 'swallowed').length;
+    if (this.districtRemaining === 0 && !this.districtClearing) {
+      this.handleDistrictCleared();
+    }
+  }
+
   onWindowResize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
@@ -968,6 +1284,17 @@ class Game {
       this.player.baseSpeed = 13.5;
     }
     this.player.currentSpeed = this.player.baseSpeed;
+
+    // Reset bots to distant perimeter coordinates so they never collide with new district evils
+    const botPositions = [[-45, 15], [-20, 45], [45, 45], [-55, 30], [45, -35]];
+    this.holes.forEach((h, idx) => {
+      if (h.isPlayer) return;
+      const pos = botPositions[idx - 1] || [0, 0];
+      h.position.set(pos[0], 0, pos[1]);
+      h.group.position.copy(h.position);
+      h.aiTarget = null;
+      h.aiTimer = 0;
+    });
 
     // Explicitly reset camera position and orientation behind player facing north down avenue
     this.camAngle = Math.PI;
@@ -1132,12 +1459,14 @@ class Game {
       }
     }
 
-    // Update Karachi Civic Evils: Fleeing bad guys, sparking K-Electric, and comical panic banter!
+    // Update Karachi Civic Evils: Lively GTA-Style Evasive Pursuits & Panic Banter!
+    const nowTime = performance.now() * 0.001;
     for (let i = 0; i < this.badGuys.length; i++) {
       const bg = this.badGuys[i];
-      if (bg.state === 'swallowed') continue;
+      if (!bg || bg.state === 'swallowed' || bg.state === 'resolving') continue;
 
       const bgMesh = bg.mesh;
+      if (!bgMesh) continue;
       const bgPos = bgMesh.position;
       const ud = bgMesh.userData;
 
@@ -1154,86 +1483,133 @@ class Game {
                        bg.evilType === 'bhatta' || bg.evilType === 'onewheeler' ||
                        bg.evilType === 'tanker' || bg.evilType === 'vip';
 
-      if (isMobile) {
-        let nearestHole = null;
-        let minHoleDist = Infinity;
+      if (isMobile && this.player && this.player.isAlive) {
+        const playerDist = this.player.position.distanceTo(bgPos);
+        const alertRange = (bg.evilType === 'vip' || bg.evilType === 'tanker' || bg.evilType === 'onewheeler') ? 26.0 : 20.0;
 
-        for (let h = 0; h < this.holes.length; h++) {
-          const hole = this.holes[h];
-          if (!hole.isAlive) continue;
-          const d = hole.position.distanceTo(bgPos);
-          if (d < minHoleDist) {
-            minHoleDist = d;
-            nearestHole = hole;
-          }
-        }
-
-        // Bad guy panics and tries to escape when hole gets near!
-        if (nearestHole && minHoleDist < 18 && bg.state === 'idle') {
-          const fleeX = bgPos.x - nearestHole.position.x;
-          const fleeZ = bgPos.z - nearestHole.position.z;
-          const len = Math.sqrt(fleeX * fleeX + fleeZ * fleeZ);
+        // GTA-Style Active Pursuit State when Hero approaches
+        if (playerDist < alertRange && bg.state === 'idle') {
+          bg.isAlerted = true;
+          const fleeX = bgPos.x - this.player.position.x;
+          const fleeZ = bgPos.z - this.player.position.z;
+          const len = Math.hypot(fleeX, fleeZ);
 
           if (len > 0.1) {
-            const normX = fleeX / len;
-            const normZ = fleeZ / len;
-            const fleeSpeed = ud?.runSpeed || (bg.evilType === 'vip' ? 5.8 : bg.evilType === 'tanker' ? 5.2 : 4.4);
-            let nextX = THREE.MathUtils.clamp(bgPos.x + normX * dt * fleeSpeed, -92, 92);
-            let nextZ = THREE.MathUtils.clamp(bgPos.z + normZ * dt * fleeSpeed, -92, 92);
+            let normX = fleeX / len;
+            let normZ = fleeZ / len;
 
-            // Prevent fleeing bad guys from entering solid buildings
+            // Energetic, challenging GTA-style getaway speeds
+            const speedMap = {
+              onewheeler: 10.4,
+              vip: 9.6,
+              tanker: 8.5,
+              robber: 8.2,
+              bhatta: 7.8,
+              politician: 7.4
+            };
+            const fleeSpeed = ud?.runSpeed || speedMap[bg.evilType] || 7.2;
+
+            // Smart Corridor Navigation: If approaching a building within 3.5m, steer 90 deg down an open avenue!
             const obstacles = this.cityGen?.obstacles || [];
+            const checkDist = 3.5;
+            let forwardBlocked = false;
+            const lookX = bgPos.x + normX * checkDist;
+            const lookZ = bgPos.z + normZ * checkDist;
+
+            for (let o = 0; o < obstacles.length; o++) {
+              const obs = obstacles[o];
+              if (!obs || !obs.isBox) continue;
+              if (lookX > obs.minX - 1.2 && lookX < obs.maxX + 1.2 && lookZ > obs.minZ - 1.2 && lookZ < obs.maxZ + 1.2) {
+                forwardBlocked = true;
+                break;
+              }
+            }
+
+            if (forwardBlocked) {
+              // Evasively turn down the cross-street avenue
+              const altX = -normZ;
+              const altZ = normX;
+              normX = altX;
+              normZ = altZ;
+            }
+
+            // Subtle lateral weaving for agile runners & racers
+            const weave = (bg.evilType === 'onewheeler' || bg.evilType === 'robber') ? Math.sin(nowTime * 4.5 + i) * 0.25 : 0;
+            const finalDirX = normX + (-normZ) * weave;
+            const finalDirZ = normZ + (normX) * weave;
+            const finalLen = Math.hypot(finalDirX, finalDirZ) || 1.0;
+
+            // Proximity speed surge: if hero is breathing down their neck (<8m), they hit the gas / sprint frantically!
+            const proximitySurge = (playerDist < 8.0) ? 1.25 : 1.0;
+            const effectiveFleeSpeed = fleeSpeed * proximitySurge;
+
+            let nextX = THREE.MathUtils.clamp(bgPos.x + (finalDirX / finalLen) * dt * effectiveFleeSpeed, -92, 92);
+            let nextZ = THREE.MathUtils.clamp(bgPos.z + (finalDirZ / finalLen) * dt * effectiveFleeSpeed, -92, 92);
+
+            // Wall slide collision guard
             const pad = 1.4;
             for (let o = 0; o < obstacles.length; o++) {
               const obs = obstacles[o];
-              if (!obs) continue;
-              if (obs.isBox) {
-                if (nextX > obs.minX - pad && nextX < obs.maxX + pad && nextZ > obs.minZ - pad && nextZ < obs.maxZ + pad) {
-                  // Slide along building wall instead of penetrating
-                  if (bgPos.x <= obs.minX - pad || bgPos.x >= obs.maxX + pad) nextX = bgPos.x;
-                  if (bgPos.z <= obs.minZ - pad || bgPos.z >= obs.maxZ + pad) nextZ = bgPos.z;
-                }
+              if (!obs || !obs.isBox) continue;
+              if (nextX > obs.minX - pad && nextX < obs.maxX + pad && nextZ > obs.minZ - pad && nextZ < obs.maxZ + pad) {
+                if (bgPos.x <= obs.minX - pad || bgPos.x >= obs.maxX + pad) nextX = bgPos.x;
+                if (bgPos.z <= obs.minZ - pad || bgPos.z >= obs.maxZ + pad) nextZ = bgPos.z;
               }
             }
+
             bgPos.x = nextX;
             bgPos.z = nextZ;
-            bgMesh.rotation.y = Math.atan2(normX, normZ);
-          }
+            bgMesh.rotation.y = Math.atan2(finalDirX, finalDirZ);
 
-          // Flailing limb panic animations
-          if (ud && ud.legL && ud.legR) {
-            ud.runCycle = (ud.runCycle || 0) + dt * 20;
-            ud.legL.rotation.x = Math.sin(ud.runCycle) * 0.95;
-            ud.legR.rotation.x = -Math.sin(ud.runCycle) * 0.95;
-            if (ud.armL && ud.armR) {
-              ud.armL.rotation.z = 1.3 + Math.sin(ud.runCycle) * 0.55;
-              ud.armR.rotation.z = -1.3 - Math.sin(ud.runCycle) * 0.55;
+            // Vehicle animations & stunts
+            if (bg.evilType === 'onewheeler') {
+              bgMesh.rotation.x = -0.32; // Wheelie!
+            }
+
+            // Tire skid smoke puffs as fleeing vehicles peel out down the road
+            if ((bg.evilType === 'vip' || bg.evilType === 'tanker' || bg.evilType === 'onewheeler') && Math.random() < 0.28) {
+              this.particles.createSkidSmoke(bgPos, 3);
             }
           }
 
-          // Escape banter on speech bubble
-          if (minHoleDist < 14 && !bg.hasPanickedEscape) {
+          // Flailing limb panic animations for human runners
+          if (ud && ud.legL && ud.legR) {
+            const panicMult = (playerDist < 8.0) ? 1.4 : 1.0;
+            ud.runCycle = (ud.runCycle || 0) + dt * 24 * panicMult;
+            ud.legL.rotation.x = Math.sin(ud.runCycle) * 1.1;
+            ud.legR.rotation.x = -Math.sin(ud.runCycle) * 1.1;
+            if (ud.armL && ud.armR) {
+              ud.armL.rotation.z = 1.4 + Math.sin(ud.runCycle) * 0.6;
+              ud.armR.rotation.z = -1.4 - Math.sin(ud.runCycle) * 0.6;
+            }
+          }
+
+          // Dynamic GTA escape speech bubble & audio alert
+          if (!bg.hasPanickedEscape) {
             bg.hasPanickedEscape = true;
+            if (bg.evilType === 'vip') audio.playVIPHooter();
+            else if (bg.evilType === 'tanker' || bg.evilType === 'onewheeler') audio.playBrakeScreech();
+
             const escapeLines = {
-              politician: "Run! Anti-Corruption Patrol is here!",
-              robber: "Run away! The Hero is coming!",
-              gutka: "My gutka stash dropped! Run!",
-              chinacutting: "Abandon the sidewalk! Flee!",
-              bhatta: "Save the extortion slips!",
-              tanker: "The 15,000 rupee tanker is escaping!",
-              vip: "Clear the way for VIP Protocol!",
-              onewheeler: "Speed away from the hole!"
+              politician: "🚨 Run! The Anti-Corruption Patrol is right behind us!",
+              robber: "🏃 Drop the purse! Hero is cutting through the street!",
+              gutka: "🏃 Flee into the bazaar! Protect the stash!",
+              chinacutting: "⚠️ Abandon the illegal construction! Run!",
+              bhatta: "💼 Protect the extortion slips! Speed up!",
+              tanker: "💧 Step on the gas! Don't let the Hero seize the water tanker!",
+              vip: "🚨 Clear the road! VIP Protocol motorcade will not yield!",
+              onewheeler: "🏍️ Lyari 70cc speed! You can't catch my wheelie!"
             };
-            const line = escapeLines[bg.evilType] || "Run! The patrol hole is coming!";
+            const line = escapeLines[bg.evilType] || "Run! Karachi Hero is approaching!";
             if (ud && ud.drawBubble) {
               ud.drawBubble(line);
             }
           }
-
-          bgPos.x = THREE.MathUtils.clamp(bgPos.x, -94, 94);
-          bgPos.z = THREE.MathUtils.clamp(bgPos.z, -94, 94);
         }
       }
+
+      bgPos.x = THREE.MathUtils.clamp(bgPos.x, -94, 94);
+      bgPos.z = THREE.MathUtils.clamp(bgPos.z, -94, 94);
     }
 
     // Update Karachi Stray Animals (Dogs barking, Cats roaming, Rats scurrying)
@@ -1526,15 +1902,26 @@ class Game {
         continue; // Never sucked into hole!
       }
 
-      // If bad object is currently idle, check for nearest hole that can eat it
+      // District Evils and Bad Guys: Must ONLY be resolved by the human player via active hero intervention!
+      if (obj.isDistrictEvil || obj.isBadGuy) {
+        if (obj.state === 'idle' && this.player && this.player.isAlive) {
+          const dx = this.player.position.x - objPos.x;
+          const dz = this.player.position.z - objPos.z;
+          const captureRadius = this.player.radius + Math.max(1.3, (obj.radius || 1.3) * 0.95);
+          if (Math.abs(dx) <= captureRadius && Math.abs(dz) <= captureRadius && (dx * dx + dz * dz < captureRadius * captureRadius)) {
+            this.resolveDistrictThreat(obj, this.player);
+          }
+        }
+        continue; // BOTS CAN NEVER EAT OR SUCK DISTRICT EVILS!
+      }
+
+      // If ambient object is currently idle, check for nearest hole that can eat it
       if (obj.state === 'idle') {
         for (let h = 0; h < this.holes.length; h++) {
           const hole = this.holes[h];
           if (!hole.isAlive) continue;
 
-          // Universal Civic Cleansing Rule:
-          // District mission targets and evils can always be cleansed by the player & holes!
-          const canEat = obj.isDistrictEvil || obj.isBadGuy || (obj.tier <= hole.level);
+          const canEat = (obj.tier <= hole.level);
           if (canEat) {
             const dx = hole.position.x - objPos.x;
             const dz = hole.position.z - objPos.z;
@@ -1622,225 +2009,16 @@ class Game {
             if (h.isPlayer) this.handlePlayerLevelUp(h);
           });
 
-          // Civic Cleanser System: Devouring Karachi evils and mafias!
+          // Civic Cleanser System: Delegate to resolveDistrictThreat
           if (obj.isBadGuy || obj.isDistrictEvil) {
             if (hole.isPlayer) {
-              this.civicCleansed++;
+              this.resolveDistrictThreat(obj, hole);
             }
-            this.districtRemaining = this.districtEvils.filter(b => b && b.state !== 'swallowed').length;
-
-            // Trigger Uplifting Civic Cleanse Audio & Particle Transformation
-            audio.playCleanseTransformation();
-            this.particles.createCleanseSparkleBurst(hole.position, 45);
-
-            // Spawn the "AFTER" Cleaned Monument right where the bad guy was!
-            const replacement = KarachiModels.createCleanedReplacement(obj.evilType);
-            replacement.position.set(objPos.x, 0, objPos.z);
-            this.scene.add(replacement);
-            this.cleanedMonuments.push(replacement);
-
-            // Trigger nearby citizens to celebrate with Bhangra dance!
-            if (this.citizens) {
-              this.citizens.forEach(c => {
-                if (c && c.position && Math.hypot(c.position.x - objPos.x, c.position.z - objPos.z) < 20) {
-                  c.isDancing = true;
-                  c.danceTimer = 4.0;
-                }
-              });
-            }
-
-            // Track recent cleaned location for the Mini-Map
-            this.recentCleaned.push({
-              x: objPos.x,
-              z: objPos.z,
-              time: performance.now()
-            });
-
-            if (hole.isPlayer) {
-              const beforeAfterMap = {
-                pothole: { before: "Broken Road Pothole", after: "Smooth Asphalt Repaired!" },
-                trash: { before: "Overflowing Trash Heap", after: "Blooming Jasmine Planter!" },
-                gutka: { before: "Shady Gutka Peddler", after: "Chilled Sabeel Water Cooler!" },
-                robber: { before: "Armed Mobile Robbery", after: "Crime-Free Safe Zone!" },
-                vip: { before: "2-Hour VIP Traffic Jam", after: "Free Flowing Road!" },
-                tanker: { before: "Illegal Water Tanker", after: "Free Sabeel-e-Aab Fountain!" },
-                ke: { before: "Dangerous Kundas & Sparks", after: "Clean Solar Energy Kiosk!" },
-                chinacutting: { before: "Illegal Footpath Wall", after: "Public Pedestrian Walkway!" },
-                bhatta: { before: "Extortion Bhatta Parchi", after: "Peaceful Aman Bazaar!" },
-                onewheeler: { before: "Reckless 70cc Racer", after: "Safe Driving Street!" },
-                politician: { before: "Corrupt VIP Politician", after: "Public Welfare & Library Fund!" }
-              };
-
-              const ba = beforeAfterMap[obj.evilType] || { before: "Civic Crime", after: "Karachi Restored!" };
-              this.ui.showBeforeAfterToast(ba.before, ba.after);
-            }
-
-            if (this.districtRemaining === 0 && !this.districtClearing) {
-              this.handleDistrictCleared();
-            }
-
-            const pct = Math.min(100, Math.round((this.civicCleansed / Math.max(1, this.civicTotal)) * 100));
-
-            // Trigger Frenzy Mode when 100% cleansed
-            if (pct >= 100 && !this.frenzyTriggered) {
-              this.frenzyTriggered = true;
-              this.frenzyTimer = 18.0;
-              audio.playCrowdCheer();
-              this.particles.createLevelUpShockwave(hole.position, 12);
-              this.ui.showAnnouncement("🌟 KARACHI HERO FRENZY! قائد کا خواب پورا ہو گیا! 2X SCORE! 🌟", "#ffd700");
-            }
-
-            // Specialized audio, particles & announcements per evil type
-            if (obj.evilType === 'ke') {
-              this.particles.createSwallowBurst(hole.position, 3, 30);
-              audio.playKESpark();
-              this.ui.showAnnouncement(`⚡ K-ELECTRIC KUNDA CHOPPED! LOAD SHEDDING CLEARED! (+${points} XP)`, '#ffea00');
-            } else if (obj.evilType === 'chinacutting') {
-              this.particles.createSwallowBurst(hole.position, 2, 25);
-              audio.playChinaCuttingDemolish();
-              this.ui.showAnnouncement(`📐 CHINA CUTTING CANCELLED! FOOTPATH RECLAIMED! (+${points} XP)`, '#ff9800');
-            } else if (obj.evilType === 'bhatta') {
-              this.particles.createMoneyBurst(hole.position, 35);
-              audio.playBhattaConfiscate();
-              this.ui.showAnnouncement(`📜 BHATTA PARCHI CONFISCATED! BAZAAR SAVED! (+${points} XP)`, '#e040fb');
-            } else if (obj.evilType === 'onewheeler') {
-              this.particles.createSwallowBurst(hole.position, 2, 20);
-              audio.playOneWheelerImpound();
-              this.ui.showAnnouncement(`🏍️ RECKLESS ONE-WHEELER IMPOUNDED! STREETS SAFE! (+${points} XP)`, '#00e5ff');
-            } else if (obj.evilType === 'tanker') {
-              this.particles.createFreshwaterGeyser(hole.position, 55);
-              this.particles.createCelebrationConfetti(hole.position, 40);
-              audio.playWaterTankerDevour();
-              audio.playFreshwaterEruption();
-
-              // 1. Remove illegal suction hoses & booster motor
-              const hoseGroup = obj.mesh.userData?.hoseGroup;
-              if (hoseGroup && hoseGroup.parent) {
-                hoseGroup.parent.remove(hoseGroup);
-              }
-
-              // 2. Animate Water Streams rushing to nearby dry homes & restore water!
-              const dryHomes = obj.mesh.userData?.dryHomes;
-              if (dryHomes && dryHomes.length > 0) {
-                dryHomes.forEach((home, hIdx) => {
-                  home.userData.isRestored = true;
-                  if (home.userData.updateWaterBillboard) {
-                    home.userData.updateWaterBillboard(true);
-                  }
-
-                  // Water pipeline stream flowing from hole to house
-                  this.particles.createWaterFlowStream(hole.position, home.position, 32);
-
-                  // Cascading overflow from rooftop water tank
-                  if (home.userData.rooftopTank) {
-                    const tankWorldPos = new THREE.Vector3();
-                    home.userData.rooftopTank.getWorldPosition(tankWorldPos);
-                    setTimeout(() => {
-                      this.particles.createRooftopWaterOverflow(tankWorldPos, 45);
-                      this.particles.createHeartBurst(tankWorldPos, 16);
-                    }, 250);
-                  }
-
-                  // Resident on balcony celebrates
-                  const res = home.userData.resident;
-                  if (res && res.userData && res.userData.drawBubble) {
-                    res.userData.drawBubble("🌊 Tap water is back! Taps are full! Thank you Hero!", true);
-                    this.particles.createHeartBurst(res.position, 14);
-                  }
-                });
-              }
-
-              // 3. Trigger Joyous Thirsty Residents with full water drums!
-              const residents = obj.mesh.userData?.thirstyResidents;
-              if (residents && residents.length > 0) {
-                residents.forEach((r, rIdx) => {
-                  r.userData.isWaterReceived = true;
-                  if (r.userData.drawBubble) {
-                    const waterPhrases = [
-                      "💧 PANI MIL GAYA! Free water for Karachi! Zindabad!",
-                      "🌊 Tanker mafia doob gaya! Karachi ko pani mil gaya!"
-                    ];
-                    r.userData.drawBubble(waterPhrases[rIdx % waterPhrases.length], true);
-                  }
-                  this.particles.createHeartBurst(r.position, 14);
-                  this.particles.createCelebrationConfetti(r.position, 20);
-                });
-              }
-              this.ui.showAnnouncement(`🚰 TANKER MAFIA BUSTED! TAP WATER RESTORED TO HOMES! (+${points} XP)`, '#00e5ff');
-            } else if (obj.evilType === 'vip') {
-              this.particles.createCelebrationConfetti(hole.position, 45);
-              this.particles.createSwallowBurst(hole.position, 4, 30);
-              audio.playVIPHooter();
-              audio.playGutterSplash();
-              audio.playTrafficFreedCelebration();
-
-              // Trigger Joyous Stuck Traffic Celebration!
-              const stuckVehicles = obj.mesh.userData?.stuckVehicles;
-              if (stuckVehicles && stuckVehicles.length > 0) {
-                stuckVehicles.forEach((v, vIdx) => {
-                  v.userData.isFreed = true;
-                  v.userData.freedSpeed = 5.5 + Math.random() * 2.5;
-                  if (v.userData.drawTrafficBubble) {
-                    const happyPhrases = [
-                      "🥳 TRAFFIC FREED! VIP culture murdabad! Shukriya Street Hero!",
-                      "🏥 Hospital ka rasta khul gaya! Zindabad Street Hero!",
-                      "🚗 Wah Street Hero wah! Ab hum time pe pohanchengy!"
-                    ];
-                    v.userData.drawTrafficBubble(happyPhrases[vIdx % happyPhrases.length], true);
-                  }
-                  this.particles.createCelebrationConfetti(v.position, 25);
-                });
-              }
-              this.ui.showAnnouncement(`🚨 VIP CONVOY SMASHED! CITIZENS FREED FROM TRAFFIC JAM! (+${points} XP)`, '#00e5ff');
-            } else if (obj.evilType === 'gutka') {
-              this.particles.createSwallowBurst(hole.position, 2, 20);
-              audio.playGutterSplash();
-              this.ui.showAnnouncement(`🛑 GUTKA MAFIA CLEARED! STREETS CLEANSED! (+${points} XP)`, '#e040fb');
-            } else if (obj.evilType === 'pothole') {
-              this.particles.createSwallowBurst(hole.position, 1, 15);
-              audio.playPotholeDevour();
-              this.ui.showAnnouncement(`🛠️ ROAD POTHOLE REPAIRED! (+${points} XP)`, '#ff9100');
-            } else if (obj.evilType === 'robber') {
-              this.particles.createMoneyBurst(hole.position, 40);
-              this.particles.createCelebrationConfetti(hole.position, 40);
-              this.particles.createSwallowBurst(hole.position, 3, 25);
-              audio.playRobberDevour();
-              audio.playGutterSplash();
-              audio.playRescuedCitizenCheer();
-
-              // Trigger Joyous Rescued Citizen Celebration!
-              const victim = obj.mesh.userData?.victimCitizen;
-              if (victim) {
-                victim.userData.isRescued = true;
-                if (victim.userData.drawBubble) {
-                  victim.userData.drawBubble("🎉 PRAISE BE! My phone is saved! Hero zindabad!", true);
-                }
-                this.particles.createCelebrationConfetti(victim.position, 35);
-                this.particles.createHeartBurst(victim.position, 16);
-              }
-              this.ui.showAnnouncement(`🔫 DAKOO DEVOURED! CITIZEN RESCUED WITH PHONE! (+${points} XP)`, '#00e676');
-            } else if (obj.evilType === 'politician') {
-              this.particles.createMoneyBurst(hole.position, 55);
-              this.particles.createCelebrationConfetti(hole.position, 35);
-              audio.playPoliticianSwallow();
-              audio.playGutterSplash();
-              audio.playRescuedCitizenCheer();
-              this.player.politiciansDevoured = (this.player.politiciansDevoured || 0) + 1;
-              const pName = obj.mesh.userData?.name || "VIP Politician";
-              this.ui.showAnnouncement(`💰 DEVOURED ${pName.toUpperCase()}! PUBLIC FUNDS RECOVERED! (+${points} XP)`, '#ffd700');
-            } else if (obj.evilType === 'trash') {
-              this.particles.createSwallowBurst(hole.position, 1, 10);
-              audio.playGutterSplash();
-              audio.playSwallow(1);
-            }
-
-            // Advance active Civic Crisis Challenge!
-            this.handleCrisisProgress(obj.evilType);
           } else {
-            this.particles.createSwallowBurst(hole.position, obj.tier);
+            this.particles.createSwallowBurst(hole.position, obj.tier || 1);
             if (hole.isPlayer) {
               audio.playGutterSplash();
-              audio.playSwallow(obj.tier);
+              audio.playSwallow(obj.tier || 1);
             }
           }
 
@@ -2038,6 +2216,15 @@ class Game {
       this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, followLerp);
       this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, Math.min(1.0, dt * 7.5));
       this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, followLerp);
+    }
+
+    // Tactile Hit-Stop Camera Shake on threat takedown
+    if (this.cameraShakeTimer > 0) {
+      this.cameraShakeTimer -= dt;
+      const shakeMag = (this.cameraShakeTimer / 0.24) * 0.22;
+      this.camera.position.x += (Math.random() - 0.5) * shakeMag;
+      this.camera.position.y += (Math.random() - 0.5) * shakeMag;
+      this.camera.position.z += (Math.random() - 0.5) * shakeMag;
     }
 
     // Look target ahead down the street corridor

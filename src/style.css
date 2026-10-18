@@ -4213,6 +4213,88 @@ html, body {
   }
 }
 
+/* ==============================================================
+   DRAMATIC GTA-STYLE ACTION RESOLUTION IMPACT BANNER
+   ============================================================== */
+.action-resolution-banner {
+  position: absolute;
+  top: 92px;
+  left: 50%;
+  transform: translate(-50%, -20px) scale(0.92);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(8, 14, 26, 0.96));
+  border: 2px solid #00e5ff;
+  border-radius: 18px;
+  padding: 12px 24px;
+  box-shadow: 0 12px 36px rgba(0, 229, 255, 0.45), 0 0 24px rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+  transition: transform 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.24s ease;
+  max-width: 90vw;
+  box-sizing: border-box;
+}
+
+.action-res-icon {
+  font-size: 2.4rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
+  animation: actionIconPop 0.4s ease-out;
+}
+
+@keyframes actionIconPop {
+  0% { transform: scale(0.6) rotate(-15deg); }
+  60% { transform: scale(1.25) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.action-res-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.action-res-tag {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #00e5ff;
+}
+
+.action-res-title {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.action-res-desc {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .action-resolution-banner {
+    top: 76px;
+    padding: 10px 16px;
+    gap: 12px;
+  }
+  .action-res-icon {
+    font-size: 1.8rem;
+  }
+  .action-res-title {
+    font-size: 0.95rem;
+  }
+  .action-res-desc {
+    font-size: 0.72rem;
+  }
+}
+
 
 
 

@@ -350,6 +350,16 @@ export class UIManager {
       <!-- Center Announcement Overlay -->
       <div class="announcement-banner" id="hud-announcement" style="opacity: 0"></div>
 
+      <!-- Dramatic Action Resolution Impact Banner -->
+      <div class="action-resolution-banner" id="hud-action-resolution" style="opacity: 0; pointer-events: none;">
+        <div class="action-res-icon" id="action-res-icon">🛑</div>
+        <div class="action-res-content">
+          <div class="action-res-tag" id="action-res-tag">THREAT INTERCEPTED</div>
+          <div class="action-res-title" id="action-res-title">VIP PROTOCOL CONVOY HALTED</div>
+          <div class="action-res-desc" id="action-res-desc">Route Reopened for Citizen Traffic!</div>
+        </div>
+      </div>
+
       <!-- Floating Feedbacks Container -->
       <div id="floating-feedbacks"></div>
 
@@ -2844,6 +2854,43 @@ export class UIManager {
         badgeEl.classList.remove('urgent');
       }
     }
+  }
+
+  showActionResolution({ icon = '🛑', tag = 'THREAT RESOLVED', title = '', desc = '', color = '#00e5ff' } = {}) {
+    const banner = document.getElementById('hud-action-resolution');
+    if (!banner) return;
+
+    const iconEl = document.getElementById('action-res-icon');
+    const tagEl = document.getElementById('action-res-tag');
+    const titleEl = document.getElementById('action-res-title');
+    const descEl = document.getElementById('action-res-desc');
+
+    if (iconEl) iconEl.textContent = icon;
+    if (tagEl) {
+      tagEl.textContent = tag;
+      tagEl.style.color = color;
+      tagEl.style.borderColor = color;
+    }
+    if (titleEl) {
+      titleEl.textContent = title;
+      titleEl.style.textShadow = `0 0 16px ${color}88`;
+    }
+    if (descEl) descEl.textContent = desc;
+
+    banner.style.display = 'flex';
+    banner.style.borderColor = color;
+    banner.style.boxShadow = `0 12px 36px ${color}55, 0 0 24px rgba(0,0,0,0.85)`;
+    banner.style.opacity = '1';
+    banner.style.transform = 'translate(-50%, 0) scale(1.04)';
+
+    clearTimeout(this.actionResolutionTimeout);
+    this.actionResolutionTimeout = setTimeout(() => {
+      banner.style.opacity = '0';
+      banner.style.transform = 'translate(-50%, -20px) scale(0.92)';
+      setTimeout(() => {
+        if (banner.style.opacity === '0') banner.style.display = 'none';
+      }, 300);
+    }, 2800);
   }
 
   showBeforeAfterToast(beforeText, afterText) {

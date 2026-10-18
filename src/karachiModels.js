@@ -3293,6 +3293,113 @@ export const KarachiModels = {
     return group;
   },
 
+  // 40b. Heavy Iron Manhole Cover (Practically sealing open gutters and sewer pits)
+  createHeavyManholeCover() {
+    const group = new THREE.Group();
+    group.name = "Heavy-Manhole-Cover";
+
+    // Heavy cast-iron outer rim
+    const rimGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.12, 28);
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x212121, roughness: 0.85, metalness: 0.7 });
+    const rim = new THREE.Mesh(rimGeo, ironMat);
+    rim.position.y = 0.06;
+    group.add(rim);
+
+    // Inner embossed heavy iron hatch plate
+    const plateGeo = new THREE.CylinderGeometry(1.28, 1.28, 0.15, 28);
+    const hatchMat = new THREE.MeshStandardMaterial({ color: 0x2e3440, roughness: 0.6, metalness: 0.8 });
+    const plate = new THREE.Mesh(plateGeo, hatchMat);
+    plate.position.y = 0.08;
+    group.add(plate);
+
+    // Four heavy locking bolts
+    const boltMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3, metalness: 0.9 });
+    for (let b = 0; b < 4; b++) {
+      const angle = (b * Math.PI) / 2;
+      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.18, 8), boltMat);
+      bolt.position.set(Math.cos(angle) * 1.15, 0.1, Math.sin(angle) * 1.15);
+      group.add(bolt);
+    }
+
+    // Safety yellow embossed ring
+    const sealGeo = new THREE.RingGeometry(1.26, 1.35, 28);
+    sealGeo.rotateX(-Math.PI / 2);
+    const sealMat = new THREE.MeshBasicMaterial({ color: 0xffd600, side: THREE.DoubleSide });
+    const seal = new THREE.Mesh(sealGeo, sealMat);
+    seal.position.y = 0.16;
+    group.add(seal);
+
+    return group;
+  },
+
+  // 40c. Police Heavy Steel Wheel Clamp Lock (Immobilizing illegal tankers and transport)
+  createPoliceWheelClamp() {
+    const group = new THREE.Group();
+    group.name = "Police-Wheel-Clamp";
+
+    // Heavy red triangle clamp body
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.4, metalness: 0.5 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.22), bodyMat);
+    body.position.set(0, 0.45, 0);
+    group.add(body);
+
+    // High-tensile steel lock arm
+    const armMat = new THREE.MeshStandardMaterial({ color: 0xffeb3b, roughness: 0.3, metalness: 0.8 });
+    const armTop = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.85, 10), armMat);
+    armTop.rotation.z = Math.PI / 4;
+    armTop.position.set(0.25, 0.75, 0);
+    group.add(armTop);
+
+    const armBottom = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.85, 10), armMat);
+    armBottom.rotation.z = -Math.PI / 4;
+    armBottom.position.set(-0.25, 0.75, 0);
+    group.add(armBottom);
+
+    // Brass keylock cylinder
+    const lock = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.26, 12), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9 }));
+    lock.rotation.x = Math.PI / 2;
+    lock.position.set(0, 0.45, 0.12);
+    group.add(lock);
+
+    return group;
+  },
+
+  // 40d. Tactical High-Visibility Traffic Cones Cluster
+  createTrafficConesCluster() {
+    const group = new THREE.Group();
+    group.name = "Traffic-Cones-Cluster";
+
+    const conePositions = [
+      [-0.8, -0.6],
+      [0.8, -0.6],
+      [0.0, 0.9]
+    ];
+
+    conePositions.forEach(([cx, cz]) => {
+      const coneSub = new THREE.Group();
+      coneSub.position.set(cx, 0, cz);
+
+      // Black rubber base
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.55), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }));
+      base.position.y = 0.025;
+      coneSub.add(base);
+
+      // Fluo orange cone body
+      const coneBody = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.75, 14), new THREE.MeshStandardMaterial({ color: 0xff6d00, roughness: 0.4 }));
+      coneBody.position.y = 0.4;
+      coneSub.add(coneBody);
+
+      // Reflective white safety collar
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.18, 14), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      collar.position.y = 0.42;
+      coneSub.add(collar);
+
+      group.add(coneSub);
+    });
+
+    return group;
+  },
+
   // 41. Solid Coastal Granite Seawall Segment
   createSeawallSegment(width = 24) {
     const group = new THREE.Group();

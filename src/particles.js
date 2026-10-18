@@ -402,6 +402,62 @@ export class ParticleSystem {
     });
   }
 
+  // Vehicle tire skid / exhaust smoke puff for high-speed GTA getaways
+  createSkidSmoke(pos, count = 10) {
+    const smokeMat = new THREE.MeshBasicMaterial({ color: 0xcccccc, transparent: true, opacity: 0.65 });
+    for (let i = 0; i < count; i++) {
+      const geo = new THREE.DodecahedronGeometry(0.18 + Math.random() * 0.16);
+      const mesh = new THREE.Mesh(geo, smokeMat);
+      mesh.position.set(
+        pos.x + (Math.random() - 0.5) * 0.8,
+        0.15 + Math.random() * 0.25,
+        pos.z + (Math.random() - 0.5) * 0.8
+      );
+      const vel = new THREE.Vector3(
+        (Math.random() - 0.5) * 1.8,
+        0.8 + Math.random() * 1.5,
+        (Math.random() - 0.5) * 1.8
+      );
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: 0.2, // Drifts upward
+        life: 0.6 + Math.random() * 0.4,
+        maxLife: 1.0,
+        scale: 1.0
+      });
+    }
+  }
+
+  // Heavy Impact Dust / Demolition debris burst (Manhole slam, wall demolish, roadblock deploy)
+  createImpactDust(pos, count = 22) {
+    const dustMat = new THREE.MeshBasicMaterial({ color: 0x8d6e63, transparent: true, opacity: 0.8 });
+    const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffd54f });
+    for (let i = 0; i < count; i++) {
+      const isSpark = Math.random() > 0.65;
+      const geo = isSpark ? this.sparkGeo : new THREE.BoxGeometry(0.16, 0.16, 0.16);
+      const mesh = new THREE.Mesh(geo, isSpark ? sparkMat : dustMat);
+      mesh.position.set(pos.x, 0.1, pos.z);
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2.0 + Math.random() * 4.5;
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        2.5 + Math.random() * 4.0,
+        Math.sin(angle) * speed
+      );
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -12.0,
+        life: 0.5 + Math.random() * 0.5,
+        maxLife: 1.0,
+        scale: 1.2
+      });
+    }
+  }
+
   update(dt) {
     // Update individual particle meshes
     for (let i = this.particles.length - 1; i >= 0; i--) {
