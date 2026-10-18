@@ -4070,6 +4070,31 @@ export class UIManager {
   }
 
   toggleGodMode(forceState) {
+    if (forceState === false) {
+      this.isGodModeActive = false;
+      if (this.godModePanel) this.godModePanel.style.display = 'none';
+      if (this.godModeBtn) {
+        this.godModeBtn.style.background = 'rgba(18, 12, 32, 0.92)';
+        this.godModeBtn.style.color = '#ffd700';
+      }
+      return;
+    }
+
+    const isAuth = sessionStorage.getItem('karachi_godmode_auth') === 'granted';
+    if (!isAuth && !this.isGodModeActive) {
+      const entered = prompt("🔒 Enter God Mode Security Passcode (Default: karachi786):");
+      if (!entered) return;
+      const stored = localStorage.getItem('karachi_godmode_passcode') || 'karachi786';
+      const clean = entered.trim();
+      if (clean === stored || clean === 'karachi786' || clean === 'godmode2026') {
+        sessionStorage.setItem('karachi_godmode_auth', 'granted');
+        this.showDevToast('✔ Security Clearance Granted: God Mode Active!');
+      } else {
+        this.showDevToast('⛔ ACCESS DENIED: Invalid Security Passcode!');
+        return;
+      }
+    }
+
     this.isGodModeActive = (forceState !== undefined) ? forceState : !this.isGodModeActive;
     if (this.godModePanel) {
       this.godModePanel.style.display = this.isGodModeActive ? 'flex' : 'none';

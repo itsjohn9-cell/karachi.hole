@@ -3,6 +3,20 @@ import { resolve } from 'path';
 
 export default defineConfig({
   base: './',
+  plugins: [
+    {
+      name: 'godmode-clean-url-rewrite',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          const url = req.url.split('?')[0];
+          if (url === '/godmode' || url === '/admin' || url === '/dashboard' || url === '/ops') {
+            req.url = '/godmode.html' + (req.url.includes('?') ? '?' + req.url.split('?')[1] : '');
+          }
+          next();
+        });
+      }
+    }
+  ],
   build: {
     rollupOptions: {
       input: {

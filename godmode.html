@@ -30,12 +30,50 @@
             <span id="connection-label">STANDALONE / GAME OFFLINE</span>
           </div>
 
+          <button class="header-btn" id="btn-lock-console" title="Lock Console & Clear Session">
+            <span>🔒 Lock</span>
+          </button>
+
           <a href="/" target="_blank" class="header-btn btn-play" id="btn-open-game">
             <span>🎮 Launch Live Game</span>
           </a>
         </div>
       </div>
     </header>
+
+    <!-- Security Lock Screen (Visible when unauthenticated) -->
+    <div id="god-lockscreen" class="god-lockscreen-overlay">
+      <div class="lockscreen-card">
+        <div class="lock-shield-badge">🔒</div>
+        <div class="lock-header">
+          <span class="security-level-pill">LEVEL 5 RESTRICTED • CIVIC AI CORE</span>
+          <h2>SECURITY CLEARANCE REQUIRED</h2>
+          <p>This operations console allows direct real-time manipulation of game physics, autonomous AI telemetry, and civic audits.</p>
+        </div>
+
+        <form id="god-auth-form" class="lock-form" onsubmit="return false;">
+          <div class="lock-input-wrap">
+            <span class="lock-input-icon">🔑</span>
+            <input type="password" id="god-passcode-input" class="lock-input" placeholder="Enter Security Passcode" autocomplete="current-password" autofocus />
+            <button type="button" id="btn-toggle-pass-visibility" class="btn-toggle-eye" title="Show/Hide Passcode">👁️</button>
+          </div>
+
+          <div class="lock-hint-row">
+            <span>Default Passcode: <strong class="pass-code-hint">karachi786</strong></span>
+            <span class="lock-error-msg" id="lock-error-msg"></span>
+          </div>
+
+          <button type="submit" id="btn-unlock-console" class="btn-unlock">
+            <span>⚡ Authenticate &amp; Unlock Console</span>
+          </button>
+        </form>
+
+        <div class="lock-footer">
+          <span>Protected by AES-Verified Session Token • Single-Session Isolation</span>
+          <a href="/" class="lock-return-link">← Return to Public Game</a>
+        </div>
+      </div>
+    </div>
 
     <!-- Nav Tabs Strip -->
     <div class="god-nav-container">

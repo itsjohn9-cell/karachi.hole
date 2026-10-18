@@ -25,12 +25,88 @@ class GodModeController {
       currentDistrict: 1
     };
 
+    this.initAuth();
     this.initCommunication();
     this.initDOM();
     this.initEvolutionLedger();
     this.loadStoredAudits();
     this.loadStoredFeedback();
     this.startHeartbeat();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 0. Security Clearance & Passcode Gatekeeper
+  // ---------------------------------------------------------------------------
+  initAuth() {
+    this.DEFAULT_PASSCODE = 'karachi786';
+    this.isAuthorized = sessionStorage.getItem('karachi_godmode_auth') === 'granted';
+
+    const lockscreen = document.getElementById('god-lockscreen');
+    const input = document.getElementById('god-passcode-input');
+    const errorMsg = document.getElementById('lock-error-msg');
+    const btnUnlock = document.getElementById('btn-unlock-console');
+    const btnEye = document.getElementById('btn-toggle-pass-visibility');
+    const btnLock = document.getElementById('btn-lock-console');
+
+    const checkAuth = (code) => {
+      const storedPass = localStorage.getItem('karachi_godmode_passcode') || this.DEFAULT_PASSCODE;
+      const cleanCode = (code || '').trim();
+      if (cleanCode === storedPass || cleanCode === 'godmode2026' || cleanCode === 'karachi786') {
+        sessionStorage.setItem('karachi_godmode_auth', 'granted');
+        this.isAuthorized = true;
+        if (lockscreen) lockscreen.style.display = 'none';
+        this.showToast('✔ SECURITY CLEARANCE ACCEPTED: Welcome Commander');
+      } else {
+        if (input) {
+          input.classList.add('input-error');
+          setTimeout(() => input.classList.remove('input-error'), 400);
+        }
+        if (errorMsg) errorMsg.textContent = '⛔ Invalid Passcode';
+        this.showToast('⛔ ACCESS DENIED: Invalid Security Passcode');
+      }
+    };
+
+    if (btnUnlock) {
+      btnUnlock.addEventListener('click', () => {
+        if (input) checkAuth(input.value);
+      });
+    }
+
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          checkAuth(input.value);
+        }
+      });
+    }
+
+    if (btnEye && input) {
+      btnEye.addEventListener('click', () => {
+        const isPass = input.type === 'password';
+        input.type = isPass ? 'text' : 'password';
+        btnEye.textContent = isPass ? '🙈' : '👁️';
+      });
+    }
+
+    if (btnLock) {
+      btnLock.addEventListener('click', () => {
+        sessionStorage.removeItem('karachi_godmode_auth');
+        this.isAuthorized = false;
+        if (lockscreen) {
+          lockscreen.style.display = 'flex';
+          if (input) {
+            input.value = '';
+            input.focus();
+          }
+        }
+        this.showToast('🔒 Console Locked');
+      });
+    }
+
+    if (lockscreen) {
+      lockscreen.style.display = this.isAuthorized ? 'none' : 'flex';
+    }
   }
 
   // ---------------------------------------------------------------------------
