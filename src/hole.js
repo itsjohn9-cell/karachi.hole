@@ -255,16 +255,15 @@ export class Hole {
     // Update limb stride & jump animations
     AvatarBuilder.updateAnimation(this.avatarMesh, isMoving, dt, this.isBoosting ? 1.5 : 1.0, !this.isGrounded);
 
-    // High-precision sub-stepping physics with axial separation for smooth sliding and zero building tunneling
-    const substeps = 3;
+    // High-precision sub-stepping physics with continuous 2D circle-vs-box / circle-vs-circle collision resolution
+    // Glides smoothly around obstacle corners and map boundaries with zero sticking, jitter, or oscillation
+    const substeps = 4;
     const subDt = dt / substeps;
     const avatarBodyRadius = 0.70;
 
     for (let step = 0; step < substeps; step++) {
-      // 1. Move along X with continuous boundary sliding (no oscillating snap)
-      const startX = this.position.x;
-      let nextX = startX + dx * speed * subDt;
-      const curZ = this.position.z;
+      let nextX = this.position.x + dx * speed * subDt;
+      let nextZ = this.position.z + dz * speed * subDt;
 
       if (obstacles && obstacles.length > 0) {
         for (let i = 0; i < obstacles.length; i++) {
@@ -281,17 +280,30 @@ export class Hole {
               maxZ = obs.mesh.position.z + obs.halfD;
             }
 
-            // Check if player's Z position overlaps with the box Z footprint
-            if (curZ > minZ - avatarBodyRadius && curZ < maxZ + avatarBodyRadius) {
-              if (dx > 0 && startX <= minX - avatarBodyRadius + 0.05) {
-                if (nextX > minX - avatarBodyRadius) nextX = minX - avatarBodyRadius;
-              } else if (dx < 0 && startX >= maxX + avatarBodyRadius - 0.05) {
-                if (nextX < maxX + avatarBodyRadius) nextX = maxX + avatarBodyRadius;
-              } else if (nextX > minX - avatarBodyRadius && nextX < maxX + avatarBodyRadius) {
-                // If somehow already penetrating, resolve toward nearest external edge smoothly
-                const dL = Math.abs(nextX - (minX - avatarBodyRadius));
-                const dR = Math.abs(nextX - (maxX + avatarBodyRadius));
-                nextX = dL < dR ? minX - avatarBodyRadius : maxX + avatarBodyRadius;
+            // Continuous Circle-vs-AABB closest point resolution
+            const cx = Math.max(minX, Math.min(nextX, maxX));
+            const cz = Math.max(minZ, Math.min(nextZ, maxZ));
+            const diffX = nextX - cx;
+            const diffZ = nextZ - cz;
+            const distSq = diffX * diffX + diffZ * diffZ;
+
+            if (distSq < avatarBodyRadius * avatarBodyRadius) {
+              if (distSq > 0.000001) {
+                const dist = Math.sqrt(distSq);
+                const penetration = avatarBodyRadius - dist;
+                nextX += (diffX / dist) * penetration;
+                nextZ += (diffZ / dist) * penetration;
+              } else {
+                // If player center is inside box, resolve toward nearest external edge
+                const dL = nextX - minX;
+                const dR = maxX - nextX;
+                const dT = nextZ - minZ;
+                const dB = maxZ - nextZ;
+                const minP = Math.min(dL, dR, dT, dB);
+                if (minP === dL) nextX = minX - avatarBodyRadius;
+                else if (minP === dR) nextX = maxX + avatarBodyRadius;
+                else if (minP === dT) nextZ = minZ - avatarBodyRadius;
+                else nextZ = maxZ + avatarBodyRadius;
               }
             }
           } else {
@@ -300,64 +312,23 @@ export class Hole {
             const oRad = obs.radius || obs.collisionRadius || 2.2;
             const totalClearance = oRad + avatarBodyRadius;
             const diffX = nextX - oPos.x;
-            const diffZ = curZ - oPos.z;
-            const distSq = diffX * diffX + diffZ * diffZ;
-            if (distSq < totalClearance * totalClearance) {
-              const dist = Math.sqrt(distSq) || 0.001;
-              nextX = oPos.x + (diffX / dist) * totalClearance;
-            }
-          }
-        }
-      }
-      this.position.x = nextX;
-
-      // 2. Move along Z with continuous boundary sliding
-      const curX = this.position.x;
-      const startZ = this.position.z;
-      let nextZ = startZ + dz * speed * subDt;
-
-      if (obstacles && obstacles.length > 0) {
-        for (let i = 0; i < obstacles.length; i++) {
-          const obs = obstacles[i];
-          if (!obs) continue;
-          if (obs.mesh && (obs.mesh.userData?.isSwallowed || obs.mesh.parent === null || obs.mesh.visible === false || obs.item?.state === 'swallowed')) continue;
-
-          if (obs.isBox) {
-            let minX = obs.minX, maxX = obs.maxX, minZ = obs.minZ, maxZ = obs.maxZ;
-            if (obs.mesh && obs.halfW) {
-              minX = obs.mesh.position.x - obs.halfW;
-              maxX = obs.mesh.position.x + obs.halfW;
-              minZ = obs.mesh.position.z - obs.halfD;
-              maxZ = obs.mesh.position.z + obs.halfD;
-            }
-
-            // Check if player's X position overlaps with the box X footprint
-            if (curX > minX - avatarBodyRadius && curX < maxX + avatarBodyRadius) {
-              if (dz > 0 && startZ <= minZ - avatarBodyRadius + 0.05) {
-                if (nextZ > minZ - avatarBodyRadius) nextZ = minZ - avatarBodyRadius;
-              } else if (dz < 0 && startZ >= maxZ + avatarBodyRadius - 0.05) {
-                if (nextZ < maxZ + avatarBodyRadius) nextZ = maxZ + avatarBodyRadius;
-              } else if (nextZ > minZ - avatarBodyRadius && nextZ < maxZ + avatarBodyRadius) {
-                const dT = Math.abs(nextZ - (minZ - avatarBodyRadius));
-                const dB = Math.abs(nextZ - (maxZ + avatarBodyRadius));
-                nextZ = dT < dB ? minZ - avatarBodyRadius : maxZ + avatarBodyRadius;
-              }
-            }
-          } else {
-            const oPos = (obs.mesh && obs.mesh.position) || obs.position;
-            if (!oPos) continue;
-            const oRad = obs.radius || obs.collisionRadius || 2.2;
-            const totalClearance = oRad + avatarBodyRadius;
-            const diffX = curX - oPos.x;
             const diffZ = nextZ - oPos.z;
             const distSq = diffX * diffX + diffZ * diffZ;
             if (distSq < totalClearance * totalClearance) {
-              const dist = Math.sqrt(distSq) || 0.001;
-              nextZ = oPos.z + (diffZ / dist) * totalClearance;
+              const dist = Math.sqrt(distSq) || 0.0001;
+              const penetration = totalClearance - dist;
+              nextX += (diffX / dist) * penetration;
+              nextZ += (diffZ / dist) * penetration;
             }
           }
         }
       }
+
+      // Continuous map boundary clamp per substep
+      nextX = THREE.MathUtils.clamp(nextX, -maxCoord, maxCoord);
+      nextZ = THREE.MathUtils.clamp(nextZ, -maxCoord, maxCoord);
+
+      this.position.x = nextX;
       this.position.z = nextZ;
     }
 

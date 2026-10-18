@@ -2188,18 +2188,17 @@ class Game {
     if (this.camAngle === undefined) this.camAngle = Math.PI;
 
     // Dynamic Camera Rotation Tracking:
-    // Smoothly rotates camera behind the player when running in any street direction!
-    const isMoving = (this.moveVector.x !== 0 || this.moveVector.y !== 0);
-    if (isMoving) {
-      const targetCamAngle = Math.atan2(this.moveVector.x, this.moveVector.y);
-      let angleDiff = targetCamAngle - this.camAngle;
-      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+    // When moving backward, tilts smoothly to a bounded rear-quarter perspective (~17°)
+    // When moving forward or idle, smoothly restores to primary corridor heading (Math.PI).
+    // The camera NEVER flips 180° so Forward is ALWAYS Forward and Left is ALWAYS Left!
+    const isMovingBackward = (this.moveVector.y > 0.5);
+    const targetCamAngle = isMovingBackward ? (Math.PI - 0.30) : Math.PI;
+    let angleDiff = targetCamAngle - this.camAngle;
+    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-      // Smooth tracking: backward turns rotate actively, lateral steering has controlled ease
-      const turnRate = (this.moveVector.y > 0.5) ? 1.4 : 0.28;
-      this.camAngle += angleDiff * Math.min(1.0, dt * turnRate);
-    }
+    const turnRate = isMovingBackward ? 2.2 : 4.0;
+    this.camAngle += angleDiff * Math.min(1.0, dt * turnRate);
 
     // Camera smoothly placed behind player along dynamic camAngle
     const targetCamX = this.player.position.x - Math.sin(this.camAngle) * camDist;
