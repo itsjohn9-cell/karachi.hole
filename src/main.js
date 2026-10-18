@@ -538,17 +538,18 @@ class Game {
     this.navArrowMesh = new THREE.Mesh(arrowGeo, this.navArrowMat);
     this.navGuideGroup.add(this.navArrowMesh);
 
-    // Subtle pulsing ring around the chevron
+    // Nav ring mesh (hidden - remove circle around player)
     const ringGeo = new THREE.RingGeometry(0.75, 0.95, 32);
     ringGeo.rotateX(-Math.PI / 2);
     this.navRingMat = new THREE.MeshBasicMaterial({
       color: 0x00ffff,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.0,
       depthWrite: false,
       side: THREE.DoubleSide
     });
     this.navRingMesh = new THREE.Mesh(ringGeo, this.navRingMat);
+    this.navRingMesh.visible = false;
     this.navGuideGroup.add(this.navRingMesh);
 
     this.navGuideGroup.position.set(0, 0.05, 0);
@@ -857,20 +858,10 @@ class Game {
       }
     }
 
-    // Camera-relative 3D movement: Arrow keys & joystick move relative to player third-person view
+    // Direct, intuitive street navigation (Left is always Left, Right is always Right)
     if (this.moveVector.x !== 0 || this.moveVector.y !== 0) {
-      const camAngle = this.camAngle !== undefined ? this.camAngle : Math.PI;
-      const fwdX = Math.sin(camAngle);
-      const fwdZ = Math.cos(camAngle);
-      const rightX = -Math.cos(camAngle);
-      const rightZ = Math.sin(camAngle);
-
-      // Invert moveVector.y because -1 is Forward/Up
-      const inputForward = -this.moveVector.y;
-      const inputRight = this.moveVector.x;
-
-      const worldDx = inputRight * rightX + inputForward * fwdX;
-      const worldDz = inputRight * rightZ + inputForward * fwdZ;
+      const worldDx = this.moveVector.x;
+      const worldDz = this.moveVector.y;
 
       if (Math.abs(worldDx) > 0.001 || Math.abs(worldDz) > 0.001) {
         this.player.move(worldDx, worldDz, dt, 96.0, this.cityGen.obstacles || []);
@@ -1222,6 +1213,44 @@ class Game {
           ud.danceCycle = (ud.danceCycle || 0) + dt * 8;
           res.position.y = Math.abs(Math.sin(ud.danceCycle)) * 0.35;
           res.rotation.y += dt * 1.5;
+        }
+      }
+    }
+
+    // 3b. Animate Pedestrians & Innocent Citizens (Walk cycles, breathing, greeting hero!)
+    if (this.edibleObjects) {
+      const heroPos = this.player ? this.player.position : null;
+      for (let i = 0; i < this.edibleObjects.length; i++) {
+        const obj = this.edibleObjects[i];
+        if (!obj || obj.state === 'swallowed') continue;
+        const mesh = obj.mesh;
+        const ud = mesh?.userData;
+        if (!ud || !ud.isCitizen) continue;
+
+        ud.animCycle = (ud.animCycle || 0) + dt * (ud.walkSpeed || 1.4) * 4.2;
+        const stride = Math.sin(ud.animCycle);
+
+        // Articulated limb swings
+        if (ud.legLGroup && ud.legRGroup) {
+          ud.legLGroup.rotation.x = stride * 0.42;
+          ud.legRGroup.rotation.x = -stride * 0.42;
+        }
+        if (ud.armLGroup && ud.armRGroup) {
+          ud.armLGroup.rotation.x = -stride * 0.38;
+          ud.armRGroup.rotation.x = stride * 0.38;
+        }
+
+        // Proximity reaction: turn to face hero & give a friendly Pakistani greeting wave!
+        if (heroPos) {
+          const distToHero = Math.hypot(mesh.position.x - heroPos.x, mesh.position.z - heroPos.z);
+          if (distToHero < 5.5) {
+            const targetYaw = Math.atan2(heroPos.x - mesh.position.x, heroPos.z - mesh.position.z);
+            mesh.rotation.y = THREE.MathUtils.lerp(mesh.rotation.y, targetYaw, dt * 5.0);
+            if (ud.armRGroup) {
+              ud.armRGroup.rotation.x = -1.4 + Math.sin(currentTime * 8.0) * 0.35;
+              ud.armRGroup.rotation.z = 0.35;
+            }
+          }
         }
       }
     }
@@ -1816,37 +1845,25 @@ class Game {
     const lookAheadDist = isPortrait ? 8.0 : 7.0;
     const lookTargetY = isPortrait ? 1.6 : 1.35;
 
-    // Initialize camera tracking angle
-    if (this.camAngle === undefined) {
-      this.camAngle = Math.PI; // Facing north down main boulevard
-    }
-
-    // Smooth camera orientation tracking:
-    // Adjust yaw when moving along the Z axis (forward or backward).
-    // Pure left/right strafing moves laterally without spinning the camera!
-    const inputForward = -this.moveVector.y;
-    const isMovingAlongZ = Math.abs(inputForward) > 0.15;
-    if (isMovingAlongZ && this.player.facingAngle !== undefined) {
-      let angleDiff = this.player.facingAngle - this.camAngle;
-      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      this.camAngle += angleDiff * Math.min(1.0, dt * 3.5);
-    }
+    // Maintain stable third-person street chase heading (facing North down the main corridor)
+    // Left is ALWAYS Left, Right is ALWAYS Right, with zero disorienting spin
+    this.camAngle = Math.PI;
 
     // Safety guard against NaN
     if (!isFinite(this.camera.position.x) || !isFinite(this.camera.position.z)) {
       this.camera.position.set(this.player.position.x, camHeight, this.player.position.z + camDist);
     }
 
-    // Camera position behind the character
-    const targetCamX = this.player.position.x - Math.sin(this.camAngle) * camDist;
+    // Camera smoothly follows behind character with clamped lerp rates
+    const targetCamX = this.player.position.x;
     const targetCamY = Math.max(1.85, (this.player.position.y || 0) + camHeight);
-    const targetCamZ = this.player.position.z - Math.cos(this.camAngle) * camDist;
+    const targetCamZ = this.player.position.z + camDist;
 
+    const followLerp = Math.min(1.0, dt * 8.5);
     if (isFinite(targetCamX) && isFinite(targetCamZ)) {
-      this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, dt * 9.0);
-      this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, dt * 8.0);
-      this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, dt * 9.0);
+      this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, followLerp);
+      this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, Math.min(1.0, dt * 7.5));
+      this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, followLerp);
     }
 
     // Look target ahead down the street corridor

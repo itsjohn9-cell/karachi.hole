@@ -151,16 +151,33 @@ export class AvatarBuilder {
       group.add(capeMesh);
     }
 
-    // 2. Head & Neck
+    // 2. Head & Neck with Lively Facial Features
     const headGeo = new THREE.SphereGeometry(0.18, 12, 12);
     const head = new THREE.Mesh(headGeo, skinMat);
     head.position.y = 1.52;
     head.castShadow = true;
     group.add(head);
 
+    // Expressive Eyes
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 6), eyeMat);
+    eyeL.position.set(-0.06, 1.55, 0.16);
+    group.add(eyeL);
+    const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 6), eyeMat);
+    eyeR.position.set(0.06, 1.55, 0.16);
+    group.add(eyeR);
+
+    // Authentic Groomed Mustache for Tariq & Farooq
+    if (avatarId === 'tariq' || avatarId === 'farooq') {
+      const mustacheMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+      const mustache = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.028, 0.035), mustacheMat);
+      mustache.position.set(0, 1.48, 0.17);
+      group.add(mustache);
+    }
+
     // Hair / Police Cap
     if (avatarId === 'farooq') {
-      // Traffic Police Peaked Cap
+      // Traffic Police Peaked Cap with Golden Karachi Emblem
       const capCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.19, 0.12, 12), new THREE.MeshLambertMaterial({ color: 0xffffff }));
       capCrown.position.y = 1.66;
       group.add(capCrown);
@@ -169,6 +186,10 @@ export class AvatarBuilder {
       capVisor.rotation.x = 0.2;
       capVisor.position.set(0, 1.62, 0.08);
       group.add(capVisor);
+
+      const capBadge = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.02), new THREE.MeshLambertMaterial({ color: 0xffd700 }));
+      capBadge.position.set(0, 1.67, 0.19);
+      group.add(capBadge);
     } else {
       // Styled Hair
       const hairGeo = new THREE.SphereGeometry(0.19, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.55);
@@ -230,17 +251,9 @@ export class AvatarBuilder {
     legRGroup.add(shoeR);
     group.add(legRGroup);
 
-    // 4. Ground Civic Aura Disc (Subtle neon ring under feet)
-    const auraGeo = new THREE.RingGeometry(0.45, 0.55, 24);
-    const auraMat = new THREE.MeshBasicMaterial({
-      color: 0x00e5ff,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.65
-    });
-    const aura = new THREE.Mesh(auraGeo, auraMat);
-    aura.rotation.x = -Math.PI / 2;
-    aura.position.y = 0.02;
+    // Dummy aura group for backward compatibility (no visible ground circle)
+    const aura = new THREE.Group();
+    aura.visible = false;
     group.add(aura);
 
     // 5. Overhead Floating Name Banner
@@ -276,6 +289,8 @@ export class AvatarBuilder {
       profile,
       torso,
       head,
+      eyeL,
+      eyeR,
       armLGroup,
       armRGroup,
       legLGroup,
@@ -284,6 +299,7 @@ export class AvatarBuilder {
       nameSprite,
       capeMesh,
       animCycle: 0,
+      idleTimer: 0,
       isMoving: false,
       facingAngle: 0
     };
@@ -292,43 +308,67 @@ export class AvatarBuilder {
   }
 
   /**
-   * Update character walk/run animations every frame
+   * Update character walk/run and idle animations every frame
    */
-  static updateAnimation(group, isMoving, dt, speedMult = 1.0) {
+  static updateAnimation(group, isMoving, dt, speedMult = 1.0, isJumping = false) {
     if (!group || !group.userData) return;
     const ud = group.userData;
 
+    if (isJumping) {
+      // Parkour Jump Traversal Pose: tuck legs up, arms spread for balance
+      ud.legLGroup.rotation.x = THREE.MathUtils.lerp(ud.legLGroup.rotation.x, 0.55, dt * 12.0);
+      ud.legRGroup.rotation.x = THREE.MathUtils.lerp(ud.legRGroup.rotation.x, 0.35, dt * 12.0);
+      ud.armLGroup.rotation.x = THREE.MathUtils.lerp(ud.armLGroup.rotation.x, -0.65, dt * 10.0);
+      ud.armRGroup.rotation.x = THREE.MathUtils.lerp(ud.armRGroup.rotation.x, -0.65, dt * 10.0);
+      ud.torso.rotation.x = THREE.MathUtils.lerp(ud.torso.rotation.x, 0.15, dt * 8.0);
+      return;
+    }
+
     if (isMoving) {
-      ud.animCycle += dt * 11.0 * speedMult;
+      ud.animCycle += dt * 11.5 * speedMult;
       const stride = Math.sin(ud.animCycle);
 
-      // Swing legs
-      ud.legLGroup.rotation.x = stride * 0.65;
-      ud.legRGroup.rotation.x = -stride * 0.65;
+      // Swing legs with knee stride
+      ud.legLGroup.rotation.x = stride * 0.72;
+      ud.legRGroup.rotation.x = -stride * 0.72;
 
       // Swing arms in natural opposition
-      ud.armLGroup.rotation.x = -stride * 0.55;
-      ud.armRGroup.rotation.x = stride * 0.55;
+      ud.armLGroup.rotation.x = -stride * 0.62;
+      ud.armRGroup.rotation.x = stride * 0.62;
 
-      // Slight vertical bounce
-      ud.torso.position.y = 0.98 + Math.abs(Math.cos(ud.animCycle)) * 0.04;
-      ud.head.position.y = 1.52 + Math.abs(Math.cos(ud.animCycle)) * 0.04;
+      // Dynamic forward athletic lean when sprinting
+      const forwardLean = speedMult > 1.2 ? 0.22 : 0.10;
+      ud.torso.rotation.x = THREE.MathUtils.lerp(ud.torso.rotation.x, forwardLean, dt * 8.0);
+
+      // Dynamic vertical footstep bounce
+      ud.torso.position.y = 0.98 + Math.abs(Math.cos(ud.animCycle)) * 0.05;
+      ud.head.position.y = 1.52 + Math.abs(Math.cos(ud.animCycle)) * 0.05;
 
       // Cape flutter
       if (ud.capeMesh) {
-        ud.capeMesh.rotation.x = 0.35 + Math.sin(ud.animCycle * 1.5) * 0.15;
+        ud.capeMesh.rotation.x = 0.38 + Math.sin(ud.animCycle * 1.6) * 0.22;
       }
-
-      // Rotate ground aura pulse
-      ud.aura.rotation.z += dt * 2.0;
     } else {
-      // Idle breathing pose smoothly resets limbs
-      ud.legLGroup.rotation.x *= 0.85;
-      ud.legRGroup.rotation.x *= 0.85;
-      ud.armLGroup.rotation.x *= 0.85;
-      ud.armRGroup.rotation.x *= 0.85;
-      ud.torso.position.y = 0.98 + Math.sin(performance.now() * 0.003) * 0.015;
-      ud.head.position.y = 1.52 + Math.sin(performance.now() * 0.003) * 0.015;
+      // Rich Idle Breathing & Street Vigilante Scanning
+      ud.idleTimer = (ud.idleTimer || 0) + dt;
+      const t = ud.idleTimer;
+
+      // Smoothly reset running tilt & limb extension
+      ud.legLGroup.rotation.x = THREE.MathUtils.lerp(ud.legLGroup.rotation.x, 0, dt * 8.0);
+      ud.legRGroup.rotation.x = THREE.MathUtils.lerp(ud.legRGroup.rotation.x, 0, dt * 8.0);
+      ud.armLGroup.rotation.x = THREE.MathUtils.lerp(ud.armLGroup.rotation.x, 0, dt * 8.0);
+      ud.armRGroup.rotation.x = THREE.MathUtils.lerp(ud.armRGroup.rotation.x, 0, dt * 8.0);
+      ud.torso.rotation.x = THREE.MathUtils.lerp(ud.torso.rotation.x, 0, dt * 6.0);
+
+      // Natural breathing chest expansion
+      ud.torso.position.y = 0.98 + Math.sin(t * 2.8) * 0.016;
+      ud.head.position.y = 1.52 + Math.sin(t * 2.8) * 0.016;
+
+      // Vigilant street hero head turn: scanning left and right
+      ud.head.rotation.y = Math.sin(t * 0.9) * 0.22;
+
+      // Subtle weight shift on feet
+      ud.torso.rotation.z = Math.sin(t * 1.4) * 0.02;
     }
   }
 }

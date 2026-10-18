@@ -249,7 +249,7 @@ export class UIManager {
       </div>
 
       <!-- Left Panel: District Missions Checklist Card (Collapsible, top: 72px, left: 16px) -->
-      <div class="hud-mission-card" id="district-mission-banner">
+      <div class="hud-mission-card collapsed" id="district-mission-banner">
         <div class="mission-card-header" id="mission-card-header-toggle" title="Tap to expand/collapse missions">
           <span class="district-badge-pill" id="hud-district-badge">DISTRICT 1</span>
           <span class="district-name-text" id="hud-district-title">Tariq Road &amp; PECHS</span>

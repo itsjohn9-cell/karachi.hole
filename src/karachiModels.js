@@ -840,7 +840,7 @@ export const KarachiModels = {
     const group = new THREE.Group();
     group.name = "Pedestrian";
 
-    const clothesColors = [materials.shalwarWhite, materials.shalwarNavy, materials.shalwarTeal];
+    const clothesColors = [materials.shalwarWhite, materials.shalwarNavy, materials.shalwarTeal, materials.shalwarGrey];
     const clothMat = clothesColors[Math.floor(Math.random() * clothesColors.length)];
 
     // Body (Kameez tunic)
@@ -855,16 +855,42 @@ export const KarachiModels = {
     head.position.y = 1.45;
     group.add(head);
 
-    // Legs (Shalwar trousers)
+    // Hair
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), materials.blackMat);
+    hair.position.y = 1.47;
+    group.add(hair);
+
+    // Arms with animation pivots
+    const armLGroup = new THREE.Group();
+    armLGroup.position.set(-0.30, 1.25, 0);
+    const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.5, 6), clothMat);
+    armL.position.y = -0.22;
+    armLGroup.add(armL);
+    group.add(armLGroup);
+
+    const armRGroup = new THREE.Group();
+    armRGroup.position.set(0.30, 1.25, 0);
+    const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.5, 6), clothMat);
+    armR.position.y = -0.22;
+    armRGroup.add(armR);
+    group.add(armRGroup);
+
+    // Legs with animation pivots
+    const legLGroup = new THREE.Group();
+    legLGroup.position.set(-0.11, 0.6, 0);
     const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6), clothMat);
-    legL.position.set(-0.1, 0.3, 0);
-    group.add(legL);
+    legL.position.y = -0.3;
+    legLGroup.add(legL);
+    group.add(legLGroup);
 
-    const legR = legL.clone();
-    legR.position.x = 0.1;
-    group.add(legR);
+    const legRGroup = new THREE.Group();
+    legRGroup.position.set(0.11, 0.6, 0);
+    const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6), clothMat);
+    legR.position.y = -0.3;
+    legRGroup.add(legR);
+    group.add(legRGroup);
 
-    // Radiant Emerald Green Ground Halo & Floating Friendly Badge
+    // Radiant Emerald Green Floating Friendly Badge (no floor ring)
     const friendlyDecal = this.createFriendlyDecal('citizen', '💚 FRIEND • INNOCENT CITIZEN');
     group.add(friendlyDecal);
 
@@ -872,7 +898,15 @@ export const KarachiModels = {
       isFriendly: true,
       friendlyType: 'citizen',
       name: "Innocent Citizen",
-      friendlyDecal
+      friendlyDecal,
+      body,
+      head,
+      armLGroup,
+      armRGroup,
+      legLGroup,
+      legRGroup,
+      animCycle: Math.random() * 10,
+      walkSpeed: 1.2 + Math.random() * 0.8
     };
 
     return group;
@@ -1024,16 +1058,17 @@ export const KarachiModels = {
     };
     const color = colorMap[type] || 0x00e676;
 
-    // 1. Soft Radiant Ground Protector Ring
+    // 1. Soft Radiant Ground Protector Ring (hidden - street hero open world without circular rings)
     const ringGeo = new THREE.RingGeometry(0.9, 1.25, 24);
     ringGeo.rotateX(-Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({
       color: color,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.55
+      opacity: 0.0
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.visible = false;
     ring.position.y = 0.04;
     group.add(ring);
 
