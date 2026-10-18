@@ -925,6 +925,14 @@ export class UIManager {
           </div>
         </div>
 
+        <!-- Detailed Breakdown of Resolved Street Crises & Interventions -->
+        <div class="dc-resolved-breakdown" id="dc-modal-breakdown">
+          <div class="dc-breakdown-heading">🛡️ RESOLVED CRISES &amp; CIVIC REFORMS:</div>
+          <div class="dc-breakdown-list" id="dc-modal-threat-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
         <div class="dc-next-preview">
           <span class="next-label">NEXT LEVEL DESTINATION:</span>
           <span class="next-name" id="dc-modal-nextname">District 2: Saddar &amp; Empress Market</span>
@@ -2153,23 +2161,34 @@ export class UIManager {
       });
     }
 
-    // CRITICAL REQUIREMENT: Auto-pause when user switches tabs or moves away
+    // CRITICAL REQUIREMENT: Robust Auto-Pause when user switches tabs, minimizes window, or moves away
+    const triggerAutoPause = () => {
+      // If the game has not started yet or is already over, do not auto-pause
+      if (window.game && (!window.game.isGameStarted || window.game.isGameOver)) return;
+      this.showAutoPauseModal();
+    };
+
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        this.showAutoPauseModal();
+      if (document.hidden || document.visibilityState === 'hidden') {
+        triggerAutoPause();
       }
     });
 
     window.addEventListener('blur', () => {
-      this.showAutoPauseModal();
+      triggerAutoPause();
+    });
+
+    window.addEventListener('pagehide', () => {
+      triggerAutoPause();
     });
   }
 
   showAutoPauseModal() {
-    // Don't auto pause if already on start modal or game over
+    // Don't auto pause if already on start modal, game over, or district cleared
     if (this.startModal && this.startModal.style.display !== 'none') return;
     if (this.gameOverModal && this.gameOverModal.style.display !== 'none') return;
     if (this.districtClearedModal && this.districtClearedModal.style.display !== 'none') return;
+    if (window.game && (!window.game.isGameStarted || window.game.isGameOver)) return;
 
     this.isAutoPaused = true;
     if (this.onPauseGame) this.onPauseGame();
@@ -2990,6 +3009,7 @@ export class UIManager {
     timeBonus,
     nextDistrictName,
     isFinalDistrict = false,
+    resolvedThreats = null,
     onNextDistrict
   }) {
     document.getElementById('dc-modal-title').textContent = isFinalDistrict
@@ -3005,6 +3025,51 @@ export class UIManager {
     document.getElementById('dc-modal-nextname').textContent = isFinalDistrict
       ? `Grand Champion Ceremony`
       : `${nextDistrictName}`;
+
+    // Populate itemized threat resolution reforms
+    const threatListEl = document.getElementById('dc-modal-threat-list');
+    if (threatListEl) {
+      const defaultThreatsByLevel = {
+        1: [
+          { icon: '🔒', title: '2x Open Road Hazards', reform: 'Heavy KMC cast-iron covers bolted shut. Hazard-free road restored!' },
+          { icon: '📱', title: 'Armed Mobile Snatcher', reform: 'Cornered & apprehended. Snatched smartphones returned to citizens!' },
+          { icon: '🚰', title: 'Water Tanker Extortion', reform: 'Illegal suction pipelines severed. Fresh tap water restored to neighborhood!' }
+        ],
+        2: [
+          { icon: '📜', title: '3x Extortion Bhatta Rackets', reform: 'Bhatta parchi network confiscated. Local bazaar merchants protected!' },
+          { icon: '🏍️', title: '3x Reckless One-Wheelers', reform: 'Reckless 70cc racers grounded. High-visibility safety cones placed!' },
+          { icon: '🕳️', title: '2x Lyari Potholes', reform: 'Deep road trenches filled with durable asphalt. Safe driving restored!' }
+        ],
+        3: [
+          { icon: '🚑', title: 'VIP Traffic Jam Halting Ambulance', reform: 'Protocol convoy diverted with KMC roadblocks. Commuters & hospital route freed!' },
+          { icon: '📱', title: 'Empress Market Snatchers', reform: 'Bazaar pickpockets apprehended & shoppers secured!' },
+          { icon: '🌿', title: 'Burns Road Trash Heaps', reform: 'Compactor bins installed & fragrant jasmine planters blooming!' }
+        ],
+        4: [
+          { icon: '🏍️', title: 'Midnight Highway Racers', reform: 'Illegal drag racers impounded & safe transit restored!' },
+          { icon: '🌲', title: 'Margalla Timber Poachers', reform: 'Illegal timber chainsaws confiscated & forest reserve protected!' },
+          { icon: '⚖️', title: 'Corrupt VIP Bureaucrats', reform: 'Embezzled public funds frozen & redirected to public dispensary!' }
+        ],
+        5: [
+          { icon: '📜', title: 'Quetta Bazaar Extortionists', reform: 'Merchant protection enforced & Aman Bazaar peace restored!' },
+          { icon: '⚡', title: 'Sparking Transformers', reform: 'High-voltage dangling kundas disconnected & clean solar kiosk built!' }
+        ]
+      };
+
+      const items = (resolvedThreats && resolvedThreats.length > 0)
+        ? resolvedThreats
+        : (defaultThreatsByLevel[level] || defaultThreatsByLevel[1]);
+
+      threatListEl.innerHTML = items.map(item => `
+        <div class="dc-breakdown-item">
+          <span class="threat-icon">${item.icon || '🛡️'}</span>
+          <div class="threat-details">
+            <span class="threat-title">${item.title}</span>
+            <span class="threat-reform">${item.reform}</span>
+          </div>
+        </div>
+      `).join('');
+    }
 
     const nextBtn = document.getElementById('btn-next-district');
     nextBtn.textContent = isFinalDistrict

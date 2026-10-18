@@ -846,36 +846,36 @@ export class CityGenerator {
     if (districtLevel === 1) {
       // =========================================================
       // DISTRICT 1: KARACHI - DHA & CLIFTON SEA VIEW (Level 1)
-      // Rapid-Testing Streamlined Forward Corridor:
-      // 1. Pothole #1 at 7m ahead
-      // 2. Pothole #2 at 14m ahead (slight right)
-      // 3. Mobile Snatcher at 21m ahead (slight left)
-      // 4. Water Tanker Mafia at 29m ahead
+      // Open-World Distributed Exploration Across City Avenues:
+      // 1. Pothole #1: 22m North along main avenue (x: 0, z: -22)
+      // 2. Pothole #2: 28m East towards bazaar avenue (x: 28, z: 0)
+      // 3. Mobile Snatcher: West Cross Avenue near Clifton Promenade (x: -24, z: -48)
+      // 4. Water Tanker Mafia: North Boulevard Crossing (x: 0, z: -68)
       // =========================================================
 
-      // Target 1: Pothole #1 (7m North of spawn)
+      // Target 1: Pothole #1 (22m North of spawn)
       const pot1 = KarachiModels.createBrokenRoadPatch();
-      pot1.position.set(0.0, 0, -7.0);
+      pot1.position.set(0.0, 0, -22.0);
       this.registerEdible(pot1, 1, 80, "Road Pothole #1", 1.5, { isBadGuy: true, evilType: 'pothole', isDistrictEvil: true });
       this.addWaypointBeacon(pot1, '🕳️');
 
-      // Target 2: Pothole #2 (14m North of spawn, right lane)
+      // Target 2: Pothole #2 (East Avenue towards food street & shops)
       const pot2 = KarachiModels.createBrokenRoadPatch();
-      pot2.position.set(2.5, 0, -14.0);
+      pot2.position.set(28.0, 0, 0.0);
       this.registerEdible(pot2, 1, 80, "Road Pothole #2", 1.5, { isBadGuy: true, evilType: 'pothole', isDistrictEvil: true });
       this.addWaypointBeacon(pot2, '🕳️');
 
-      // Target 3: Mobile Snatcher (21m North of spawn, left lane)
-      this.addRobberyScene(-2.5, -21.0);
+      // Target 3: Mobile Snatcher (West Cross Avenue near Clifton)
+      this.addRobberyScene(-24.0, -48.0);
 
-      // Target 4: Water Tanker Mafia (29m North of spawn, center avenue)
-      this.addWaterTankerScene(0.0, -29.0);
+      // Target 4: Water Tanker Mafia (North Boulevard intersection)
+      this.addWaterTankerScene(0.0, -68.0);
     } else if (districtLevel === 2) {
       // =========================================================
       // DISTRICT 2: KARACHI - LYARI (Level 2)
       // Focus: Bhatta Extortionists, Potholes, 70cc Racers, Snatchers
       // =========================================================
-      const bhattaSpots = [[-8.5, -4.5], [8.5, 4.5], [-14.0, 18.0]];
+      const bhattaSpots = [[0, 28.0], [48.0, -20.0], [-48.0, 24.0]];
       bhattaSpots.forEach(([bx, bz], idx) => {
         const bhatta = KarachiModels.createBhattaParchiMafia();
         bhatta.position.set(bx, 0, bz);
@@ -883,7 +883,7 @@ export class CityGenerator {
         this.addWaypointBeacon(bhatta, '📜');
       });
 
-      const racerSpots = [[0, 8.5], [-18.0, 0], [18.0, -10.0]];
+      const racerSpots = [[0, -32.0], [-24.0, 0], [24.0, -48.0]];
       racerSpots.forEach(([rx, rz], idx) => {
         const racer = KarachiModels.createOneWheelerRacer();
         racer.position.set(rx, 0, rz);
@@ -891,15 +891,15 @@ export class CityGenerator {
         this.addWaypointBeacon(racer, '🏍️');
       });
 
-      [[-10.0, -15.0], [12.0, 15.0]].forEach(([px, pz]) => {
+      [[-48.0, -20.0], [28.0, 48.0]].forEach(([px, pz]) => {
         const pot = KarachiModels.createBrokenRoadPatch();
         pot.position.set(px, 0, pz);
         this.registerEdible(pot, 1, 80, "Lyari Pothole", 1.5, { isBadGuy: true, evilType: 'pothole', isDistrictEvil: true });
         this.addWaypointBeacon(pot, '🕳️');
       });
 
-      this.addRobberyScene(15.0, -15.0);
-      this.addRobberyScene(-16.0, -6.0);
+      this.addRobberyScene(48.0, 24.0);
+      this.addRobberyScene(-24.0, 48.0);
     } else if (districtLevel === 3) {
       // =========================================================
       // DISTRICT 3: KARACHI - SADDAR & BURNS ROAD (Level 3)

@@ -1174,6 +1174,30 @@ class AudioManager {
     }
   }
 
+  pauseAudio() {
+    this.isPlayingMusic = false;
+    if (this.musicInterval) {
+      clearInterval(this.musicInterval);
+      this.musicInterval = null;
+    }
+    if (this.ctx && this.ctx.state === 'running') {
+      try {
+        this.ctx.suspend();
+      } catch (e) {}
+    }
+  }
+
+  resumeAudio() {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      try {
+        this.ctx.resume();
+      } catch (e) {}
+    }
+    if (this.musicEnabled && !this.isPlayingMusic) {
+      this.startMusic();
+    }
+  }
+
   toggleSound() {
     this.soundEnabled = !this.soundEnabled;
     try {

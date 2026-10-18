@@ -272,12 +272,14 @@ class Game {
       this.moveVector.x = 0;
       this.moveVector.y = 0;
     }
+    audio.pauseAudio();
   }
 
   resumeGame() {
     if (!this.isPaused) return;
     this.isPaused = false;
     this.clock.getDelta(); // Reset clock delta so physics doesn't leap
+    audio.resumeAudio();
     audio.playClick();
   }
 
@@ -1170,7 +1172,42 @@ class Game {
     this.districtRemaining = this.districtEvils.filter(b => b && b.state !== 'swallowed').length;
     if (this.districtRemaining === 0 && !this.districtClearing) {
       this.handleDistrictCleared();
+    } else {
+      this.ui.showAnnouncement(
+        `${actionInfo.icon} ${actionInfo.title} (${this.districtRemaining} CRISES REMAINING)`,
+        actionInfo.color || '#00e5ff'
+      );
     }
+  }
+
+  getDistrictResolvedSummary(level) {
+    const defaultThreatsByLevel = {
+      1: [
+        { icon: '🔒', title: 'Road Hazards Repaired', reform: 'Heavy KMC cast-iron covers bolted shut. Hazard-free road restored!' },
+        { icon: '📱', title: 'Armed Mobile Snatcher Cornered', reform: 'Apprehended on West Avenue. Stolen smartphones safely returned!' },
+        { icon: '🚰', title: 'Water Tanker Mafia Intercepted', reform: 'Pirate booster pipeline severed. Free tap water restored to neighborhood!' }
+      ],
+      2: [
+        { icon: '📜', title: 'Bhatta Extortion Racket Busted', reform: 'Extortion slip network confiscated. Bazaar shopkeepers protected!' },
+        { icon: '🏍️', title: 'Reckless One-Wheelers Grounded', reform: 'Hazardous 70cc racers stopped. High-vis safety cones deployed!' },
+        { icon: '🕳️', title: 'Lyari Potholes Repaired', reform: 'Road trenches filled with durable asphalt. Safe driving restored!' }
+      ],
+      3: [
+        { icon: '🚑', title: 'VIP Traffic Jam Diverted', reform: 'Protocol convoy halted with KMC roadblocks. Blocked ambulances & commuters freed!' },
+        { icon: '📱', title: 'Empress Market Snatchers', reform: 'Bazaar pickpockets apprehended & shoppers secured!' },
+        { icon: '🌿', title: 'Burns Road Trash Cleared', reform: 'Compactor bins installed & fragrant jasmine planters blooming!' }
+      ],
+      4: [
+        { icon: '🏍️', title: 'Midnight Drag Racers', reform: 'Illegal highway racing halted & road safety restored!' },
+        { icon: '🌲', title: 'Margalla Timber Poachers', reform: 'Illegal chainsaws seized & green forest reserve protected!' },
+        { icon: '⚖️', title: 'Corrupt VIP Bureaucrats', reform: 'Embezzled funds frozen & redirected to public dispensary!' }
+      ],
+      5: [
+        { icon: '📜', title: 'Quetta Bazaar Extortionists', reform: 'Merchant protection enforced & Aman Bazaar peace restored!' },
+        { icon: '⚡', title: 'Sparking Transformers Grounded', reform: 'Dangling kundas disconnected & clean solar energy kiosk installed!' }
+      ]
+    };
+    return defaultThreatsByLevel[level] || defaultThreatsByLevel[1];
   }
 
   onWindowResize() {
@@ -1212,9 +1249,11 @@ class Game {
     this.player.currentSpeed = this.player.baseSpeed;
 
     this.ui.showAnnouncement(
-      `🏆 DISTRICT ${cfg.level} CLEARED! ${cfg.name.toUpperCase()} IS SAFE! (+${cfg.bonusScore} XP, +${cfg.timeBonus}s)`,
+      `🏆 ALL CRISES RESOLVED! ${cfg.name.toUpperCase()} IS SECURED! (+${cfg.bonusScore} XP, +${cfg.timeBonus}s)`,
       '#ffd700'
     );
+
+    const resolvedThreats = this.getDistrictResolvedSummary(this.currentDistrictLevel);
 
     this.ui.showDistrictClearedModal({
       level: cfg.level,
@@ -1226,6 +1265,7 @@ class Game {
       nextDistrictName: nextCfg.name,
       nextDistrictUrdu: nextCfg.urdu,
       isFinalDistrict,
+      resolvedThreats,
       onNextDistrict: () => {
         if (isFinalDistrict) {
           this.endMatch();
