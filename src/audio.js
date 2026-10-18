@@ -1091,6 +1091,51 @@ class AudioManager {
     this.vibrate(12);
   }
 
+  // Authentic Karachi King Pressure Horn (بادشاہ پریشر ہارن)
+  playKingPressureHorn() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+
+    // Dual-tone high-decibel truck horn harmonics (F4 + A4 + C5)
+    [349.23, 440.0, 523.25].forEach((freq) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.setValueAtTime(freq * 1.05, t + 0.12);
+      osc.frequency.setValueAtTime(freq, t + 0.25);
+      gain.gain.setValueAtTime(0.28, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.55);
+    });
+    this.vibrate([60, 30, 80]);
+  }
+
+  // Muddy Sewer / Gutter Trap Splash Sound
+  playGutterSplash() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(140, t);
+    osc.frequency.exponentialRampToValueAtTime(45, t + 0.32);
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.35);
+    this.vibrate([80, 40, 100]);
+  }
+
   // Melodic Citizen Dialogue Chime (Warm Sitar/Accordion chime)
   playDialogueChime() {
     if (!this.soundEnabled) return;

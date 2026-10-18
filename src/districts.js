@@ -9,46 +9,62 @@ export const DISTRICT_CONFIGS = [
     level: 1,
     id: 'karachi_clifton_dha',
     city: 'Karachi',
-    name: 'Karachi: DHA & Clifton Sea View',
-    urdu: 'کراچی: ڈی ایچ اے اور کلفٹن سی ویو',
-    tagline: 'VIP Convoys, Water Tanker Mafia & Snatchers',
-    heroTitle: 'Street Vigilante',
-    unlockedTitle: 'Coastal Guardian',
-    timeBonus: 65,
-    bonusScore: 3500,
+    name: 'Karachi: Soldier Bazar to PECHS (Tariq Road)',
+    urdu: 'کراچی: سولجر بازار تا طارق روڈ پی ای سی ایچ ایس',
+    tagline: 'Survive Open Gutters, Escape 70cc Robbers & Complete Karachi Civic Run!',
+    heroTitle: 'Karachi Street Commuter',
+    unlockedTitle: 'Highway Hero',
+    timeBonus: 75,
+    bonusScore: 4000,
     holeRadiusBonus: 0.35,
-    speedBonus: 0.8,
-    description: 'Protect Clifton citizens and DHA coastal avenues: intercept illegal water tankers, arrest mobile snatchers, and repair broken road craters!',
+    speedBonus: 1.0,
+    route: {
+      originName: 'Soldier Bazar (Holy Family)',
+      originUrdu: 'سولجر بازار',
+      destinationName: 'PECHS Tariq Road (Liberty Gate)',
+      destinationUrdu: 'طارق روڈ، پی ای سی ایچ ایس',
+      totalMeters: 1200,
+      startZ: 85,
+      destinationZ: -85,
+      waypoints: [
+        { name: 'Soldier Bazar Chowk', urdu: 'سولجر بازار چوک', pct: 0, z: 85 },
+        { name: 'Nishtar Road Market', urdu: 'نشتر روڈ مارکیٹ', pct: 25, z: 42 },
+        { name: 'MA Jinnah Junction', urdu: 'ایم اے جناح جنکشن', pct: 50, z: 0 },
+        { name: 'Shahrah-e-Quaideen Flyover', urdu: 'شاہراہِ قائدین فلائی اوور', pct: 75, z: -42 },
+        { name: 'PECHS Tariq Road Finish Gate', urdu: 'طارق روڈ گیٹ', pct: 100, z: -85 }
+      ]
+    },
+    description: 'Survive the historic Karachi commute from Soldier Bazar to PECHS Tariq Road: dodge open manhole gutters, outrun 70cc street robbers, collect Mario-style truck art power-ups, and deliver water to residential homes!',
     missions: [
       {
         id: 'm1_potholes',
-        title: 'Repair Road Potholes',
+        title: 'Clear & Cover Open Gutters',
         icon: '🕳️',
         evilType: 'pothole',
         targetCount: 2,
         xpReward: 600,
-        description: 'Pave over broken road craters to restore smooth carpet roads on the coastal avenue!',
-        benefitText: '🛣️ Smooth Carpet Roads Repaved!'
+        description: 'Swerve, jump over, or bolt manhole covers on open sewer hazards across the avenue!',
+        benefitText: '🛣️ Open Sewer Gutter Bolted & Safe Road Restored!'
       },
       {
         id: 'm1_robbers',
-        title: 'Catch Mobile Snatcher',
+        title: 'Outrun / Stun Mobile Robber',
         icon: '📱',
         evilType: 'robber',
         targetCount: 1,
         xpReward: 1000,
-        description: 'Chase down and apprehend the armed mobile snatcher escaping down the avenue!',
-        benefitText: '📱 Citizen Phone Saved & Street Peace Restored!'
+        description: 'Outrun 70cc mobile snatchers using Nitro or scare them away with King Pressure Horn!',
+        benefitText: '📱 Citizen Phone Saved & Robber Sent Fleeing!'
       },
       {
         id: 'm1_tanker',
-        title: 'Stop Water Tanker Mafia',
+        title: 'Deliver Water to PECHS Homes',
         icon: '🚰',
         evilType: 'tanker',
         targetCount: 1,
         xpReward: 1400,
-        description: 'Intercept the illegal tanker truck and restore tap water to PECHS & Clifton residential homes!',
-        benefitText: '💧 Overflowing Tap Water Restored to 2,500 Homes!'
+        description: 'Intercept the illegal tanker truck and restore tap water to PECHS residential homes!',
+        benefitText: '💧 Overflowing Tap Water Restored to 2,500 PECHS Homes!'
       }
     ]
   },

@@ -3828,6 +3828,131 @@ html, body {
   box-shadow: 0 2px 8px rgba(255, 215, 0, 0.25);
 }
 
+/* ==========================================================================
+   KARACHI STREET TRANSIT ROUTE & POWER-UP HUD
+   ========================================================================== */
+.route-progress-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 16, 26, 0.88);
+  border: 1.5px solid #00e676;
+  border-radius: 999px;
+  padding: 4px 14px;
+  box-shadow: 0 0 14px rgba(0, 230, 118, 0.35);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+
+.route-point {
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.route-point.start {
+  color: #00e5ff;
+}
+
+.route-point.dest {
+  color: #00e676;
+}
+
+.route-track {
+  position: relative;
+  width: 90px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  overflow: visible;
+}
+
+.route-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00e5ff, #00e676);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.route-pin {
+  position: absolute;
+  top: -9px;
+  transform: translateX(-50%);
+  font-size: 13px;
+  transition: left 0.2s ease;
+}
+
+.route-dist-badge {
+  background: rgba(0, 230, 118, 0.2);
+  color: #00e676;
+  font-size: 0.7rem;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.powerup-slot-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(20, 12, 4, 0.92);
+  border: 1.5px solid #ff9100;
+  border-radius: 999px;
+  padding: 3px 12px;
+  box-shadow: 0 0 14px rgba(255, 145, 0, 0.5);
+  backdrop-filter: blur(12px);
+  animation: powerupPulse 1.2s infinite alternate;
+}
+
+@keyframes powerupPulse {
+  0% { box-shadow: 0 0 10px rgba(255, 145, 0, 0.35); }
+  100% { box-shadow: 0 0 18px rgba(255, 145, 0, 0.75); }
+}
+
+.powerup-icon {
+  font-size: 1.1rem;
+}
+
+.powerup-title {
+  color: #ffd700;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.powerup-timer-bar {
+  width: 48px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.powerup-timer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff9100, #ff1744);
+  border-radius: 999px;
+  transition: width 0.1s linear;
+}
+
+.horn-btn {
+  background: linear-gradient(135deg, #ffd600, #ff9100);
+  color: #261500;
+  font-weight: 900;
+  font-size: 0.88rem;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  box-shadow: 0 4px 18px rgba(255, 214, 0, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.horn-btn:active {
+  transform: translateY(2px) scale(0.95);
+  box-shadow: 0 2px 8px rgba(255, 214, 0, 0.25);
+}
+
 .hud-interaction-prompt {
   position: fixed;
   bottom: 84px;

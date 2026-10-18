@@ -81,6 +81,10 @@
         <button class="god-tab-btn active" data-tab="god-controls">
           <span>⚡ God Mode Controls</span>
         </button>
+        <button class="god-tab-btn" data-tab="multi-fleet">
+          <span>👥 Multi-Player Fleet</span>
+          <span class="tab-badge" id="fleet-count-badge">4 Patrollers</span>
+        </button>
         <button class="god-tab-btn" data-tab="ai-audits">
           <span>🤖 AI Auto-Auditing</span>
           <span class="tab-badge" id="audit-count-badge">2 Audits</span>
@@ -134,6 +138,26 @@
           <span class="stat-label">Civic Hazards <span style="font-size:12px">🛑</span></span>
           <span class="stat-value amber" id="stat-threats">6 Active</span>
           <span class="stat-sub">Mafia / Tankers Fleeing</span>
+        </div>
+        <div class="telemetry-stat-card">
+          <span class="stat-label">Route Progress <span style="font-size:12px">🛣️</span></span>
+          <span class="stat-value cyan" id="stat-route-progress">0%</span>
+          <span class="stat-sub">Soldier Bazar ➔ PECHS</span>
+        </div>
+        <div class="telemetry-stat-card">
+          <span class="stat-label">Gutter Hazards <span style="font-size:12px">🕳️</span></span>
+          <span class="stat-value amber" id="stat-gutter-falls">0 Falls</span>
+          <span class="stat-sub" id="stat-gutter-sub">0 Leaped</span>
+        </div>
+        <div class="telemetry-stat-card">
+          <span class="stat-label">Robber Defense <span style="font-size:12px">📱</span></span>
+          <span class="stat-value green" id="stat-robbers-defense">0 Evaded</span>
+          <span class="stat-sub" id="stat-robbers-sub">0 Loss</span>
+        </div>
+        <div class="telemetry-stat-card">
+          <span class="stat-label">Power-Up <span style="font-size:12px">🚀</span></span>
+          <span class="stat-value purple" id="stat-active-powerup">None</span>
+          <span class="stat-sub">NASCAR / Mario Slot</span>
         </div>
       </section>
 
@@ -284,7 +308,66 @@
         </div>
       </section>
 
-      <!-- TAB 2: AI AUTO-AUDITING -->
+      <!-- TAB 2: MULTI-PLAYER FLEET TELEMETRY & ROUTE OPS -->
+      <section class="tab-pane" id="tab-multi-fleet">
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <div class="card-title">
+              <span>👥</span> Central Karachi Multi-Player Fleet Operations (سولجر بازار تا طارق روڈ کانوائے)
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="god-btn btn-cyan btn-sm" id="btn-broadcast-fleet-nitro">🚀 Grant Fleet Nitro</button>
+              <button class="god-btn btn-green btn-sm" id="btn-broadcast-fleet-shield">🛡️ Deploy Fleet Shield</button>
+              <button class="god-btn btn-amber btn-sm" id="btn-broadcast-fleet-horn">📢 City-Wide King Horn</button>
+            </div>
+          </div>
+
+          <!-- Fleet Aggregate Stats Bar -->
+          <div class="fleet-summary-bar">
+            <div class="fleet-metric">
+              <span class="f-label">Active Patrollers</span>
+              <span class="f-val green" id="fleet-active-count">4 Online</span>
+            </div>
+            <div class="fleet-metric">
+              <span class="f-label">Avg Route Progress</span>
+              <span class="f-val cyan" id="fleet-avg-progress">62.5%</span>
+            </div>
+            <div class="fleet-metric">
+              <span class="f-label">Total Gutter Falls</span>
+              <span class="f-val amber" id="fleet-total-gutters">7 Falls</span>
+            </div>
+            <div class="fleet-metric">
+              <span class="f-label">Robbery Defense Rate</span>
+              <span class="f-val green" id="fleet-evasion-rate">88.2% Evaded</span>
+            </div>
+            <div class="fleet-metric">
+              <span class="f-label">Combined Civic Score</span>
+              <span class="f-val purple" id="fleet-total-score">38,450 pts</span>
+            </div>
+          </div>
+
+          <!-- Live Multi-Player Session Grid -->
+          <div class="card-subtitle" style="margin-top: 20px; font-weight: 800; color: #94a3b8; font-size: 0.85rem; letter-spacing: 1px;">
+            LIVE CONNECTED PATROLLER SESSIONS (SIMULTANEOUS ACTIVE SESSIONS)
+          </div>
+          <div class="fleet-grid" id="fleet-sessions-grid">
+            <!-- Dynamically populated patroller cards -->
+          </div>
+        </div>
+
+        <!-- Fleet Route Hotspots & AI Improvement Recommendations -->
+        <div class="timeline-card">
+          <div class="card-header" style="margin-bottom: 16px;">
+            <div class="card-title"><span>🤖</span> AI Multi-Player Route Auditing &amp; Incident Hotspots</div>
+            <span class="card-badge badge-active">Live Incident Correlation</span>
+          </div>
+          <div class="fleet-ai-recommendations" id="fleet-ai-hotspots">
+            <!-- AI Hotspots populated here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: AI AUTO-AUDITING -->
       <section class="tab-pane" id="tab-ai-audits">
         <div class="audit-header-banner">
           <div class="audit-banner-left">

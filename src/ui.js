@@ -28,6 +28,7 @@ export class UIManager {
     onPauseGame,
     onNextLevel,
     onJump,
+    onHorn,
     onInteractCitizen,
     onOpenMissionJournal,
     onContinueCareer,
@@ -45,6 +46,7 @@ export class UIManager {
     this.onPauseGame = onPauseGame;
     this.onNextLevel = onNextLevel;
     this.onJump = onJump;
+    this.onHorn = onHorn;
     this.onInteractCitizen = onInteractCitizen;
     this.onOpenMissionJournal = onOpenMissionJournal;
     this.onContinueCareer = onContinueCareer;
@@ -256,6 +258,27 @@ export class UIManager {
             <span class="score-label">SCORE</span>
             <span class="score-val" id="hud-score">0</span>
           </div>
+
+          <!-- Karachi Transit Route Progression (Soldier Bazar -> PECHS Tariq Road) -->
+          <div class="route-progress-pill" id="hud-route-progress">
+            <span class="route-point start" id="hud-route-start">📍 Soldier Bazar</span>
+            <div class="route-track">
+              <div class="route-fill" id="hud-route-fill" style="width: 0%"></div>
+              <div class="route-pin" id="hud-route-pin" style="left: 0%">🦺</div>
+            </div>
+            <span class="route-point dest" id="hud-route-dest">🏁 PECHS</span>
+            <span class="route-dist-badge" id="hud-route-dist">800m</span>
+          </div>
+
+          <!-- NASCAR / Mario Kart Active Power-Up Slot -->
+          <div class="powerup-slot-pill" id="hud-powerup-slot" style="display: none;">
+            <span class="powerup-icon" id="hud-powerup-icon">🚀</span>
+            <span class="powerup-title" id="hud-powerup-title">CNG NITRO</span>
+            <div class="powerup-timer-bar">
+              <div class="powerup-timer-fill" id="hud-powerup-timer-fill" style="width: 100%"></div>
+            </div>
+          </div>
+
           <div class="nav-target-pill" id="hud-nav-target" style="display: none;">
             <span class="nav-target-badge">🎯 TARGET</span>
             <span class="nav-target-icon" id="hud-nav-icon">🕳️</span>
@@ -347,9 +370,10 @@ export class UIManager {
         </div>
       </div>
 
-      <!-- Bottom-Right: Traversal & Mission Controls (bottom: 18px, right: 18px) -->
+      <!-- Bottom-Right: Traversal, Horn & Mission Controls -->
       <div class="hud-controls-bottom-right">
-        <button class="jump-btn ui-interactive" id="btn-jump" title="Parkour Jump Traversal [Space]">🦘 JUMP</button>
+        <button class="horn-btn ui-interactive" id="btn-horn" title="King Pressure Horn [H] - Blast Robbers & Clear Traffic">📢 HORN [H]</button>
+        <button class="jump-btn ui-interactive" id="btn-jump" title="Parkour Jump Traversal [Space] - Leap Over Open Gutters">🦘 JUMP</button>
         <button class="sprint-btn ui-interactive" id="btn-sprint" title="Sprint Boost [Shift]">⚡ SPRINT</button>
         <button class="journal-btn ui-interactive" id="btn-journal" title="Mission Journal & District Gauges [J]">📜 JOURNAL</button>
       </div>
@@ -1816,6 +1840,18 @@ export class UIManager {
       btnJump.addEventListener('touchstart', doJump, { passive: false });
     }
 
+    // King Pressure Horn Button (Clear Traffic & Stun Robbers)
+    const btnHorn = document.getElementById('btn-horn');
+    if (btnHorn) {
+      const doHorn = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        audio.playKingPressureHorn();
+        if (this.onHorn) this.onHorn();
+      };
+      btnHorn.addEventListener('click', doHorn);
+      btnHorn.addEventListener('touchstart', doHorn, { passive: false });
+    }
+
     // Talk Button Prompt (Interactive Citizen Dialogues)
     const btnTalk = document.getElementById('btn-talk');
     if (btnTalk) {
@@ -2460,7 +2496,9 @@ export class UIManager {
     districtEvils = [],
     recentCleaned = [],
     activeCrisis = null,
-    missions = null
+    missions = null,
+    routeProgress = null,
+    activePowerUp = null
   }) {
     // Player Name & 3D Avatar Icon in Header
     const nameEl = document.getElementById('hud-player-name');
@@ -2534,6 +2572,45 @@ export class UIManager {
         }
       } else {
         navPill.style.display = 'none';
+      }
+    }
+
+    // Karachi Transit Route Progression (Soldier Bazar -> PECHS Tariq Road)
+    const routeCard = document.getElementById('hud-route-progress');
+    if (routeCard) {
+      if (routeProgress) {
+        routeCard.style.display = 'flex';
+        const fillEl = document.getElementById('hud-route-fill');
+        const pinEl = document.getElementById('hud-route-pin');
+        const distEl = document.getElementById('hud-route-dist');
+        const startEl = document.getElementById('hud-route-start');
+        const destEl = document.getElementById('hud-route-dest');
+        if (fillEl) fillEl.style.width = `${routeProgress.routePct || 0}%`;
+        if (pinEl) pinEl.style.left = `${Math.min(96, routeProgress.routePct || 0)}%`;
+        if (distEl) distEl.textContent = `${routeProgress.distLeft || 0}m to PECHS`;
+        if (startEl && routeProgress.origin) startEl.textContent = `📍 ${routeProgress.origin}`;
+        if (destEl && routeProgress.destination) destEl.textContent = `🏁 ${routeProgress.destination}`;
+      } else {
+        routeCard.style.display = 'none';
+      }
+    }
+
+    // NASCAR / Mario Kart Power-Up Active Slot
+    const powerSlot = document.getElementById('hud-powerup-slot');
+    if (powerSlot) {
+      if (activePowerUp && activePowerUp.timer > 0) {
+        powerSlot.style.display = 'flex';
+        const pIcon = document.getElementById('hud-powerup-icon');
+        const pTitle = document.getElementById('hud-powerup-title');
+        const pFill = document.getElementById('hud-powerup-timer-fill');
+        if (pIcon) pIcon.textContent = activePowerUp.icon || '🚀';
+        if (pTitle) pTitle.textContent = `${activePowerUp.title} (${activePowerUp.timer.toFixed(1)}s)`;
+        if (pFill) {
+          const ratio = Math.min(100, Math.max(0, (activePowerUp.timer / (activePowerUp.maxDuration || 6)) * 100));
+          pFill.style.width = `${ratio}%`;
+        }
+      } else {
+        powerSlot.style.display = 'none';
       }
     }
 
@@ -3671,6 +3748,9 @@ export class UIManager {
         triggerPinNote();
       } else if (e.key === 'g' || e.key === 'G') {
         this.toggleGodMode();
+      } else if (e.key === 'h' || e.key === 'H') {
+        audio.playKingPressureHorn();
+        if (this.onHorn) this.onHorn();
       } else if (e.key === 'Escape') {
         this.closeDevFeedbackModal();
         if (this.isGodModeActive) this.toggleGodMode(false);

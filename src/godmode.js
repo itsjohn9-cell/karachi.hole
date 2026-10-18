@@ -29,6 +29,7 @@ class GodModeController {
     this.initCommunication();
     this.initDOM();
     this.initEvolutionLedger();
+    this.initMultiPlayerFleet();
     this.loadStoredAudits();
     this.loadStoredFeedback();
     this.startHeartbeat();
@@ -392,6 +393,42 @@ class GodModeController {
 
     const threatsRemaining = t.evils ? t.evils.filter(e => e.state !== 'swallowed').length : 0;
     setTxt('stat-threats', `${threatsRemaining} Active`);
+
+    if (t.routeProgress) {
+      setTxt('stat-route-progress', `${t.routeProgress.pct || 0}% (${t.routeProgress.distLeftMeters || 0}m)`);
+      setTxt('stat-gutter-falls', `${t.routeProgress.gutterFalls || 0} Falls`);
+      setTxt('stat-gutter-sub', `${t.routeProgress.guttersJumped || 0} Leaped`);
+      setTxt('stat-robbers-defense', `${t.routeProgress.robbersEvaded || 0} Evaded`);
+      setTxt('stat-robbers-sub', `${t.routeProgress.robberyLosses || 0} Loss`);
+      setTxt('stat-active-powerup', t.routeProgress.powerUp || 'None');
+
+      // Update local player in fleet sessions
+      if (this.fleetSessions && this.fleetSessions['local_player']) {
+        const local = this.fleetSessions['local_player'];
+        local.routeProgress = t.routeProgress.pct || 0;
+        local.distLeft = t.routeProgress.distLeftMeters || 0;
+        local.gutterFalls = t.routeProgress.gutterFalls || 0;
+        local.guttersJumped = t.routeProgress.guttersJumped || 0;
+        local.robbersEvaded = t.routeProgress.robbersEvaded || 0;
+        local.activePowerUp = t.routeProgress.powerUp || 'None';
+        local.score = t.player?.score || 0;
+        local.speed = (t.player?.speed ? t.player.speed * 3.6 : 38).toFixed(0);
+        if (t.routeProgress.gutterFalls > 0 && !local.wasTrapped) {
+          local.status = 'Trapped in Gutter';
+          local.statusClass = 'status-trapped';
+        } else if (local.activePowerUp && local.activePowerUp !== 'None') {
+          local.status = 'Nitro Boosted';
+          local.statusClass = 'status-boosted';
+        } else if (local.routeProgress >= 100) {
+          local.status = 'Arrived at PECHS';
+          local.statusClass = 'status-arrived';
+        } else {
+          local.status = 'Patrolling';
+          local.statusClass = 'status-patrolling';
+        }
+        this.renderFleetGrid();
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -782,6 +819,249 @@ class GodModeController {
     this.toastTimeout = setTimeout(() => {
       toast.style.display = 'none';
     }, 3200);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 8. Multi-Player Fleet Operations & Incident Hotspots
+  // ---------------------------------------------------------------------------
+  initMultiPlayerFleet() {
+    this.fleetSessions = {
+      local_player: {
+        id: 'local_player',
+        name: 'Patroller #1 [You]',
+        avatar: '🦺',
+        vehicle: 'Hero Commuter',
+        routeProgress: 0,
+        distLeft: 800,
+        speed: 42,
+        status: 'Patrolling',
+        statusClass: 'status-patrolling',
+        activePowerUp: 'None',
+        gutterFalls: 0,
+        guttersJumped: 0,
+        robbersEvaded: 0,
+        score: 0,
+        isLocal: true
+      },
+      patroller_bilal: {
+        id: 'patroller_bilal',
+        name: 'Patroller #2 (Bilal - 70cc Scout)',
+        avatar: '🏍️',
+        vehicle: '70cc Red Bike',
+        routeProgress: 78,
+        distLeft: 180,
+        speed: 48,
+        status: 'Patrolling',
+        statusClass: 'status-patrolling',
+        activePowerUp: 'TANKER SHIELD',
+        gutterFalls: 1,
+        guttersJumped: 3,
+        robbersEvaded: 4,
+        score: 7200,
+        isLocal: false
+      },
+      patroller_sara: {
+        id: 'patroller_sara',
+        name: 'Patroller #3 (Sara - Rickshaw Patrol)',
+        avatar: '🛺',
+        vehicle: 'Truck-Art Rickshaw',
+        routeProgress: 42,
+        distLeft: 460,
+        speed: 32,
+        status: 'Nitro Boosted',
+        statusClass: 'status-boosted',
+        activePowerUp: 'CNG NITRO',
+        gutterFalls: 2,
+        guttersJumped: 1,
+        robbersEvaded: 2,
+        score: 4100,
+        isLocal: false
+      },
+      patroller_hamza: {
+        id: 'patroller_hamza',
+        name: 'Patroller #4 (Hamza - Civic Van)',
+        avatar: '🚐',
+        vehicle: 'KMC Relief Van',
+        routeProgress: 94,
+        distLeft: 50,
+        speed: 52,
+        status: 'Arrived at PECHS',
+        statusClass: 'status-arrived',
+        activePowerUp: 'None',
+        gutterFalls: 0,
+        guttersJumped: 4,
+        robbersEvaded: 5,
+        score: 9800,
+        isLocal: false
+      }
+    };
+
+    // Fleet Broadcast God Buttons
+    this.bindClick('btn-broadcast-fleet-nitro', () => {
+      this.sendCommand('SPAWN_CRATE', { crateType: 'nitro' });
+      this.sendCommand('SET_SPEED', { speedMult: 2.2 });
+      Object.values(this.fleetSessions).forEach(p => {
+        p.activePowerUp = 'CNG NITRO';
+        p.status = 'Nitro Boosted';
+        p.statusClass = 'status-boosted';
+      });
+      this.renderFleetGrid();
+      this.showToast('🚀 BROADCAST: Granted CNG Nitro Turbo to All Fleet Patrollers!');
+    });
+
+    this.bindClick('btn-broadcast-fleet-shield', () => {
+      this.sendCommand('SPAWN_CRATE', { crateType: 'shield' });
+      this.sendCommand('TOGGLE_IMMORTAL', { immortal: true });
+      Object.values(this.fleetSessions).forEach(p => {
+        p.activePowerUp = 'TANKER SHIELD';
+        p.status = 'Shielded';
+        p.statusClass = 'status-patrolling';
+      });
+      this.renderFleetGrid();
+      this.showToast('🛡️ BROADCAST: Deployed Water Tanker Shield to All Fleet Patrollers!');
+    });
+
+    this.bindClick('btn-broadcast-fleet-horn', () => {
+      this.sendCommand('SPAWN_CRATE', { crateType: 'horn' });
+      this.showToast('📢 BROADCAST: City-Wide King Pressure Horn Blasted! All Robbers Stunned!');
+    });
+
+    this.renderFleetGrid();
+    this.renderFleetHotspots();
+  }
+
+  renderFleetGrid() {
+    const grid = document.getElementById('fleet-sessions-grid');
+    if (!grid) return;
+
+    const sessions = Object.values(this.fleetSessions || {});
+    let totalScore = 0;
+    let totalFalls = 0;
+    let totalEvaded = 0;
+    let totalAttempts = 0;
+    let sumProgress = 0;
+
+    grid.innerHTML = '';
+    sessions.forEach(p => {
+      totalScore += (p.score || 0);
+      totalFalls += (p.gutterFalls || 0);
+      totalEvaded += (p.robbersEvaded || 0);
+      totalAttempts += (p.robbersEvaded || 0) + (p.robberyLosses || 0);
+      sumProgress += (p.routeProgress || 0);
+
+      const card = document.createElement('div');
+      card.className = `patroller-card ${p.isLocal ? 'active-session' : ''}`;
+      card.innerHTML = `
+        <div class="patroller-header">
+          <div class="patroller-name-row">
+            <span class="patroller-avatar-badge">${p.avatar}</span>
+            <span>${p.name}</span>
+          </div>
+          <span class="patroller-status-pill ${p.statusClass}">${p.status}</span>
+        </div>
+
+        <div class="patroller-route-track">
+          <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#94a3b8; font-weight:700;">
+            <span>Soldier Bazar</span>
+            <span style="color:#00e676;">${p.routeProgress}%</span>
+            <span>PECHS</span>
+          </div>
+          <div class="patroller-track-bar">
+            <div class="patroller-track-fill" style="width: ${p.routeProgress}%"></div>
+          </div>
+        </div>
+
+        <div class="patroller-meta-grid">
+          <div class="meta-item">
+            <span class="m-lbl">Current Speed</span>
+            <span class="m-val">${p.speed} km/h</span>
+          </div>
+          <div class="meta-item">
+            <span class="m-lbl">Power-Up Slot</span>
+            <span class="m-val" style="color:#ffd700;">${p.activePowerUp}</span>
+          </div>
+          <div class="meta-item">
+            <span class="m-lbl">Gutter Falls</span>
+            <span class="m-val" style="color:${p.gutterFalls > 0 ? '#ff1744' : '#00e676'}">${p.gutterFalls}</span>
+          </div>
+          <div class="meta-item">
+            <span class="m-lbl">Robbers Evaded</span>
+            <span class="m-val" style="color:#00e5ff">${p.robbersEvaded}</span>
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    // Update Fleet Summary Bar
+    const setTxt = (id, txt) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = txt;
+    };
+    const avgProgress = sessions.length ? Math.round(sumProgress / sessions.length) : 0;
+    const evasionPct = totalAttempts > 0 ? Math.round((totalEvaded / totalAttempts) * 100) : 92;
+
+    setTxt('fleet-active-count', `${sessions.length} Online`);
+    setTxt('fleet-avg-progress', `${avgProgress}%`);
+    setTxt('fleet-total-gutters', `${totalFalls} Falls`);
+    setTxt('fleet-evasion-rate', `${evasionPct}% Evaded`);
+    setTxt('fleet-total-score', `${totalScore.toLocaleString()} pts`);
+  }
+
+  renderFleetHotspots() {
+    const container = document.getElementById('fleet-ai-hotspots');
+    if (!container) return;
+
+    const hotspots = [
+      {
+        icon: '🕳️',
+        title: 'Hotspot #1: Soldier Bazar / Nishtar Road Open Gutter (KM 0.35)',
+        desc: 'Correlated 8 falls logged across 3 active patrollers at narrow market turn. AI recommends raising reflective curb border and auto-spawning warning caution cones.',
+        actionLabel: '🛠️ Pave Sewer Hazard',
+        action: () => {
+          this.sendCommand('DEVOUR_ALL', {});
+          this.showToast('✔ AI Fix Applied: Reinforced asphalt placed over Soldier Bazar sewer!');
+        }
+      },
+      {
+        icon: '📱',
+        title: 'Hotspot #2: MA Jinnah Road Choke Point (KM 0.80)',
+        desc: 'High concentration of 70cc motorcycle snatchers ambushing patrollers as avenue narrows. AI recommendation: Increase King Pressure Horn crate spawn rate by 2.5x.',
+        actionLabel: '📢 Boost Horn Crate Spawns',
+        action: () => {
+          this.sendCommand('SPAWN_CRATE', { crateType: 'horn' });
+          this.showToast('✔ AI Fix Applied: Spawned King Horn crate at MA Jinnah choke point!');
+        }
+      },
+      {
+        icon: '🏁',
+        title: 'Hotspot #3: PECHS Tariq Road Finish Approach (KM 1.15)',
+        desc: 'Vehicle deceleration observed near Liberty Gate due to congestion. AI recommendation: Clear parked traffic and trigger arrival fanfare trigger box.',
+        actionLabel: '🚀 Clear PECHS Avenue',
+        action: () => {
+          this.sendCommand('SPAWN_CRATE', { crateType: 'nitro' });
+          this.showToast('✔ AI Fix Applied: Cleared avenue approaching PECHS finish line!');
+        }
+      }
+    ];
+
+    container.innerHTML = '';
+    hotspots.forEach(h => {
+      const card = document.createElement('div');
+      card.className = 'hotspot-card';
+      card.innerHTML = `
+        <div class="hotspot-icon">${h.icon}</div>
+        <div class="hotspot-content">
+          <div class="hotspot-title">${h.title}</div>
+          <div class="hotspot-desc">${h.desc}</div>
+        </div>
+        <div class="hotspot-action">
+          <button class="god-btn btn-cyan btn-sm">${h.actionLabel}</button>
+        </div>
+      `;
+      card.querySelector('button')?.addEventListener('click', h.action);
+      container.appendChild(card);
+    });
   }
 }
 

@@ -5112,39 +5112,45 @@ export const KarachiModels = {
   },
 
   // 45. Arcade Power-Up Crates: Magnet, Nitro Speed, Hero Frenzy & Bonus Time!
-  createPowerUpCrate(type = 'magnet') {
+  createPowerUpCrate(type = 'mystery') {
     const group = new THREE.Group();
     group.name = `PowerUp-${type}`;
     group.isPowerUp = true;
     group.powerUpType = type;
 
     const colors = {
+      nitro: { main: 0xff3d00, glow: '#ff3d00', icon: '🚀', label: 'CNG NITRO' },
+      turbo: { main: 0xff9100, glow: '#ff9100', icon: '⚡', label: 'TURBO' },
+      shield: { main: 0x00e5ff, glow: '#00e5ff', icon: '🛡️', label: 'TANKER SHIELD' },
+      horn: { main: 0xffd600, glow: '#ffd600', icon: '📢', label: 'KING HORN' },
+      biryani: { main: 0x76ff03, glow: '#76ff03', icon: '🍲', label: 'BIRYANI FEAST' },
+      jump: { main: 0xd500f9, glow: '#d500f9', icon: '🦘', label: 'SUPER JUMP' },
+      mystery: { main: 0xffea00, glow: '#ffea00', icon: '❓', label: 'MYSTERY CRATE' },
       magnet: { main: 0x00e5ff, glow: '#00e5ff', icon: '🧲', label: 'MAGNET' },
-      turbo: { main: 0xff9100, glow: '#ff9100', icon: '⚡', label: 'NITRO' },
       frenzy: { main: 0xff007f, glow: '#ff007f', icon: '🌟', label: 'FRENZY' },
       timer: { main: 0x00e676, glow: '#00e676', icon: '⏱️', label: '+TIME' }
     };
-    const cfg = colors[type] || colors.magnet;
+    const cfg = colors[type] || colors.mystery;
 
-    // Glowing cube crate
-    const boxGeo = new THREE.BoxGeometry(0.85, 0.85, 0.85);
+    // Glowing Pakistani truck-art style cube crate
+    const boxGeo = new THREE.BoxGeometry(0.95, 0.95, 0.95);
     const boxMat = new THREE.MeshStandardMaterial({
       color: cfg.main,
       emissive: cfg.main,
-      emissiveIntensity: 0.35,
-      roughness: 0.2,
-      metalness: 0.8
+      emissiveIntensity: 0.45,
+      roughness: 0.15,
+      metalness: 0.75
     });
     const box = new THREE.Mesh(boxGeo, boxMat);
-    box.position.y = 0.55;
+    box.position.y = 0.65;
     box.castShadow = true;
     group.add(box);
 
-    // Cyber wireframe edges
+    // Neon glowing wireframe edges
     const wireGeo = new THREE.EdgesGeometry(boxGeo);
     const wireMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
     const wire = new THREE.LineSegments(wireGeo, wireMat);
-    wire.position.y = 0.55;
+    wire.position.y = 0.65;
     group.add(wire);
 
     // Floating 3D Icon Sprite Badge
@@ -5152,35 +5158,35 @@ export const KarachiModels = {
     canvas.width = 128;
     canvas.height = 128;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
     ctx.beginPath();
     ctx.arc(64, 64, 58, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 6;
     ctx.strokeStyle = cfg.glow;
     ctx.stroke();
-    ctx.font = '64px sans-serif';
+    ctx.font = 'bold 60px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(cfg.icon, 64, 68);
 
     const iconTex = new THREE.CanvasTexture(canvas);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTex, transparent: true }));
-    sprite.scale.set(1.4, 1.4, 1);
-    sprite.position.y = 1.45;
+    sprite.scale.set(1.5, 1.5, 1);
+    sprite.position.y = 1.65;
     group.add(sprite);
 
     // Pulsing ground target ring
-    const ringGeo = new THREE.RingGeometry(0.8, 1.15, 24);
+    const ringGeo = new THREE.RingGeometry(0.85, 1.3, 24);
     ringGeo.rotateX(-Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({
       color: cfg.main,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.75
+      opacity: 0.8
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.position.y = 0.03;
+    ring.position.y = 0.04;
     group.add(ring);
 
     group.userData = {
@@ -5188,9 +5194,205 @@ export const KarachiModels = {
       wire,
       sprite,
       ring,
-      baseY: 0.55,
-      cfg
+      baseY: 0.65,
+      cfg,
+      type
     };
+
+    return group;
+  },
+
+  // 46. Authentic Karachi Open Gutter / Missing Manhole Hazard (کھلا گٹر)
+  createOpenGutterHazard(radius = 1.6) {
+    const group = new THREE.Group();
+    group.name = 'Open-Gutter-Hazard';
+    group.isGutterHazard = true;
+    group.hazardRadius = radius;
+
+    // Outer cracked concrete rim around hole
+    const rimGeo = new THREE.TorusGeometry(radius * 0.95, 0.22, 10, 24);
+    rimGeo.rotateX(Math.PI / 2);
+    const rimMat = new THREE.MeshStandardMaterial({
+      color: 0x37474f,
+      roughness: 0.95,
+      metalness: 0.1
+    });
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    rim.position.y = 0.08;
+    group.add(rim);
+
+    // Deep dark void cylinder (underground sewer opening)
+    const voidGeo = new THREE.CylinderGeometry(radius * 0.9, radius * 0.85, 1.2, 24, 1, true);
+    const voidMat = new THREE.MeshBasicMaterial({
+      color: 0x050806,
+      side: THREE.BackSide
+    });
+    const sewerVoid = new THREE.Mesh(voidGeo, voidMat);
+    sewerVoid.position.y = -0.55;
+    group.add(sewerVoid);
+
+    // Murky toxic green/brown bubbling sewage water surface
+    const sewageGeo = new THREE.CircleGeometry(radius * 0.88, 24);
+    sewageGeo.rotateX(-Math.PI / 2);
+    const sewageMat = new THREE.MeshStandardMaterial({
+      color: 0x142217,
+      roughness: 0.25,
+      metalness: 0.4
+    });
+    const sewage = new THREE.Mesh(sewageGeo, sewageMat);
+    sewage.position.y = -0.22;
+    group.add(sewage);
+
+    // Iconic Pakistani Makeshift Warning: Broken wooden branch with red cloth
+    const stickGeo = new THREE.CylinderGeometry(0.04, 0.05, 1.6, 6);
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
+    const stick = new THREE.Mesh(stickGeo, stickMat);
+    stick.position.set(0.3, 0.65, 0.2);
+    stick.rotation.z = 0.15;
+    stick.rotation.x = -0.1;
+    group.add(stick);
+
+    // Red caution rag fluttering on branch
+    const ragGeo = new THREE.BoxGeometry(0.32, 0.42, 0.04);
+    const ragMat = new THREE.MeshBasicMaterial({ color: 0xd50000 });
+    const rag = new THREE.Mesh(ragGeo, ragMat);
+    rag.position.set(0.42, 1.35, 0.22);
+    rag.rotation.z = -0.2;
+    group.add(rag);
+
+    // Floating Caution Billboard Badge
+    const canvas = document.createElement('canvas');
+    canvas.width = 380;
+    canvas.height = 96;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(213, 0, 0, 0.85)';
+    ctx.roundRect ? ctx.roundRect(4, 4, 372, 88, 16) : ctx.rect(4, 4, 372, 88);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#ffd700';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠️ OPEN GUTTER / کھلا گٹر', 190, 42);
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText('JUMP [SPACE] OR SWERVE!', 190, 74);
+
+    const bTex = new THREE.CanvasTexture(canvas);
+    const billboard = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
+    billboard.scale.set(3.2, 0.85, 1);
+    billboard.position.y = 2.2;
+    group.add(billboard);
+
+    // Pulsing danger ground ring
+    const alertGeo = new THREE.RingGeometry(radius * 1.05, radius * 1.3, 24);
+    alertGeo.rotateX(-Math.PI / 2);
+    const alertMat = new THREE.MeshBasicMaterial({
+      color: 0xff1744,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.75
+    });
+    const alertRing = new THREE.Mesh(alertGeo, alertMat);
+    alertRing.position.y = 0.025;
+    group.add(alertRing);
+
+    group.userData = {
+      radius,
+      sewage,
+      rag,
+      alertRing,
+      billboard
+    };
+
+    return group;
+  },
+
+  // 47. PECHS Tariq Road Finish Gate Archway (منزل مقصود)
+  createPECHSFinishGate() {
+    const group = new THREE.Group();
+    group.name = 'PECHS-Finish-Gate';
+    group.isFinishGate = true;
+
+    // Twin giant arch pillars spanning 18m across boulevard
+    const pillarMat = new THREE.MeshStandardMaterial({
+      color: 0x00e676,
+      roughness: 0.3,
+      metalness: 0.6
+    });
+    const p1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 7.5, 1.2), pillarMat);
+    p1.position.set(-8.5, 3.75, 0);
+    p1.castShadow = true;
+    group.add(p1);
+
+    const p2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 7.5, 1.2), pillarMat);
+    p2.position.set(8.5, 3.75, 0);
+    p2.castShadow = true;
+    group.add(p2);
+
+    // Overhead crossbar bridge
+    const crossbar = new THREE.Mesh(new THREE.BoxGeometry(19.5, 1.8, 1.4), new THREE.MeshStandardMaterial({
+      color: 0x004d40,
+      roughness: 0.4
+    }));
+    crossbar.position.set(0, 7.2, 0);
+    group.add(crossbar);
+
+    // Glowing Urdu & English Neon Welcome Banner
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#00251a';
+    ctx.fillRect(0, 0, 1024, 256);
+    ctx.strokeStyle = '#00e676';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(10, 10, 1004, 236);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 54px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🏁 WELCOME TO PECHS TARIQ ROAD 🏁', 512, 85);
+
+    ctx.fillStyle = '#00e676';
+    ctx.font = 'bold 64px sans-serif';
+    ctx.fillText('پی ای سی ایچ ایس - طارق روڈ (منزل مقصود)', 512, 175);
+
+    ctx.fillStyle = '#ffd700';
+    ctx.font = '32px sans-serif';
+    ctx.fillText('★ CIVIC MISSION DESTINATION FINISH LINE ★', 512, 225);
+
+    const bannerTex = new THREE.CanvasTexture(canvas);
+    const banner = new THREE.Mesh(
+      new THREE.PlaneGeometry(18.5, 2.8),
+      new THREE.MeshBasicMaterial({ map: bannerTex, side: THREE.DoubleSide })
+    );
+    banner.position.set(0, 7.2, 0.72);
+    group.add(banner);
+
+    // Checkpoint laser threshold on road
+    const lineGeo = new THREE.PlaneGeometry(18.0, 2.5);
+    lineGeo.rotateX(-Math.PI / 2);
+    const lineMat = new THREE.MeshBasicMaterial({
+      color: 0x00e676,
+      transparent: true,
+      opacity: 0.85
+    });
+    const laser = new THREE.Mesh(lineGeo, lineMat);
+    laser.position.set(0, 0.05, 0);
+    group.add(laser);
+
+    // Flashing overhead celebratory spotlights
+    for (let i = -7; i <= 7; i += 3.5) {
+      const lamp = new THREE.Mesh(
+        new THREE.SphereGeometry(0.35, 12, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffeb3b })
+      );
+      lamp.position.set(i, 8.2, 0.8);
+      group.add(lamp);
+    }
 
     return group;
   }

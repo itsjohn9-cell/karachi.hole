@@ -1162,3 +1162,186 @@ input:checked + .slider:before {
 .lock-return-link:hover {
   text-decoration: underline;
 }
+
+/* ==========================================================================
+   MULTI-PLAYER FLEET TELEMETRY & ROUTE OPERATIONS STYLES
+   ========================================================================== */
+.fleet-summary-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  background: rgba(10, 16, 26, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 14px;
+}
+
+.fleet-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fleet-metric .f-label {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.fleet-metric .f-val {
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.fleet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.patroller-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.patroller-card.active-session {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.2);
+}
+
+.patroller-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+}
+
+.patroller-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.patroller-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.patroller-avatar-badge {
+  font-size: 1.3rem;
+}
+
+.patroller-status-pill {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.status-patrolling { background: rgba(0, 255, 157, 0.15); color: var(--accent-green); }
+.status-trapped { background: rgba(255, 23, 68, 0.2); color: var(--accent-crimson); animation: blink 1s infinite; }
+.status-boosted { background: rgba(255, 145, 0, 0.2); color: var(--accent-amber); }
+.status-arrived { background: rgba(0, 229, 255, 0.2); color: var(--accent-cyan); }
+
+.patroller-route-track {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.patroller-track-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.patroller-track-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+  border-radius: 999px;
+}
+
+.patroller-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 0.78rem;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.meta-item .m-lbl { color: var(--text-dim); font-size: 0.7rem; }
+.meta-item .m-val { color: #fff; font-weight: 700; }
+
+.fleet-ai-recommendations {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.hotspot-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-left: 4px solid var(--accent-amber);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.hotspot-icon {
+  font-size: 1.6rem;
+}
+
+.hotspot-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.hotspot-title {
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: #fff;
+}
+
+.hotspot-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.hotspot-action {
+  align-self: center;
+}

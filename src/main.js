@@ -46,6 +46,16 @@ class Game {
     this.magnetTimer = 0;
     this.turboTimer = 0;
     this.frenzyTimer = 0;
+    this.nitroTimer = 0;
+    this.shieldTimer = 0;
+    this.superJumpTimer = 0;
+    this.activePowerUp = null;
+    this.gutterHazards = [];
+    this.finishGate = null;
+    this.gutterFalls = 0;
+    this.guttersJumped = 0;
+    this.robbersEvaded = 0;
+    this.robberyLosses = 0;
     this.score = 0;
 
     // God Mode & AI Auto-Pilot State
@@ -245,6 +255,9 @@ class Game {
       onJump: () => {
         this.performJump();
       },
+      onHorn: () => {
+        this.triggerKingPressureHorn();
+      },
       onInteractCitizen: () => {
         this.interactWithNearbyCitizen();
       },
@@ -325,14 +338,84 @@ class Game {
   }
 
   /**
-   * Agile Street Parkour Traversal Jump Mechanic
+   * Agile Street Parkour Traversal Jump Mechanic (Space / Mobile Jump)
    */
   performJump() {
     if (!this.player || !this.isGameStarted || this.isPaused) return;
-    const jumped = this.player.jump(6.2);
+
+    // If trapped in open sewer gutter, jump immediately pulls hero out!
+    if (this.player.isTrappedInGutter) {
+      this.player.isTrappedInGutter = false;
+      this.player.position.y = 0;
+      this.player.jump(7.5);
+      audio.playJump();
+      this.ui.showFloatingFeedback('💨 ESCAPED SEWER!', this.player.position, '#00e676');
+      return;
+    }
+
+    const jumpStrength = (this.superJumpTimer > 0) ? 10.5 : 6.2;
+    const jumped = this.player.jump(jumpStrength);
     if (jumped) {
       audio.playJump();
       this.particles.createDevourSparkles(this.player.position, 6, 0x00e5ff);
+    }
+  }
+
+  /**
+   * Authentic Karachi King Pressure Horn (بادشاہ پریشر ہارن) [H]
+   * Emits supersonic acoustic shockwave, stuns robbers, scatters traffic
+   */
+  triggerKingPressureHorn() {
+    if (!this.player || !this.isGameStarted || this.isPaused) return;
+    audio.playKingPressureHorn();
+    audio.vibrate([60, 30, 80]);
+    this.cameraShakeTimer = 0.35;
+
+    // Supersonic visual shockwave expanding from player position
+    this.particles.createLevelUpShockwave(this.player.position, 24);
+
+    let stunnedCount = 0;
+    // Check nearby bad guys & robbers within 26m
+    if (this.districtEvils) {
+      this.districtEvils.forEach(evil => {
+        if (evil && evil.state !== 'swallowed' && evil.mesh) {
+          const d = this.player.position.distanceTo(evil.mesh.position);
+          if (d < 26.0) {
+            stunnedCount++;
+            evil.isFleeing = true;
+            evil.fleeTimer = 6.0;
+            // Send evil spinning in opposite direction
+            evil.mesh.rotation.y += Math.PI;
+            this.particles.createCleanseSparkleBurst(evil.mesh.position, 12);
+          }
+        }
+      });
+    }
+
+    // Nearby traffic honks and parts to the shoulder
+    if (this.interactiveTraffic) {
+      this.interactiveTraffic.forEach(car => {
+        if (car && car.position) {
+          const d = this.player.position.distanceTo(car.position);
+          if (d < 24.0) {
+            car.position.x += (car.position.x >= 0 ? 3.5 : -3.5);
+          }
+        }
+      });
+    }
+
+    if (stunnedCount > 0) {
+      const pts = stunnedCount * 300;
+      this.score = (this.score || 0) + pts;
+      this.player.addXP(pts);
+      this.robbersEvaded = (this.robbersEvaded || 0) + stunnedCount;
+      this.ui.showAnnouncement(`📢 KING HORN BLAST! Stunned & Scared Off ${stunnedCount} Bandits! +${pts} PTS`, '#ffd600');
+      this.ui.showFloatingFeedback(`+${pts} 📢 ROBBER STUNNED!`, this.player.position, '#ffd600');
+      if (window.__DEV_TELEMETRY__) {
+        window.__DEV_TELEMETRY__.robbersEvaded = this.robbersEvaded;
+      }
+    } else {
+      this.ui.showAnnouncement('📢 KING PRESSURE HORN BLAST! Traffic Cleared!', '#ffd600');
     }
   }
 
@@ -1270,7 +1353,7 @@ class Game {
     );
   }
 
-  activatePowerUp(type) {
+  activatePowerUp(type = 'mystery') {
     if (audio.playPowerUp) {
       audio.playPowerUp();
     } else if (audio.playChallengeSuccess) {
@@ -1281,17 +1364,45 @@ class Game {
 
     const playerPos = this.player ? this.player.position : { x: 0, y: 0, z: 0 };
 
-    if (type === 'magnet') {
+    if (type === 'mystery') {
+      const roll = ['nitro', 'shield', 'horn', 'biryani', 'jump', 'magnet'];
+      type = roll[Math.floor(Math.random() * roll.length)];
+    }
+
+    if (type === 'nitro' || type === 'turbo') {
+      this.nitroTimer = 5.5;
+      this.particles.createSkidSmoke(playerPos, 35);
+      this.ui.showAnnouncement('🚀 CNG NITRO TURBO! 2.4x Blazing Street Speed!', '#ff3d00');
+      this.activePowerUp = { type: 'nitro', title: 'CNG NITRO', icon: '🚀', timer: 5.5, maxDuration: 5.5 };
+    } else if (type === 'shield') {
+      this.shieldTimer = 8.5;
+      if (this.player) this.player.isShielded = true;
+      this.particles.createCelebrationConfetti(playerPos, 35);
+      this.ui.showAnnouncement('🛡️ WATER TANKER SHIELD! Invincible to Gutters & Robbers!', '#00e5ff');
+      this.activePowerUp = { type: 'shield', title: 'TANKER SHIELD', icon: '🛡️', timer: 8.5, maxDuration: 8.5 };
+    } else if (type === 'horn') {
+      this.triggerKingPressureHorn();
+      this.activePowerUp = { type: 'horn', title: 'KING HORN', icon: '📢', timer: 3.0, maxDuration: 3.0 };
+    } else if (type === 'biryani') {
+      this.magnetTimer = 10.0;
+      this.score = (this.score || 0) + 300;
+      if (this.player) this.player.addXP(300);
+      this.particles.createCelebrationConfetti(playerPos, 45);
+      this.ui.showAnnouncement('🍲 BURNS ROAD BIRYANI FEAST! Full Repair + Magnet Active!', '#76ff03');
+      this.activePowerUp = { type: 'biryani', title: 'BIRYANI FEAST', icon: '🍲', timer: 10.0, maxDuration: 10.0 };
+    } else if (type === 'jump') {
+      this.superJumpTimer = 12.0;
+      this.particles.createCleanseSparkleBurst(playerPos, 30);
+      this.ui.showAnnouncement('🦘 HYDRAULIC SUSPENSION BOOST! High Clearance Jump!', '#d500f9');
+      this.activePowerUp = { type: 'jump', title: 'SUPER JUMP', icon: '🦘', timer: 12.0, maxDuration: 12.0 };
+    } else if (type === 'magnet') {
       this.magnetTimer = 9.0;
       this.particles.createCleanseSparkleBurst(playerPos, 35);
       this.ui.showAnnouncement('🧲 MEGA MAGNET ACTIVATED! Street Litter Vacuum!', '#00e5ff');
       if (this.player && this.player.ringMat) {
         this.player.ringMat.color.setHex(0x00e5ff);
       }
-    } else if (type === 'turbo') {
-      this.turboTimer = 7.0;
-      this.particles.createSkidSmoke(playerPos, 30);
-      this.ui.showAnnouncement('⚡ NITRO TURBO BOOST! 1.8x Street Speed!', '#ff9100');
+      this.activePowerUp = { type: 'magnet', title: 'MAGNET', icon: '🧲', timer: 9.0, maxDuration: 9.0 };
     } else if (type === 'frenzy') {
       this.frenzyTimer = 8.0;
       this.particles.createCelebrationConfetti(playerPos, 45);
@@ -1299,6 +1410,7 @@ class Game {
       if (this.player && this.player.ringMat) {
         this.player.ringMat.color.setHex(0xffd700);
       }
+      this.activePowerUp = { type: 'frenzy', title: 'FRENZY', icon: '🌟', timer: 8.0, maxDuration: 8.0 };
     } else if (type === 'timer') {
       this.timeLeft = (this.timeLeft || 120) + 20;
       this.particles.createCelebrationConfetti(playerPos, 35);
@@ -1458,11 +1570,78 @@ class Game {
     saveManager.unlockDistrict(this.currentDistrictLevel);
     saveManager.addPlayerXP(400);
     saveManager.save();
+
+    // Clear previous district route hazards & finish gate
+    if (this.gutterHazards) {
+      this.gutterHazards.forEach(g => this.scene.remove(g));
+      this.gutterHazards = [];
+    }
+    if (this.finishGate) {
+      this.scene.remove(this.finishGate);
+      this.finishGate = null;
+    }
+
+    if (this.currentDistrictLevel === 1) {
+      this.spawnPECHSFinishGate(0, -85);
+      // Spawn authentic open gutters along the Soldier Bazar -> PECHS avenue
+      this.spawnGutterHazard(2.2, -14, 1.6);
+      this.spawnGutterHazard(-2.8, -38, 1.7);
+      this.spawnGutterHazard(1.8, -58, 1.6);
+      this.spawnGutterHazard(-2.2, 28, 1.5);
+
+      // Spawn NASCAR / Mario Kart style mystery crates along the route
+      this.spawnMysteryCrate(0, -8, 'nitro');
+      this.spawnMysteryCrate(-1.8, -26, 'mystery');
+      this.spawnMysteryCrate(1.5, -46, 'shield');
+      this.spawnMysteryCrate(0, -68, 'horn');
+    }
+  }
+
+  spawnMysteryCrate(x, z, type = 'mystery') {
+    const mesh = KarachiModels.createPowerUpCrate(type);
+    mesh.position.set(x, 0, z);
+    this.scene.add(mesh);
+    this.cityGen.registerEdible(mesh, 1, 100, `Power-Up [${type.toUpperCase()}]`, 1.2, {
+      isPowerUp: true,
+      powerUpType: type,
+      isBadGuy: true,
+      isDistrictEvil: false
+    });
+    return mesh;
+  }
+
+  spawnGutterHazard(x, z, radius = 1.6) {
+    const mesh = KarachiModels.createOpenGutterHazard(radius);
+    mesh.position.set(x, 0, z);
+    this.scene.add(mesh);
+    if (!this.gutterHazards) this.gutterHazards = [];
+    this.gutterHazards.push(mesh);
+    return mesh;
+  }
+
+  spawnPECHSFinishGate(x = 0, z = -85) {
+    const mesh = KarachiModels.createPECHSFinishGate();
+    mesh.position.set(x, 0, z);
+    this.scene.add(mesh);
+    this.finishGate = mesh;
+    return mesh;
+  }
+
+  handlePECHSArrival() {
+    if (this.districtClearing) return;
+    this.districtClearing = true;
+    audio.playDistrictClearedFanfare();
+    this.particles.createCelebrationConfetti(this.player.position, 80);
+    this.particles.createLevelUpShockwave(this.player.position, 20);
+    this.score = (this.score || 0) + 5000;
+    this.player.addXP(2000);
+    this.ui.showAnnouncement('🏁 DESTINATION REACHED: SOLDIER BAZAR ➔ PECHS TARIQ ROAD! +5000 PTS', '#00e676');
+    this.handleDistrictCleared();
   }
 
   updatePhysics(dt) {
     // Check Turbo boost (Button or Bun Kabab Spicy Chutney turbo boost or Arcade Nitro)
-    this.player.isBoosting = this.isBoosting || window.isBoostPressed || (this.player.turboTimer > 0) || (this.turboTimer > 0);
+    this.player.isBoosting = this.isBoosting || window.isBoostPressed || (this.player.turboTimer > 0) || (this.turboTimer > 0) || (this.nitroTimer > 0);
     if (this.player.turboTimer > 0) {
       this.player.turboTimer -= dt;
     }
@@ -1471,6 +1650,27 @@ class Game {
     }
     if (this.frenzyTimer > 0) {
       this.frenzyTimer -= dt;
+    }
+    // Check Nitro, Shield, and Super Jump power-up timers
+    if (this.nitroTimer > 0) {
+      this.nitroTimer -= dt;
+      this.player.isBoosting = true;
+      this.player.currentSpeed = this.player.baseSpeed * 2.4;
+      this.particles.createSkidSmoke(this.player.position, 2);
+    }
+    if (this.shieldTimer > 0) {
+      this.shieldTimer -= dt;
+      if (this.player) this.player.isShielded = (this.shieldTimer > 0);
+    } else if (this.player) {
+      this.player.isShielded = false;
+    }
+    if (this.superJumpTimer > 0) {
+      this.superJumpTimer -= dt;
+    }
+    if (this.activePowerUp && this.activePowerUp.timer > 0) {
+      this.activePowerUp.timer -= dt;
+    } else {
+      this.activePowerUp = null;
     }
 
     // Check Bun Kabab Stalls for Spicy Chutney Turbo Boost
@@ -1557,6 +1757,121 @@ class Game {
             this.ui.showAnnouncement("🧱 SADDAR HERITAGE WALL! Western Boundary Reached! 🏛️", "#ffd700");
           }
         }
+      }
+    }
+
+    // =============================================================
+    // OPEN GUTTER HAZARDS & MANHOLE SEWER TRAPS (کھلے گٹر)
+    // =============================================================
+    if (this.gutterHazards && this.player && this.player.isAlive) {
+      const pPos = this.player.position;
+      for (let g = 0; g < this.gutterHazards.length; g++) {
+        const gutter = this.gutterHazards[g];
+        if (!gutter || !gutter.position) continue;
+        const d = pPos.distanceTo(gutter.position);
+        const trapRadius = (gutter.hazardRadius || 1.6) * 0.75 + this.player.radius * 0.45;
+
+        if (d < trapRadius) {
+          // If player is in the air jumping over!
+          if (!this.player.isGrounded && this.player.position.y > 0.4) {
+            if (!gutter.userData.hasBeenJumped) {
+              gutter.userData.hasBeenJumped = true;
+              this.score = (this.score || 0) + 150;
+              this.player.addXP(150);
+              this.guttersJumped = (this.guttersJumped || 0) + 1;
+              audio.playJump();
+              this.particles.createDevourSparkles(pPos, 12, 0x00e676);
+              this.ui.showFloatingFeedback('+150 🦘 GUTTER LEAPED!', pPos, '#00e676');
+            }
+          } else if (this.shieldTimer > 0 || this.player.isShielded) {
+            // Shield rolls safely over!
+            if (!gutter.userData.shieldToastTime || Date.now() - gutter.userData.shieldToastTime > 1500) {
+              gutter.userData.shieldToastTime = Date.now();
+              this.ui.showFloatingFeedback('🛡️ SHIELD DEFLECTS SEWER!', pPos, '#00e5ff');
+            }
+          } else if (!this.player.isTrappedInGutter) {
+            // Player falls into the open sewer hole!
+            this.player.isTrappedInGutter = true;
+            this.player.gutterTrapTimer = 1.6;
+            this.player.position.y = -0.35;
+            this.gutterFalls = (this.gutterFalls || 0) + 1;
+            this.score = Math.max(0, (this.score || 0) - 50);
+            audio.playGutterSplash();
+            this.cameraShakeTimer = 0.4;
+            this.particles.createSkidSmoke(pPos, 25);
+            this.ui.showAnnouncement('🕳️ TRAPPED IN OPEN GUTTER! Tap [SPACE] or JUMP to escape!', '#ff1744');
+            this.ui.showFloatingFeedback('-50 🕳️ GUTTER TRAP!', pPos, '#ff1744');
+            if (window.__DEV_TELEMETRY__) {
+              window.__DEV_TELEMETRY__.gutterFalls = this.gutterFalls;
+            }
+          }
+        }
+      }
+
+      if (this.player.isTrappedInGutter) {
+        this.player.gutterTrapTimer -= dt;
+        this.player.currentSpeed = 2.5; // Severely slowed in sewer muck
+        if (this.player.gutterTrapTimer <= 0) {
+          this.player.isTrappedInGutter = false;
+          this.player.position.y = 0;
+          this.player.jump(6.5);
+          this.ui.showFloatingFeedback('💨 ESCAPED SEWER!', pPos, '#00e676');
+        }
+      }
+    }
+
+    // =============================================================
+    // 70CC MOTORCYCLE ROBBER CHASE & AMBUSH LOGIC
+    // =============================================================
+    if (this.districtEvils && this.player && this.player.isAlive) {
+      this.districtEvils.forEach(evil => {
+        if (!evil || evil.state === 'swallowed' || !evil.mesh) return;
+        if (evil.evilType === 'robber') {
+          const d = this.player.position.distanceTo(evil.mesh.position);
+          if (evil.isFleeing) {
+            evil.fleeTimer = (evil.fleeTimer || 0) - dt;
+            if (evil.fleeTimer <= 0) evil.isFleeing = false;
+            const away = new THREE.Vector3().subVectors(evil.mesh.position, this.player.position).normalize();
+            evil.mesh.position.addScaledVector(away, dt * 12.0);
+            evil.mesh.rotation.y = Math.atan2(away.x, away.z);
+          } else if (d < 18.0) {
+            const toward = new THREE.Vector3().subVectors(this.player.position, evil.mesh.position).normalize();
+            evil.mesh.position.addScaledVector(toward, dt * 10.2);
+            evil.mesh.rotation.y = Math.atan2(toward.x, toward.z);
+
+            if (d < (this.player.radius + 1.1)) {
+              if (this.shieldTimer > 0 || this.player.isShielded) {
+                evil.state = 'swallowed';
+                this.resolveDistrictThreat(evil, this.player);
+                audio.playDevourMajor();
+                this.particles.createCelebrationConfetti(evil.mesh.position, 40);
+                this.ui.showAnnouncement('💥 TANKER SHIELD RAMMED ROBBER! +1000 PTS', '#00e5ff');
+              } else if (!evil.hasRobbedCooldown || Date.now() - evil.hasRobbedCooldown > 3000) {
+                evil.hasRobbedCooldown = Date.now();
+                evil.isFleeing = true;
+                evil.fleeTimer = 4.0;
+                this.robberyLosses = (this.robberyLosses || 0) + 1;
+                this.score = Math.max(0, (this.score || 0) - 150);
+                audio.vibrate([100, 50, 100]);
+                this.cameraShakeTimer = 0.3;
+                this.ui.showAnnouncement('⚠️ SNATCHER ATTACK! -150 PTS! Outrun or Horn next time!', '#ff1744');
+                this.ui.showFloatingFeedback('-150 📱 SNATCHED!', this.player.position, '#ff1744');
+                if (window.__DEV_TELEMETRY__) {
+                  window.__DEV_TELEMETRY__.robberyLosses = this.robberyLosses;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // =============================================================
+    // PECHS TARIQ ROAD DESTINATION ARRIVAL CHECK
+    // =============================================================
+    if (this.currentDistrictLevel === 1 && this.player && this.player.isAlive) {
+      if (this.player.position.z <= -80.0 && !this.districtClearing) {
+        this.handlePECHSArrival();
       }
     }
 
@@ -2946,7 +3261,22 @@ class Game {
       const districtConfig = getDistrictConfig(this.currentDistrictLevel);
       const activeCrisis = this.crisisChallenges ? this.crisisChallenges[this.currentCrisisIndex] : null;
 
-      // Update HUD with Civic Cleanser progress, Hero Frenzy status, District Mission, Active Crisis & Live Radar
+      // Calculate Route Progress from Soldier Bazar (Z = +80) to PECHS (Z = -80)
+      const startZ = 80.0;
+      const destZ = -80.0;
+      const totalSpan = 160.0;
+      const pZ = this.player ? this.player.position.z : 0;
+      const routePct = Math.min(100, Math.max(0, Math.round(((startZ - pZ) / totalSpan) * 100)));
+      const distLeft = Math.max(0, Math.round(pZ - destZ));
+
+      const routeProgress = {
+        routePct,
+        distLeft,
+        origin: 'Soldier Bazar',
+        destination: 'PECHS Tariq Road'
+      };
+
+      // Update HUD with Civic Cleanser progress, Hero Frenzy status, District Mission, Route & Active Power-Up
       if (this.ui) {
         const ranked = [...(this.holes || [])].sort((a, b) => b.score - a.score);
         const civicPct = (this.civicCleansed / Math.max(1, this.civicTotal || 1)) * 100;
@@ -2966,7 +3296,9 @@ class Game {
           districtEvils: this.districtEvils,
           recentCleaned: this.recentCleaned,
           activeCrisis,
-          missions: this.crisisChallenges
+          missions: this.crisisChallenges,
+          routeProgress,
+          activePowerUp: this.activePowerUp
         });
 
         // Real-Time Dev Mode Telemetry Bridge
@@ -3022,7 +3354,18 @@ class Game {
             current: m.current || 0,
             targetCount: m.targetCount,
             completed: !!m.completed
-          }))
+          })),
+          routeProgress: {
+            origin: 'Soldier Bazar',
+            destination: 'PECHS Tariq Road',
+            pct: routePct,
+            distLeftMeters: distLeft,
+            gutterFalls: this.gutterFalls || 0,
+            guttersJumped: this.guttersJumped || 0,
+            robbersEvaded: this.robbersEvaded || 0,
+            robberyLosses: this.robberyLosses || 0,
+            powerUp: this.activePowerUp ? this.activePowerUp.title : 'None'
+          }
         };
 
         // Automated Anomaly Detection & Flight Recording
