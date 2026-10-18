@@ -62,15 +62,15 @@ class Game {
     this.scene.background = new THREE.Color(0xd2c6b2);
     this.scene.fog = new THREE.FogExp2(0xd2c6b2, 0.0065);
 
-    // Camera - Subway Surfers / GTA street-level chase perspective
+    // Camera - Subway Surfers / GTA street-level chase perspective (Zoomed out for wide urban visibility)
     this.camera = new THREE.PerspectiveCamera(
-      52,
+      65,
       window.innerWidth / window.innerHeight,
       0.3,
       500
     );
-    this.camera.position.set(0, 2.7, 4.8);
-    this.camera.lookAt(0, 1.35, -8.5);
+    this.camera.position.set(0, 3.4, 5.8);
+    this.camera.lookAt(0, 1.5, -9.5);
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -557,6 +557,136 @@ class Game {
     this.scene.add(this.navGuideGroup);
   }
 
+  // Tests if a 2D line segment (x1, z1) -> (x2, z2) intersects any solid building/stall obstacle
+  isSegmentClearOfObstacles(x1, z1, x2, z2, obstacles = [], margin = 1.6) {
+    if (!obstacles || obstacles.length === 0) return true;
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const lenSq = dx * dx + dz * dz;
+    if (lenSq < 0.04) return true;
+
+    for (let i = 0; i < obstacles.length; i++) {
+      const obs = obstacles[i];
+      if (!obs) continue;
+      if (obs.mesh && (obs.mesh.userData?.isSwallowed || obs.mesh.parent === null || obs.mesh.visible === false)) continue;
+
+      if (obs.isBox) {
+        let minX = (obs.minX !== undefined ? obs.minX : (obs.cx || 0) - 2) - margin;
+        let maxX = (obs.maxX !== undefined ? obs.maxX : (obs.cx || 0) + 2) + margin;
+        let minZ = (obs.minZ !== undefined ? obs.minZ : (obs.cz || 0) - 2) - margin;
+        let maxZ = (obs.maxZ !== undefined ? obs.maxZ : (obs.cz || 0) + 2) + margin;
+
+        if (obs.mesh && obs.halfW) {
+          minX = obs.mesh.position.x - obs.halfW - margin;
+          maxX = obs.mesh.position.x + obs.halfW + margin;
+          minZ = obs.mesh.position.z - obs.halfD - margin;
+          maxZ = obs.mesh.position.z + obs.halfD + margin;
+        }
+
+        const segMinX = Math.min(x1, x2);
+        const segMaxX = Math.max(x1, x2);
+        const segMinZ = Math.min(z1, z2);
+        const segMaxZ = Math.max(z1, z2);
+        if (segMaxX < minX || segMinX > maxX || segMaxZ < minZ || segMinZ > maxZ) continue;
+
+        // Liang-Barsky line clipping
+        const p = [-dx, dx, -dz, dz];
+        const q = [x1 - minX, maxX - x1, z1 - minZ, maxZ - z1];
+        let u1 = 0.0;
+        let u2 = 1.0;
+        let hit = true;
+        for (let k = 0; k < 4; k++) {
+          if (p[k] === 0) {
+            if (q[k] < 0) { hit = false; break; }
+          } else {
+            const t = q[k] / p[k];
+            if (p[k] < 0) {
+              if (t > u2) { hit = false; break; }
+              if (t > u1) u1 = t;
+            } else {
+              if (t < u1) { hit = false; break; }
+              if (t < u2) u2 = t;
+            }
+          }
+        }
+        if (hit && u1 <= u2) return false;
+      }
+    }
+    return true;
+  }
+
+  // Calculates a safe waypoint route on the Karachi street grid around buildings to the target
+  findStreetPath(playerPos, targetPos, obstacles = []) {
+    const roadCoords = [-96, -48, 0, 48, 96];
+
+    // If direct line is already completely clear of obstacles, navigate straight!
+    if (this.isSegmentClearOfObstacles(playerPos.x, playerPos.z, targetPos.x, targetPos.z, obstacles)) {
+      return [{ x: targetPos.x, z: targetPos.z }];
+    }
+
+    const getClosestRoad = (val) => {
+      let best = roadCoords[0], bestDist = Infinity;
+      for (let i = 0; i < roadCoords.length; i++) {
+        const d = Math.abs(val - roadCoords[i]);
+        if (d < bestDist) { bestDist = d; best = roadCoords[i]; }
+      }
+      return best;
+    };
+
+    const prx = getClosestRoad(playerPos.x);
+    const prz = getClosestRoad(playerPos.z);
+    const trx = getClosestRoad(targetPos.x);
+    const trz = getClosestRoad(targetPos.z);
+
+    const distToNS = Math.abs(playerPos.x - prx);
+    const distToEW = Math.abs(playerPos.z - prz);
+
+    const waypoints = [];
+
+    const getNextGrid = (current, destination) => {
+      if (Math.abs(current - destination) < 5.0) return destination;
+      if (destination > current) {
+        for (let i = 0; i < roadCoords.length; i++) {
+          if (roadCoords[i] > current + 3.0) return Math.min(roadCoords[i], destination);
+        }
+      } else {
+        for (let i = roadCoords.length - 1; i >= 0; i--) {
+          if (roadCoords[i] < current - 3.0) return Math.max(roadCoords[i], destination);
+        }
+      }
+      return destination;
+    };
+
+    if (distToNS <= 7.0 && (distToEW > 7.0 || Math.abs(prz - trz) > 4.0)) {
+      // Follow North-South avenue corridor
+      const nextZ = getNextGrid(playerPos.z, trz);
+      waypoints.push({ x: prx, z: nextZ });
+      if (Math.abs(prx - trx) > 5.0) {
+        waypoints.push({ x: trx, z: trz });
+      }
+      waypoints.push({ x: targetPos.x, z: targetPos.z });
+    } else if (distToEW <= 7.0) {
+      // Follow East-West boulevard corridor
+      const nextX = getNextGrid(playerPos.x, trx);
+      waypoints.push({ x: nextX, z: prz });
+      if (Math.abs(prz - trz) > 5.0) {
+        waypoints.push({ x: trx, z: trz });
+      }
+      waypoints.push({ x: targetPos.x, z: targetPos.z });
+    } else {
+      // Off-street: guide player to nearest open street intersection
+      const ptNS = { x: prx, z: playerPos.z };
+      const ptEW = { x: playerPos.x, z: prz };
+      const clearNS = this.isSegmentClearOfObstacles(playerPos.x, playerPos.z, ptNS.x, ptNS.z, obstacles);
+      const wp1 = clearNS ? ptNS : ptEW;
+      waypoints.push(wp1);
+      waypoints.push({ x: trx, z: trz });
+      waypoints.push({ x: targetPos.x, z: targetPos.z });
+    }
+
+    return waypoints.length > 0 ? waypoints : [{ x: targetPos.x, z: targetPos.z }];
+  }
+
   updateNavigationGuide(dt, elapsedTime) {
     if (!this.player || !this.navGuideGroup) return;
 
@@ -596,17 +726,28 @@ class Game {
     if (target && target.mesh && minDist < 150) {
       this.navGuideGroup.visible = true;
       const tPos = target.mesh.position;
-      const dx = tPos.x - playerPos.x;
-      const dz = tPos.z - playerPos.z;
+
+      // Calculate street-grid route avoiding solid building obstacles
+      const obstacles = (this.cityGen && this.cityGen.obstacles) ? this.cityGen.obstacles : [];
+      const streetPath = this.findStreetPath(playerPos, tPos, obstacles);
+
+      let activeWaypoint = streetPath[0];
+      const distToWp = Math.hypot(activeWaypoint.x - playerPos.x, activeWaypoint.z - playerPos.z);
+      if (distToWp < 3.5 && streetPath.length > 1) {
+        activeWaypoint = streetPath[1];
+      }
+
+      const dx = activeWaypoint.x - playerPos.x;
+      const dz = activeWaypoint.z - playerPos.z;
       const targetAngle = Math.atan2(dx, dz);
 
-      // Place arrow 2.0 meters in front of avatar toward target
+      // Place arrow 1.95 meters in front of avatar toward next clear street waypoint
       const offsetDist = 1.95;
       this.navGuideGroup.position.x = playerPos.x + Math.sin(targetAngle) * offsetDist;
       this.navGuideGroup.position.y = 0.05;
       this.navGuideGroup.position.z = playerPos.z + Math.cos(targetAngle) * offsetDist;
 
-      // Rotate arrow to point directly toward target
+      // Rotate arrow to point directly down the open street toward waypoint
       this.navGuideGroup.rotation.y = targetAngle;
 
       // Pulse glow & scale
@@ -622,7 +763,10 @@ class Game {
         dist: Math.round(minDist),
         dx,
         dz,
-        targetAngle
+        targetAngle,
+        targetPos: tPos,
+        activeWaypoint,
+        waypoints: streetPath
       };
     } else {
       this.navGuideGroup.visible = false;
@@ -1837,27 +1981,38 @@ class Game {
   updateCamera(dt) {
     if (!this.player) return;
 
-    // Dynamic perspective: in mobile portrait (narrow width, tall height), raise
-    // and pull back the camera so avatar doesn't block the street corridor ahead!
+    // Zoomed-out street chase perspective: expanded FOV and height so surroundings and street grid are crystal clear!
     const isPortrait = (window.innerHeight || 1) > (window.innerWidth || 1);
-    const camDist = isPortrait ? 5.8 : 4.4;
-    const camHeight = isPortrait ? 3.2 : 2.35;
-    const lookAheadDist = isPortrait ? 8.0 : 7.0;
-    const lookTargetY = isPortrait ? 1.6 : 1.35;
+    const camDist = isPortrait ? 6.8 : 5.8;
+    const camHeight = isPortrait ? 4.2 : 3.4;
+    const lookAheadDist = isPortrait ? 9.5 : 8.5;
+    const lookTargetY = isPortrait ? 1.8 : 1.5;
 
-    // Maintain stable third-person street chase heading (facing North down the main corridor)
-    // Left is ALWAYS Left, Right is ALWAYS Right, with zero disorienting spin
-    this.camAngle = Math.PI;
+    if (this.camAngle === undefined) this.camAngle = Math.PI;
+
+    // Dynamic Camera Rotation Tracking:
+    // Smoothly rotates camera behind the player when running in any street direction!
+    const isMoving = (this.moveVector.x !== 0 || this.moveVector.y !== 0);
+    if (isMoving) {
+      const targetCamAngle = Math.atan2(this.moveVector.x, this.moveVector.y);
+      let angleDiff = targetCamAngle - this.camAngle;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+      // Smooth tracking: backward turns rotate actively, lateral steering has controlled ease
+      const turnRate = (this.moveVector.y > 0.5) ? 1.4 : 0.28;
+      this.camAngle += angleDiff * Math.min(1.0, dt * turnRate);
+    }
+
+    // Camera smoothly placed behind player along dynamic camAngle
+    const targetCamX = this.player.position.x - Math.sin(this.camAngle) * camDist;
+    const targetCamY = Math.max(1.85, (this.player.position.y || 0) + camHeight);
+    const targetCamZ = this.player.position.z - Math.cos(this.camAngle) * camDist;
 
     // Safety guard against NaN
     if (!isFinite(this.camera.position.x) || !isFinite(this.camera.position.z)) {
-      this.camera.position.set(this.player.position.x, camHeight, this.player.position.z + camDist);
+      this.camera.position.set(targetCamX, targetCamY, targetCamZ);
     }
-
-    // Camera smoothly follows behind character with clamped lerp rates
-    const targetCamX = this.player.position.x;
-    const targetCamY = Math.max(1.85, (this.player.position.y || 0) + camHeight);
-    const targetCamZ = this.player.position.z + camDist;
 
     const followLerp = Math.min(1.0, dt * 8.5);
     if (isFinite(targetCamX) && isFinite(targetCamZ)) {
@@ -1884,23 +2039,27 @@ class Game {
     );
 
     // =========================================================
-    // Dynamic Building Transparency: Never let tall buildings occlude the hole!
-    // Any building between camera and hole becomes a translucent ghost silhouette
+    // Dynamic Obstacle Transparency: Never let buildings, stalls, or vehicles block the view!
+    // Any large prop between camera and player becomes a translucent ghost silhouette
     // =========================================================
-    if (this.buildings && this.buildings.length > 0) {
-      const camPos = this.camera.position;
-      const playerPos = this.player.position;
+    const occluderLists = [this.buildings, this.foodStalls, this.transportVehicles];
+    const camPos = this.camera.position;
+    const playerPos = this.player.position;
 
-      const segX = playerPos.x - camPos.x;
-      const segZ = playerPos.z - camPos.z;
-      const segLenSq = segX * segX + segZ * segZ;
+    const segX = playerPos.x - camPos.x;
+    const segZ = playerPos.z - camPos.z;
+    const segLenSq = segX * segX + segZ * segZ;
 
-      if (segLenSq > 0.01) {
-        for (let b = 0; b < this.buildings.length; b++) {
-          const bld = this.buildings[b];
-          if (bld.state === 'swallowed') continue;
+    if (segLenSq > 0.01) {
+      for (let l = 0; l < occluderLists.length; l++) {
+        const list = occluderLists[l];
+        if (!list || list.length === 0) continue;
 
-          const bMesh = bld.mesh;
+        for (let b = 0; b < list.length; b++) {
+          const item = list[b];
+          if (!item || item.state === 'swallowed' || !item.mesh) continue;
+
+          const bMesh = item.mesh;
           const bPos = bMesh.position;
 
           const bx = bPos.x - camPos.x;
@@ -1915,25 +2074,25 @@ class Game {
             const dZ = bPos.z - projZ;
             const distToPath = Math.sqrt(dX * dX + dZ * dZ);
 
-            if (distToPath < (bld.radius * 1.15 || 7.0)) {
+            if (distToPath < (item.radius * 1.15 || 4.5)) {
               isOccluding = true;
             }
           }
 
-          if (isOccluding && !bld.isGhost) {
-            bld.isGhost = true;
+          if (isOccluding && !item.isGhost) {
+            item.isGhost = true;
             bMesh.traverse(child => {
               if (child.isMesh && child.material) {
                 if (Array.isArray(child.material)) {
-                  child.material.forEach(m => { m.transparent = true; m.opacity = 0.15; });
+                  child.material.forEach(m => { m.transparent = true; m.opacity = 0.18; });
                 } else {
                   child.material.transparent = true;
-                  child.material.opacity = 0.15;
+                  child.material.opacity = 0.18;
                 }
               }
             });
-          } else if (!isOccluding && bld.isGhost) {
-            bld.isGhost = false;
+          } else if (!isOccluding && item.isGhost) {
+            item.isGhost = false;
             bMesh.traverse(child => {
               if (child.isMesh && child.material) {
                 if (Array.isArray(child.material)) {

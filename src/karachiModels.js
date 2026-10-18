@@ -3859,21 +3859,21 @@ export const KarachiModels = {
 
     // Twin Green Steel Towers / Pillars on sidewalks
     [-halfSpan, halfSpan].forEach((px) => {
-      const colL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 6.8, 0.8), materials.bridgeGreen);
-      colL.position.set(px, 3.4, -1.8);
+      const colL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 9.8, 0.8), materials.bridgeGreen);
+      colL.position.set(px, 4.9, -1.8);
       group.add(colL);
       const colR = colL.clone();
       colR.position.z = 1.8;
       group.add(colR);
 
       // Staircase ramp
-      const stairBeam = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 6.5), materials.bridgeGreen);
-      stairBeam.position.set(px, 2.5, px < 0 ? -4.5 : 4.5);
+      const stairBeam = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 9.5), materials.bridgeGreen);
+      stairBeam.position.set(px, 4.6, px < 0 ? -5.5 : 5.5);
       stairBeam.rotation.x = px < 0 ? 0.45 : -0.45;
       group.add(stairBeam);
 
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 6.5), materials.chrome);
-      rail.position.set(px - 0.75, 3.2, px < 0 ? -4.5 : 4.5);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 9.5), materials.chrome);
+      rail.position.set(px - 0.75, 5.3, px < 0 ? -5.5 : 5.5);
       rail.rotation.x = px < 0 ? 0.45 : -0.45;
       group.add(rail);
     });
@@ -3881,12 +3881,12 @@ export const KarachiModels = {
     // Main Span Deck
     const deckGeo = new THREE.BoxGeometry(spanWidth + 2.0, 0.5, 3.6);
     const deck = new THREE.Mesh(deckGeo, materials.bridgeGreen);
-    deck.position.set(0, 6.5, 0);
+    deck.position.set(0, 9.5, 0);
     group.add(deck);
 
     // Green Steel Cage Handrails
     const cageL = new THREE.Mesh(new THREE.BoxGeometry(spanWidth, 2.2, 0.1), new THREE.MeshStandardMaterial({ color: 0x1b5e20, wireframe: true }));
-    cageL.position.set(0, 7.8, -1.75);
+    cageL.position.set(0, 10.8, -1.75);
     group.add(cageL);
     const cageR = cageL.clone();
     cageR.position.z = 1.75;
@@ -3912,10 +3912,10 @@ export const KarachiModels = {
 
     const texShan = new THREE.CanvasTexture(canvasShan);
     const boardMeshNorth = new THREE.Mesh(
-      new THREE.PlaneGeometry(spanWidth * 0.85, 4.2),
+      new THREE.PlaneGeometry(spanWidth * 0.85, 3.8),
       new THREE.MeshBasicMaterial({ map: texShan })
     );
-    boardMeshNorth.position.set(0, 10.2, -1.85);
+    boardMeshNorth.position.set(0, 12.8, -1.85);
     boardMeshNorth.rotation.y = Math.PI;
     group.add(boardMeshNorth);
 
@@ -3939,10 +3939,10 @@ export const KarachiModels = {
 
     const texTapal = new THREE.CanvasTexture(canvasTapal);
     const boardMeshSouth = new THREE.Mesh(
-      new THREE.PlaneGeometry(spanWidth * 0.85, 4.2),
+      new THREE.PlaneGeometry(spanWidth * 0.85, 3.8),
       new THREE.MeshBasicMaterial({ map: texTapal })
     );
-    boardMeshSouth.position.set(0, 10.2, 1.85);
+    boardMeshSouth.position.set(0, 12.8, 1.85);
     group.add(boardMeshSouth);
 
     // Green Highway Overhead Directional Sign

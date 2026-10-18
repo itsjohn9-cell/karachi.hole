@@ -2790,13 +2790,14 @@ html, body {
   pointer-events: none !important;
 }
 
-/* Bottom-Right Sprint Button */
+/* Bottom-Right Traversal & Journal Buttons (Hidden from screen per user request, DOM preserved for tests and keys) */
 .hud-controls-bottom-right {
+  display: none !important;
   position: fixed;
   bottom: 24px;
   right: 24px;
   z-index: 50;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .sprint-btn {

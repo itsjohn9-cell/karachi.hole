@@ -2159,6 +2159,69 @@ export class UIManager {
     ctx.lineTo(cx + R, cy);
     ctx.stroke();
 
+    // 1b. City Street Network & Urban Road Corridors
+    const roadGrid = [-96, -48, 0, 48, 96];
+    const roadW = 14 * scale;
+
+    // Draw Dark Asphalt Road Corridors
+    ctx.fillStyle = 'rgba(38, 52, 70, 0.85)';
+    roadGrid.forEach(rx => {
+      const roadX = cx + (rx - player.position.x) * scale;
+      if (roadX >= cx - R - 15 && roadX <= cx + R + 15) {
+        ctx.fillRect(roadX - roadW / 2, cy - R, roadW, R * 2);
+      }
+    });
+    roadGrid.forEach(rz => {
+      const roadZ = cy + (rz - player.position.z) * scale;
+      if (roadZ >= cy - R - 15 && roadZ <= cy + R + 15) {
+        ctx.fillRect(cx - R, roadZ - roadW / 2, R * 2, roadW);
+      }
+    });
+
+    // Center dashed lane markings
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    roadGrid.forEach(rx => {
+      const roadX = cx + (rx - player.position.x) * scale;
+      if (roadX >= cx - R && roadX <= cx + R) {
+        ctx.beginPath();
+        ctx.moveTo(roadX, cy - R);
+        ctx.lineTo(roadX, cy + R);
+        ctx.stroke();
+      }
+    });
+    roadGrid.forEach(rz => {
+      const roadZ = cy + (rz - player.position.z) * scale;
+      if (roadZ >= cy - R && roadZ <= cy + R) {
+        ctx.beginPath();
+        ctx.moveTo(cx - R, roadZ);
+        ctx.lineTo(cx + R, roadZ);
+        ctx.stroke();
+      }
+    });
+    ctx.setLineDash([]);
+
+    // 1c. Active Navigation Waypoint Path on Radar
+    const currentNav = window.game && window.game.currentTargetObjective;
+    if (currentNav && currentNav.waypoints && currentNav.waypoints.length > 0) {
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([4, 3]);
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      currentNav.waypoints.forEach(wp => {
+        const wpx = cx + (wp.x - player.position.x) * scale;
+        const wpz = cy + (wp.z - player.position.z) * scale;
+        ctx.lineTo(wpx, wpz);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.shadowBlur = 0;
+    }
+
     // North Indicator
     ctx.fillStyle = 'rgba(0, 229, 255, 0.8)';
     ctx.font = '900 9px "Outfit", sans-serif';
@@ -2292,19 +2355,28 @@ export class UIManager {
       }
     });
 
-    // 6. Player Hole at Center
+    // 6. Player Heading Directional Chevron at Center
+    ctx.save();
+    ctx.translate(cx, cy);
+    const facing = (player.facingAngle !== undefined) ? player.facingAngle : 0;
+    ctx.rotate(facing);
+
     ctx.shadowColor = '#00e5ff';
     ctx.shadowBlur = 8;
     ctx.fillStyle = '#00e5ff';
     ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.moveTo(0, -8);
+    ctx.lineTo(5.5, 5);
+    ctx.lineTo(0, 2);
+    ctx.lineTo(-5.5, 5);
+    ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+    ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
+    ctx.restore();
 
     ctx.restore();
 

@@ -270,23 +270,32 @@ export class Hole {
         for (let i = 0; i < obstacles.length; i++) {
           const obs = obstacles[i];
           if (!obs) continue;
+          if (obs.mesh && (obs.mesh.userData?.isSwallowed || obs.mesh.parent === null || obs.mesh.visible === false || obs.item?.state === 'swallowed')) continue;
 
           if (obs.isBox) {
+            let minX = obs.minX, maxX = obs.maxX, minZ = obs.minZ, maxZ = obs.maxZ;
+            if (obs.mesh && obs.halfW) {
+              minX = obs.mesh.position.x - obs.halfW;
+              maxX = obs.mesh.position.x + obs.halfW;
+              minZ = obs.mesh.position.z - obs.halfD;
+              maxZ = obs.mesh.position.z + obs.halfD;
+            }
+
             // Check if player's Z position overlaps with the box Z footprint
-            if (curZ > obs.minZ - avatarBodyRadius && curZ < obs.maxZ + avatarBodyRadius) {
-              if (dx > 0 && startX <= obs.minX - avatarBodyRadius + 0.05) {
-                if (nextX > obs.minX - avatarBodyRadius) nextX = obs.minX - avatarBodyRadius;
-              } else if (dx < 0 && startX >= obs.maxX + avatarBodyRadius - 0.05) {
-                if (nextX < obs.maxX + avatarBodyRadius) nextX = obs.maxX + avatarBodyRadius;
-              } else if (nextX > obs.minX - avatarBodyRadius && nextX < obs.maxX + avatarBodyRadius) {
+            if (curZ > minZ - avatarBodyRadius && curZ < maxZ + avatarBodyRadius) {
+              if (dx > 0 && startX <= minX - avatarBodyRadius + 0.05) {
+                if (nextX > minX - avatarBodyRadius) nextX = minX - avatarBodyRadius;
+              } else if (dx < 0 && startX >= maxX + avatarBodyRadius - 0.05) {
+                if (nextX < maxX + avatarBodyRadius) nextX = maxX + avatarBodyRadius;
+              } else if (nextX > minX - avatarBodyRadius && nextX < maxX + avatarBodyRadius) {
                 // If somehow already penetrating, resolve toward nearest external edge smoothly
-                const dL = Math.abs(nextX - (obs.minX - avatarBodyRadius));
-                const dR = Math.abs(nextX - (obs.maxX + avatarBodyRadius));
-                nextX = dL < dR ? obs.minX - avatarBodyRadius : obs.maxX + avatarBodyRadius;
+                const dL = Math.abs(nextX - (minX - avatarBodyRadius));
+                const dR = Math.abs(nextX - (maxX + avatarBodyRadius));
+                nextX = dL < dR ? minX - avatarBodyRadius : maxX + avatarBodyRadius;
               }
             }
           } else {
-            const oPos = obs.position || (obs.mesh && obs.mesh.position);
+            const oPos = (obs.mesh && obs.mesh.position) || obs.position;
             if (!oPos) continue;
             const oRad = obs.radius || obs.collisionRadius || 2.2;
             const totalClearance = oRad + avatarBodyRadius;
@@ -311,22 +320,31 @@ export class Hole {
         for (let i = 0; i < obstacles.length; i++) {
           const obs = obstacles[i];
           if (!obs) continue;
+          if (obs.mesh && (obs.mesh.userData?.isSwallowed || obs.mesh.parent === null || obs.mesh.visible === false || obs.item?.state === 'swallowed')) continue;
 
           if (obs.isBox) {
+            let minX = obs.minX, maxX = obs.maxX, minZ = obs.minZ, maxZ = obs.maxZ;
+            if (obs.mesh && obs.halfW) {
+              minX = obs.mesh.position.x - obs.halfW;
+              maxX = obs.mesh.position.x + obs.halfW;
+              minZ = obs.mesh.position.z - obs.halfD;
+              maxZ = obs.mesh.position.z + obs.halfD;
+            }
+
             // Check if player's X position overlaps with the box X footprint
-            if (curX > obs.minX - avatarBodyRadius && curX < obs.maxX + avatarBodyRadius) {
-              if (dz > 0 && startZ <= obs.minZ - avatarBodyRadius + 0.05) {
-                if (nextZ > obs.minZ - avatarBodyRadius) nextZ = obs.minZ - avatarBodyRadius;
-              } else if (dz < 0 && startZ >= obs.maxZ + avatarBodyRadius - 0.05) {
-                if (nextZ < obs.maxZ + avatarBodyRadius) nextZ = obs.maxZ + avatarBodyRadius;
-              } else if (nextZ > obs.minZ - avatarBodyRadius && nextZ < obs.maxZ + avatarBodyRadius) {
-                const dT = Math.abs(nextZ - (obs.minZ - avatarBodyRadius));
-                const dB = Math.abs(nextZ - (obs.maxZ + avatarBodyRadius));
-                nextZ = dT < dB ? obs.minZ - avatarBodyRadius : obs.maxZ + avatarBodyRadius;
+            if (curX > minX - avatarBodyRadius && curX < maxX + avatarBodyRadius) {
+              if (dz > 0 && startZ <= minZ - avatarBodyRadius + 0.05) {
+                if (nextZ > minZ - avatarBodyRadius) nextZ = minZ - avatarBodyRadius;
+              } else if (dz < 0 && startZ >= maxZ + avatarBodyRadius - 0.05) {
+                if (nextZ < maxZ + avatarBodyRadius) nextZ = maxZ + avatarBodyRadius;
+              } else if (nextZ > minZ - avatarBodyRadius && nextZ < maxZ + avatarBodyRadius) {
+                const dT = Math.abs(nextZ - (minZ - avatarBodyRadius));
+                const dB = Math.abs(nextZ - (maxZ + avatarBodyRadius));
+                nextZ = dT < dB ? minZ - avatarBodyRadius : maxZ + avatarBodyRadius;
               }
             }
           } else {
-            const oPos = obs.position || (obs.mesh && obs.mesh.position);
+            const oPos = (obs.mesh && obs.mesh.position) || obs.position;
             if (!oPos) continue;
             const oRad = obs.radius || obs.collisionRadius || 2.2;
             const totalClearance = oRad + avatarBodyRadius;

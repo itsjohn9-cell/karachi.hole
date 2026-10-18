@@ -522,6 +522,34 @@ export class CityGenerator {
       } catch (e) {}
       this.obstacles.push(obsData);
     }
+    if (isTransport || (item.isBadGuy && (item.evilType === 'tanker' || item.evilType === 'vip'))) {
+      if (!this.transportVehicles) this.transportVehicles = [];
+      this.transportVehicles.push(item);
+      let obsData = { position: mesh.position, radius: Math.max(1.4, (radius || 1.8) * 0.9), mesh, item };
+      try {
+        mesh.updateMatrixWorld(true);
+        const bbox = new THREE.Box3().setFromObject(mesh);
+        if (isFinite(bbox.min.x) && bbox.max.x > bbox.min.x) {
+          const hw = Math.max(0.6, (bbox.max.x - bbox.min.x) / 2);
+          const hd = Math.max(0.6, (bbox.max.z - bbox.min.z) / 2);
+          obsData = {
+            isBox: true,
+            minX: bbox.min.x,
+            maxX: bbox.max.x,
+            minZ: bbox.min.z,
+            maxZ: bbox.max.z,
+            cx: (bbox.min.x + bbox.max.x) / 2,
+            cz: (bbox.min.z + bbox.max.z) / 2,
+            halfW: hw,
+            halfD: hd,
+            position: mesh.position,
+            mesh,
+            item
+          };
+        }
+      } catch (e) {}
+      this.obstacles.push(obsData);
+    }
     if (isBuilding) {
       this.buildings.push(item);
       let obsData = { position: mesh.position, radius: Math.max(3.2, (radius || 3.5) * 0.85), mesh };
@@ -886,10 +914,11 @@ export class CityGenerator {
   findSafeSpawnPoint(minClearance = 2.5) {
     const roadCoords = [-96, -48, 0, 48, 96];
     for (let attempt = 0; attempt < 40; attempt++) {
-      // Pick either along a North-South avenue or East-West boulevard or open sidewalk
+      // Pick along road curb/sidewalk to leave central running corridor wide open
       const onNS = Math.random() > 0.5;
       const roadLine = roadCoords[Math.floor(Math.random() * roadCoords.length)];
-      const laneOffset = (Math.random() - 0.5) * 11.0;
+      const side = Math.random() > 0.5 ? 1 : -1;
+      const laneOffset = side * (4.8 + Math.random() * 2.6);
       const alongPos = (Math.random() - 0.5) * 176.0;
 
       const x = onNS ? (roadLine + laneOffset) : alongPos;
@@ -935,14 +964,14 @@ export class CityGenerator {
     // 100% Unobstructed view: Mazar-e-Quaid is in the far northern backdrop!
     // Immediate feast of Bun Kabab stall, Chai Dhaba, Potholes, Gutka, Robbers, Politicians, Tankers & Trash!
     // =============================================================
-    // Burns Road Bun Kabab Stall right by the starting crossroads
+    // Burns Road Bun Kabab Stall safely placed on east sidewalk curb
     const bunKabab1 = KarachiModels.createBurnsRoadBunKababStall();
-    bunKabab1.position.set(5.5, 0, 3.5);
+    bunKabab1.position.set(8.5, 0, -6.0);
     this.registerEdible(bunKabab1, 2, 250, "Burns Road Bun Kabab", 2.2, { isFoodStall: true });
 
-    // Quetta Alamgir Chai Dhaba on the opposite curb
+    // Quetta Alamgir Chai Dhaba safely placed on west sidewalk curb
     const dhaba1 = KarachiModels.createChaiDhaba();
-    dhaba1.position.set(-5.5, 0, 3.5);
+    dhaba1.position.set(-8.5, 0, -6.0);
     this.registerEdible(dhaba1, 2, 200, "Quetta Alamgir Chai", 2.2, { isFoodStall: true });
 
     // Populate Initial District 1 Curated Evils
@@ -954,22 +983,22 @@ export class CityGenerator {
     // AUTHENTIC KARACHI LANDMARKS & HISTORIC MONUMENTS
     // =============================================================
 
-    // 1. Teen Talwar Chowrangi (Three Swords Monument, Clifton) - North Boulevard Roundabout (z = -32)
+    // 1. Teen Talwar Chowrangi (Three Swords Monument, Clifton) - Clifton Chowrangi Island Park (x: 24, z: -24)
     const teenTalwar = KarachiModels.createTeenTalwarChowrangi();
-    teenTalwar.position.set(0, 0, -32);
+    teenTalwar.position.set(24, 0, -24);
     this.registerEdible(teenTalwar, 4, 1500, "Teen Talwar Monument", 9.5, { isBuilding: true, isBadGuy: false });
 
-    // 2. Bahadurabad Charminar Chowrangi (Four Minarets Monument) - South Boulevard Roundabout (z = 52)
+    // 2. Bahadurabad Charminar Chowrangi (Four Minarets Monument) - Bahadurabad Chowrangi Island (x: 24, z: 48)
     const charminar = KarachiModels.createBahadurabadCharminar();
-    charminar.position.set(0, 0, 52);
+    charminar.position.set(24, 0, 48);
     this.registerEdible(charminar, 4, 1600, "Bahadurabad Charminar", 10.0, { isBuilding: true, isBadGuy: false });
 
-    // 3. Shahrah-e-Faisal Overhead Green Steel Pedestrian Bridge (with Shan Biryani & Tapal Danedar Billboards) at z = 22
-    const pedBridge = KarachiModels.createOverheadPedestrianBridge(24);
-    pedBridge.position.set(0, 0, 22);
+    // 3. Shahrah-e-Faisal Overhead Green Steel Pedestrian Bridge (with Shan Biryani & Tapal Danedar Billboards) at z = 48
+    const pedBridge = KarachiModels.createOverheadPedestrianBridge(26);
+    pedBridge.position.set(0, 0, 48);
     this.scene.add(pedBridge);
-    this.obstacles.push({ position: { x: -12.5, y: 0, z: 22 }, radius: 1.4 });
-    this.obstacles.push({ position: { x: 12.5, y: 0, z: 22 }, radius: 1.4 });
+    this.obstacles.push({ position: { x: -13.5, y: 0, z: 48 }, radius: 1.4 });
+    this.obstacles.push({ position: { x: 13.5, y: 0, z: 48 }, radius: 1.4 });
 
     // 4. Mazar-e-Quaid (Jinnah's Mausoleum) - Northern Avenue Axis at z = -84
     const mazar = KarachiModels.createMazarEQuaid();
