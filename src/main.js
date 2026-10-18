@@ -2863,6 +2863,44 @@ class Game {
           }))
         };
 
+        // Automated Anomaly Detection & Flight Recording
+        if (!this.__devAnomalyWatch) {
+          this.__devAnomalyWatch = {
+            lastTimeLeft: this.timeLeft,
+            stuckTimerCount: 0,
+            reportedTimerStuck: false
+          };
+        }
+        
+        // Check 1: Timer freezing anomaly detection
+        if (this.isGameStarted && !this.isPaused && !this.isGameOver && this.gameMode === 'battleRoyale') {
+          if (Math.abs(this.timeLeft - this.__devAnomalyWatch.lastTimeLeft) < 0.0001) {
+            this.__devAnomalyWatch.stuckTimerCount += dt;
+            if (this.__devAnomalyWatch.stuckTimerCount >= 3.0 && !this.__devAnomalyWatch.reportedTimerStuck) {
+              this.__devAnomalyWatch.reportedTimerStuck = true;
+              this.recordDevNote('ANOMALY_TIMER_STUCK', 'Match timer appears halted while match is active', { timeLeft: this.timeLeft });
+            }
+          } else {
+            this.__devAnomalyWatch.stuckTimerCount = 0;
+            this.__devAnomalyWatch.reportedTimerStuck = false;
+            this.__devAnomalyWatch.lastTimeLeft = this.timeLeft;
+          }
+        }
+
+        // Check 2: Player out-of-bounds anomaly detection
+        if (this.player && this.player.isAlive) {
+          const px = this.player.position.x;
+          const pz = this.player.position.z;
+          if (Math.abs(px) > 96 || Math.abs(pz) > 96) {
+            if (!this.__devAnomalyWatch.reportedOOB) {
+              this.__devAnomalyWatch.reportedOOB = true;
+              this.recordDevNote('ANOMALY_OUT_OF_BOUNDS', 'Player drifted outside playable street boundaries', { x: px, z: pz });
+            }
+          } else {
+            this.__devAnomalyWatch.reportedOOB = false;
+          }
+        }
+
         if (this.ui?.updateDevModeHUD) {
           this.ui.updateDevModeHUD(window.__DEV_TELEMETRY__);
         }
@@ -2872,6 +2910,7 @@ class Game {
       if (this.ui?.appendDevLog) {
         this.ui.appendDevLog(`[ERROR] ${e.message}`, 'err');
       }
+      this.recordDevNote?.('RUNTIME_EXCEPTION', e.message, { stack: e.stack });
     }
 
     if (this.renderer && this.scene && this.camera) {
@@ -2920,6 +2959,44 @@ class Game {
     }
     this.resolveDistrictThreat(nearest, this.player);
     if (this.ui?.showDevToast) this.ui.showDevToast(`⚡ Resolved ${nearest.name || nearest.evilType}!`);
+  }
+
+  recordDevNote(category, message, details = {}) {
+    if (!window.__DEV_NOTES__) {
+      window.__DEV_NOTES__ = [];
+      try {
+        const stored = localStorage.getItem('karachi_dev_flight_recorder');
+        if (stored) window.__DEV_NOTES__ = JSON.parse(stored);
+      } catch (e) {}
+    }
+    const note = {
+      timestamp: new Date().toISOString(),
+      category,
+      message,
+      district: this.currentDistrictLevel || 1,
+      timeLeft: this.timeLeft ? Number(this.timeLeft.toFixed(2)) : null,
+      score: this.score || 0,
+      player: this.player ? {
+        x: Number(this.player.position.x.toFixed(2)),
+        z: Number(this.player.position.z.toFixed(2)),
+        radius: Number(this.player.radius.toFixed(2)),
+        isAlive: this.player.isAlive
+      } : null,
+      activeEvilsCount: this.districtEvils ? this.districtEvils.filter(e => e && e.state !== 'swallowed').length : 0,
+      details
+    };
+    window.__DEV_NOTES__.push(note);
+    if (window.__DEV_NOTES__.length > 100) {
+      window.__DEV_NOTES__.shift();
+    }
+    try {
+      localStorage.setItem('karachi_dev_flight_recorder', JSON.stringify(window.__DEV_NOTES__));
+    } catch (e) {}
+    if (this.ui?.appendDevLog) {
+      this.ui.appendDevLog(`[${category}] ${message}`, category.includes('ANOMALY') || category.includes('EXCEPTION') ? 'err' : 'info');
+    }
+    console.log(`[DEV_NOTE:${category}]`, message, note);
+    return note;
   }
 }
 
