@@ -116,19 +116,33 @@ export class Hole {
     this.avatarMesh = AvatarBuilder.createAvatarMesh(this.avatarId, this.isPlayer);
     this.group.add(this.avatarMesh);
 
-    // Ground interaction indicator mesh (hidden - street hero is a human vigilante, not a hole)
-    const ringGeo = new THREE.RingGeometry(this.radius * 0.85, this.radius * 0.95, 32);
+    // Ground interaction indicator mesh - Vibrant Civic Cleansing Aura!
+    const ringGeo = new THREE.RingGeometry(this.radius * 0.85, this.radius * 1.0, 32);
     ringGeo.rotateX(-Math.PI / 2);
     this.ringMat = new THREE.MeshBasicMaterial({
       color: this.isPlayer ? 0x00e5ff : this.baseColor,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.0
+      opacity: this.isPlayer ? 0.65 : 0.0
     });
     this.ringMesh = new THREE.Mesh(ringGeo, this.ringMat);
-    this.ringMesh.visible = false;
+    this.ringMesh.visible = this.isPlayer;
     this.ringMesh.position.y = 0.04;
     this.group.add(this.ringMesh);
+
+    // Inner glowing field disk
+    const innerRingGeo = new THREE.RingGeometry(0.1, this.radius * 0.82, 32);
+    innerRingGeo.rotateX(-Math.PI / 2);
+    this.innerRingMat = new THREE.MeshBasicMaterial({
+      color: this.isPlayer ? 0x00ffff : this.baseColor,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: this.isPlayer ? 0.22 : 0.0
+    });
+    this.innerRingMesh = new THREE.Mesh(innerRingGeo, this.innerRingMat);
+    this.innerRingMesh.visible = this.isPlayer;
+    this.innerRingMesh.position.y = 0.038;
+    this.group.add(this.innerRingMesh);
 
     // Stencil/CSG dummy meshes for backward compatibility with existing cleanup routines
     this.voidMesh = new THREE.Group();
@@ -221,14 +235,34 @@ export class Hole {
 
   updateScale(dt) {
     if (this.radius < this.targetRadius) {
-      this.radius = THREE.MathUtils.lerp(this.radius, this.targetRadius, dt * 4.0);
-      const scale = this.radius / LEVEL_CONFIG[0].radius;
-      this.ringMesh.scale.set(scale, scale, scale);
+      this.radius = THREE.MathUtils.lerp(this.radius, this.targetRadius, dt * 6.0);
     }
+    const baseRadius = (LEVEL_CONFIG && LEVEL_CONFIG[0] && LEVEL_CONFIG[0].radius) ? LEVEL_CONFIG[0].radius : 1.8;
+    const scale = this.radius / baseRadius;
 
     if (this.ringMesh) {
-      this.ringMesh.rotation.z += dt * (this.isPlayer ? 1.0 : 0.5);
+      this.ringMesh.scale.set(scale, scale, scale);
+      this.ringMesh.rotation.z += dt * (this.isPlayer ? 1.5 : 0.5);
+
+      if (this.devourPulseTimer && this.devourPulseTimer > 0) {
+        this.devourPulseTimer -= dt;
+        const pulse = 1.0 + Math.sin(this.devourPulseTimer * 20) * 0.35;
+        this.ringMesh.scale.multiplyScalar(pulse);
+        this.ringMat.opacity = 0.95;
+      } else {
+        this.ringMat.opacity = this.isPlayer ? (0.55 + Math.sin(performance.now() * 0.005) * 0.12) : 0;
+      }
     }
+
+    if (this.innerRingMesh) {
+      this.innerRingMesh.scale.set(scale, scale, scale);
+      this.innerRingMesh.rotation.z -= dt * 0.8;
+      this.innerRingMat.opacity = this.isPlayer ? (0.22 + Math.sin(performance.now() * 0.004) * 0.06) : 0;
+    }
+  }
+
+  triggerDevourPulse() {
+    this.devourPulseTimer = 0.25;
   }
 
   /**

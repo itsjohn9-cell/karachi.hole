@@ -42,6 +42,12 @@ class Game {
     this.isBoosting = false;
     this.currentTargetObjective = null;
 
+    // Arcade Power-Up & Combo Timers
+    this.magnetTimer = 0;
+    this.turboTimer = 0;
+    this.frenzyTimer = 0;
+    this.score = 0;
+
     this.initThree();
     this.initScene();
     this.initHoles();
@@ -1255,6 +1261,46 @@ class Game {
     );
   }
 
+  activatePowerUp(type) {
+    if (audio.playPowerUp) {
+      audio.playPowerUp();
+    } else if (audio.playChallengeSuccess) {
+      audio.playChallengeSuccess();
+    }
+    audio.vibrate(35);
+    this.cameraShakeTimer = 0.25;
+
+    const playerPos = this.player ? this.player.position : { x: 0, y: 0, z: 0 };
+
+    if (type === 'magnet') {
+      this.magnetTimer = 9.0;
+      this.particles.createCleanseSparkleBurst(playerPos, 35);
+      this.ui.showAnnouncement('🧲 MEGA MAGNET ACTIVATED! Street Litter Vacuum!', '#00e5ff');
+      if (this.player && this.player.ringMat) {
+        this.player.ringMat.color.setHex(0x00e5ff);
+      }
+    } else if (type === 'turbo') {
+      this.turboTimer = 7.0;
+      this.particles.createSkidSmoke(playerPos, 30);
+      this.ui.showAnnouncement('⚡ NITRO TURBO BOOST! 1.8x Street Speed!', '#ff9100');
+    } else if (type === 'frenzy') {
+      this.frenzyTimer = 8.0;
+      this.particles.createCelebrationConfetti(playerPos, 45);
+      this.ui.showAnnouncement('🌟 HERO FRENZY! 2X SCORE & MEGA POWER!', '#ff007f');
+      if (this.player && this.player.ringMat) {
+        this.player.ringMat.color.setHex(0xffd700);
+      }
+    } else if (type === 'timer') {
+      this.timeLeft = (this.timeLeft || 120) + 20;
+      this.particles.createCelebrationConfetti(playerPos, 35);
+      this.ui.showAnnouncement('⏱️ TIME BONUS! +20 SECONDS ADDED!', '#00e676');
+    }
+
+    if (this.player && this.player.triggerDevourPulse) {
+      this.player.triggerDevourPulse();
+    }
+  }
+
   handleDistrictCleared() {
     if (this.districtClearing) return;
     this.districtClearing = true;
@@ -1406,10 +1452,13 @@ class Game {
   }
 
   updatePhysics(dt) {
-    // Check Turbo boost (Button or Bun Kabab Spicy Chutney turbo boost)
-    this.player.isBoosting = this.isBoosting || window.isBoostPressed || (this.player.turboTimer > 0);
+    // Check Turbo boost (Button or Bun Kabab Spicy Chutney turbo boost or Arcade Nitro)
+    this.player.isBoosting = this.isBoosting || window.isBoostPressed || (this.player.turboTimer > 0) || (this.turboTimer > 0);
     if (this.player.turboTimer > 0) {
       this.player.turboTimer -= dt;
+    }
+    if (this.turboTimer > 0) {
+      this.turboTimer -= dt;
     }
     if (this.frenzyTimer > 0) {
       this.frenzyTimer -= dt;
@@ -2047,6 +2096,24 @@ class Game {
       }
     }
 
+    // Arcade Power-Up Active Timers
+    if (this.magnetTimer > 0) {
+      this.magnetTimer -= dt;
+      if (Math.random() < 0.35 && this.player) {
+        this.particles.createCleanseSparkleBurst(this.player.position, 2);
+      }
+    }
+    if (this.frenzyTimer > 0) {
+      this.frenzyTimer -= dt;
+      if (this.player && this.player.ringMat) {
+        const rainbowColors = [0xff0055, 0xff9900, 0xffea00, 0x00e676, 0x00e5ff, 0x7c4dff];
+        const rCol = rainbowColors[Math.floor((currentTime * 8) % rainbowColors.length)];
+        this.player.ringMat.color.setHex(rCol);
+      }
+    } else if (this.player && this.player.ringMat && !this.magnetTimer) {
+      this.player.ringMat.color.setHex(0x00e5ff);
+    }
+
     // Edible Objects Suction & Collision (Ultra-fast Bounding Box check for 60 FPS)
     const pullSpeed = isKidsMode ? 10.0 : 7.0;
     for (let i = 0; i < this.edibleObjects.length; i++) {
@@ -2107,9 +2174,92 @@ class Game {
         continue; // Never sucked into hole!
       }
 
-      // District Evils and Bad Guys: Must ONLY be resolved by the human player via active hero intervention!
-      // CRITICAL USER REQUIREMENT: Player must be DIRECTLY ON TOP of the issue and dwell for animation duration to resolve it.
-      if (obj.isDistrictEvil || obj.isBadGuy) {
+      // =========================================================
+      // 1. ARCADE POWER-UP MYSTERY CRATES
+      // =========================================================
+      if (obj.isPowerUp) {
+        if (obj.mesh) {
+          obj.mesh.rotation.y += dt * 3.0;
+          const baseY = obj.mesh.userData?.baseY || 0.55;
+          obj.mesh.position.y = baseY + Math.sin(currentTime * 4.5 + i) * 0.15;
+          if (obj.mesh.userData?.ring) {
+            obj.mesh.userData.ring.rotation.z += dt * 2.0;
+          }
+        }
+        if (this.player && this.player.isAlive) {
+          const dx = this.player.position.x - objPos.x;
+          const dz = this.player.position.z - objPos.z;
+          const grabDist = this.player.radius + 0.95;
+          if (dx * dx + dz * dz < grabDist * grabDist) {
+            this.activatePowerUp(obj.powerUpType || 'magnet');
+            obj.state = 'swallowed';
+            if (obj.mesh && obj.mesh.parent) {
+              this.scene.remove(obj.mesh);
+            }
+          }
+        }
+        continue;
+      }
+
+      // =========================================================
+      // 2. STREET LITTER MUNCHIES (Instant arcade suction & growth!)
+      // =========================================================
+      if (obj.isLitter) {
+        if (this.player && this.player.isAlive) {
+          const dx = this.player.position.x - objPos.x;
+          const dz = this.player.position.z - objPos.z;
+          const distSq = dx * dx + dz * dz;
+          const pullDist = (this.magnetTimer > 0) ? 14.0 : (this.player.radius + 1.2);
+
+          if (distSq < pullDist * pullDist) {
+            const pullSpeedFactor = (this.magnetTimer > 0) ? 22.0 : 16.0;
+            objPos.x += (this.player.position.x - objPos.x) * dt * pullSpeedFactor;
+            objPos.z += (this.player.position.z - objPos.z) * dt * pullSpeedFactor;
+            if (obj.mesh) {
+              obj.mesh.rotation.y += dt * 25.0;
+              obj.mesh.rotation.x += dt * 15.0;
+              const curScale = obj.mesh.scale.x;
+              if (curScale > 0.25) {
+                obj.mesh.scale.setScalar(Math.max(0.2, curScale - dt * 2.5));
+              }
+            }
+
+            const swallowDist = Math.max(0.85, this.player.radius * 0.75);
+            if (distSq < swallowDist * swallowDist) {
+              obj.state = 'swallowed';
+              if (obj.mesh && obj.mesh.parent) {
+                this.scene.remove(obj.mesh);
+              }
+              audio.playSwallow(1);
+              audio.vibrate(15);
+              this.particles.createCleanseSparkleBurst(objPos, 8);
+              if (this.player.triggerDevourPulse) {
+                this.player.triggerDevourPulse();
+              }
+
+              let points = (obj.points || 20);
+              if (this.frenzyTimer > 0) points *= 2;
+              this.score = (this.score || 0) + points;
+              this.player.addXP(points);
+
+              // Grow player hero hole visibly!
+              this.player.targetRadius = Math.min(6.5, this.player.targetRadius + 0.015);
+
+              // Floating score feedback
+              if (this.ui && this.ui.showFloatingFeedback) {
+                const screenPos = this.worldToScreen(new THREE.Vector3(objPos.x, objPos.y + 0.8, objPos.z));
+                this.ui.showFloatingFeedback(`+${points} ${obj.name || ''}`, screenPos.x, screenPos.y);
+              }
+            }
+          }
+        }
+        continue;
+      }
+
+      // =========================================================
+      // 3. DISTRICT EVILS & BOSS THREATS (Must be resolved directly)
+      // =========================================================
+      if (obj.isDistrictEvil || (obj.isBadGuy && !obj.isLitter && !obj.isPowerUp)) {
         if (obj.state === 'idle' && this.player && this.player.isAlive) {
           const dx = this.player.position.x - objPos.x;
           const dz = this.player.position.z - objPos.z;
@@ -2144,7 +2294,7 @@ class Game {
                                        obj.evilType === 'onewheeler' || obj.evilType === 'robber' ||
                                        obj.evilType === 'bhatta' || obj.evilType === 'politician' ||
                                        obj.evilType === 'chinacutting' || obj.evilType === 'gutka');
-            const REQUIRED_RESOLVE_TIME = isMobileOrVehicle ? 1.1 : 1.4;
+            const REQUIRED_RESOLVE_TIME = isMobileOrVehicle ? 0.75 : 0.85;
             obj.resolveTimer += dt;
             const progress = Math.min(1.0, obj.resolveTimer / REQUIRED_RESOLVE_TIME);
 

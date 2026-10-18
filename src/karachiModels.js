@@ -5109,6 +5109,90 @@ export const KarachiModels = {
     group.add(kSign);
 
     return group;
+  },
+
+  // 45. Arcade Power-Up Crates: Magnet, Nitro Speed, Hero Frenzy & Bonus Time!
+  createPowerUpCrate(type = 'magnet') {
+    const group = new THREE.Group();
+    group.name = `PowerUp-${type}`;
+    group.isPowerUp = true;
+    group.powerUpType = type;
+
+    const colors = {
+      magnet: { main: 0x00e5ff, glow: '#00e5ff', icon: '🧲', label: 'MAGNET' },
+      turbo: { main: 0xff9100, glow: '#ff9100', icon: '⚡', label: 'NITRO' },
+      frenzy: { main: 0xff007f, glow: '#ff007f', icon: '🌟', label: 'FRENZY' },
+      timer: { main: 0x00e676, glow: '#00e676', icon: '⏱️', label: '+TIME' }
+    };
+    const cfg = colors[type] || colors.magnet;
+
+    // Glowing cube crate
+    const boxGeo = new THREE.BoxGeometry(0.85, 0.85, 0.85);
+    const boxMat = new THREE.MeshStandardMaterial({
+      color: cfg.main,
+      emissive: cfg.main,
+      emissiveIntensity: 0.35,
+      roughness: 0.2,
+      metalness: 0.8
+    });
+    const box = new THREE.Mesh(boxGeo, boxMat);
+    box.position.y = 0.55;
+    box.castShadow = true;
+    group.add(box);
+
+    // Cyber wireframe edges
+    const wireGeo = new THREE.EdgesGeometry(boxGeo);
+    const wireMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+    const wire = new THREE.LineSegments(wireGeo, wireMat);
+    wire.position.y = 0.55;
+    group.add(wire);
+
+    // Floating 3D Icon Sprite Badge
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.beginPath();
+    ctx.arc(64, 64, 58, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = cfg.glow;
+    ctx.stroke();
+    ctx.font = '64px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(cfg.icon, 64, 68);
+
+    const iconTex = new THREE.CanvasTexture(canvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTex, transparent: true }));
+    sprite.scale.set(1.4, 1.4, 1);
+    sprite.position.y = 1.45;
+    group.add(sprite);
+
+    // Pulsing ground target ring
+    const ringGeo = new THREE.RingGeometry(0.8, 1.15, 24);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: cfg.main,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.75
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.y = 0.03;
+    group.add(ring);
+
+    group.userData = {
+      box,
+      wire,
+      sprite,
+      ring,
+      baseY: 0.55,
+      cfg
+    };
+
+    return group;
   }
 };
 

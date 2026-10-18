@@ -21,6 +21,8 @@ export class CityGenerator {
     this.obstacles = [];
     this.beacons = [];
     this.staticMeshes = [];
+    this.streetLitter = [];
+    this.powerUps = [];
     this.mapSize = 320; // Expanded Karachi Metropolis Map
   }
 
@@ -37,6 +39,8 @@ export class CityGenerator {
       animals: this.animals,
       robberies: this.robberies,
       badGuys: this.badGuys,
+      streetLitter: this.streetLitter,
+      powerUps: this.powerUps,
       foodStalls: this.foodStalls,
       buildings: this.buildings,
       citizens: this.citizens,
@@ -563,10 +567,13 @@ export class CityGenerator {
     isBuilding = false,
     isCitizen = false,
     isPet = false,
-    isTransport = false
+    isTransport = false,
+    isLitter = false,
+    isPowerUp = false,
+    powerUpType = null
   } = {}) {
     this.scene.add(mesh);
-    const calculatedIsBadGuy = Boolean(!isCitizen && !isPet && !isFoodStall && !isBuilding && !isTransport && (isBadGuy || isPolitician || isRobbery || isRubbish || (evilType !== null)));
+    const calculatedIsBadGuy = Boolean(!isCitizen && !isPet && !isFoodStall && !isBuilding && !isTransport && (isBadGuy || isPolitician || isRobbery || isRubbish || (evilType !== null) || isLitter || isPowerUp));
     const calculatedEvilType = calculatedIsBadGuy ? (evilType || (isPolitician ? 'politician' : isRobbery ? 'robber' : isRubbish ? 'trash' : null)) : null;
 
     const item = {
@@ -587,18 +594,23 @@ export class CityGenerator {
       isRubbish,
       isBadGuy: calculatedIsBadGuy,
       evilType: calculatedEvilType,
-      isDistrictEvil: Boolean(isDistrictEvil || calculatedIsBadGuy),
+      isDistrictEvil: Boolean(isDistrictEvil),
       isFoodStall,
       isBuilding,
       isCitizen,
       isPet,
-      isTransport
+      isTransport,
+      isLitter,
+      isPowerUp,
+      powerUpType
     };
     this.edibleObjects.push(item);
     if (isPolitician) this.politicians.push(item);
     if (isAnimal) this.animals.push(item);
     if (isRobbery) this.robberies.push(item);
-    if (item.isBadGuy) this.badGuys.push(item);
+    if (item.isBadGuy && !isLitter && !isPowerUp) this.badGuys.push(item);
+    if (isLitter) this.streetLitter.push(item);
+    if (isPowerUp) this.powerUps.push(item);
     if (isFoodStall) {
       this.foodStalls.push(item);
       let obsData = { position: mesh.position, radius: 2.2, mesh };
@@ -1063,6 +1075,170 @@ export class CityGenerator {
     return { x: -48, z: (Math.random() - 0.5) * 150 };
   }
 
+  spawnStreetLitterAndClutter() {
+    this.streetLitter = [];
+    this.powerUps = [];
+
+    // 1. IMMEDIATE SPAWN CLUSTER (Within 2m to 10m around x: 0, z: 0)
+    // Instant tactile bites & gratification within the first 1-2 seconds of movement!
+    const spawnMunchies = [
+      // Immediate Forward Path (Z < 0)
+      { type: 'soda', x: 1.2, z: -2.5, name: 'Pakola Soda Can', pts: 20 },
+      { type: 'bottle', x: -1.5, z: -3.2, name: 'Mineral Water Bottle', pts: 25 },
+      { type: 'cone', x: 2.0, z: -4.5, name: 'Traffic Safety Cone', pts: 30 },
+      { type: 'bag', x: -2.0, z: -5.5, color: 0x1565c0, name: 'Plastic Shopper Bag', pts: 15 },
+      { type: 'powerup', pType: 'magnet', x: 0.0, z: -5.0, name: '🧲 Mega Magnet Box' },
+
+      // Immediate Backward Path (Z > 0)
+      { type: 'soda', x: -1.2, z: 2.5, name: 'Crushed Cola Can', pts: 20 },
+      { type: 'bottle', x: 1.5, z: 3.2, name: 'Empty Water Bottle', pts: 25 },
+      { type: 'cone', x: -2.0, z: 4.5, name: 'Orange Traffic Cone', pts: 30 },
+      { type: 'bag', x: 1.8, z: 5.2, color: 0x43a047, name: 'Green Market Bag', pts: 15 },
+      { type: 'powerup', pType: 'frenzy', x: 0.0, z: 6.5, name: '🌟 Hero Frenzy Box' },
+
+      // Immediate East Path (X > 0)
+      { type: 'soda', x: 2.8, z: -0.8, name: 'Soda Can', pts: 20 },
+      { type: 'bottle', x: 4.2, z: 1.0, name: 'Plastic Bottle', pts: 25 },
+      { type: 'cone', x: 5.5, z: -1.2, name: 'Road Cone', pts: 30 },
+      { type: 'dump', x: 6.8, z: 2.0, name: 'Sidewalk Kachra Heap', pts: 50 },
+      { type: 'powerup', pType: 'turbo', x: 4.8, z: 0.0, name: '⚡ Nitro Boost Box' },
+
+      // Immediate West Path (X < 0)
+      { type: 'soda', x: -2.8, z: 0.8, name: 'Cold Drink Can', pts: 20 },
+      { type: 'bottle', x: -4.2, z: -1.0, name: 'Mineral Bottle', pts: 25 },
+      { type: 'cone', x: -5.5, z: 1.0, name: 'Safety Cone', pts: 30 },
+      { type: 'dump', x: -6.8, z: -2.0, name: 'Corner Kachra Dump', pts: 50 },
+      { type: 'powerup', pType: 'timer', x: -4.8, z: 0.0, name: '⏱️ Time Bonus Box' },
+
+      // Diagonal Fillers around Spawn Intersection
+      { type: 'soda', x: 2.2, z: 2.2, name: 'Tin Can', pts: 20 },
+      { type: 'soda', x: -2.5, z: -2.5, name: 'Tin Can', pts: 20 },
+      { type: 'bottle', x: 3.2, z: -2.8, name: 'Plastic Bottle', pts: 25 },
+      { type: 'bottle', x: -3.0, z: 2.8, name: 'Water Bottle', pts: 25 },
+      { type: 'bag', x: 3.5, z: 3.5, color: 0xffb300, name: 'Yellow Shopper Bag', pts: 15 },
+      { type: 'bag', x: -3.5, z: -3.5, color: 0x212121, name: 'Black Trash Bag', pts: 15 }
+    ];
+
+    spawnMunchies.forEach(m => {
+      let mesh = null;
+      if (m.type === 'soda') {
+        mesh = KarachiModels.createSodaCan();
+      } else if (m.type === 'bottle') {
+        mesh = KarachiModels.createWaterBottle();
+      } else if (m.type === 'cone') {
+        mesh = KarachiModels.createTrafficCone();
+      } else if (m.type === 'bag') {
+        mesh = KarachiModels.createTrashBag(m.color || 0x1565c0);
+      } else if (m.type === 'dump') {
+        mesh = KarachiModels.createKachraDump();
+      } else if (m.type === 'powerup') {
+        mesh = KarachiModels.createPowerUpCrate(m.pType);
+      }
+
+      if (mesh) {
+        mesh.position.set(m.x, 0, m.z);
+        if (m.type === 'powerup') {
+          this.registerEdible(mesh, 1, 100, m.name, 1.2, {
+            isPowerUp: true,
+            powerUpType: m.pType,
+            isBadGuy: true,
+            isDistrictEvil: false
+          });
+        } else {
+          this.registerEdible(mesh, 1, m.pts || 20, m.name, m.type === 'dump' ? 1.4 : 0.6, {
+            isLitter: true,
+            isBadGuy: true,
+            isDistrictEvil: false
+          });
+        }
+      }
+    });
+
+    // 2. BOULEVARD & AVENUE CLUTTER (Across the 200m City Map)
+    const roadLines = [
+      { axis: 'z', fixedX: 0, from: -90, to: 90, step: 7.5 },
+      { axis: 'z', fixedX: 48, from: -85, to: 85, step: 9.0 },
+      { axis: 'z', fixedX: -48, from: -85, to: 85, step: 9.0 },
+      { axis: 'x', fixedZ: 0, from: -90, to: 90, step: 7.5 },
+      { axis: 'x', fixedZ: 48, from: -85, to: 85, step: 9.0 },
+      { axis: 'x', fixedZ: -48, from: -85, to: 85, step: 9.0 }
+    ];
+
+    const trashColors = [0x1565c0, 0x212121, 0x43a047, 0xffb300, 0xe53935];
+    let clutterCount = 0;
+
+    roadLines.forEach(line => {
+      for (let pos = line.from; pos <= line.to; pos += line.step) {
+        if (line.axis === 'z' && Math.abs(line.fixedX) < 8 && Math.abs(pos) < 10) continue;
+        if (line.axis === 'x' && Math.abs(line.fixedZ) < 8 && Math.abs(pos) < 10) continue;
+
+        clutterCount++;
+        const lateralOffset = (Math.random() - 0.5) * 6.5;
+        const x = line.axis === 'z' ? line.fixedX + lateralOffset : pos;
+        const z = line.axis === 'z' ? pos : line.fixedZ + lateralOffset;
+
+        const pick = clutterCount % 5;
+        let mesh = null;
+        let name = "Street Litter";
+        let pts = 20;
+
+        if (pick === 0) {
+          mesh = KarachiModels.createSodaCan();
+          name = "Soda Can";
+          pts = 20;
+        } else if (pick === 1) {
+          mesh = KarachiModels.createWaterBottle();
+          name = "Water Bottle";
+          pts = 25;
+        } else if (pick === 2) {
+          mesh = KarachiModels.createTrafficCone();
+          name = "Traffic Cone";
+          pts = 30;
+        } else if (pick === 3) {
+          mesh = KarachiModels.createTrashBag(trashColors[clutterCount % trashColors.length]);
+          name = "Trash Bag";
+          pts = 15;
+        } else {
+          mesh = KarachiModels.createKachraDump();
+          name = "Kachra Heap";
+          pts = 50;
+        }
+
+        if (mesh) {
+          mesh.position.set(x, 0, z);
+          this.registerEdible(mesh, 1, pts, name, pick === 4 ? 1.4 : 0.6, {
+            isLitter: true,
+            isBadGuy: true,
+            isDistrictEvil: false
+          });
+        }
+      }
+    });
+
+    // 3. POWER-UP MYSTERY CRATES AT MAJOR INTERSECTIONS
+    const intersections = [
+      { x: 48, z: 48, type: 'magnet', name: '🧲 Mega Magnet Box' },
+      { x: -48, z: 48, type: 'turbo', name: '⚡ Nitro Boost Box' },
+      { x: 48, z: -48, type: 'frenzy', name: '🌟 Hero Frenzy Box' },
+      { x: -48, z: -48, type: 'timer', name: '⏱️ Time Bonus Box' },
+      { x: 0, z: 48, type: 'magnet', name: '🧲 Mega Magnet Box' },
+      { x: 0, z: -48, type: 'turbo', name: '⚡ Nitro Boost Box' },
+      { x: 48, z: 0, type: 'frenzy', name: '🌟 Hero Frenzy Box' },
+      { x: -48, z: 0, type: 'timer', name: '⏱️ Time Bonus Box' }
+    ];
+
+    intersections.forEach(inter => {
+      const pCrate = KarachiModels.createPowerUpCrate(inter.type);
+      pCrate.position.set(inter.x, 0, inter.z);
+      this.registerEdible(pCrate, 1, 100, inter.name, 1.2, {
+        isPowerUp: true,
+        powerUpType: inter.type,
+        isBadGuy: true,
+        isDistrictEvil: false
+      });
+    });
+  }
+
   populateZones() {
     const trashColors = [0x1565c0, 0x212121, 0x43a047, 0xe53935];
 
@@ -1083,6 +1259,9 @@ export class CityGenerator {
 
     // Populate Initial District 1 Curated Evils
     this.populateDistrict(1);
+
+    // Populate Arcade Street Munchies and Power-Ups (Instant first-second dopamine!)
+    this.spawnStreetLitterAndClutter();
 
     // =============================================================
     // 11. ICONIC KARACHI LANDMARKS & URBAN MONUMENTS (GTA / NFS SIDES-OF-STREET LAYOUT)
