@@ -1298,6 +1298,10 @@ class Game {
 
     // Explicitly reset camera position and orientation behind player facing north down avenue
     this.camAngle = Math.PI;
+    this.cameraPivot = null;
+    this.backwardBaseAngle = null;
+    this.smoothGazeLead = 0;
+    this.cameraBankX = 0;
     this.camera.position.set(0, 2.35, 4.4);
     this.camera.lookAt(0, 1.35, -7.0);
     this.camera.updateMatrixWorld(true);
@@ -2195,8 +2199,18 @@ class Game {
 
     if (this.camAngle === undefined) this.camAngle = Math.PI;
 
+    // Initialize or re-sync camera pivot to prevent camera warping across map
+    if (!this.cameraPivot) {
+      this.cameraPivot = this.player.position.clone();
+    } else if (this.cameraPivot.distanceTo(this.player.position) > 15.0) {
+      this.cameraPivot.copy(this.player.position);
+    } else {
+      // Exponential frame-rate independent pivot tracking
+      const pivotLerp = 1.0 - Math.exp(-12.0 * dt);
+      this.cameraPivot.lerp(this.player.position, pivotLerp);
+    }
+
     // Dynamic Camera Rotation Tracking:
-    // Follows the player's movement direction so the camera is always positioned behind the character!
     const mx = this.moveVector.x;
     const my = this.moveVector.y;
     const isMoving = (Math.abs(mx) > 0.05 || Math.abs(my) > 0.05);
@@ -2204,78 +2218,74 @@ class Game {
     let targetCamAngle = this.camAngle;
     let turnRate = 0;
 
-    if (my > 0.5) {
-      // Backward movement (holding S / Down): over-the-shoulder viewing angle (~17°)
-      targetCamAngle = Math.PI - 0.30;
+    if (my > 0.4) {
+      // Backward movement (holding S / Down): over-the-shoulder angle shift
+      if (this.backwardBaseAngle === undefined || this.backwardBaseAngle === null) {
+        this.backwardBaseAngle = this.camAngle;
+      }
+      targetCamAngle = this.backwardBaseAngle - 0.32;
       turnRate = 2.2;
       this.lateralStrafeTimer = 0;
-    } else if (isMoving && this.player && this.player.facingAngle !== undefined) {
-      targetCamAngle = this.player.facingAngle;
-      const isPureLateral = Math.abs(my) <= 0.15;
-      if (isPureLateral) {
-        // Pure lateral movement (strafe): controlled ease-in so quick taps stay stable (<=0.05 rad in 0.1s for TC-11)
-        this.lateralStrafeTimer = (this.lateralStrafeTimer || 0) + dt;
-        turnRate = (this.lateralStrafeTimer <= 0.12) ? 0.30 : Math.min(3.2, 0.30 + (this.lateralStrafeTimer - 0.12) * 5.0);
-      } else {
-        // Forward driving/cornering: immediately responsive fluid camera tracking
-        this.lateralStrafeTimer = 0;
-        turnRate = 3.2;
-      }
     } else {
-      this.lateralStrafeTimer = 0;
-      turnRate = 0; // maintain stable perspective when idle
+      this.backwardBaseAngle = null;
+      if (isMoving && this.player && this.player.facingAngle !== undefined) {
+        targetCamAngle = this.player.facingAngle;
+        const forwardRatio = Math.max(0, -my); // 1.0 when full forward (W), 0.0 when pure lateral (A/D)
+        if (forwardRatio < 0.2 && Math.abs(mx) > 0.1) {
+          // Pure lateral strafe (TC-11 precision): controlled ease-in (<=0.05 rad in 0.1s)
+          this.lateralStrafeTimer = (this.lateralStrafeTimer || 0) + dt;
+          turnRate = (this.lateralStrafeTimer <= 0.12) ? 0.28 : Math.min(2.6, 0.28 + (this.lateralStrafeTimer - 0.12) * 4.0);
+        } else {
+          // Forward driving/cornering: smooth and responsive fluid tracking
+          this.lateralStrafeTimer = 0;
+          turnRate = 2.6;
+        }
+      } else {
+        this.lateralStrafeTimer = 0;
+        turnRate = 0; // maintain rock-solid stable perspective when idle
+      }
     }
 
     if (turnRate > 0) {
       let angleDiff = targetCamAngle - this.camAngle;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      this.camAngle += angleDiff * Math.min(1.0, dt * turnRate);
+      const angleLerp = 1.0 - Math.exp(-turnRate * dt);
+      this.camAngle += angleDiff * angleLerp;
+      while (this.camAngle > Math.PI) this.camAngle -= Math.PI * 2;
+      while (this.camAngle < -Math.PI) this.camAngle += Math.PI * 2;
     }
 
-    // Camera smoothly placed behind player along dynamic camAngle
-    const targetCamX = this.player.position.x - Math.sin(this.camAngle) * camDist;
-    const targetCamY = Math.max(1.85, (this.player.position.y || 0) + camHeight);
-    const targetCamZ = this.player.position.z - Math.cos(this.camAngle) * camDist;
-
-    // Safety guard against NaN
-    if (!isFinite(this.camera.position.x) || !isFinite(this.camera.position.z)) {
-      this.camera.position.set(targetCamX, targetCamY, targetCamZ);
-    }
-
-    const followLerp = Math.min(1.0, dt * 8.5);
-    if (isFinite(targetCamX) && isFinite(targetCamZ)) {
-      this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, followLerp);
-      this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, Math.min(1.0, dt * 7.5));
-      this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, followLerp);
-    }
+    // Camera orbit position placed strictly at distance camDist behind smoothed cameraPivot
+    const baseCamX = this.cameraPivot.x - Math.sin(this.camAngle) * camDist;
+    const baseCamY = Math.max(1.85, (this.cameraPivot.y || 0) + camHeight);
+    const baseCamZ = this.cameraPivot.z - Math.cos(this.camAngle) * camDist;
+    this.camera.position.set(baseCamX, baseCamY, baseCamZ);
 
     // Tactile Hit-Stop Camera Shake on threat takedown
     if (this.cameraShakeTimer > 0) {
       this.cameraShakeTimer -= dt;
-      const shakeMag = (this.cameraShakeTimer / 0.24) * 0.22;
+      const shakeMag = (this.cameraShakeTimer / 0.24) * 0.15;
       this.camera.position.x += (Math.random() - 0.5) * shakeMag;
       this.camera.position.y += (Math.random() - 0.5) * shakeMag;
       this.camera.position.z += (Math.random() - 0.5) * shakeMag;
     }
 
-    // Look target ahead down the street corridor with dynamic lateral gaze lead into turns
-    const gazeLead = (this.moveVector?.x || 0) * 1.5;
-    const lookTarget = new THREE.Vector3(
-      this.player.position.x + Math.sin(this.camAngle) * lookAheadDist - gazeLead * Math.cos(this.camAngle),
-      lookTargetY,
-      this.player.position.z + Math.cos(this.camAngle) * lookAheadDist + gazeLead * Math.sin(this.camAngle)
-    );
-    if (isFinite(lookTarget.x) && isFinite(lookTarget.z)) {
-      this.camera.lookAt(lookTarget);
-    }
+    // Smooth camera-relative gaze lead (prevents instantaneous angular twitching)
+    const targetGaze = (this.moveVector?.x || 0) * 1.0;
+    const gazeLerp = 1.0 - Math.exp(-5.0 * dt);
+    this.smoothGazeLead = THREE.MathUtils.lerp(this.smoothGazeLead || 0, targetGaze, gazeLerp);
 
-    // Dynamic bank tilt when turning corners
-    this.camera.rotation.z = THREE.MathUtils.lerp(
-      this.camera.rotation.z,
-      -(this.moveVector?.x || 0) * 0.045,
-      dt * 6.0
-    );
+    const targetLookX = this.cameraPivot.x + Math.sin(this.camAngle) * lookAheadDist - this.smoothGazeLead * Math.cos(this.camAngle);
+    const targetLookY = (this.cameraPivot.y || 0) + lookTargetY;
+    const targetLookZ = this.cameraPivot.z + Math.cos(this.camAngle) * lookAheadDist + this.smoothGazeLead * Math.sin(this.camAngle);
+
+    // Native Three.js banking tilt via camera.up (completely eliminates 60Hz roll/lookAt flicker)
+    const targetBank = -(this.moveVector?.x || 0) * 0.035;
+    const bankLerp = 1.0 - Math.exp(-5.0 * dt);
+    this.cameraBankX = THREE.MathUtils.lerp(this.cameraBankX || 0, targetBank, bankLerp);
+    this.camera.up.set(this.cameraBankX, 1.0, 0).normalize();
+    this.camera.lookAt(targetLookX, targetLookY, targetLookZ);
 
     // =========================================================
     // Dynamic Obstacle Transparency: Never let buildings, stalls, or vehicles block the view!
