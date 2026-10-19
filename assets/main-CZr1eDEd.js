@@ -4366,57 +4366,57 @@ void main() {
         </div>
 
         <div class="hud-center">
-          <!-- Karachi Temple Run Metrics -->
-          <div class="runner-dist-pill" id="hud-distance-meter">
-            <span class="runner-dist-icon">🏃</span>
-            <span class="runner-dist-val" id="hud-distance-val">0 m</span>
-            <span class="runner-milestone-tag" id="hud-milestone-tag">Soldier Bazar</span>
-          </div>
-
-          <div class="runner-coins-pill" id="hud-coins-pill">
-            <span class="coin-icon">🪙</span>
-            <span class="coin-val" id="hud-coins-val">0 Rs</span>
-          </div>
-
-          <div class="runner-hearts-pill" id="hud-hearts-pill">
-            <span class="hearts-display" id="hud-hearts-val">❤️❤️❤️</span>
-          </div>
-
-          <div class="timer-pill" id="hud-timer">04:00</div>
-          <div class="score-pill">
-            <span class="score-label">SCORE</span>
-            <span class="score-val" id="hud-score">0</span>
-          </div>
-
-          <!-- Karachi Transit Route Progression (Soldier Bazar -> PECHS Tariq Road) -->
-          <div class="route-progress-pill" id="hud-route-progress">
-            <span class="route-point start" id="hud-route-start">📍 Soldier Bazar</span>
-            <div class="route-track">
-              <div class="route-fill" id="hud-route-fill" style="width: 0%"></div>
-              <div class="route-pin" id="hud-route-pin" style="left: 0%">🦺</div>
+          <!-- Top Row: Unified Horizontal Stats Bar (Hearts, Timer, Coins, Distance, Score) -->
+          <div class="hud-center-stats-row">
+            <div class="runner-hearts-pill" id="hud-hearts-pill">
+              <span class="hearts-display" id="hud-hearts-val">❤️❤️❤️</span>
             </div>
-            <span class="route-point dest" id="hud-route-dest">🏁 PECHS</span>
-            <span class="route-dist-badge" id="hud-route-dist">800m</span>
-          </div>
-
-          <!-- NASCAR / Mario Kart Active Power-Up Slot -->
-          <div class="powerup-slot-pill" id="hud-powerup-slot" style="display: none;">
-            <span class="powerup-icon" id="hud-powerup-icon">🚀</span>
-            <span class="powerup-title" id="hud-powerup-title">CNG NITRO</span>
-            <div class="powerup-timer-bar">
-              <div class="powerup-timer-fill" id="hud-powerup-timer-fill" style="width: 100%"></div>
+            <div class="timer-pill" id="hud-timer">04:00</div>
+            <div class="runner-coins-pill" id="hud-coins-pill">
+              <span class="coin-icon">🪙</span>
+              <span class="coin-val" id="hud-coins-val">0 Rs</span>
+            </div>
+            <div class="runner-dist-pill" id="hud-distance-meter">
+              <span class="runner-dist-icon">🏃</span>
+              <span class="runner-dist-val" id="hud-distance-val">0 m</span>
+              <span class="runner-milestone-tag" id="hud-milestone-tag">Soldier Bazar</span>
+            </div>
+            <div class="score-pill">
+              <span class="score-label">SCORE</span>
+              <span class="score-val" id="hud-score">0</span>
             </div>
           </div>
 
-          <div class="nav-target-pill" id="hud-nav-target" style="display: none;">
-            <span class="nav-target-badge">🎯 TARGET</span>
-            <span class="nav-target-icon" id="hud-nav-icon">🕳️</span>
-            <span class="nav-target-name" id="hud-nav-name">Pothole</span>
-            <span class="nav-target-dist" id="hud-nav-dist">7m</span>
-            <span class="nav-target-arrow" id="hud-nav-arrow">⬆️</span>
-          </div>
-          <div class="combo-pill" id="hud-combo" style="display: none;">
-            COMBO x<span id="hud-combo-val">2</span>! 🔥
+          <!-- Bottom Row: Sleek Transit Corridor Progress & Dynamic Alerts -->
+          <div class="hud-center-sub-row">
+            <div class="route-progress-pill" id="hud-route-progress">
+              <span class="route-point start" id="hud-route-start">📍 Soldier Bazar</span>
+              <div class="route-track">
+                <div class="route-fill" id="hud-route-fill" style="width: 0%"></div>
+                <div class="route-pin" id="hud-route-pin" style="left: 0%">🦺</div>
+              </div>
+              <span class="route-point dest" id="hud-route-dest">🏁 PECHS</span>
+              <span class="route-dist-badge" id="hud-route-dist">800m</span>
+            </div>
+
+            <div class="powerup-slot-pill" id="hud-powerup-slot" style="display: none;">
+              <span class="powerup-icon" id="hud-powerup-icon">🚀</span>
+              <span class="powerup-title" id="hud-powerup-title">CNG NITRO</span>
+              <div class="powerup-timer-bar">
+                <div class="powerup-timer-fill" id="hud-powerup-timer-fill" style="width: 100%"></div>
+              </div>
+            </div>
+
+            <div class="nav-target-pill" id="hud-nav-target" style="display: none;">
+              <span class="nav-target-badge">🎯 TARGET</span>
+              <span class="nav-target-icon" id="hud-nav-icon">🕳️</span>
+              <span class="nav-target-name" id="hud-nav-name">Pothole</span>
+              <span class="nav-target-dist" id="hud-nav-dist">7m</span>
+              <span class="nav-target-arrow" id="hud-nav-arrow">⬆️</span>
+            </div>
+            <div class="combo-pill" id="hud-combo" style="display: none;">
+              COMBO x<span id="hud-combo-val">2</span>! 🔥
+            </div>
           </div>
         </div>
 
@@ -4499,19 +4499,23 @@ void main() {
         </div>
       </div>
 
-      <!-- Bottom-Right: Traversal, Horn & Runner Controls -->
-      <div class="hud-controls-bottom-right">
-        <button class="horn-btn ui-interactive" id="btn-horn" title="King Pressure Horn [H] - Blast Robbers & Clear Road">📢 HORN [H]</button>
-        <button class="jump-btn ui-interactive" id="btn-jump" title="Parkour Jump Traversal [Space / W] - Leap Over Open Gutters & Rubble">🦘 JUMP</button>
-        <button class="slide-btn ui-interactive" id="btn-slide" title="Slide Duck [S / Down] - Slide Under Dangling K-Electric Wires">🏃 SLIDE [S]</button>
-        <button class="sprint-btn ui-interactive" id="btn-sprint" title="Sprint Boost [Shift]">⚡ SPRINT</button>
-        <button class="journal-btn ui-interactive" id="btn-journal" title="Mission Journal & District Gauges [J]">📜 JOURNAL</button>
-      </div>
-
       <!-- Bottom-Left: Temple Run Lane Switch Buttons for Mobile / Touch -->
       <div class="hud-runner-lanes">
         <button class="lane-btn ui-interactive" id="btn-lane-left" title="Switch Lane Left [A / Left]">◀ LANE</button>
         <button class="lane-btn ui-interactive" id="btn-lane-right" title="Switch Lane Right [D / Right]">LANE ▶</button>
+      </div>
+
+      <!-- Bottom-Right: Traversal, Horn & Runner Controls -->
+      <div class="hud-controls-bottom-right">
+        <div class="runner-btn-row secondary-actions">
+          <button class="horn-btn ui-interactive" id="btn-horn" title="King Pressure Horn [H] - Blast Robbers & Clear Road">📢 HORN [H]</button>
+          <button class="sprint-btn ui-interactive" id="btn-sprint" title="Sprint Boost [Shift]">⚡ SPRINT</button>
+          <button class="journal-btn ui-interactive" id="btn-journal" title="Mission Journal & District Gauges [J]">📜 JOURNAL</button>
+        </div>
+        <div class="runner-btn-row primary-actions">
+          <button class="jump-btn ui-interactive" id="btn-jump" title="Parkour Jump Traversal [Space / W] - Leap Over Open Gutters & Rubble">🦘 JUMP</button>
+          <button class="slide-btn ui-interactive" id="btn-slide" title="Slide Duck [S / Down] - Slide Under Dangling K-Electric Wires">🏃 SLIDE [S]</button>
+        </div>
       </div>
 
       <!-- Proximity Action Prompt (Appears dynamically when near friendly citizens) -->

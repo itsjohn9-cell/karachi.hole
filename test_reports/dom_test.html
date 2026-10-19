@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <script type="module" src="/@vite/client"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0d1117">
+    <meta name="description" content="Pakistan Street Hero! Run the streets of Karachi, Lahore, Islamabad, and Quetta in 3D! Stop extortion mafias, resolve civic crises, interact with citizens, and restore authentic Pakistani cities!">
+    
+    <title>Pakistan Street Hero - Open World Civic Action</title>
+    
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&amp;family=Noto+Nastaliq+Urdu:wght@700&amp;display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/src/style.css">
+  </head>
+  <body>
+    <div id="canvas-container"><canvas data-engine="three.js r186" width="756" height="469" style="display: block; width: 756px; height: 469px;"></canvas></div>
+    <script type="module" src="/src/main.js?t=1792404976405"></script>
+  <script>
+    function check() {
+      if (!window.game) return setTimeout(check, 100);
+      const g = window.game;
+      g.isGameStarted = true;
+      g.isPaused = false;
+      g.isGameOver = false;
+      g.updatePhysics(0.05);
+      const div = document.createElement("div");
+      div.id = "corridor-test-data";
+      div.textContent = JSON.stringify({
+        obs: g.runnerObstacles.length,
+        coins: g.runnerCoins.length,
+        dist: Math.round(g.distanceMeters),
+        pz: Math.round(g.player.position.z),
+        waveZ: Math.round(g.nextRunnerWaveZ)
+      });
+      document.body.appendChild(div);
+    }
+    setTimeout(check, 200);
+  </script>
+
+<div class="virtual-joystick-base" style="display: none;"><div class="virtual-joystick-knob"></div></div><div class="modal-backdrop start-mission-backdrop" id="modal-start-mission" style="display: flex;">
+      <div class="modal-card start-mission-card">
+        <div class="start-hero-header">
+          <div class="city-crest">🇵🇰</div>
+          <h1 class="start-title">TEMPLE RUN: KARACHI CITY</h1>
+          <p class="start-tagline">Endless 3D Street Runner: Leap Gutters, Slide Under Wires &amp; Evade Robbers!</p>
+        </div>
+
+        <div class="start-form-section">
+          <!-- Player / Game Name Input -->
+          <div class="form-group start-name-group">
+            <label class="form-label" for="player-name-input">👤 PLAYER / HERO NAME:</label>
+            <div class="input-with-icon">
+              <span class="input-icon">👑</span>
+              <input type="text" id="player-name-input" class="text-input" value="Karachi Hero" maxlength="18" placeholder="Enter your player name...">
+            </div>
+          </div>
+
+          <!-- District / Level Selection -->
+          <div class="form-group start-district-group">
+            <label class="form-label">📍 SELECT PATROL DISTRICT (LEVEL):</label>
+            <div class="district-selection-grid" id="start-district-grid">
+              <div class="district-card active ui-interactive" data-level="1" id="start-dist-1">
+                <div class="d-header-row">
+                  <span class="d-badge">LV 1</span>
+                  <span class="d-status unlocked-tag">SELECTED</span>
+                </div>
+                <span class="d-title">Soldier Bazar to PECHS (Tariq Road)</span>
+                <span class="d-sub">Commute: Gutters, 70cc Robbers &amp; NASCAR Crates</span>
+              </div>
+              <div class="district-card ui-interactive" data-level="2" id="start-dist-2">
+                <div class="d-header-row">
+                  <span class="d-badge lv2-badge">LV 2</span>
+                  <span class="d-status unlocked-tag">AVAILABLE</span>
+                </div>
+                <span class="d-title">Lyari Football &amp; Culture</span>
+                <span class="d-sub">Bhatta Mafia, Racers &amp; Peace</span>
+              </div>
+              <div class="district-card ui-interactive" data-level="3" id="start-dist-3">
+                <div class="d-header-row">
+                  <span class="d-badge lv3-badge">LV 3</span>
+                  <span class="d-status unlocked-tag">AVAILABLE</span>
+                </div>
+                <span class="d-title">Saddar &amp; Empress Market</span>
+                <span class="d-sub">Heritage, VIPs &amp; Encroachments</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Age Group Selection -->
+          <div class="form-group start-age-group">
+            <label class="form-label">👶 SELECT YOUR AGE GROUP:</label>
+            <div class="age-selection-grid" id="start-age-grid">
+              <div class="age-card active ui-interactive" data-age="kids">
+                <span class="age-card-icon">🐣</span>
+                <span class="age-card-title">Kids</span>
+                <span class="age-card-sub">Ages 5–8</span>
+                <span class="age-card-desc">Visual picture cues</span>
+              </div>
+              <div class="age-card ui-interactive" data-age="junior">
+                <span class="age-card-icon">🎒</span>
+                <span class="age-card-title">Junior</span>
+                <span class="age-card-sub">Ages 9–12</span>
+                <span class="age-card-desc">Street safety &amp; civic rules</span>
+              </div>
+              <div class="age-card ui-interactive" data-age="senior">
+                <span class="age-card-icon">🏆</span>
+                <span class="age-card-title">Teens &amp; Adults</span>
+                <span class="age-card-sub">Ages 13+</span>
+                <span class="age-card-desc">City leadership &amp; ethics</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3D Karachi Avatar Selection -->
+          <div class="form-group start-avatar-group">
+            <label class="form-label">🦸 CHOOSE 3D KARACHI HERO AVATAR:</label>
+            <div class="avatar-selection-grid" id="start-avatar-grid">
+              <div class="avatar-card active ui-interactive" data-avatar="tariq">
+                <span class="avatar-card-icon">🇵🇰</span>
+                <span class="avatar-card-title">Tariq</span>
+                <span class="avatar-card-sub">Shalwar Kameez</span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="ayesha">
+                <span class="avatar-card-icon">🌸</span>
+                <span class="avatar-card-title">Ayesha</span>
+                <span class="avatar-card-sub">Ajrak Scarf</span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="farooq">
+                <span class="avatar-card-icon">👮‍♂️</span>
+                <span class="avatar-card-title">Farooq</span>
+                <span class="avatar-card-sub">Traffic Police</span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="bilal">
+                <span class="avatar-card-icon">🚑</span>
+                <span class="avatar-card-title">Bilal</span>
+                <span class="avatar-card-sub">Rescue 1122</span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="zain">
+                <span class="avatar-card-icon">🎒</span>
+                <span class="avatar-card-title">Zain</span>
+                <span class="avatar-card-sub">Eco Cadet</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Compact Mission Guidance -->
+          <div class="start-hint-strip">
+            <span>🛡️ Drive directly on top of road craters, water tankers &amp; robbers to restore Karachi!</span>
+          </div>
+        </div>
+
+        <div class="start-action-row" id="start-actions-container">
+          <button class="primary-btn ui-interactive start-mission-btn pulse-glow" id="btn-start-patrol">
+            🚀 START PATROL (LEVEL 1) ➔
+          </button>
+          <button class="secondary-btn ui-interactive continue-career-btn" id="btn-continue-career" style="display: none;">
+            💾 CONTINUE CAREER (Lv. <span id="continue-career-level">1</span>)
+          </button>
+        </div>
+      </div>
+    </div><div id="game-hud">
+      <!-- Top Fixed Header Bar (z-index: 100) -->
+      <div class="hud-top-bar">
+        <div class="hud-left">
+          <div class="karachi-badge">
+            <span class="game-logo-icon" id="hud-avatar-icon">🇵🇰</span>
+            <div class="player-title-col">
+              <span class="game-title" id="hud-player-name">YOU (KARACHI KING)</span>
+              <span class="hero-tag-sub" id="hud-level-title">Street Patrol Hero</span>
+            </div>
+          </div>
+          <div class="level-indicator">
+            <span class="level-badge" id="hud-level-badge">LV 1</span>
+            <div class="xp-bar-track">
+              <div class="xp-bar-fill" id="hud-xp-fill" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-center">
+          <!-- Karachi Temple Run Metrics -->
+          <div class="runner-dist-pill" id="hud-distance-meter">
+            <span class="runner-dist-icon">🏃</span>
+            <span class="runner-dist-val" id="hud-distance-val">0 m</span>
+            <span class="runner-milestone-tag" id="hud-milestone-tag">Soldier Bazar</span>
+          </div>
+
+          <div class="runner-coins-pill" id="hud-coins-pill">
+            <span class="coin-icon">🪙</span>
+            <span class="coin-val" id="hud-coins-val">0 Rs</span>
+          </div>
+
+          <div class="runner-hearts-pill" id="hud-hearts-pill">
+            <span class="hearts-display" id="hud-hearts-val">❤️❤️❤️</span>
+          </div>
+
+          <div class="timer-pill" id="hud-timer">04:00</div>
+          <div class="score-pill">
+            <span class="score-label">SCORE</span>
+            <span class="score-val" id="hud-score">0</span>
+          </div>
+
+          <!-- Karachi Transit Route Progression (Soldier Bazar -> PECHS Tariq Road) -->
+          <div class="route-progress-pill" id="hud-route-progress" style="display: flex;">
+            <span class="route-point start" id="hud-route-start">📍 Soldier Bazar</span>
+            <div class="route-track">
+              <div class="route-fill" id="hud-route-fill" style="width: 0%"></div>
+              <div class="route-pin" id="hud-route-pin" style="left: 0%">🦺</div>
+            </div>
+            <span class="route-point dest" id="hud-route-dest">🏁 PECHS Tariq Road</span>
+            <span class="route-dist-badge" id="hud-route-dist">152m to PECHS</span>
+          </div>
+
+          <!-- NASCAR / Mario Kart Active Power-Up Slot -->
+          <div class="powerup-slot-pill" id="hud-powerup-slot" style="display: none;">
+            <span class="powerup-icon" id="hud-powerup-icon">🚀</span>
+            <span class="powerup-title" id="hud-powerup-title">CNG NITRO</span>
+            <div class="powerup-timer-bar">
+              <div class="powerup-timer-fill" id="hud-powerup-timer-fill" style="width: 100%"></div>
+            </div>
+          </div>
+
+          <div class="nav-target-pill" id="hud-nav-target" style="display: flex;">
+            <span class="nav-target-badge">🎯 TARGET</span>
+            <span class="nav-target-icon" id="hud-nav-icon">🕳️</span>
+            <span class="nav-target-name" id="hud-nav-name">Road Pothole #2</span>
+            <span class="nav-target-dist" id="hud-nav-dist">75m</span>
+            <span class="nav-target-arrow" id="hud-nav-arrow">⬆️</span>
+          </div>
+          <div class="combo-pill" id="hud-combo" style="display: none;">
+            COMBO x<span id="hud-combo-val">2</span>! 🔥
+          </div>
+        </div>
+
+        <div class="hud-top-controls">
+          <button class="menu-pill-btn ui-interactive" id="btn-open-game-menu" title="Open Game Menu &amp; Settings [Esc]">☰ MENU</button>
+          <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
+          <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
+          <button class="icon-btn ui-interactive" id="btn-open-skins" title="Select Hero Outfit">🎨</button>
+          <button class="icon-btn ui-interactive" id="btn-open-guide" title="Civic Guide">❓</button>
+          <button class="icon-btn ui-interactive" id="btn-top-journal" title="Civic Mission Journal &amp; District Gauges [J]">📜</button>
+          <button class="icon-btn ui-interactive" id="btn-open-quiz" title="Civic Academy Challenge">🎓</button>
+          <button class="icon-btn ui-interactive" id="btn-manual-pause" title="Pause Game [Esc]">⏸️</button>
+        </div>
+      </div>
+
+      <!-- Left Panel: District Missions Checklist Card (Collapsible, top: 72px, left: 16px) -->
+      <div class="hud-mission-card collapsed" id="district-mission-banner">
+        <div class="mission-card-header" id="mission-card-header-toggle" title="Tap to expand/collapse missions">
+          <span class="district-badge-pill" id="hud-district-badge">DISTRICT 1</span>
+          <span class="district-name-text" id="hud-district-title">Karachi: Soldier Bazar to PECHS (Tariq Road)</span>
+          <span class="district-mini-counter" id="hud-district-mini-counter">🎯 4 LEFT</span>
+          <button class="mission-toggle-btn ui-interactive" id="btn-toggle-mission-card" title="Collapse / Expand Missions">▼</button>
+        </div>
+
+        <!-- Dynamic Mission Checklist Items -->
+        <div class="mission-checklist" id="hud-mission-list"><div class="mission-item ">
+              <span class="m-check">⬜</span>
+              <span class="m-icon">🕳️</span>
+              <span class="m-title">Clear &amp; Cover Open Gutters</span>
+              <span class="m-progress">0/2</span>
+            </div><div class="mission-item ">
+              <span class="m-check">⬜</span>
+              <span class="m-icon">📱</span>
+              <span class="m-title">Outrun / Stun Mobile Robber</span>
+              <span class="m-progress">0/1</span>
+            </div><div class="mission-item ">
+              <span class="m-check">⬜</span>
+              <span class="m-icon">🚰</span>
+              <span class="m-title">Deliver Water to PECHS Homes</span>
+              <span class="m-progress">0/1</span>
+            </div></div>
+
+        <div class="mission-card-footer">
+          <div class="district-counter-pill" id="hud-district-counter">
+            <span class="counter-icon">🎯</span>
+            <span class="counter-num" id="hud-district-remaining-num">4</span>
+            <span class="counter-text">LEFT</span>
+          </div>
+          <div class="district-progress-track">
+            <div class="district-progress-fill" id="hud-district-progress" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Integrated Active Crisis Sub-card (Kept inside for test assertion & clean hierarchy) -->
+        <div class="active-crisis-card" id="hud-active-crisis" style="display: flex;">
+          <div class="crisis-badge-row">
+            <span class="crisis-tag-pill">🚨 ACTIVE CRISIS</span>
+            <span class="crisis-reward-pill" id="crisis-reward-text">+600 XP REWARD</span>
+          </div>
+          <div class="crisis-title-row">
+            <span class="crisis-icon" id="crisis-icon">🕳️</span>
+            <span class="crisis-title" id="crisis-title">Clear &amp; Cover Open Gutters</span>
+          </div>
+          <div class="crisis-desc" id="crisis-desc">Swerve, jump over, or bolt manhole covers on open sewer hazards across the avenue!</div>
+          <div class="crisis-status-box">
+            <span class="crisis-count" id="crisis-count">0/2</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Live Competitor Scoreboard (top: 72px, right: 16px) -->
+      <div class="leaderboard-card" id="hud-scoreboard-card">
+        <div class="leaderboard-header">
+          <span>🏆 LIVE SCOREBOARD</span>
+          <span class="rank-tag" id="hud-player-rank">RANK #1</span>
+        </div>
+        <div class="leaderboard-list" id="hud-leaderboard"><div class="leaderboard-item is-player">
+          <span class="lb-rank">👑 1</span>
+          <span class="lb-name">You (Karachi King) [Lv.1]</span>
+          <span class="lb-score">0</span>
+        </div><div class="leaderboard-item ">
+          <span class="lb-rank">2</span>
+          <span class="lb-name">TruckArtMaster [Lv.1]</span>
+          <span class="lb-score">0</span>
+        </div><div class="leaderboard-item ">
+          <span class="lb-rank">3</span>
+          <span class="lb-name">ChaiWala_99 [Lv.1]</span>
+          <span class="lb-score">0</span>
+        </div><div class="leaderboard-item ">
+          <span class="lb-rank">4</span>
+          <span class="lb-name">CliftonRacer [Lv.1]</span>
+          <span class="lb-score">0</span>
+        </div><div class="leaderboard-item ">
+          <span class="lb-rank">5</span>
+          <span class="lb-name">BurnsRoadChef [Lv.1]</span>
+          <span class="lb-score">0</span>
+        </div></div>
+      </div>
+
+      <!-- Bottom-Left: Circular GTA Radar Mini-Map (bottom: 18px, left: 18px) -->
+      <div class="minimap-card gta-radar-card" id="hud-minimap-card">
+        <div class="minimap-header">
+          <span class="minimap-title">🗺️ GTA RADAR</span>
+          <span class="minimap-badge" id="minimap-target-badge">4 LEFT</span>
+        </div>
+        <div class="minimap-canvas-wrapper">
+          <canvas id="minimap-canvas" width="130" height="130"></canvas>
+        </div>
+      </div>
+
+      <!-- Bottom-Right: Traversal, Horn & Runner Controls -->
+      <div class="hud-controls-bottom-right">
+        <button class="horn-btn ui-interactive" id="btn-horn" title="King Pressure Horn [H] - Blast Robbers &amp; Clear Road">📢 HORN [H]</button>
+        <button class="jump-btn ui-interactive" id="btn-jump" title="Parkour Jump Traversal [Space / W] - Leap Over Open Gutters &amp; Rubble">🦘 JUMP</button>
+        <button class="slide-btn ui-interactive" id="btn-slide" title="Slide Duck [S / Down] - Slide Under Dangling K-Electric Wires">🏃 SLIDE [S]</button>
+        <button class="sprint-btn ui-interactive" id="btn-sprint" title="Sprint Boost [Shift]">⚡ SPRINT</button>
+        <button class="journal-btn ui-interactive" id="btn-journal" title="Mission Journal &amp; District Gauges [J]">📜 JOURNAL</button>
+      </div>
+
+      <!-- Bottom-Left: Temple Run Lane Switch Buttons for Mobile / Touch -->
+      <div class="hud-runner-lanes">
+        <button class="lane-btn ui-interactive" id="btn-lane-left" title="Switch Lane Left [A / Left]">◀ LANE</button>
+        <button class="lane-btn ui-interactive" id="btn-lane-right" title="Switch Lane Right [D / Right]">LANE ▶</button>
+      </div>
+
+      <!-- Proximity Action Prompt (Appears dynamically when near friendly citizens) -->
+      <div class="hud-interaction-prompt" id="hud-talk-prompt" style="display: none;">
+        <button class="talk-prompt-btn ui-interactive" id="btn-talk">💬 TALK [E]</button>
+      </div>
+
+      <!-- Before ➔ After Civic Transformation Toast -->
+      <div class="before-after-toast" id="hud-before-after-toast" style="opacity: 0">
+        <div class="ba-badge">✨ CIVIC TRANSFORMATION ✨</div>
+        <div class="ba-row">
+          <div class="ba-side ba-before">
+            <span class="ba-tag">BEFORE:</span>
+            <span class="ba-text" id="ba-before-text">Broken Pothole</span>
+          </div>
+          <div class="ba-arrow">➔</div>
+          <div class="ba-side ba-after">
+            <span class="ba-tag">AFTER:</span>
+            <span class="ba-text" id="ba-after-text">Smooth Repaired Road!</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Announcement Overlay -->
+      <div class="announcement-banner" id="hud-announcement" style="opacity: 0; color: rgb(0, 229, 255); transform: translate(-50%, -10px) scale(0.95);">🚀 COMMUTE ROUTE: KARACHI: SOLDIER BAZAR TO PECHS (TARIQ ROAD) (کراچی: سولجر بازار تا طارق روڈ پی ای سی ایچ ایس)!</div>
+
+      <!-- Dramatic Action Resolution Impact Banner -->
+      <div class="action-resolution-banner" id="hud-action-resolution" style="opacity: 0; pointer-events: none;">
+        <div class="action-res-icon" id="action-res-icon">🛑</div>
+        <div class="action-res-content">
+          <div class="action-res-tag" id="action-res-tag">THREAT INTERCEPTED</div>
+          <div class="action-res-title" id="action-res-title">VIP PROTOCOL CONVOY HALTED</div>
+          <div class="action-res-desc" id="action-res-desc">Route Reopened for Citizen Traffic!</div>
+        </div>
+      </div>
+
+      <!-- Floating Civic Restoration Progress Meter (Dwell Animation) -->
+      <div class="hud-intervention-pill" id="hud-intervention-progress" style="display: none;">
+        <span class="intervention-icon" id="intervention-icon">🔧</span>
+        <div class="intervention-text-col">
+          <div class="intervention-top-row">
+            <span class="intervention-title" id="intervention-title">REPAIRING HAZARD...</span>
+            <span class="intervention-pct" id="intervention-pct">0%</span>
+          </div>
+          <div class="intervention-bar-track">
+            <div class="intervention-bar-fill" id="intervention-fill" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Feedbacks Container -->
+      <div id="floating-feedbacks"></div>
+
+    </div><div class="modal-backdrop" id="modal-skins" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>Select Hero Outfit</h2>
+          <button class="close-btn ui-interactive" id="btn-close-skins">×</button>
+        </div>
+        <div class="skin-grid">
+          <div class="skin-card ui-interactive active" data-skin="gutter">
+            <div class="skin-preview skin-gutter"></div>
+            <div class="skin-info">
+              <h3>KMC Open Gutter</h3>
+              <p>Authentic Karachi sewer manhole with iron cleats &amp; murky sludge</p>
+            </div>
+          </div>
+
+          <div class="skin-card ui-interactive" data-skin="truckArt">
+            <div class="skin-preview skin-truck-art"></div>
+            <div class="skin-info">
+              <h3>Truck Art Chamak</h3>
+              <p>Authentic Pakistani floral truck art with peacock motifs</p>
+            </div>
+          </div>
+
+          <div class="skin-card ui-interactive" data-skin="ajrak">
+            <div class="skin-preview skin-ajrak"></div>
+            <div class="skin-info">
+              <h3>Sindh Ajrak</h3>
+              <p>Royal indigo &amp; crimson traditional Sindhi star block print</p>
+            </div>
+          </div>
+
+          <div class="skin-card ui-interactive" data-skin="emerald">
+            <div class="skin-preview skin-emerald"></div>
+            <div class="skin-info">
+              <h3>Sea View Emerald</h3>
+              <p>Bioluminescent Arabian Sea coastal waves</p>
+            </div>
+          </div>
+
+          <div class="skin-card ui-interactive" data-skin="quaid">
+            <div class="skin-preview skin-quaid"></div>
+            <div class="skin-info">
+              <h3>Mazar White &amp; Gold</h3>
+              <p>Majestic white marble and golden calligraphy rim</p>
+            </div>
+          </div>
+
+          <div class="skin-card ui-interactive" data-skin="neon">
+            <div class="skin-preview skin-neon"></div>
+            <div class="skin-info">
+              <h3>Chundrigar Cyber Neon</h3>
+              <p>Electric cyberpunk pink &amp; cyan glow</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><div class="modal-backdrop" id="modal-guide" style="display: none;">
+      <div class="modal-card guide-modal-card">
+        <div class="modal-header guide-modal-header">
+          <div class="guide-title-block">
+            <h2 class="guide-title">👶 WHAT TO DEVOUR?</h2>
+            <p class="guide-subtitle">A Visual Guide to Pakistan Street Hero: Only Takedown the Bad Guys!</p>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-guide">×</button>
+        </div>
+
+        <!-- Visual Rule Summary Pill -->
+        <div class="guide-summary-banner">
+          <div class="summary-pill pill-bad">
+            <span class="sum-icon">🔴</span>
+            <div class="sum-txt">
+              <strong>RED RINGS &amp; ARROWS 🔻</strong>
+              <span>BAD GUYS ➔ DEVOUR THEM ALL!</span>
+            </div>
+          </div>
+          <div class="summary-arrow">⚡ VS ⚡</div>
+          <div class="summary-pill pill-good">
+            <span class="sum-icon">🟢</span>
+            <div class="sum-txt">
+              <strong>GREEN HALOS &amp; BADGES 💚</strong>
+              <span>GOOD FRIENDS ➔ PROTECT THEM!</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="guide-columns">
+          <!-- LEFT COLUMN: BAD GUYS (DEVOUR) -->
+          <div class="guide-col col-bad">
+            <div class="col-header bad-header">
+              <span class="col-icon">😈</span>
+              <div class="col-title-wrap">
+                <h3>🔴 BAD GUYS (DEVOUR THEM!)</h3>
+                <span class="urdu-sub">Eliminate these evils to save Karachi</span>
+              </div>
+            </div>
+            <div class="guide-list">
+              <div class="guide-item item-bad">
+                <div class="item-icon">📱</div>
+                <div class="item-info">
+                  <h4>Mobile Snatchers</h4>
+                  <p>Armed thugs on 70cc motorbikes stealing phones from citizens. Devour them to restore street peace!</p>
+                  <span class="item-tag tag-bad">Devour for +120 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🚨</div>
+                <div class="item-info">
+                  <h4>VIP Protocol Convoy</h4>
+                  <p>Heavy black SUVs with flashing red-blue police beacons causing 2-hour traffic jams. Devour them to free traffic!</p>
+                  <span class="item-tag tag-bad">Devour for +350 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🛢️</div>
+                <div class="item-info">
+                  <h4>Water Tanker Mafia</h4>
+                  <p>Giant blue tankers stealing tap water and selling it at extortionate rates. Devour them to erupt free tap water!</p>
+                  <span class="item-tag tag-bad">Devour for +450 XP &amp; Geyser</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">📜</div>
+                <div class="item-info">
+                  <h4>Bhatta Extortion Gang</h4>
+                  <p>Criminals waving extortion slips demanding money from honest shopkeepers. Swallowing them brings peace!</p>
+                  <span class="item-tag tag-bad">Devour for +180 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🏍️</div>
+                <div class="item-info">
+                  <h4>Reckless One-Wheelers</h4>
+                  <p>Speeding bikes without silencers doing stunts in public streets. Swallowing them secures pedestrians!</p>
+                  <span class="item-tag tag-bad">Devour for +140 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🕳️</div>
+                <div class="item-info">
+                  <h4>Broken Road Potholes</h4>
+                  <p>Deep craters in asphalt damaging cars. Devour them to transform them into smooth carpet roads!</p>
+                  <span class="item-tag tag-bad">Devour for +60 XP</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-bad">
+                <div class="item-icon">🗑️</div>
+                <div class="item-info">
+                  <h4>Overflowing Garbage</h4>
+                  <p>Smelly trash bags and plastic piles blocking footpaths. Devour them to plant fresh green flora!</p>
+                  <span class="item-tag tag-bad">Devour for +50 XP</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: GOOD FRIENDS (DO NOT DEVOUR!) -->
+          <div class="guide-col col-good">
+            <div class="col-header good-header">
+              <span class="col-icon">😇</span>
+              <div class="col-title-wrap">
+                <h3>🟢 GOOD FRIENDS (PROTECT THEM!)</h3>
+                <span class="urdu-sub">These are Karachi's beloved friends</span>
+              </div>
+            </div>
+            <div class="guide-list">
+              <div class="guide-item item-good">
+                <div class="item-icon">💚</div>
+                <div class="item-info">
+                  <h4>Innocent Citizens</h4>
+                  <p>Everyday people in shalwar kameez. <strong>Your hole cannot eat them!</strong> Touch them to hear blessings &amp; green love hearts!</p>
+                  <span class="item-tag tag-good">Blessings &amp; Hearts Burst 💚</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-good">
+                <div class="item-icon">🍔</div>
+                <div class="item-info">
+                  <h4>Burns Road Bun Kabab Cart</h4>
+                  <p>Legendary Karachi egg-shami burger cart. <strong>Touch it for a FREE Turbo Speed Boost</strong> with spicy chutney!</p>
+                  <span class="item-tag tag-good">⚡ Gives Instant Turbo Boost!</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-good">
+                <div class="item-icon">☕</div>
+                <div class="item-info">
+                  <h4>Quetta Karak Chai Dhaba</h4>
+                  <p>Traditional tea stall with silver samovar and charpais. <strong>Touch it for Dudh Patti energy recharge!</strong></p>
+                  <span class="item-tag tag-good">⚡ Gives Chai Energy Recharge!</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-good">
+                <div class="item-icon">🐕</div>
+                <div class="item-info">
+                  <h4>Friendly Stray Puppies</h4>
+                  <p>Desi street dogs wagging their tails. <strong>Touch them to pet them!</strong> They woof happily and shower you with heart sparkles!</p>
+                  <span class="item-tag tag-good">🐕 Pet for Happy Tail Wags!</span>
+                </div>
+              </div>
+
+              <div class="guide-item item-good">
+                <div class="item-icon">🐈</div>
+                <div class="item-info">
+                  <h4>Street Kittens</h4>
+                  <p>Playful orange tabby kittens roaming Karachi footpaths. <strong>Touch to pet them</strong> for affectionate purrs!</p>
+                  <span class="item-tag tag-good">🐈 Pet for Purrs &amp; Hearts!</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="guide-modal-footer">
+          <button class="pill-btn ui-interactive guide-play-btn" id="btn-close-guide-footer">
+            🚀 Got It! Let's Clean Karachi!
+          </button>
+        </div>
+      </div>
+    </div><div class="modal-backdrop quiz-modal-backdrop" id="modal-quiz" style="display: none;">
+      <div class="modal-card quiz-modal-card">
+        <!-- Header: No close button until answered correctly! -->
+        <div class="modal-header quiz-modal-header">
+          <div class="quiz-title-block">
+            <div class="quiz-title-top">
+              <span class="quiz-school-badge">🏫 KARACHI JUNIOR CIVIC ACADEMY</span>
+              <span class="quiz-edu-pill">📖 LEARN &amp; WIN</span>
+            </div>
+            <h2 class="quiz-title">🌟 City Hero Dilemma</h2>
+          </div>
+          <!-- Notice: Close button removed to make questions non-skippable as requested! -->
+        </div>
+
+        <!-- Age Tier Selector Bar -->
+        <div class="quiz-age-bar">
+          <span class="quiz-age-label">👶 AGE GROUP:</span>
+          <div class="quiz-age-tabs" id="quiz-age-tabs">
+            <button class="age-tab active ui-interactive" data-age="kids">🐣 Kids (5–8)</button>
+            <button class="age-tab ui-interactive" data-age="junior">🎒 Junior (9–12)</button>
+            <button class="age-tab ui-interactive" data-age="senior">🏆 Teens &amp; Adults (13+)</button>
+          </div>
+        </div>
+
+        <!-- Dilemma Challenge Card -->
+        <div class="quiz-dilemma-card" id="quiz-dilemma-card">
+          <div class="dilemma-topic-row">
+            <span class="dilemma-topic-badge" id="quiz-topic-badge">🚰 Water Conservation</span>
+            <span class="dilemma-reward-badge" id="quiz-reward-badge">🎁 +500 XP &amp; +25s TIME BONUS</span>
+          </div>
+
+          <!-- Scenario Presentation with Pictorial Header -->
+          <div class="dilemma-scenario-box">
+            <div class="dilemma-icon-large" id="quiz-scenario-icon">🚰</div>
+            <div class="dilemma-scenario-texts">
+              <div class="scenario-text" id="quiz-scenario-en">Loading scenario...</div>
+              <div class="scenario-visual-pill" id="quiz-scenario-visual">💧 🚰 Visual picture cue</div>
+            </div>
+          </div>
+
+          <!-- Question Prompt -->
+          <div class="dilemma-question-box">
+            <h3 class="question-en" id="quiz-question-en">Which picture shows the right choice?</h3>
+          </div>
+
+          <!-- Interactive Choices Container (Large Pictorial Cards) -->
+          <div class="quiz-options-container" id="quiz-options-container">
+            <!-- Populated dynamically with pictorial cards -->
+          </div>
+
+          <!-- Positive Reinforcement / Feedback Box (Celebration before auto-resume) -->
+          <div class="quiz-feedback-box" id="quiz-feedback-box" style="display: none;">
+            <div class="feedback-badge" id="feedback-badge">🌟 EXCELLENT CIVIC HERO! CORRECT! 🌟</div>
+            <div class="feedback-badge-unlocked" id="feedback-badge-unlocked">
+              <span class="badge-icon" id="feedback-badge-icon">🚰</span>
+              <span class="badge-text" id="feedback-badge-text">New Medal Unlocked: Water Guardian</span>
+            </div>
+            <div class="feedback-text-wrap">
+              <p class="feedback-desc" id="feedback-desc"></p>
+            </div>
+            <div class="auto-resume-notice">
+              <span>🚀 Returning to game in 1 second...</span>
+            </div>
+          </div>
+
+          <!-- Gentle Encouragement Note for incorrect tap -->
+          <div class="quiz-encouragement-toast" id="quiz-encouragement-toast" style="display: none;">
+            <span class="enc-icon">💡</span>
+            <div class="enc-txt">
+              <strong>Try again!</strong>
+              <span id="quiz-enc-text">Look closely at the pictures and tap the correct civic choice to continue!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Earned Civic Badges Ribbon -->
+        <div class="quiz-badges-ribbon">
+          <div class="ribbon-title">🏅 YOUR EARNED CIVIC MEDALS:</div>
+          <div class="badges-row" id="quiz-badges-row">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </div><div class="modal-backdrop auto-pause-backdrop" id="modal-auto-pause" style="display: none;">
+      <div class="modal-card pause-card">
+        <div class="pause-icon">⏸️</div>
+        <h2 class="pause-title">GAME PAUSED</h2>
+        <p class="pause-desc">You switched tabs or moved away from the screen. Karachi patrol is safely on hold.</p>
+        <div class="pause-actions-col">
+          <button class="primary-btn ui-interactive resume-patrol-btn" id="btn-auto-resume">
+            ▶ RESUME PATROL
+          </button>
+          <button class="secondary-btn ui-interactive" id="btn-pause-open-menu">
+            ☰ OPEN GAME MENU &amp; SETTINGS
+          </button>
+          <button class="ghost-btn ui-interactive" id="btn-pause-exit-title">
+            🏠 RETURN TO MAIN MENU
+          </button>
+        </div>
+      </div>
+    </div><div class="modal-backdrop game-menu-backdrop" id="modal-game-menu" style="display: none;">
+      <div class="modal-card game-menu-card">
+        <div class="game-menu-header">
+          <div class="menu-title-block">
+            <span class="menu-crest-icon">🎮</span>
+            <div>
+              <h2 class="menu-title">GAME MENU &amp; SETTINGS</h2>
+              <p class="menu-subtitle" id="menu-hero-summary">Karachi Street Hero • Civic Vice Hub</p>
+            </div>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-game-menu">×</button>
+        </div>
+
+        <!-- Hero & Career Summary Strip -->
+        <div class="menu-hero-card">
+          <div class="menu-hero-badge" id="menu-avatar-icon">🇵🇰</div>
+          <div class="menu-hero-details">
+            <div class="menu-hero-name-row">
+              <span class="menu-hero-name" id="menu-player-name">Karachi Hero</span>
+              <span class="menu-badge" id="menu-level-badge">LV 1</span>
+            </div>
+            <div class="menu-hero-badges-row">
+              <span class="menu-tag" id="menu-district-badge">District 1: DHA</span>
+              <span class="menu-tag score-tag" id="menu-score-badge">SCORE: 0</span>
+              <span class="menu-tag age-tag" id="menu-age-badge">KIDS (5-8)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Action Navigation -->
+        <div class="menu-primary-actions">
+          <button class="primary-btn ui-interactive menu-action-btn" id="btn-menu-resume">
+            ▶ RESUME PATROL
+          </button>
+          <button class="secondary-btn ui-interactive menu-action-btn" id="btn-menu-restart">
+            🔄 RESTART DISTRICT
+          </button>
+          <button class="danger-btn ui-interactive menu-action-btn" id="btn-menu-exit-title">
+            🏠 MAIN MENU
+          </button>
+        </div>
+
+        <!-- Hub to Access All Other Game Screens -->
+        <div class="menu-section-header">
+          <span class="menu-section-title">🗺️ ALL GAME MENUS &amp; MODES</span>
+        </div>
+        <div class="menu-hub-grid">
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-journal">
+            <span class="hub-tile-icon">📜</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">Mission Journal</span>
+              <span class="hub-tile-sub">4 District Restoration Gauges</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-skins">
+            <span class="hub-tile-icon">🎭</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">Hero Avatars</span>
+              <span class="hub-tile-sub">Change 3D Karachi Character</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-quiz">
+            <span class="hub-tile-icon">🎓</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">Civic Academy</span>
+              <span class="hub-tile-sub">Educational Dilemmas &amp; XP</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-guide">
+            <span class="hub-tile-icon">❓</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">How to Play</span>
+              <span class="hub-tile-sub">Good vs Bad &amp; Street Rules</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+        </div>
+
+        <!-- Level / District Quick Select -->
+        <div class="menu-section-header">
+          <span class="menu-section-title">📍 PATROL DISTRICT / LEVEL SELECT</span>
+        </div>
+        <div class="menu-level-select-row" id="menu-level-select-row">
+          <button class="level-select-btn ui-interactive" data-level="1" id="btn-menu-level-1">
+            <span class="lvl-num">LV 1</span>
+            <span class="lvl-name">DHA &amp; Clifton</span>
+          </button>
+          <button class="level-select-btn ui-interactive" data-level="2" id="btn-menu-level-2">
+            <span class="lvl-num">LV 2</span>
+            <span class="lvl-name">Lyari Football</span>
+          </button>
+          <button class="level-select-btn ui-interactive" data-level="3" id="btn-menu-level-3">
+            <span class="lvl-num">LV 3</span>
+            <span class="lvl-name">Saddar Empress</span>
+          </button>
+        </div>
+
+        <!-- Interactive Settings Panel -->
+        <div class="menu-section-header">
+          <span class="menu-section-title">⚙️ AUDIO &amp; GAMEPLAY SETTINGS</span>
+        </div>
+        <div class="menu-settings-container">
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Sound Effects (SFX)</span>
+              <span class="settings-hint">Sirens, celebrations, whistles, and chatter</span>
+            </div>
+            <button class="setting-pill-toggle ui-interactive active" id="btn-menu-toggle-sfx">
+              🔊 SFX: ON
+            </button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Background Music</span>
+              <span class="settings-hint">Energetic Karachi street beats &amp; tunes</span>
+            </div>
+            <button class="setting-pill-toggle ui-interactive active" id="btn-menu-toggle-music">
+              🎵 MUSIC: ON
+            </button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Civic Moral Questions &amp; Dilemmas</span>
+              <span class="settings-hint">Optional interactive quizzes after solving crises (Default: OFF)</span>
+            </div>
+            <button class="setting-pill-toggle ui-interactive " id="btn-menu-toggle-quiz">
+              🎓 QUIZ: OFF
+            </button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Age Group &amp; Tier</span>
+              <span class="settings-hint">Customizes quiz dilemmas and guidance speed</span>
+            </div>
+            <div class="tier-pill-group" id="menu-age-pills">
+              <button class="tier-pill-btn active ui-interactive" data-age="kids">🐣 Kids (5-8)</button>
+              <button class="tier-pill-btn ui-interactive" data-age="junior">🎒 Junior (9-12)</button>
+              <button class="tier-pill-btn ui-interactive" data-age="senior">🏆 Teens (13+)</button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Camera Perspective</span>
+              <span class="settings-hint">Toggle between Street Chase &amp; Elevated Wide view</span>
+            </div>
+            <div class="tier-pill-group" id="menu-camera-pills">
+              <button class="tier-pill-btn active ui-interactive" id="btn-cam-street">Street Chase</button>
+              <button class="tier-pill-btn ui-interactive" id="btn-cam-wide">Extra Wide Drone</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-footer">
+          <button class="primary-btn ui-interactive close-menu-footer-btn" id="btn-menu-footer-close">
+            CLOSE &amp; CONTINUE PATROL
+          </button>
+        </div>
+      </div>
+    </div><div class="modal-backdrop" id="modal-game-over" style="display: none;">
+      <div class="modal-card results-card">
+        <div class="results-header">
+          <h1 id="results-headline">MISSION FINISHED!</h1>
+          <div class="results-sub" id="results-sub">Karachi Street Patrol Complete</div>
+        </div>
+
+        <div class="podium-section" id="results-podium">
+          <!-- 2nd, 1st, 3rd podium -->
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">FINAL SCORE</span>
+            <span class="stat-num" id="stat-score">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">MAX LEVEL</span>
+            <span class="stat-num" id="stat-level">Lv 1</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">OBJECTS SWALLOWED</span>
+            <span class="stat-num" id="stat-swallowed">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">HOLE KILLS</span>
+            <span class="stat-num" id="stat-kills">0</span>
+          </div>
+        </div>
+
+        <div class="results-button-row">
+          <button class="primary-btn ui-interactive dc-advance-btn" id="btn-results-next" style="display: none;">
+            🚀 PROCEED TO NEXT LEVEL ➔
+          </button>
+          <button class="secondary-btn ui-interactive" id="btn-play-again">
+            🔄 REPLAY DISTRICT
+          </button>
+        </div>
+      </div>
+    </div><div class="modal-backdrop district-cleared-modal-backdrop" id="modal-district-cleared" style="display: none;">
+      <div class="modal-card district-cleared-card">
+        <div class="trophy-glow-icon">🏆</div>
+        <div class="dc-title" id="dc-modal-title">DISTRICT 1 CLEARED!</div>
+        <div class="dc-desc" id="dc-modal-desc">
+          You eliminated all street criminals, mafias &amp; debris! Karachi citizens are celebrating!
+        </div>
+
+        <div class="dc-rewards-grid">
+          <div class="dc-reward-box highlight-box">
+            <span class="dc-reward-label">NEW CIVIC RANK</span>
+            <span class="dc-reward-val" id="dc-modal-herotitle">Street Vigilante</span>
+          </div>
+          <div class="dc-reward-box">
+            <span class="dc-reward-label">BONUS SCORE</span>
+            <span class="dc-reward-val gold-text" id="dc-modal-bonus">+2,500 XP</span>
+          </div>
+          <div class="dc-reward-box">
+            <span class="dc-reward-label">BONUS TIME</span>
+            <span class="dc-reward-val cyan-text" id="dc-modal-time">+60 SEC</span>
+          </div>
+          <div class="dc-reward-box">
+            <span class="dc-reward-label">HOLE SIZE</span>
+            <span class="dc-reward-val green-text" id="dc-modal-radius">EXPANDED 🌀</span>
+          </div>
+        </div>
+
+        <!-- Detailed Breakdown of Resolved Street Crises & Interventions -->
+        <div class="dc-resolved-breakdown" id="dc-modal-breakdown">
+          <div class="dc-breakdown-heading">🛡️ RESOLVED CRISES &amp; CIVIC REFORMS:</div>
+          <div class="dc-breakdown-list" id="dc-modal-threat-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <div class="dc-next-preview">
+          <span class="next-label">NEXT LEVEL DESTINATION:</span>
+          <span class="next-name" id="dc-modal-nextname">District 2: Lyari Football &amp; Culture</span>
+        </div>
+
+        <!-- The Prominent Next Level Button requested by user -->
+        <button class="primary-btn ui-interactive dc-advance-btn pulse-glow" id="btn-next-district">
+          🚀 GO TO NEXT LEVEL: LEVEL 2 ➔
+        </button>
+
+        <!-- Direct Level Select Options -->
+        <div class="dc-level-selector-row" id="dc-level-selector-row">
+          <button class="dc-level-pill ui-interactive" data-level="1">Replay Lv 1</button>
+          <button class="dc-level-pill ui-interactive active-pill" data-level="2">Advance to Lv 2</button>
+          <button class="dc-level-pill ui-interactive" data-level="3">Jump to Lv 3</button>
+        </div>
+      </div>
+    </div><div class="modal-backdrop citizen-dialogue-backdrop" id="modal-citizen-dialogue" style="display: none;">
+      <div class="modal-card citizen-dialogue-card">
+        <div class="citizen-dialogue-header">
+          <div class="citizen-avatar-badge" id="dialogue-citizen-icon">☕</div>
+          <div class="citizen-info-col">
+            <h2 class="citizen-name" id="dialogue-citizen-name">Uncle Shamim</h2>
+            <span class="citizen-role" id="dialogue-citizen-role">Burns Road Food Street Master</span>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-dialogue">×</button>
+        </div>
+
+        <div class="citizen-speech-bubble">
+          <div class="speech-urdu" id="dialogue-text-urdu">"السلام علیکم بیٹا! گرما گرم کڑک چائے پیو..."</div>
+          <div class="speech-english" id="dialogue-text-english">"Assalam-o-Alaikum son! Have a hot cup of Karak Chai..."</div>
+        </div>
+
+        <div class="dialogue-feedback-banner" id="dialogue-feedback-banner" style="display: none;"></div>
+
+        <div class="dialogue-choices-list" id="dialogue-choices-container">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="dialogue-footer-hint">
+          <span>💡 Street Wisdom: Speak with local residents to discover district problems and earn bonus XP!</span>
+        </div>
+      </div>
+    </div><div class="modal-backdrop mission-journal-backdrop" id="modal-mission-journal" style="display: none;">
+      <div class="modal-card mission-journal-card">
+        <div class="modal-header journal-header">
+          <div class="journal-title-row">
+            <span class="journal-crest">📜</span>
+            <div>
+              <h2 class="journal-main-title">KARACHI CIVIC JOURNAL</h2>
+              <span class="journal-sub-title" id="journal-district-subtitle">District 1: Tariq Road &amp; PECHS</span>
+            </div>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-journal">×</button>
+        </div>
+
+        <!-- District Restoration Gauges -->
+        <div class="journal-section restoration-section">
+          <h3 class="section-title">🏙️ DISTRICT RESTORATION GAUGES</h3>
+          <div class="restoration-grid">
+            <div class="gauge-card">
+              <div class="gauge-head">
+                <span>🧹 Cleanliness</span>
+                <span class="gauge-pct" id="gauge-cleanliness-val">65%</span>
+              </div>
+              <div class="gauge-bar-track">
+                <div class="gauge-bar-fill fill-cleanliness" id="gauge-cleanliness-bar" style="width: 65%"></div>
+              </div>
+            </div>
+
+            <div class="gauge-card">
+              <div class="gauge-head">
+                <span>🚧 Infrastructure</span>
+                <span class="gauge-pct" id="gauge-infra-val">50%</span>
+              </div>
+              <div class="gauge-bar-track">
+                <div class="gauge-bar-fill fill-infra" id="gauge-infra-bar" style="width: 50%"></div>
+              </div>
+            </div>
+
+            <div class="gauge-card">
+              <div class="gauge-head">
+                <span>🚦 Traffic Flow</span>
+                <span class="gauge-pct" id="gauge-traffic-val">70%</span>
+              </div>
+              <div class="gauge-bar-track">
+                <div class="gauge-bar-fill fill-traffic" id="gauge-traffic-bar" style="width: 70%"></div>
+              </div>
+            </div>
+
+            <div class="gauge-card">
+              <div class="gauge-head">
+                <span>🕊️ Peace &amp; Safety</span>
+                <span class="gauge-pct" id="gauge-safety-val">80%</span>
+              </div>
+              <div class="gauge-bar-track">
+                <div class="gauge-bar-fill fill-safety" id="gauge-safety-bar" style="width: 80%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Missions Checklist -->
+        <div class="journal-section">
+          <h3 class="section-title">🎯 DISTRICT CIVIC TASKS</h3>
+          <div class="journal-missions-list" id="journal-missions-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Civic Badges Showcase -->
+        <div class="journal-section">
+          <h3 class="section-title">🎖️ KARACHI CIVIC BADGES</h3>
+          <div class="journal-badges-grid" id="journal-badges-grid">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div class="journal-footer">
+          <button class="primary-btn ui-interactive" id="btn-journal-resume">
+            ▶ RESUME STREET PATROL
+          </button>
+        </div>
+      </div>
+    </div><button id="dev-mode-toggle-btn" class="ui-interactive" title="Toggle Developer Observer HUD (Shortcut: F2 or ~)">🛠️ <span>DEV MODE [F2]</span></button><button id="dev-comment-btn" class="ui-interactive" title="Send Real-Time Developer Feedback / Comment (Shortcut: F3)">💬 <span>FEEDBACK [F3]</span></button><button id="god-mode-toggle-btn" class="ui-interactive" title="Toggle God Mode Controls &amp; AI Auto-Audit (Shortcut: G)">👑 <span>GOD MODE [G]</span></button><div id="god-mode-panel" style="display: none;">
+      <div class="god-inpanel-header">
+        <div class="god-inpanel-title">
+          <span>👑</span>
+          <span>GOD MODE &amp; AI AUTO-AUDIT</span>
+        </div>
+        <button class="dev-icon-btn" id="btn-close-god-mode" style="background:transparent;border:none;color:#ffd700;font-size:18px;cursor:pointer;">×</button>
+      </div>
+
+      <div class="god-inpanel-body">
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title">
+            <span>⭕ Hole Radius:</span>
+            <span id="god-inpanel-radius-val" style="color:#00e5ff;font-family:monospace;">1.6m</span>
+          </div>
+          <input type="range" class="god-slider" id="god-inpanel-radius-slider" min="1.2" max="25.0" step="0.2" value="1.6">
+          <div class="preset-chip-row" style="margin-top:6px;">
+            <button type="button" class="preset-chip" data-radius="1.6">1.6m</button>
+            <button type="button" class="preset-chip" data-radius="3.5">3.5m</button>
+            <button type="button" class="preset-chip" data-radius="7.0">7.0m</button>
+            <button type="button" class="preset-chip" data-radius="14.0">14.0m</button>
+            <button type="button" class="preset-chip" data-radius="22.0">22.0m</button>
+          </div>
+        </div>
+
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title">
+            <span>⚡ God Powers &amp; Automations</span>
+          </div>
+          <div class="toggle-row" style="padding:6px 10px;">
+            <span style="font-size:0.8rem;">🤖 AI Auto-Pilot</span>
+            <label class="switch">
+              <input type="checkbox" id="god-inpanel-autopilot">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row" style="padding:6px 10px;">
+            <span style="font-size:0.8rem;">⏱️ Freeze Timer</span>
+            <label class="switch">
+              <input type="checkbox" id="god-inpanel-freeze-timer">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row" style="padding:6px 10px;">
+            <span style="font-size:0.8rem;">🛡️ God Invincibility</span>
+            <label class="switch">
+              <input type="checkbox" id="god-inpanel-immortal">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title">
+            <span>💥 Tactical Actions</span>
+          </div>
+          <div class="god-inpanel-btn-grid">
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-devour" style="color:#ff3366;">💥 Devour All</button>
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-time" style="color:#ffd700;">⏱️ +60s Time</button>
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-munchies" style="color:#00ff9d;">🥫 Munchies</button>
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-magnet" style="color:#00e5ff;">🧲 Magnet</button>
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-turbo" style="color:#00e5ff;">⚡ Turbo</button>
+            <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-audit" style="color:#ffd700;">🔍 Run Audit</button>
+            <a href="/godmode.html" target="_blank" class="god-inpanel-btn btn-dash-link">🖥️ Open Standalone Ops Dashboard ↗</a>
+          </div>
+        </div>
+      </div>
+    </div><div id="dev-mode-panel" style="display: none;">
+      <div class="dev-panel-header">
+        <div class="dev-header-title">
+          <span>🛠️</span>
+          <span>DEV MODE OBSERVER</span>
+        </div>
+        <div class="dev-header-actions">
+          <button class="dev-icon-btn" id="btn-dev-minimize" title="Minimize Panel">_</button>
+          <button class="dev-icon-btn" id="btn-dev-close" title="Close Dev Mode">×</button>
+        </div>
+      </div>
+      <div class="dev-panel-body" id="dev-panel-body">
+        <!-- Live Metrics Grid -->
+        <div class="dev-metrics-grid">
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">FPS / Perf</span>
+            <span class="dev-metric-val" id="dev-val-fps">60 FPS</span>
+          </div>
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">Current Level</span>
+            <span class="dev-metric-val" id="dev-val-level">District 1</span>
+          </div>
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">Match Timer</span>
+            <span class="dev-metric-val status-running" id="dev-val-timer">240.0s [RUNNING]</span>
+          </div>
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">Player Position</span>
+            <span class="dev-metric-val" id="dev-val-pos">X: 0.0, Z: 0.0</span>
+          </div>
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">Hole Radius</span>
+            <span class="dev-metric-val" id="dev-val-radius">1.60m (Lv.1)</span>
+          </div>
+          <div class="dev-metric-box">
+            <span class="dev-metric-label">Threats Remaining</span>
+            <span class="dev-metric-val status-alert" id="dev-val-threats">4 Left</span>
+          </div>
+        </div>
+
+        <!-- Quick District Warps -->
+        <span class="dev-section-title">🚀 Fast District Level Jump</span>
+        <div class="dev-actions-grid">
+          <button class="dev-btn" data-warp="1">Lv 1: Clifton</button>
+          <button class="dev-btn" data-warp="2">Lv 2: Lyari</button>
+          <button class="dev-btn" data-warp="3">Lv 3: Saddar</button>
+          <button class="dev-btn" data-warp="4">Lv 4: Lahore</button>
+          <button class="dev-btn" data-warp="5">Lv 5: Islamabad</button>
+          <button class="dev-btn" data-warp="6">Lv 6: Quetta</button>
+        </div>
+
+        <!-- Live Cheats & Mechanics Controls -->
+        <span class="dev-section-title">⚡ Mechanics &amp; Teleport Actions</span>
+        <div class="dev-actions-grid">
+          <button class="dev-btn btn-accent" id="btn-dev-toggle-timer">⏸️ Pause / Run Timer</button>
+          <button class="dev-btn" id="btn-dev-add-time">+60s Time</button>
+          <button class="dev-btn btn-accent" id="btn-dev-warp-threat">📍 Warp to Threat</button>
+          <button class="dev-btn" id="btn-dev-freeze-threats">🛑 Freeze Fleeing</button>
+          <button class="dev-btn btn-success" id="btn-dev-resolve-threat">⚡ Devour Threat</button>
+          <button class="dev-btn" id="btn-dev-grow-hole">⭕ Grow Hole +1m</button>
+          <button class="dev-btn btn-success" id="btn-dev-clear-level">🏆 Clear Level</button>
+          <button class="dev-btn" id="btn-dev-copy-telemetry">📋 Copy Telemetry</button>
+        </div>
+
+        <!-- Auto-Notes & Flight Recorder For AI Assistant -->
+        <span class="dev-section-title">🤖 AI Assistant Flight Recorder</span>
+        <div class="dev-actions-grid">
+          <button class="dev-btn btn-accent" id="btn-dev-pin-note">📝 Pin Bug / Note [F4]</button>
+          <button class="dev-btn btn-success" id="btn-dev-copy-flight">📦 Export Flight Logs for AI</button>
+          <button class="dev-btn" id="btn-dev-clear-flight">🧹 Clear Flight Logs</button>
+        </div>
+
+        <!-- Live Player Feedback & Real-Time Comments -->
+        <div class="dev-section-header">
+          <span class="dev-section-title">💬 Live Player Feedback &amp; Comments</span>
+          <span class="dev-badge-count" id="dev-comments-count">0 Notes</span>
+        </div>
+        <div class="dev-feedback-quick-box">
+          <input type="text" id="dev-quick-comment-input" placeholder="Type quick live feedback &amp; press Enter...">
+          <button class="dev-btn btn-success" id="btn-dev-send-quick-comment">Send</button>
+        </div>
+        <div class="dev-actions-grid">
+          <button class="dev-btn btn-accent" id="btn-dev-open-feedback-modal">💬 Rich Feedback Dialog [F3]</button>
+          <button class="dev-btn btn-success" id="btn-dev-copy-feedback">📋 Copy Feedback Summary</button>
+        </div>
+        <div class="dev-comments-history" id="dev-comments-history"><div class="dev-empty-comments">No feedback notes yet. Press F3 or type above!</div></div>
+
+        <!-- Live Devour / Event Log -->
+        <span class="dev-section-title">📋 Live Event &amp; Devour Log</span>
+        <div class="dev-log-container" id="dev-log-container"><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [ERROR] AvatarBuilder is not defined</div><div class="dev-log-line log-err">[14:20:28] [RUNTIME_EXCEPTION] AvatarBuilder is not defined</div></div>
+      </div>
+    </div><div class="modal-backdrop dev-feedback-backdrop" id="modal-dev-feedback" style="display: none;">
+      <div class="modal-card dev-feedback-card">
+        <div class="modal-header dev-feedback-header">
+          <div class="journal-title-row">
+            <span class="journal-crest">💬</span>
+            <div>
+              <h2 class="journal-main-title">LIVE DEV FEEDBACK &amp; ISSUE REPORTER</h2>
+              <span class="journal-sub-title" id="dev-feedback-telemetry-badge">District 1 • Time: 240s • Pos: (0.0, 0.0)</span>
+            </div>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-dev-feedback">×</button>
+        </div>
+
+        <div class="dev-feedback-body">
+          <div class="dev-fb-section">
+            <label class="dev-fb-label">🏷️ Select Feedback Category:</label>
+            <div class="dev-category-pills" id="dev-category-pills">
+              <button type="button" class="dev-cat-pill active" data-cat="🐛 Bug / Glitch">🐛 Bug / Glitch</button>
+              <button type="button" class="dev-cat-pill" data-cat="🛣️ Road / Escape">🛣️ Road / Escape</button>
+              <button type="button" class="dev-cat-pill" data-cat="🕳️ Devour Suction">🕳️ Devour Suction</button>
+              <button type="button" class="dev-cat-pill" data-cat="⏱️ Timer / Missions">⏱️ Timer / Missions</button>
+              <button type="button" class="dev-cat-pill" data-cat="⚖️ Gameplay Balance">⚖️ Gameplay Balance</button>
+              <button type="button" class="dev-cat-pill" data-cat="💡 Suggestion">💡 Suggestion</button>
+            </div>
+          </div>
+
+          <div class="dev-fb-section">
+            <label class="dev-fb-label">⚡ Quick Insert:</label>
+            <div class="dev-quick-chips" id="dev-quick-chips">
+              <button type="button" class="dev-chip" data-chip="Tanker went off the road">Tanker off-road</button>
+              <button type="button" class="dev-chip" data-chip="Devoured when not directly on top">Devour too far</button>
+              <button type="button" class="dev-chip" data-chip="Threat escaped through building">Escaped through building</button>
+              <button type="button" class="dev-chip" data-chip="Timer stopped or slowed down">Timer stalled</button>
+              <button type="button" class="dev-chip" data-chip="Points / achievement did not award">Points not awarded</button>
+              <button type="button" class="dev-chip" data-chip="Suction animation feels slow">Slow suction</button>
+            </div>
+          </div>
+
+          <div class="dev-fb-section">
+            <label class="dev-fb-label" for="dev-feedback-comment">📝 Real-Time Issue Description / Feedback:</label>
+            <textarea id="dev-feedback-comment" class="dev-fb-textarea" rows="3" placeholder="Describe the issue or feedback you noticed in real time..."></textarea>
+          </div>
+
+          <div class="dev-fb-options">
+            <label class="dev-fb-checkbox-label">
+              <input type="checkbox" id="dev-fb-attach-snapshot" checked="">
+              <span>📸 Capture instant canvas &amp; 3D coordinates snapshot</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer dev-fb-footer">
+          <button class="dev-btn btn-accent" id="btn-cancel-dev-feedback">Cancel</button>
+          <button class="dev-btn btn-success" id="btn-submit-dev-feedback">🚀 Submit Feedback for AI</button>
+        </div>
+      </div>
+    </div></body></html>
