@@ -1295,6 +1295,107 @@ class AudioManager {
     });
   }
 
+  // Temple Run Street Slide duck sound: White noise whoosh with bass friction
+  playSlide() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+    this.vibrate(25);
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(280, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.22);
+
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.25);
+  }
+
+  // Golden Rupee Coin pickup ding: High metallic two-tone chime
+  playCoin() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+    this.vibrate(10);
+
+    const t = this.ctx.currentTime;
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc1.type = 'sine';
+    osc2.type = 'sine';
+    osc1.frequency.setValueAtTime(987.77, t); // B5
+    osc1.frequency.setValueAtTime(1318.51, t + 0.06); // E6
+    osc2.frequency.setValueAtTime(1975.53, t + 0.06); // B6
+
+    gain.gain.setValueAtTime(0.22, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc1.start(t);
+    osc2.start(t + 0.06);
+    osc1.stop(t + 0.2);
+    osc2.stop(t + 0.2);
+  }
+
+  // Obstacle collision impact thud & stumble
+  playCrash() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+    this.vibrate([40, 30, 60]);
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(120, t);
+    osc.frequency.exponentialRampToValueAtTime(30, t + 0.35);
+
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.35);
+  }
+
+  // Restored heart / health pickup chime
+  playHeartGain() {
+    if (!this.soundEnabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+    this.vibrate(20);
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523.25, t); // C5
+    osc.frequency.exponentialRampToValueAtTime(1046.50, t + 0.2); // C6
+
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.25);
+  }
+
   toggleSound() {
     this.soundEnabled = !this.soundEnabled;
     try {

@@ -28,6 +28,9 @@ export class UIManager {
     onPauseGame,
     onNextLevel,
     onJump,
+    onSlide,
+    onLaneLeft,
+    onLaneRight,
     onHorn,
     onInteractCitizen,
     onOpenMissionJournal,
@@ -46,6 +49,9 @@ export class UIManager {
     this.onPauseGame = onPauseGame;
     this.onNextLevel = onNextLevel;
     this.onJump = onJump;
+    this.onSlide = onSlide;
+    this.onLaneLeft = onLaneLeft;
+    this.onLaneRight = onLaneRight;
     this.onHorn = onHorn;
     this.onInteractCitizen = onInteractCitizen;
     this.onOpenMissionJournal = onOpenMissionJournal;
@@ -92,8 +98,8 @@ export class UIManager {
       <div class="modal-card start-mission-card">
         <div class="start-hero-header">
           <div class="city-crest">🇵🇰</div>
-          <h1 class="start-title">PAKISTAN STREET HERO</h1>
-          <p class="start-tagline">Point A ➔ Point B Commute: Soldier Bazar to PECHS (Tariq Road)</p>
+          <h1 class="start-title">TEMPLE RUN: KARACHI CITY</h1>
+          <p class="start-tagline">Endless 3D Street Runner: Leap Gutters, Slide Under Wires &amp; Evade Robbers!</p>
         </div>
 
         <div class="start-form-section">
@@ -253,6 +259,22 @@ export class UIManager {
         </div>
 
         <div class="hud-center">
+          <!-- Karachi Temple Run Metrics -->
+          <div class="runner-dist-pill" id="hud-distance-meter">
+            <span class="runner-dist-icon">🏃</span>
+            <span class="runner-dist-val" id="hud-distance-val">0 m</span>
+            <span class="runner-milestone-tag" id="hud-milestone-tag">Soldier Bazar</span>
+          </div>
+
+          <div class="runner-coins-pill" id="hud-coins-pill">
+            <span class="coin-icon">🪙</span>
+            <span class="coin-val" id="hud-coins-val">0 Rs</span>
+          </div>
+
+          <div class="runner-hearts-pill" id="hud-hearts-pill">
+            <span class="hearts-display" id="hud-hearts-val">❤️❤️❤️</span>
+          </div>
+
           <div class="timer-pill" id="hud-timer">04:00</div>
           <div class="score-pill">
             <span class="score-label">SCORE</span>
@@ -370,12 +392,19 @@ export class UIManager {
         </div>
       </div>
 
-      <!-- Bottom-Right: Traversal, Horn & Mission Controls -->
+      <!-- Bottom-Right: Traversal, Horn & Runner Controls -->
       <div class="hud-controls-bottom-right">
-        <button class="horn-btn ui-interactive" id="btn-horn" title="King Pressure Horn [H] - Blast Robbers & Clear Traffic">📢 HORN [H]</button>
-        <button class="jump-btn ui-interactive" id="btn-jump" title="Parkour Jump Traversal [Space] - Leap Over Open Gutters">🦘 JUMP</button>
+        <button class="horn-btn ui-interactive" id="btn-horn" title="King Pressure Horn [H] - Blast Robbers & Clear Road">📢 HORN [H]</button>
+        <button class="jump-btn ui-interactive" id="btn-jump" title="Parkour Jump Traversal [Space / W] - Leap Over Open Gutters & Rubble">🦘 JUMP</button>
+        <button class="slide-btn ui-interactive" id="btn-slide" title="Slide Duck [S / Down] - Slide Under Dangling K-Electric Wires">🏃 SLIDE [S]</button>
         <button class="sprint-btn ui-interactive" id="btn-sprint" title="Sprint Boost [Shift]">⚡ SPRINT</button>
         <button class="journal-btn ui-interactive" id="btn-journal" title="Mission Journal & District Gauges [J]">📜 JOURNAL</button>
+      </div>
+
+      <!-- Bottom-Left: Temple Run Lane Switch Buttons for Mobile / Touch -->
+      <div class="hud-runner-lanes">
+        <button class="lane-btn ui-interactive" id="btn-lane-left" title="Switch Lane Left [A / Left]">◀ LANE</button>
+        <button class="lane-btn ui-interactive" id="btn-lane-right" title="Switch Lane Right [D / Right]">LANE ▶</button>
       </div>
 
       <!-- Proximity Action Prompt (Appears dynamically when near friendly citizens) -->
@@ -1852,6 +1881,39 @@ export class UIManager {
       btnHorn.addEventListener('touchstart', doHorn, { passive: false });
     }
 
+    // Slide Button (Temple Run low slide duck under dangling wires)
+    const btnSlide = document.getElementById('btn-slide');
+    if (btnSlide) {
+      const doSlide = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        audio.playSlide();
+        if (this.onSlide) this.onSlide();
+      };
+      btnSlide.addEventListener('click', doSlide);
+      btnSlide.addEventListener('touchstart', doSlide, { passive: false });
+    }
+
+    // Lane Switch Buttons (Mobile Left / Right Lane Arrows)
+    const btnLaneLeft = document.getElementById('btn-lane-left');
+    if (btnLaneLeft) {
+      const doLaneL = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (this.onLaneLeft) this.onLaneLeft();
+      };
+      btnLaneLeft.addEventListener('click', doLaneL);
+      btnLaneLeft.addEventListener('touchstart', doLaneL, { passive: false });
+    }
+
+    const btnLaneRight = document.getElementById('btn-lane-right');
+    if (btnLaneRight) {
+      const doLaneR = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (this.onLaneRight) this.onLaneRight();
+      };
+      btnLaneRight.addEventListener('click', doLaneR);
+      btnLaneRight.addEventListener('touchstart', doLaneR, { passive: false });
+    }
+
     // Talk Button Prompt (Interactive Citizen Dialogues)
     const btnTalk = document.getElementById('btn-talk');
     if (btnTalk) {
@@ -2289,7 +2351,48 @@ export class UIManager {
           this.showGameMenuModal();
         }
       }
+
+      // Temple Run Runner Keyboard Controls (Lane switch, Jump, Slide, Horn)
+      if (window.game && window.game.isGameStarted && !this.isAutoPaused && !window.game.isPaused) {
+        if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+          if (this.onSlide) this.onSlide();
+        } else if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
+          if (this.onLaneLeft) this.onLaneLeft();
+        } else if (e.code === 'KeyD' || e.code === 'ArrowRight') {
+          if (this.onLaneRight) this.onLaneRight();
+        } else if (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === 'Space') {
+          if (this.onJump) this.onJump();
+        } else if (e.code === 'KeyH') {
+          if (this.onHorn) this.onHorn();
+        }
+      }
     });
+
+    // Touch Swipe Gestures for Mobile Temple Run
+    let touchStartX = 0;
+    let touchStartY = 0;
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches[0]) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) => {
+      if (e.changedTouches && e.changedTouches[0]) {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > 35 || Math.abs(dy) > 35) {
+          if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0 && this.onLaneLeft) this.onLaneLeft();
+            else if (dx > 0 && this.onLaneRight) this.onLaneRight();
+          } else {
+            if (dy < 0 && this.onJump) this.onJump();
+            else if (dy > 0 && this.onSlide) this.onSlide();
+          }
+        }
+      }
+    }, { passive: true });
 
     // Boost button
     const btnBoost = document.getElementById('btn-boost');
@@ -2498,8 +2601,31 @@ export class UIManager {
     activeCrisis = null,
     missions = null,
     routeProgress = null,
-    activePowerUp = null
+    activePowerUp = null,
+    distanceMeters = 0,
+    coins = 0,
+    hearts = 3,
+    currentMilestone = 'Soldier Bazar'
   }) {
+    // Karachi Temple Run HUD Metrics (Distance, Coins, Hearts)
+    const distValEl = document.getElementById('hud-distance-val');
+    if (distValEl) {
+      distValEl.textContent = `${Math.round(distanceMeters || 0)} m`;
+    }
+    const milestoneEl = document.getElementById('hud-milestone-tag');
+    if (milestoneEl && currentMilestone) {
+      milestoneEl.textContent = currentMilestone;
+    }
+    const coinsEl = document.getElementById('hud-coins-val');
+    if (coinsEl) {
+      coinsEl.textContent = `${coins || 0} Rs`;
+    }
+    const heartsEl = document.getElementById('hud-hearts-val');
+    if (heartsEl) {
+      const h = Math.max(0, Math.min(3, hearts !== undefined ? hearts : 3));
+      heartsEl.textContent = `${'❤️'.repeat(h)}${'🖤'.repeat(3 - h)}`;
+    }
+
     // Player Name & 3D Avatar Icon in Header
     const nameEl = document.getElementById('hud-player-name');
     if (nameEl && player && player.name) {
@@ -3217,16 +3343,22 @@ export class UIManager {
     }, 1000);
   }
 
-  showGameOver({ rankedHoles, player, canAdvanceNext = false }) {
+  showGameOver({ rankedHoles, player, canAdvanceNext = false, distanceMeters = 0, coins = 0, isCrash = false, crashReason = '' }) {
     const modal = this.gameOverModal;
-    const playerRank = rankedHoles.findIndex(h => h.isPlayer) + 1;
+    const playerRank = (rankedHoles && rankedHoles.length > 0) ? (rankedHoles.findIndex(h => h.isPlayer) + 1) : 1;
 
-    const headline = playerRank === 1 ? '👑 1ST PLACE CHAMPION! 👑' :
-                     playerRank === 2 ? '🥈 2ND PLACE! GREAT JOB!' :
-                     playerRank === 3 ? '🥉 3RD PLACE!' : 'MATCH COMPLETED';
+    let headline = playerRank === 1 ? '👑 1ST PLACE CHAMPION! 👑' :
+                   playerRank === 2 ? '🥈 2ND PLACE! GREAT JOB!' :
+                   playerRank === 3 ? '🥉 3RD PLACE!' : 'MATCH COMPLETED';
+
+    if (isCrash) {
+      headline = '💥 RUN CRASHED! (دوڑ ختم ہو گئی)';
+    }
 
     document.getElementById('results-headline').textContent = headline;
-    document.getElementById('results-sub').textContent = `Ranked #${playerRank} in Karachi Street Patrol`;
+    document.getElementById('results-sub').textContent = isCrash
+      ? (crashReason || `Distance Ran: ${Math.round(distanceMeters)}m | Coins: ${coins} Rs`)
+      : `Ranked #${playerRank} in Karachi Street Patrol`;
 
     document.getElementById('stat-score').textContent = player.score.toLocaleString();
     document.getElementById('stat-level').textContent = `Lv ${player.level} (${LEVEL_CONFIG[player.level - 1].title})`;

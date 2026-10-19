@@ -5535,3 +5535,134 @@ html, body {
   color: #050b14;
 }
 
+/* ============================================================
+   KARACHI TEMPLE RUN - RUNNER HUD & CONTROLS
+   ============================================================ */
+.runner-dist-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 16, 26, 0.88);
+  border: 1.5px solid #00e5ff;
+  border-radius: 999px;
+  padding: 4px 14px;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
+  backdrop-filter: blur(12px);
+}
+.runner-dist-icon {
+  font-size: 1.15rem;
+  animation: runner-bounce 0.6s infinite alternate ease-in-out;
+}
+@keyframes runner-bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-3px); }
+}
+.runner-dist-val {
+  color: #00e5ff;
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+.runner-milestone-tag {
+  background: rgba(0, 229, 255, 0.2);
+  color: #ffffff;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid rgba(0, 229, 255, 0.4);
+}
+
+.runner-coins-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(20, 16, 8, 0.88);
+  border: 1.5px solid #ffd700;
+  border-radius: 999px;
+  padding: 4px 12px;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.35);
+  backdrop-filter: blur(12px);
+}
+.coin-icon {
+  font-size: 1.1rem;
+  display: inline-block;
+  animation: coin-spin 2s infinite linear;
+}
+@keyframes coin-spin {
+  0% { transform: scaleX(1); }
+  50% { transform: scaleX(0.2); }
+  100% { transform: scaleX(1); }
+}
+.coin-val {
+  color: #ffd700;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.runner-hearts-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(26, 10, 14, 0.88);
+  border: 1.5px solid #ff1744;
+  border-radius: 999px;
+  padding: 4px 12px;
+  box-shadow: 0 0 16px rgba(255, 23, 68, 0.35);
+  backdrop-filter: blur(12px);
+}
+.hearts-display {
+  font-size: 1.0rem;
+  letter-spacing: 2px;
+}
+
+/* Runner Traversal Buttons */
+.slide-btn {
+  background: linear-gradient(135deg, #e65100 0%, #ff9800 100%);
+  color: #ffffff;
+  border: 1.5px solid #ffd54f;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(230, 81, 0, 0.5);
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+.slide-btn:active {
+  transform: scale(0.94);
+  box-shadow: 0 2px 8px rgba(230, 81, 0, 0.8);
+}
+
+/* Touch Mobile Lane Buttons (Bottom-Left) */
+.hud-runner-lanes {
+  position: absolute;
+  bottom: 24px;
+  left: 20px;
+  display: flex;
+  gap: 12px;
+  z-index: 100;
+}
+.lane-btn {
+  background: rgba(10, 18, 30, 0.85);
+  color: #00e5ff;
+  border: 1.5px solid #00e5ff;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 14px rgba(0, 229, 255, 0.3);
+  transition: all 0.12s ease;
+  font-family: inherit;
+  touch-action: manipulation;
+}
+.lane-btn:active {
+  transform: scale(0.92);
+  background: #00e5ff;
+  color: #050b14;
+}
+
+

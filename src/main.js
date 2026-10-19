@@ -58,6 +58,33 @@ class Game {
     this.robberyLosses = 0;
     this.score = 0;
 
+    // Karachi Temple Run Continuous 3D Street Runner State
+    this.isTempleRun = true;
+    this.currentLane = 0; // -1: Left ($X = -3.2$), 0: Center ($X = 0$), 1: Right ($X = +3.2$)
+    this.laneWidth = 3.2;
+    this.targetLaneX = 0;
+    this.distanceMeters = 0;
+    this.coins = 0;
+    this.hearts = 3;
+    this.maxHearts = 3;
+    this.isSliding = false;
+    this.slideTimer = 0;
+    this.runSpeed = 13.5;
+    this.runnerObstacles = [];
+    this.runnerCoins = [];
+    this.runnerPowerups = [];
+    this.nextRunnerWaveZ = 45.0;
+    this.currentMilestone = 'Soldier Bazar';
+    this.milestones = [
+      { dist: 0, name: 'Soldier Bazar (سولجر بازار)' },
+      { dist: 500, name: 'M.A. Jinnah Road (ایم اے جناح روڈ)' },
+      { dist: 1200, name: 'Saddar Empress Market (صدر مارکیٹ)' },
+      { dist: 2200, name: 'PECHS Tariq Road (طارق روڈ)' },
+      { dist: 3500, name: 'Clifton Teen Talwar (تین تلوار)' },
+      { dist: 5000, name: 'Sea View Arabian Beach (سی ویو ساحل)' }
+    ];
+    this.passedMilestoneIndices = new Set([0]);
+
     // God Mode & AI Auto-Pilot State
     this.isGodImmortal = false;
     this.isTimerFrozen = false;
@@ -254,6 +281,15 @@ class Game {
       onHorn: () => {
         this.triggerKingPressureHorn();
       },
+      onSlide: () => {
+        this.performSlide();
+      },
+      onLaneLeft: () => {
+        this.changeLane(-1);
+      },
+      onLaneRight: () => {
+        this.changeLane(1);
+      },
       onInteractCitizen: () => {
         this.interactWithNearbyCitizen();
       },
@@ -413,6 +449,587 @@ class Game {
     } else {
       this.ui.showAnnouncement('📢 KING PRESSURE HORN BLAST! Traffic Cleared!', '#ffd600');
     }
+
+    // Supersonic wave clears nearby runner obstacles ahead
+    if (this.runnerObstacles) {
+      this.runnerObstacles.forEach(obs => {
+        if (!obs.isHit && obs.mesh) {
+          const dz = this.player.position.z - obs.z;
+          if (dz > 0 && dz < 30.0) {
+            obs.isHit = true;
+            this.particles.createDevourSparkles(obs.mesh.position, 12, 0xffd700);
+            if (obs.type === 'snatcher' || obs.type === 'rickshaw') {
+              obs.mesh.position.x += (obs.mesh.position.x >= 0 ? 6.5 : -6.5);
+              obs.mesh.rotation.z += 0.5;
+            } else {
+              this.scene.remove(obs.mesh);
+            }
+            this.player.addXP(250);
+            this.score += 250;
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * Temple Run: Slide Crouch Traversal Mechanic (S / ArrowDown / Touch Slide / Swipe Down)
+   */
+  performSlide() {
+    if (!this.player || !this.isGameStarted || this.isPaused || this.isGameOver || this.isSliding) return;
+    this.isSliding = true;
+    this.slideTimer = 0.72;
+    audio.playSlide();
+    if (this.player.avatarMesh) {
+      this.player.avatarMesh.scale.set(1.15, 0.42, 1.25);
+      this.player.avatarMesh.position.y = -0.32;
+    }
+    this.particles.createSkidSmoke(this.player.position, 6);
+    this.ui.showFloatingFeedback('⚡ SLIDE!', this.player.position, '#00e5ff');
+  }
+
+  /**
+   * Temple Run: Lane Switching Mechanic (A / D / ArrowLeft / ArrowRight / Touch Lane Buttons / Swipe)
+   */
+  changeLane(dir) {
+    if (!this.player || !this.isGameStarted || this.isPaused || this.isGameOver) return;
+    this.currentLane = Math.max(-1, Math.min(1, this.currentLane + dir));
+    this.targetLaneX = this.currentLane * this.laneWidth;
+    audio.playClick();
+  }
+
+  /**
+   * Clear all active runner 3D obstacles, coins, and power-ups from scene
+   */
+  clearRunnerObjects() {
+    if (this.runnerObstacles) {
+      this.runnerObstacles.forEach(obs => {
+        if (obs && obs.mesh) this.scene.remove(obs.mesh);
+      });
+      this.runnerObstacles = [];
+    }
+    if (this.runnerCoins) {
+      this.runnerCoins.forEach(coin => {
+        if (coin && coin.mesh) this.scene.remove(coin.mesh);
+      });
+      this.runnerCoins = [];
+    }
+    if (this.runnerPowerups) {
+      this.runnerPowerups.forEach(p => {
+        if (p && p.mesh) this.scene.remove(p.mesh);
+      });
+      this.runnerPowerups = [];
+    }
+  }
+
+  /**
+   * Handle obstacle collision during Karachi Temple Run
+   */
+  handleRunnerHit(obstacle, reason) {
+    if (!obstacle || obstacle.isHit || !this.player || this.isGameOver) return;
+
+    if (this.isGodImmortal) {
+      this.ui.showFloatingFeedback('👑 IMMORTAL GOD MODE!', this.player.position, '#ffd700');
+      return;
+    }
+
+    // Check CNG Turbo Nitro (Invulnerability Smash)
+    if (this.nitroTimer > 0) {
+      obstacle.isHit = true;
+      audio.playCrash();
+      this.particles.createDevourSparkles(obstacle.mesh.position, 20, 0xffd700);
+      this.ui.showAnnouncement(`💥 CNG NITRO SMASH! Obliterated ${reason}! +500 XP`, '#ff9100');
+      this.player.addXP(500);
+      this.score += 500;
+      this.scene.remove(obstacle.mesh);
+      return;
+    }
+
+    // Check Water Tanker Iron Shield (Impact Absorption)
+    if (this.shieldTimer > 0) {
+      obstacle.isHit = true;
+      audio.playCrash();
+      this.shieldTimer = 0;
+      if (this.player) this.player.isShielded = false;
+      this.cameraShakeTimer = 0.3;
+      this.particles.createSkidSmoke(this.player.position, 10);
+      this.ui.showAnnouncement(`🛡️ WATER TANKER SHIELD BROKE! Absorbed Impact on ${reason}!`, '#00e5ff');
+      this.ui.showFloatingFeedback('🛡️ SHIELD BROKE!', this.player.position, '#00e5ff');
+      this.scene.remove(obstacle.mesh);
+      return;
+    }
+
+    // Deduct 1 Heart
+    obstacle.isHit = true;
+    this.hearts = Math.max(0, this.hearts - 1);
+    audio.playCrash();
+    audio.vibrate([120, 60, 160]);
+    this.cameraShakeTimer = 0.45;
+    this.particles.createSkidSmoke(this.player.position, 12);
+
+    if (this.hearts > 0) {
+      this.ui.showAnnouncement(`⚠️ CRASH! Stumbled on ${reason}! ${'❤️'.repeat(this.hearts)} left!`, '#ff1744');
+      this.ui.showFloatingFeedback(`-1 ❤️ (${reason})`, this.player.position, '#ff1744');
+      // Temporary slowdown
+      const origSpeed = this.player.currentSpeed;
+      this.player.currentSpeed = this.player.baseSpeed * 0.5;
+      setTimeout(() => {
+        if (this.player && !this.isGameOver) {
+          this.player.currentSpeed = origSpeed;
+        }
+      }, 1200);
+    } else {
+      this.triggerTempleRunGameOver(reason);
+    }
+  }
+
+  /**
+   * Game Over when runner runs out of hearts
+   */
+  triggerTempleRunGameOver(reason) {
+    this.isGameOver = true;
+    this.isPaused = true;
+    audio.playGameOver();
+    const ranked = [...(this.holes || [])].sort((a, b) => b.score - a.score);
+    this.ui.showGameOver({
+      rankedHoles: ranked,
+      player: this.player,
+      isCrash: true,
+      distanceMeters: Math.round(this.distanceMeters),
+      coins: this.coins,
+      crashReason: `💥 CRASHED: ${reason || 'Karachi Street Hazard'} | Distance: ${Math.round(this.distanceMeters)}m | Coins: ${this.coins} Rs`,
+      canAdvanceNext: false
+    });
+  }
+
+  /**
+   * Create 3D Karachi Power-Up Collectible Orb
+   */
+  createRunnerPowerupMesh(type) {
+    const group = new THREE.Group();
+    let color = 0x00e5ff;
+    if (type === 'cng') color = 0x00e5ff;
+    else if (type === 'shield') color = 0x00bcd4;
+    else if (type === 'magnet') color = 0xffd700;
+    else if (type === 'chai') color = 0xff7043;
+    else if (type === 'jump') color = 0x76ff03;
+
+    const sphereGeo = new THREE.SphereGeometry(0.55, 16, 16);
+    const sphereMat = new THREE.MeshStandardMaterial({
+      color,
+      emissive: color,
+      emissiveIntensity: 0.6,
+      metalness: 0.5,
+      roughness: 0.2
+    });
+    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+    sphere.position.y = 1.0;
+    group.add(sphere);
+
+    const haloGeo = new THREE.RingGeometry(0.65, 0.85, 16);
+    const haloMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+    const halo = new THREE.Mesh(haloGeo, haloMat);
+    halo.position.y = 1.0;
+    group.add(halo);
+
+    group.userData = { powerupType: type };
+    return group;
+  }
+
+  /**
+   * Spawn a wave of Karachi street obstacles and coins ahead along the 3-lane corridor
+   */
+  spawnRunnerWave(waveZ) {
+    const lanes = [-this.laneWidth, 0, this.laneWidth]; // [-3.2, 0, 3.2]
+    const archetype = Math.floor(Math.random() * 6);
+
+    if (archetype === 0) {
+      // 1. Low Hanging K-Electric Dangling Live Wires (Overhead - Must SLIDE under!)
+      const wires = KarachiModels.createKElectricDanglingWires(7.5);
+      wires.position.set(0, 0, waveZ);
+      this.scene.add(wires);
+      this.runnerObstacles.push({
+        type: 'wire',
+        z: waveZ,
+        requiredAction: 'slide',
+        mesh: wires,
+        isHit: false
+      });
+
+      // Line of coins before and after wire
+      [-4.0, -2.0, 2.0, 4.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(0, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: 0, z: waveZ + zOff });
+      });
+    } else if (archetype === 1) {
+      // 2. Open Unpaved Gutter (Ground - Must JUMP over!)
+      const gutterLaneIdx = Math.floor(Math.random() * 3);
+      const gutterLaneX = lanes[gutterLaneIdx];
+      const gutter = KarachiModels.createBrokenRoadPatch();
+      gutter.position.set(gutterLaneX, 0.04, waveZ);
+      this.scene.add(gutter);
+      this.runnerObstacles.push({
+        type: 'gutter',
+        laneX: gutterLaneX,
+        z: waveZ,
+        requiredAction: 'jump',
+        mesh: gutter,
+        isHit: false
+      });
+
+      // Arch of 3 coins right over the gutter
+      [-2.2, 0, 2.2].forEach((zOff, idx) => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        const yH = idx === 1 ? 1.65 : 0.95;
+        coin.position.set(gutterLaneX, yH, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: gutterLaneX, z: waveZ + zOff });
+      });
+
+      // Free lane coins
+      const freeLaneX = lanes[(gutterLaneIdx + 1) % 3];
+      [-3.0, 0, 3.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(freeLaneX, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
+      });
+    } else if (archetype === 2) {
+      // 3. Unannounced KMC Road Digging & Construction Rubble (Must JUMP or switch lane)
+      const digLaneIdx = Math.floor(Math.random() * 3);
+      const digLaneX = lanes[digLaneIdx];
+      const rubble = KarachiModels.createRoadDiggingObstacle(2.8);
+      rubble.position.set(digLaneX, 0, waveZ);
+      this.scene.add(rubble);
+      this.runnerObstacles.push({
+        type: 'digging',
+        laneX: digLaneX,
+        z: waveZ,
+        requiredAction: 'jump_or_dodge',
+        mesh: rubble,
+        isHit: false
+      });
+
+      const freeLaneX = lanes[(digLaneIdx + 1) % 3];
+      [-3.0, 0, 3.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(freeLaneX, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
+      });
+    } else if (archetype === 3) {
+      // 4. Stalled Qingqi Rickshaw (Full Lane Blocker - Must switch lane)
+      const rickLaneIdx = Math.floor(Math.random() * 3);
+      const rickLaneX = lanes[rickLaneIdx];
+      const rick = KarachiModels.createStalledRickshawObstacle();
+      rick.position.set(rickLaneX, 0, waveZ);
+      this.scene.add(rick);
+      this.runnerObstacles.push({
+        type: 'rickshaw',
+        laneX: rickLaneX,
+        z: waveZ,
+        requiredAction: 'dodge',
+        mesh: rick,
+        isHit: false
+      });
+
+      const freeLaneX = lanes[(rickLaneIdx + 2) % 3];
+      [-3.0, 0, 3.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(freeLaneX, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
+      });
+    } else if (archetype === 4) {
+      // 5. Overflowing Sewage Water Spill (Puddle - Must JUMP or switch lane)
+      const sewLaneIdx = Math.floor(Math.random() * 3);
+      const sewLaneX = lanes[sewLaneIdx];
+      const sewage = KarachiModels.createSewageSpillHazard(3.0);
+      sewage.position.set(sewLaneX, 0, waveZ);
+      this.scene.add(sewage);
+      this.runnerObstacles.push({
+        type: 'sewage',
+        laneX: sewLaneX,
+        z: waveZ,
+        requiredAction: 'jump_or_dodge',
+        mesh: sewage,
+        isHit: false
+      });
+
+      const freeLaneX = lanes[(sewLaneIdx + 1) % 3];
+      [-3.0, 0, 3.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(freeLaneX, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
+      });
+    } else {
+      // 6. 70cc Snatcher Motorcycle (Evade or blast with King Pressure Horn [H]!)
+      const bikeLaneIdx = Math.floor(Math.random() * 3);
+      const bikeLaneX = lanes[bikeLaneIdx];
+      const bike = KarachiModels.createSnatcherMotorbike();
+      bike.position.set(bikeLaneX, 0, waveZ);
+      this.scene.add(bike);
+      this.runnerObstacles.push({
+        type: 'snatcher',
+        laneX: bikeLaneX,
+        z: waveZ,
+        requiredAction: 'dodge_or_horn',
+        mesh: bike,
+        isHit: false
+      });
+
+      const freeLaneX = lanes[(bikeLaneIdx + 1) % 3];
+      [-3.0, 0, 3.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(freeLaneX, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
+      });
+    }
+
+    // Occasional Karachi Tactical Power-Up spawn (every ~3 waves)
+    if (Math.random() < 0.35) {
+      const pTypes = ['cng', 'shield', 'magnet', 'chai', 'jump'];
+      const chosenType = pTypes[Math.floor(Math.random() * pTypes.length)];
+      const pLaneX = lanes[Math.floor(Math.random() * 3)];
+      const pMesh = this.createRunnerPowerupMesh(chosenType);
+      pMesh.position.set(pLaneX, 0, waveZ - 12.0);
+      this.scene.add(pMesh);
+      this.runnerPowerups.push({
+        type: chosenType,
+        mesh: pMesh,
+        x: pLaneX,
+        z: waveZ - 12.0
+      });
+    }
+  }
+
+  /**
+   * Main Karachi Temple Run Corridor Physics, Movement, Obstacle & Coin Collision Loop
+   */
+  updateTempleRunCorridor(dt) {
+    if (!this.player || !this.player.isAlive || this.isGameOver || this.isPaused) return;
+
+    // 1. Calculate Forward Running Speed
+    let speed = this.runSpeed;
+    if (this.nitroTimer > 0) {
+      speed *= 2.0;
+    } else if (this.turboTimer > 0 || this.isBoosting) {
+      speed *= 1.45;
+    }
+    // Subtle speed ramp with distance
+    speed += Math.min(6.0, this.distanceMeters * 0.002);
+    this.player.currentSpeed = speed;
+
+    // 2. Lateral Movement & Continuous Lane Lerp
+    if (this.moveVector && this.moveVector.x !== 0) {
+      this.targetLaneX += this.moveVector.x * dt * 9.0;
+      this.targetLaneX = Math.max(-4.2, Math.min(4.2, this.targetLaneX));
+    }
+    this.player.position.x = THREE.MathUtils.lerp(this.player.position.x, this.targetLaneX, Math.min(1.0, dt * 14.0));
+
+    // 3. Forward Movement Along Street (Heading North towards -Z)
+    this.player.position.z -= speed * dt;
+    this.distanceMeters += speed * dt;
+
+    // Sync 3D group position & orientation
+    this.player.group.position.x = this.player.position.x;
+    this.player.group.position.z = this.player.position.z;
+    this.player.facingAngle = Math.PI;
+    this.player.targetRotationY = Math.PI;
+    this.player.group.rotation.y = Math.PI;
+
+    // 4. Update Vertical Traversal (Jumps)
+    if (!this.player.isGrounded || this.player.position.y > 0 || this.player.velocityY !== 0) {
+      this.player.velocityY -= 18.0 * dt;
+      this.player.position.y += this.player.velocityY * dt;
+      if (this.player.position.y <= 0) {
+        this.player.position.y = 0;
+        this.player.velocityY = 0;
+        this.player.isGrounded = true;
+      }
+      this.player.group.position.y = this.player.position.y;
+    }
+
+    // 5. Update Slide Timer & Mesh Crouch Scale
+    if (this.isSliding) {
+      this.slideTimer -= dt;
+      this.particles.createSkidSmoke(this.player.position, 1);
+      if (this.slideTimer <= 0) {
+        this.isSliding = false;
+        if (this.player.avatarMesh) {
+          this.player.avatarMesh.scale.set(1, 1, 1);
+          this.player.avatarMesh.position.y = 0;
+        }
+      }
+    }
+
+    // 6. Limb Animation
+    AvatarBuilder.updateAnimation(this.player.avatarMesh, true, dt, speed / 14.0, !this.player.isGrounded);
+
+    // 7. Check Karachi Milestone Badges
+    for (let i = 0; i < this.milestones.length; i++) {
+      const m = this.milestones[i];
+      if (this.distanceMeters >= m.dist && !this.passedMilestoneIndices.has(i)) {
+        this.passedMilestoneIndices.add(i);
+        this.currentMilestone = m.name;
+        audio.playDistrictClearedFanfare();
+        this.particles.createCelebrationConfetti(this.player.position, 40);
+        this.ui.showAnnouncement(`🚩 KARACHI MILESTONE: ${m.name}! +1000 PTS`, '#00e5ff');
+        this.player.addXP(1000);
+        this.score += 1000;
+      }
+    }
+
+    // 8. Dynamic Runner Waves Spawning Ahead
+    if (this.nextRunnerWaveZ > this.player.position.z - 15.0) {
+      this.nextRunnerWaveZ = this.player.position.z - 25.0;
+    }
+    while (this.nextRunnerWaveZ > this.player.position.z - 110.0) {
+      this.spawnRunnerWave(this.nextRunnerWaveZ);
+      this.nextRunnerWaveZ -= 28.0;
+    }
+
+    // 9. Collect Rupee Coins
+    const pPos = this.player.position;
+    for (let i = this.runnerCoins.length - 1; i >= 0; i--) {
+      const coin = this.runnerCoins[i];
+      if (!coin || !coin.mesh) continue;
+
+      coin.mesh.rotation.y += dt * 3.5;
+
+      // Burns Road Biryani Magnet Pull
+      if (this.magnetTimer > 0) {
+        const dToPlayer = coin.mesh.position.distanceTo(pPos);
+        if (dToPlayer < 20.0) {
+          coin.mesh.position.lerp(pPos, dt * 8.5);
+        }
+      }
+
+      const dist = coin.mesh.position.distanceTo(pPos);
+      if (dist < 1.45) {
+        this.coins += coin.value || 50;
+        this.player.addXP(100);
+        this.score += 100;
+        audio.playCoin();
+        this.particles.createDevourSparkles(coin.mesh.position, 6, 0xffd700);
+        this.ui.showFloatingFeedback('+50 Rs', coin.mesh.position, '#ffd700');
+        this.scene.remove(coin.mesh);
+        this.runnerCoins.splice(i, 1);
+      }
+    }
+
+    // 10. Collect Power-Ups
+    for (let i = this.runnerPowerups.length - 1; i >= 0; i--) {
+      const p = this.runnerPowerups[i];
+      if (!p || !p.mesh) continue;
+
+      p.mesh.rotation.y += dt * 2.8;
+      const dist = p.mesh.position.distanceTo(pPos);
+      if (dist < 1.55) {
+        const type = p.type;
+        if (type === 'cng') {
+          this.nitroTimer = 6.0;
+          this.player.isBoosting = true;
+          this.activePowerUp = { title: 'CNG Turbo Nitro ⚡', timer: 6.0 };
+          audio.playBunKababSizzle();
+          this.ui.showAnnouncement('⚡ CNG TURBO NITRO! Invulnerable Super Speed! 🚀', '#00e5ff');
+        } else if (type === 'shield') {
+          this.shieldTimer = 14.0;
+          if (this.player) this.player.isShielded = true;
+          this.activePowerUp = { title: 'Water Tanker Iron Shield 🛡️', timer: 14.0 };
+          audio.playShieldAbsorb();
+          this.ui.showAnnouncement('🛡️ WATER TANKER IRON SHIELD! Absorbs 1 Crash! 💧', '#00bcd4');
+        } else if (type === 'magnet') {
+          this.magnetTimer = 10.0;
+          this.activePowerUp = { title: 'Burns Road Biryani Magnet 🧲', timer: 10.0 };
+          audio.playMagnetHum();
+          this.ui.showAnnouncement('🧲 BURNS ROAD BIRYANI MAGNET! Rupee Coins Attracted! 🍛', '#ffd700');
+        } else if (type === 'chai') {
+          this.hearts = Math.min(this.maxHearts, this.hearts + 1);
+          audio.playHeartGain();
+          this.particles.createCelebrationConfetti(this.player.position, 20);
+          this.ui.showAnnouncement('🫖 DOODH PATTI CHAI! Restored 1 Heart ❤️!', '#00e676');
+          this.ui.showFloatingFeedback('+1 ❤️ CHAI HEAL', this.player.position, '#00e676');
+        } else if (type === 'jump') {
+          this.superJumpTimer = 8.0;
+          this.activePowerUp = { title: 'Hydraulic Jump Springs 👟', timer: 8.0 };
+          audio.playJump();
+          this.ui.showAnnouncement('👟 HYDRAULIC JUMP SPRINGS! Super High Jumps! 🏙️', '#76ff03');
+        }
+
+        this.particles.createDevourSparkles(p.mesh.position, 14, 0x00e5ff);
+        this.scene.remove(p.mesh);
+        this.runnerPowerups.splice(i, 1);
+      }
+    }
+
+    // 11. Check Runner Obstacle Collisions
+    for (let i = 0; i < this.runnerObstacles.length; i++) {
+      const obs = this.runnerObstacles[i];
+      if (!obs || obs.isHit || !obs.mesh) continue;
+
+      const dz = Math.abs(pPos.z - obs.z);
+      if (dz < 1.4) {
+        if (obs.type === 'wire') {
+          if (this.isSliding) {
+            obs.isHit = true;
+            this.player.addXP(150);
+            this.score += 150;
+            audio.playSlide();
+            this.ui.showFloatingFeedback('⚡ SLID UNDER!', this.player.position, '#00e5ff');
+          } else {
+            this.handleRunnerHit(obs, '⚡ K-Electric Live Wires');
+          }
+        } else if (obs.type === 'gutter' || obs.type === 'digging' || obs.type === 'sewage') {
+          const dx = Math.abs(pPos.x - obs.laneX);
+          if (dx < 1.35) {
+            if (this.player.position.y > 0.62) {
+              obs.isHit = true;
+              this.guttersJumped++;
+              this.player.addXP(150);
+              this.score += 150;
+              this.ui.showFloatingFeedback('💨 CLEARED JUMP!', this.player.position, '#00e676');
+            } else {
+              const label = obs.type === 'gutter' ? '🕳️ Open Gutter' : obs.type === 'digging' ? '🚧 Road Digging' : '🌊 Sewage Overflow';
+              this.handleRunnerHit(obs, label);
+            }
+          }
+        } else if (obs.type === 'rickshaw' || obs.type === 'snatcher') {
+          const dx = Math.abs(pPos.x - obs.laneX);
+          if (dx < 1.35) {
+            const label = obs.type === 'rickshaw' ? '🛺 Stalled Qingqi Rickshaw' : '🏍️ 70cc Snatcher';
+            this.handleRunnerHit(obs, label);
+          }
+        }
+      }
+    }
+
+    // 12. Despawn Passed Objects Behind Player (> 24m)
+    for (let i = this.runnerObstacles.length - 1; i >= 0; i--) {
+      const obs = this.runnerObstacles[i];
+      if (obs && obs.z > pPos.z + 24.0) {
+        if (obs.mesh) this.scene.remove(obs.mesh);
+        this.runnerObstacles.splice(i, 1);
+      }
+    }
+    for (let i = this.runnerCoins.length - 1; i >= 0; i--) {
+      const c = this.runnerCoins[i];
+      if (c && c.z > pPos.z + 24.0) {
+        if (c.mesh) this.scene.remove(c.mesh);
+        this.runnerCoins.splice(i, 1);
+      }
+    }
+    for (let i = this.runnerPowerups.length - 1; i >= 0; i--) {
+      const p = this.runnerPowerups[i];
+      if (p && p.z > pPos.z + 24.0) {
+        if (p.mesh) this.scene.remove(p.mesh);
+        this.runnerPowerups.splice(i, 1);
+      }
+    }
   }
 
   /**
@@ -542,9 +1159,24 @@ class Game {
     this.timeLeft = this.matchDuration;
     this.isGameOver = false;
 
+    // Reset Karachi Temple Run Runner State
+    this.clearRunnerObjects();
+    this.distanceMeters = 0;
+    this.coins = 0;
+    this.hearts = 3;
+    this.currentLane = 0;
+    this.targetLaneX = 0;
+    this.isSliding = false;
+    this.slideTimer = 0;
+    this.nextRunnerWaveZ = 45.0;
+    this.currentMilestone = 'Soldier Bazar';
+    this.passedMilestoneIndices = new Set([0]);
+
     // Reset Player
     const diff = DIFFICULTY_CONFIG[this.difficulty || 'kidsEasy'] || DIFFICULTY_CONFIG.kidsEasy;
-    this.player.position.set(0, 0, 0);
+    const startZ = (this.currentDistrictLevel === 1) ? 70.0 : 0.0;
+    this.player.position.set(0, 0, startZ);
+    this.nextRunnerWaveZ = startZ - 25.0;
     this.player.group.position.copy(this.player.position);
     this.player.level = 1;
     this.player.xp = 0;
@@ -1525,6 +2157,12 @@ class Game {
     this.player.targetRotationY = Math.PI;
     this.player.group.rotation.y = Math.PI;
     this.moveVector = { x: 0, y: 0 };
+    this.clearRunnerObjects();
+    this.currentLane = 0;
+    this.targetLaneX = 0;
+    this.isSliding = false;
+    this.slideTimer = 0;
+    this.nextRunnerWaveZ = startZ - 25.0;
     this.player.targetRadius = 1.45;
     if (!isFinite(this.player.baseSpeed) || this.player.baseSpeed <= 0) {
       this.player.baseSpeed = 13.5;
@@ -1693,9 +2331,11 @@ class Game {
       }
     }
 
-    // Camera-relative street movement (Up is always forward into screen, Left is always left)
+    // Camera-relative street movement & Karachi Temple Run corridor progression
     if (this.isAutoPilotActive && this.player && this.player.isAlive) {
       this.executeAutoPilotSteering(dt);
+    } else if (this.isTempleRun && this.isGameStarted && !this.isGameOver && !this.isPaused) {
+      this.updateTempleRunCorridor(dt);
     } else if (this.moveVector.x !== 0 || this.moveVector.y !== 0) {
       const inputForward = -this.moveVector.y; // W / Joystick Up is +1 forward
       const inputRight = this.moveVector.x;    // D / Joystick Right is +1 right
@@ -3300,7 +3940,11 @@ class Game {
           activeCrisis,
           missions: this.crisisChallenges,
           routeProgress,
-          activePowerUp: this.activePowerUp
+          activePowerUp: this.activePowerUp,
+          distanceMeters: this.distanceMeters,
+          coins: this.coins,
+          hearts: this.hearts,
+          currentMilestone: this.currentMilestone
         });
 
         // Real-Time Dev Mode Telemetry Bridge

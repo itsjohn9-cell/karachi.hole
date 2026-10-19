@@ -5395,8 +5395,276 @@ export const KarachiModels = {
     }
 
     return group;
+  },
+
+  // 13. Low Hanging K-Electric Dangling Live Wires (Overhead Obstacle - Must Slide Under!)
+  createKElectricDanglingWires(width = 6.8) {
+    const group = new THREE.Group();
+    group.name = "KElectric_Dangling_Wires";
+    group.userData = { isOverheadObstacle: true, obstacleType: 'ke_wire', requiredAction: 'slide' };
+
+    // Utility Pole Left & Right
+    const poleGeo = new THREE.CylinderGeometry(0.2, 0.25, 6.0, 8);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.8 });
+    const poleL = new THREE.Mesh(poleGeo, poleMat);
+    poleL.position.set(-width / 2, 3.0, 0);
+    poleL.castShadow = true;
+    group.add(poleL);
+
+    const poleR = new THREE.Mesh(poleGeo, poleMat);
+    poleR.position.set(width / 2, 3.0, 0);
+    poleR.castShadow = true;
+    group.add(poleR);
+
+    // Cross arms
+    const crossGeo = new THREE.BoxGeometry(width + 0.6, 0.25, 0.25);
+    const crossBar = new THREE.Mesh(crossGeo, poleMat);
+    crossBar.position.set(0, 5.5, 0);
+    group.add(crossBar);
+
+    // Hanging tangled wires sagging down to head level (~1.85m off ground)
+    const wireMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const wireGeo1 = new THREE.CylinderGeometry(0.04, 0.04, width, 6);
+    wireGeo1.rotateZ(Math.PI / 2);
+    const wire1 = new THREE.Mesh(wireGeo1, wireMat);
+    wire1.position.set(0, 1.85, 0);
+    group.add(wire1);
+
+    const wire2 = new THREE.Mesh(wireGeo1, wireMat);
+    wire2.position.set(0, 2.05, 0.15);
+    group.add(wire2);
+
+    // Warning Tagboard in Urdu/English: "⚡ کے الیکٹرک - لٹکتی تاریں (SLIDE UNDER!)"
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#b71c1c';
+    ctx.fillRect(0, 0, 512, 128);
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(6, 6, 500, 116);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 32px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚡ K-ELECTRIC LIVE WIRE ⚡', 256, 45);
+
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.fillText('لٹکتی تاریں - نیچے جھکیں [SLIDE]', 256, 95);
+
+    const signTex = new THREE.CanvasTexture(canvas);
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(width * 0.7, 1.1),
+      new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide })
+    );
+    sign.position.set(0, 3.2, 0);
+    group.add(sign);
+
+    // Flashing electric spark nodes
+    const sparkGeo = new THREE.SphereGeometry(0.18, 8, 8);
+    const sparkMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    const spark1 = new THREE.Mesh(sparkGeo, sparkMat);
+    spark1.position.set(-1.2, 1.85, 0);
+    group.add(spark1);
+
+    const spark2 = new THREE.Mesh(sparkGeo, sparkMat);
+    spark2.position.set(1.5, 1.85, 0);
+    group.add(spark2);
+
+    return group;
+  },
+
+  // 14. Unannounced Road Digging & Construction Barrier (Must Jump Over / Switch Lane)
+  createRoadDiggingObstacle(width = 3.0) {
+    const group = new THREE.Group();
+    group.name = "RoadDigging_Obstacle";
+    group.userData = { isGroundObstacle: true, obstacleType: 'digging', requiredAction: 'jump' };
+
+    // Mound of excavated rubble / asphalt debris
+    const moundGeo = new THREE.DodecahedronGeometry(1.2, 1);
+    moundGeo.scale(1.4, 0.65, 1.0);
+    const moundMat = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.95 });
+    const mound = new THREE.Mesh(moundGeo, moundMat);
+    mound.position.set(0, 0.45, 0);
+    mound.castShadow = true;
+    group.add(mound);
+
+    // Striped KMC barricade board
+    const boardGeo = new THREE.BoxGeometry(width, 0.9, 0.12);
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ff6f00';
+    ctx.fillRect(0, 0, 256, 128);
+    ctx.fillStyle = '#ffffff';
+    // Diagonal hazard stripes
+    for (let x = -128; x < 384; x += 32) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + 16, 0);
+      ctx.lineTo(x - 16, 128);
+      ctx.lineTo(x - 32, 128);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🚧 KMC WORK', 128, 70);
+
+    const boardMat = new THREE.MeshStandardMaterial({
+      map: new THREE.CanvasTexture(canvas),
+      roughness: 0.5
+    });
+    const board = new THREE.Mesh(boardGeo, boardMat);
+    board.position.set(0, 0.85, -0.2);
+    board.castShadow = true;
+    group.add(board);
+
+    // Flashing orange beacon lamp on top
+    const beacon = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.22, 0.35, 12),
+      new THREE.MeshBasicMaterial({ color: 0xff3d00 })
+    );
+    beacon.position.set(width * 0.35, 1.45, -0.2);
+    group.add(beacon);
+
+    return group;
+  },
+
+  // 15. Stalled Qingqi Rickshaw in Lane (Full Lane Blocker - Must Switch Lane)
+  createStalledRickshawObstacle() {
+    const group = new THREE.Group();
+    group.name = "Stalled_Rickshaw_Obstacle";
+    group.userData = { isLaneBlocker: true, obstacleType: 'rickshaw', requiredAction: 'dodge' };
+
+    // Detailed 6-seater Karachi Qingqi rickshaw
+    const cabinGeo = new THREE.BoxGeometry(2.1, 1.8, 2.6);
+    const cabinMat = new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.35 });
+    const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+    cabin.position.set(0, 1.1, 0);
+    cabin.castShadow = true;
+    group.add(cabin);
+
+    // Yellow hood top
+    const hoodGeo = new THREE.BoxGeometry(2.15, 0.2, 2.65);
+    const hoodMat = new THREE.MeshStandardMaterial({ color: 0xffeb3b, roughness: 0.3 });
+    const hood = new THREE.Mesh(hoodGeo, hoodMat);
+    hood.position.set(0, 2.05, 0);
+    group.add(hood);
+
+    // Hazard blinking rear tail lamps
+    const tailL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.08), new THREE.MeshBasicMaterial({ color: 0xff1744 }));
+    tailL.position.set(-0.85, 0.7, 1.32);
+    group.add(tailL);
+
+    const tailR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.08), new THREE.MeshBasicMaterial({ color: 0xff1744 }));
+    tailR.position.set(0.85, 0.7, 1.32);
+    group.add(tailR);
+
+    // Stalled driver model standing beside or behind rickshaw waving hands
+    const driverGeo = new THREE.CylinderGeometry(0.22, 0.22, 1.4, 8);
+    const driverMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+    const driver = new THREE.Mesh(driverGeo, driverMat);
+    driver.position.set(1.25, 0.7, 0.4);
+    driver.castShadow = true;
+    group.add(driver);
+
+    // Driver head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), new THREE.MeshStandardMaterial({ color: 0xd2a679 }));
+    head.position.set(1.25, 1.55, 0.4);
+    group.add(head);
+
+    return group;
+  },
+
+  // 16. Golden Rupee Coin Collectible (Rs 50 Coin with Pakistani Star & Crescent)
+  createRupeeCoin(value = 50) {
+    const group = new THREE.Group();
+    group.name = "RupeeCoin";
+    group.userData = { isCoin: true, value, radius: 0.65 };
+
+    // Shiny gold coin cylinder
+    const coinGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.1, 24);
+    coinGeo.rotateX(Math.PI / 2);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = '#ff8f00';
+    ctx.beginPath();
+    ctx.arc(64, 64, 58, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#004d40';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Rs 50', 64, 75);
+
+    const coinTex = new THREE.CanvasTexture(canvas);
+    const coinMat = new THREE.MeshStandardMaterial({
+      color: 0xffd700,
+      map: coinTex,
+      metalness: 0.85,
+      roughness: 0.2
+    });
+    const coinMesh = new THREE.Mesh(coinGeo, coinMat);
+    coinMesh.position.y = 0.85;
+    coinMesh.castShadow = true;
+    group.add(coinMesh);
+
+    // Glowing halo ring around coin
+    const glowGeo = new THREE.RingGeometry(0.52, 0.62, 16);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0xffea00,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.4
+    });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.position.y = 0.85;
+    group.add(glow);
+
+    return group;
+  },
+
+  // 17. Overflowing Sewage Spill Water Hazard (Causes Slippery Skidding & Speed Loss)
+  createSewageSpillHazard(width = 3.2) {
+    const group = new THREE.Group();
+    group.name = "Sewage_Spill_Hazard";
+    group.userData = { isPuddle: true, obstacleType: 'sewage_puddle', requiredAction: 'jump' };
+
+    const puddleGeo = new THREE.PlaneGeometry(width, 3.8, 8, 8);
+    puddleGeo.rotateX(-Math.PI / 2);
+    const puddleMat = new THREE.MeshStandardMaterial({
+      color: 0x33691e,
+      roughness: 0.1,
+      metalness: 0.35,
+      transparent: true,
+      opacity: 0.8
+    });
+    const puddle = new THREE.Mesh(puddleGeo, puddleMat);
+    puddle.position.y = 0.035;
+    puddle.receiveShadow = true;
+    group.add(puddle);
+
+    // Caution sign at edge
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(0.25, 0.75, 8),
+      new THREE.MeshStandardMaterial({ color: 0xff3d00, roughness: 0.4 })
+    );
+    cone.position.set(width * 0.42, 0.375, -1.2);
+    group.add(cone);
+
+    return group;
   }
 };
+
 
 
 
