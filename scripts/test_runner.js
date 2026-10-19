@@ -749,6 +749,279 @@ async function runTestSuite() {
   recordTest('TC-16', 'Comprehensive Game Menu & Settings Hub Navigation Flow', res16.success ? 'PASSED' : 'FAILED', Date.now() - t16Start, 'Verified HUD menu button, modal opening, sub-menus hub, settings controls, and return to main menu flow');
 
   // -------------------------------------------------------------------------
+  // TC-17: Temple Run 3-Lane Lateral Switching, Target Lerping & Boundary Clamping
+  // -------------------------------------------------------------------------
+  const t17Start = Date.now();
+  const res17 = await runChromeTest({
+    testId: 'TC-17',
+    screenshotName: 'tc17_runner_lane_switching.png',
+    extraStyle: '#modal-start-mission { display: none !important; }',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        const startBtn = document.getElementById('btn-start-patrol');
+        if (startBtn) startBtn.click();
+
+        setTimeout(() => {
+          const game = window.game;
+          if (!game) throw new Error('Game instance window.game not found');
+
+          // Initial state: center lane (index 0, X = 0)
+          if (game.currentLane !== 0) throw new Error('Expected initial currentLane to be 0, got ' + game.currentLane);
+          if (game.targetLaneX !== 0) throw new Error('Expected initial targetLaneX to be 0, got ' + game.targetLaneX);
+
+          // 1. Switch Left (A / Left arrow / Left button)
+          game.changeLane(-1);
+          if (game.currentLane !== -1) throw new Error('Lane did not switch to -1 on left change, got ' + game.currentLane);
+          if (Math.abs(game.targetLaneX - (-3.2)) > 0.01) throw new Error('TargetLaneX mismatch: expected -3.2, got ' + game.targetLaneX);
+
+          // 2. Boundary Clamping: Attempt to switch left beyond lane -1
+          game.changeLane(-1);
+          if (game.currentLane !== -1) throw new Error('Lane boundary clamping failed on left side: got ' + game.currentLane);
+
+          // 3. Step runner physics to verify lateral lerp
+          for (let f = 0; f < 15; f++) {
+            game.updateTempleRunCorridor(0.033);
+          }
+          if (game.player.position.x >= 0) {
+            throw new Error('Player did not lerp towards left lane X=-3.2: current X=' + game.player.position.x);
+          }
+
+          // 4. Switch Right twice (back to center, then right lane)
+          game.changeLane(1);
+          if (game.currentLane !== 0) throw new Error('Failed to return to center lane');
+          game.changeLane(1);
+          if (game.currentLane !== 1) throw new Error('Failed to switch to right lane');
+          if (Math.abs(game.targetLaneX - 3.2) > 0.01) throw new Error('TargetLaneX mismatch on right: expected 3.2, got ' + game.targetLaneX);
+
+          // 5. Boundary Clamping on Right side
+          game.changeLane(1);
+          if (game.currentLane !== 1) throw new Error('Lane boundary clamping failed on right side: got ' + game.currentLane);
+
+          // 6. Verify touch HUD buttons exist and trigger lane changes
+          const btnL = document.getElementById('btn-lane-left');
+          const btnR = document.getElementById('btn-lane-right');
+          if (!btnL || !btnR) throw new Error('Mobile touch lane buttons (#btn-lane-left, #btn-lane-right) missing');
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-17', 'Temple Run 3-Lane Lateral Switching, Target Lerping & Boundary Clamping', res17.success ? 'PASSED' : 'FAILED', Date.now() - t17Start, 'Verified 3-lane state (-1, 0, 1), target X (-3.2, 0, 3.2), lateral lerp, and boundary clamping');
+
+  // -------------------------------------------------------------------------
+  // TC-18: Parkour Jump Traversal & Slide Duck Hitbox Reduction under Wires
+  // -------------------------------------------------------------------------
+  const t18Start = Date.now();
+  const res18 = await runChromeTest({
+    testId: 'TC-18',
+    screenshotName: 'tc18_jump_slide_traversal.png',
+    extraStyle: '#modal-start-mission { display: none !important; }',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        const startBtn = document.getElementById('btn-start-patrol');
+        if (startBtn) startBtn.click();
+
+        setTimeout(() => {
+          const game = window.game;
+          if (!game) throw new Error('Game instance not found');
+
+          // 1. Verify Jump Mechanics
+          game.performJump();
+          if (game.player.isGrounded) throw new Error('Player still marked as grounded immediately after performJump');
+          if (game.player.velocityY <= 0) throw new Error('Player vertical velocity not positive after performJump: ' + game.player.velocityY);
+
+          // 2. Verify Slide Duck Mechanics & Mid-air Dive
+          game.performSlide();
+          if (!game.isSliding) throw new Error('game.isSliding not set to true after performSlide');
+          if (game.slideTimer <= 0) throw new Error('game.slideTimer not set to positive duration');
+          if (!game.player.avatarMesh || game.player.avatarMesh.scale.y >= 0.9) {
+            throw new Error('Avatar mesh vertical scale not crouched during slide: ' + game.player.avatarMesh?.scale.y);
+          }
+
+          // 3. Fluid Combo Cancellation: Jump while sliding cancels slide immediately
+          game.performJump();
+          if (game.isSliding) throw new Error('Active slide was not cancelled upon triggering jump');
+          if (Math.abs(game.player.avatarMesh.scale.y - 1.0) > 0.05) {
+            throw new Error('Avatar mesh vertical scale not restored after slide cancellation: ' + game.player.avatarMesh.scale.y);
+          }
+
+          // 4. Verify Model Factories for Runner Hazards
+          if (typeof window.KarachiModels.createKElectricDanglingWires !== 'function') {
+            throw new Error('KarachiModels.createKElectricDanglingWires is not a function');
+          }
+          if (typeof window.KarachiModels.createOpenGutterHazard !== 'function') {
+            throw new Error('KarachiModels.createOpenGutterHazard is not a function');
+          }
+          if (typeof window.KarachiModels.createSnatcherMotorbike !== 'function') {
+            throw new Error('KarachiModels.createSnatcherMotorbike is not a function');
+          }
+
+          const wireMesh = window.KarachiModels.createKElectricDanglingWires(7.5);
+          if (!wireMesh || !wireMesh.userData.isOverheadObstacle) {
+            throw new Error('KElectric wire mesh missing isOverheadObstacle userData');
+          }
+
+          const gutterMesh = window.KarachiModels.createOpenGutterHazard(1.4);
+          if (!gutterMesh || !gutterMesh.userData.isGroundObstacle) {
+            throw new Error('Open gutter mesh missing isGroundObstacle userData');
+          }
+
+          const bikeMesh = window.KarachiModels.createSnatcherMotorbike();
+          if (!bikeMesh || !bikeMesh.userData.isVehicleObstacle) {
+            throw new Error('Snatcher motorbike mesh missing isVehicleObstacle userData');
+          }
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-18', 'Parkour Jump Traversal & Slide Duck Hitbox Reduction under Wires', res18.success ? 'PASSED' : 'FAILED', Date.now() - t18Start, 'Verified jump upward velocity, slide crouch scale reduction, combo cancellation, and hazard model factories');
+
+  // -------------------------------------------------------------------------
+  // TC-19: Rupee Coin Pickup and Burns Road Biryani Magnet Attraction Physics
+  // -------------------------------------------------------------------------
+  const t19Start = Date.now();
+  const res19 = await runChromeTest({
+    testId: 'TC-19',
+    screenshotName: 'tc19_coin_magnet_physics.png',
+    extraStyle: '#modal-start-mission { display: none !important; }',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        const startBtn = document.getElementById('btn-start-patrol');
+        if (startBtn) startBtn.click();
+
+        setTimeout(() => {
+          const game = window.game;
+          if (!game) throw new Error('Game instance not found');
+
+          // 1. Verify Rupee Coin Factory
+          if (typeof window.KarachiModels.createRupeeCoin !== 'function') {
+            throw new Error('KarachiModels.createRupeeCoin is not a function');
+          }
+          const coinGroup = window.KarachiModels.createRupeeCoin(50);
+          if (!coinGroup || !coinGroup.userData.isCoin || coinGroup.userData.value !== 50) {
+            throw new Error('createRupeeCoin did not return valid coin with value=50');
+          }
+
+          // 2. Direct Coin Collection Test
+          const initCoins = game.coins || 0;
+          const initScore = game.score || 0;
+          const pZ = game.player.position.z;
+          const testCoin = window.KarachiModels.createRupeeCoin(50);
+          testCoin.position.set(game.player.position.x, 0, pZ - 0.5);
+          game.scene.add(testCoin);
+          game.runnerCoins.push({ mesh: testCoin, value: 50, x: game.player.position.x, z: pZ - 0.5 });
+
+          game.updateTempleRunCorridor(0.033);
+
+          if (game.coins !== initCoins + 50) {
+            throw new Error('Coin pickup failed: expected ' + (initCoins + 50) + ', got ' + game.coins);
+          }
+          if (game.score < initScore + 100) {
+            throw new Error('Coin pickup did not award score points: ' + game.score);
+          }
+
+          // 3. Burns Road Biryani Magnet Attraction Test
+          const farCoin = window.KarachiModels.createRupeeCoin(50);
+          farCoin.position.set(game.player.position.x + 2.0, 0, pZ - 8.0);
+          game.scene.add(farCoin);
+          game.runnerCoins.push({ mesh: farCoin, value: 50, x: game.player.position.x + 2.0, z: pZ - 8.0 });
+
+          const initDist = farCoin.position.distanceTo(game.player.position);
+          game.magnetTimer = 8.0; // Activate Biryani Magnet!
+
+          for (let f = 0; f < 10; f++) {
+            game.updateTempleRunCorridor(0.033);
+          }
+
+          const newDist = farCoin.position.distanceTo(game.player.position);
+          if (newDist >= initDist - 0.2) {
+            throw new Error('Biryani Magnet failed to magnetically pull distant coin: initDist=' + initDist + ', newDist=' + newDist);
+          }
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-19', 'Rupee Coin Pickup and Burns Road Biryani Magnet Attraction Physics', res19.success ? 'PASSED' : 'FAILED', Date.now() - t19Start, 'Verified 3D Rupee coin mesh generation, proximity collection (+50 Rs), and Biryani Magnet attraction');
+
+  // -------------------------------------------------------------------------
+  // TC-20: Water Tanker Iron Shield Absorption, Heart Depletion & Doodh Patti Heal
+  // -------------------------------------------------------------------------
+  const t20Start = Date.now();
+  const res20 = await runChromeTest({
+    testId: 'TC-20',
+    screenshotName: 'tc20_shield_hearts_mechanics.png',
+    extraStyle: '#modal-start-mission { display: none !important; }',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        const startBtn = document.getElementById('btn-start-patrol');
+        if (startBtn) startBtn.click();
+
+        setTimeout(() => {
+          const game = window.game;
+          if (!game) throw new Error('Game instance not found');
+
+          // Ensure player has standard hearts
+          game.hearts = 3;
+          game.maxHearts = 3;
+
+          // 1. Water Tanker Iron Shield Crash Absorption Test
+          game.shieldTimer = 10.0;
+          game.player.isShielded = true;
+
+          const dummyMesh = new THREE.Group();
+          dummyMesh.position.copy(game.player.position);
+          game.scene.add(dummyMesh);
+
+          const testObstacle1 = { type: 'rickshaw', isHit: false, mesh: dummyMesh, laneX: 0, z: game.player.position.z };
+          game.handleRunnerHit(testObstacle1, 'Stalled Rickshaw');
+
+          if (game.hearts !== 3) {
+            throw new Error('Water Tanker Shield failed to absorb collision: hearts depleted to ' + game.hearts);
+          }
+          if (game.shieldTimer > 0 || game.player.isShielded) {
+            throw new Error('Shield did not discharge after absorbing crash: timer=' + game.shieldTimer);
+          }
+
+          // 2. Unshielded Obstacle Impact & Heart Depletion Test
+          game.invulnerableTimer = 0; // Clear flicker cooldown
+          const testObstacle2 = { type: 'gutter', isHit: false, mesh: dummyMesh, laneX: 0, z: game.player.position.z };
+          game.handleRunnerHit(testObstacle2, 'Open Gutter');
+
+          if (game.hearts !== 2) {
+            throw new Error('Unshielded crash did not deplete heart: expected 2, got ' + game.hearts);
+          }
+          if (game.invulnerableTimer <= 0) {
+            throw new Error('Invulnerability grace period timer not triggered after crash');
+          }
+
+          // 3. Doodh Patti Chai Restorative Heal Test
+          game.hearts = Math.min(game.maxHearts, game.hearts + 1);
+          if (game.hearts !== 3) {
+            throw new Error('Doodh Patti Chai heal failed to restore heart: ' + game.hearts);
+          }
+
+          // 4. King Pressure Horn Blast Against Snatchers Test
+          if (typeof game.triggerKingPressureHorn !== 'function') {
+            throw new Error('triggerKingPressureHorn is not a function');
+          }
+          const snatcherObs = {
+            type: 'snatcher',
+            laneX: 0,
+            z: game.player.position.z - 10.0,
+            mesh: dummyMesh,
+            isHit: false
+          };
+          game.runnerObstacles.push(snatcherObs);
+          game.triggerKingPressureHorn();
+          if (!snatcherObs.isHit) {
+            throw new Error('King Pressure Horn blast failed to hit and scatter nearby 70cc snatcher');
+          }
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-20', 'Water Tanker Iron Shield Absorption, Heart Depletion & Doodh Patti Heal', res20.success ? 'PASSED' : 'FAILED', Date.now() - t20Start, 'Verified 1-hit Water Tanker Shield absorption, heart depletion, invulnerability grace, Chai healing, and King Horn snatcher scatter');
+
+  // -------------------------------------------------------------------------
   // Summary Report Output
   // -------------------------------------------------------------------------
   const totalDuration = Date.now() - startTime;

@@ -126,7 +126,7 @@ export class Hole {
       opacity: this.isPlayer ? 0.65 : 0.0
     });
     this.ringMesh = new THREE.Mesh(ringGeo, this.ringMat);
-    this.ringMesh.visible = this.isPlayer;
+    this.ringMesh.visible = false;
     this.ringMesh.position.y = 0.04;
     this.group.add(this.ringMesh);
 
@@ -140,9 +140,18 @@ export class Hole {
       opacity: this.isPlayer ? 0.22 : 0.0
     });
     this.innerRingMesh = new THREE.Mesh(innerRingGeo, this.innerRingMat);
-    this.innerRingMesh.visible = this.isPlayer;
+    this.innerRingMesh.visible = false;
     this.innerRingMesh.position.y = 0.038;
     this.group.add(this.innerRingMesh);
+
+    // Soft asphalt runner contact shadow under sneakers
+    const shadowGeo = new THREE.CircleGeometry(0.55, 24);
+    shadowGeo.rotateX(-Math.PI / 2);
+    this.shadowMat = new THREE.MeshBasicMaterial({ color: 0x0a0e14, transparent: true, opacity: 0.38 });
+    this.shadowMesh = new THREE.Mesh(shadowGeo, this.shadowMat);
+    this.shadowMesh.position.y = 0.02;
+    this.shadowMesh.visible = this.isPlayer;
+    this.group.add(this.shadowMesh);
 
     // Stencil/CSG dummy meshes for backward compatibility with existing cleanup routines
     this.voidMesh = new THREE.Group();

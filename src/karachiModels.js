@@ -5662,6 +5662,169 @@ export const KarachiModels = {
     group.add(cone);
 
     return group;
+  },
+
+  // 18. Karachi 70cc Snatcher Motorbike (Two Bandits on a CD-70 Bike - Dodge or blast with Horn!)
+  createSnatcherMotorbike() {
+    const group = new THREE.Group();
+    group.name = "Snatcher_Motorbike";
+    group.userData = { isVehicleObstacle: true, obstacleType: 'snatcher', requiredAction: 'dodge_or_horn' };
+
+    // Motorcycle Chassis / Frame
+    const frameGeo = new THREE.BoxGeometry(0.35, 0.45, 1.8);
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6, metalness: 0.8 });
+    const frame = new THREE.Mesh(frameGeo, frameMat);
+    frame.position.y = 0.55;
+    group.add(frame);
+
+    // Fuel Tank - Classic Red CD-70 Tank with gold stripes
+    const tankGeo = new THREE.BoxGeometry(0.42, 0.35, 0.65);
+    const tankMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.3, metalness: 0.3 });
+    const tank = new THREE.Mesh(tankGeo, tankMat);
+    tank.position.set(0, 0.82, 0.15);
+    tank.castShadow = true;
+    group.add(tank);
+
+    // Wheels (Front & Rear)
+    const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.14, 16);
+    wheelGeo.rotateZ(Math.PI / 2);
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
+
+    const wheelFront = new THREE.Mesh(wheelGeo, wheelMat);
+    wheelFront.position.set(0, 0.38, -0.9);
+    wheelFront.castShadow = true;
+    group.add(wheelFront);
+
+    const wheelRear = new THREE.Mesh(wheelGeo, wheelMat);
+    wheelRear.position.set(0, 0.38, 0.85);
+    wheelRear.castShadow = true;
+    group.add(wheelRear);
+
+    // Handlebars & Headlight
+    const handleGeo = new THREE.BoxGeometry(0.85, 0.06, 0.06);
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.95, roughness: 0.1 });
+    const handle = new THREE.Mesh(handleGeo, chromeMat);
+    handle.position.set(0, 1.05, -0.6);
+    group.add(handle);
+
+    const lightGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.12, 12);
+    lightGeo.rotateX(Math.PI / 2);
+    const lightMat = new THREE.MeshBasicMaterial({ color: 0xfff59d });
+    const light = new THREE.Mesh(lightGeo, lightMat);
+    light.position.set(0, 0.92, -0.95);
+    group.add(light);
+
+    // Red Tail Light
+    const tailGeo = new THREE.BoxGeometry(0.16, 0.1, 0.05);
+    const tailMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
+    const tail = new THREE.Mesh(tailGeo, tailMat);
+    tail.position.set(0, 0.72, 1.15);
+    group.add(tail);
+
+    // Silencer / Exhaust pipe
+    const silencerGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.1, 8);
+    silencerGeo.rotateX(Math.PI / 2);
+    const silencer = new THREE.Mesh(silencerGeo, chromeMat);
+    silencer.position.set(0.24, 0.3, 0.25);
+    group.add(silencer);
+
+    // Driver figure (Black shalwar kameez)
+    const driverBodyGeo = new THREE.CylinderGeometry(0.2, 0.22, 0.85, 8);
+    const driverMat = new THREE.MeshStandardMaterial({ color: 0x212121, roughness: 0.7 });
+    const driver = new THREE.Mesh(driverBodyGeo, driverMat);
+    driver.position.set(0, 1.15, -0.15);
+    driver.rotation.x = 0.25;
+    group.add(driver);
+
+    const driverHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshStandardMaterial({ color: 0x8d5524 }));
+    driverHead.position.set(0, 1.68, -0.25);
+    group.add(driverHead);
+
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 8), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+    cap.position.set(0, 1.78, -0.25);
+    group.add(cap);
+
+    // Pillion Snatcher Figure (Navy shalwar kameez, looking sideways, holding stolen phone)
+    const pillion = new THREE.Mesh(driverBodyGeo, new THREE.MeshStandardMaterial({ color: 0x1a237e, roughness: 0.7 }));
+    pillion.position.set(0, 1.18, 0.45);
+    pillion.rotation.x = -0.1;
+    group.add(pillion);
+
+    const pillionHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshStandardMaterial({ color: 0x8d5524 }));
+    pillionHead.position.set(0, 1.7, 0.45);
+    group.add(pillionHead);
+
+    const phone = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.03), new THREE.MeshBasicMaterial({ color: 0x00e5ff }));
+    phone.position.set(0.28, 1.35, 0.4);
+    group.add(phone);
+
+    // Floating Urdu Warning Overhead: "چھین کے بھاگ! [SNATCHERS]"
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#b71c1c';
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, 248, 56);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚡ 70cc SNATCHERS ⚡', 128, 28);
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('بلو ہورن مارو [HORN H]', 128, 52);
+
+    const tagTex = new THREE.CanvasTexture(canvas);
+    const tag = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.9, 0.5),
+      new THREE.MeshBasicMaterial({ map: tagTex, side: THREE.DoubleSide })
+    );
+    tag.position.set(0, 2.25, 0);
+    group.add(tag);
+
+    return group;
+  },
+
+  // 19. Open Unpaved Gutter Hazard (Deep Manhole / Gutter Void - Must Jump Over!)
+  createOpenGutterHazard(width = 1.4) {
+    const group = new THREE.Group();
+    group.name = "Open_Gutter_Hazard";
+    group.userData = { isGroundObstacle: true, obstacleType: 'gutter', requiredAction: 'jump' };
+
+    // Cracked Concrete Rim
+    const rimGeo = new THREE.RingGeometry(width * 0.45, width * 0.72, 16);
+    rimGeo.rotateX(-Math.PI / 2);
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.9 });
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    rim.position.y = 0.038;
+    rim.receiveShadow = true;
+    group.add(rim);
+
+    // Deep Dark Void Inside Manhole
+    const voidGeo = new THREE.CircleGeometry(width * 0.44, 16);
+    voidGeo.rotateX(-Math.PI / 2);
+    const voidMat = new THREE.MeshBasicMaterial({ color: 0x050508 });
+    const voidMesh = new THREE.Mesh(voidGeo, voidMat);
+    voidMesh.position.y = 0.035;
+    group.add(voidMesh);
+
+    // Makeshift Warning Branch / Red Cloth stuck in hole (Authentic Karachi road warning!)
+    const stickGeo = new THREE.CylinderGeometry(0.04, 0.05, 1.2, 6);
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
+    const stick = new THREE.Mesh(stickGeo, stickMat);
+    stick.position.set(0.15, 0.55, 0);
+    stick.rotation.z = -0.25;
+    group.add(stick);
+
+    const flagGeo = new THREE.BoxGeometry(0.32, 0.22, 0.04);
+    const flagMat = new THREE.MeshBasicMaterial({ color: 0xd50000 });
+    const flag = new THREE.Mesh(flagGeo, flagMat);
+    flag.position.set(0.3, 1.05, 0);
+    group.add(flag);
+
+    return group;
   }
 };
 

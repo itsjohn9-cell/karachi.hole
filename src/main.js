@@ -375,6 +375,16 @@ class Game {
   performJump() {
     if (!this.player || !this.isGameStarted || this.isPaused) return;
 
+    // Fluid Jump/Slide cancellation: cancel active slide immediately when jumping
+    if (this.isSliding) {
+      this.isSliding = false;
+      this.slideTimer = 0;
+      if (this.player.avatarMesh) {
+        this.player.avatarMesh.scale.set(1, 1, 1);
+        this.player.avatarMesh.position.y = 0;
+      }
+    }
+
     // If trapped in open sewer gutter, jump immediately pulls hero out!
     if (this.player.isTrappedInGutter) {
       this.player.isTrappedInGutter = false;
@@ -476,7 +486,15 @@ class Game {
    * Temple Run: Slide Crouch Traversal Mechanic (S / ArrowDown / Touch Slide / Swipe Down)
    */
   performSlide() {
-    if (!this.player || !this.isGameStarted || this.isPaused || this.isGameOver || this.isSliding) return;
+    if (!this.player || !this.isGameStarted || this.isPaused || this.isGameOver) return;
+    
+    // If airborne, immediately dive down to slide under incoming wires
+    if (!this.player.isGrounded) {
+      this.player.position.y = 0;
+      this.player.velocityY = 0;
+      this.player.isGrounded = true;
+    }
+
     this.isSliding = true;
     this.slideTimer = 0.72;
     audio.playSlide();
@@ -667,7 +685,7 @@ class Game {
       // 2. Open Unpaved Gutter (Ground - Must JUMP over!)
       const gutterLaneIdx = Math.floor(Math.random() * 3);
       const gutterLaneX = lanes[gutterLaneIdx];
-      const gutter = KarachiModels.createBrokenRoadPatch();
+      const gutter = KarachiModels.createOpenGutterHazard(1.4);
       gutter.position.set(gutterLaneX, 0.04, waveZ);
       this.scene.add(gutter);
       this.runnerObstacles.push({
@@ -884,6 +902,12 @@ class Game {
       }
     }
 
+    // 7b. Check District Finish Gate Crossing (Z <= -82.0)
+    if (this.player.position.z <= -82.0 && !this.districtClearing) {
+      this.handleDistrictCleared();
+      return;
+    }
+
     // 8. Dynamic Runner Waves Spawning Ahead
     if (this.nextRunnerWaveZ > this.player.position.z - 15.0) {
       this.nextRunnerWaveZ = this.player.position.z - 25.0;
@@ -987,7 +1011,7 @@ class Game {
         } else if (obs.type === 'gutter' || obs.type === 'digging' || obs.type === 'sewage') {
           const dx = Math.abs(pPos.x - obs.laneX);
           if (dx < 1.35) {
-            if (this.player.position.y > 0.62) {
+            if (!this.player.isGrounded && this.player.position.y > 0.35) {
               obs.isHit = true;
               this.guttersJumped++;
               this.player.addXP(150);
@@ -2149,8 +2173,8 @@ class Game {
     }
     this.recentCleaned = [];
 
-    // Reset player position smoothly: Soldier Bazar (Z=70) for District 1 commute, center for others
-    const startZ = (this.currentDistrictLevel === 1) ? 70.0 : 0.0;
+    // Reset player position smoothly: In Temple Run Karachi mode, start at South (Z=70) for the full 152m sprint down to North finish gate (Z=-82)
+    const startZ = this.isTempleRun ? 70.0 : ((this.currentDistrictLevel === 1) ? 70.0 : 0.0);
     this.player.position.set(0, 0, startZ);
     this.player.group.position.set(0, 0, startZ);
     this.player.facingAngle = Math.PI;
@@ -3083,8 +3107,10 @@ class Game {
     }
 
     // Edible Objects Suction & Collision (Ultra-fast Bounding Box check for 60 FPS)
-    const pullSpeed = isKidsMode ? 10.0 : 7.0;
-    for (let i = 0; i < this.edibleObjects.length; i++) {
+    // In Temple Run Karachi mode, corridor movement, obstacles and coins are handled by updateTempleRunCorridor
+    if (!this.isTempleRun && this.edibleObjects) {
+      const pullSpeed = isKidsMode ? 10.0 : 7.0;
+      for (let i = 0; i < this.edibleObjects.length; i++) {
       const obj = this.edibleObjects[i];
       if (obj.state === 'swallowed') continue;
 
@@ -3427,6 +3453,7 @@ class Game {
         }
       }
     }
+  }
 
     if (!activeResolvingThreat && this.ui) {
       this.ui.hideInterventionProgress();
@@ -4394,6 +4421,7 @@ class Game {
 
 // Initialize on DOM load
 window.addEventListener('DOMContentLoaded', () => {
+  window.KarachiModels = KarachiModels;
   window.game = new Game();
 });
 
