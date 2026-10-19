@@ -9,6 +9,7 @@ import { audio } from './audio.js';
 import { KarachiModels } from './karachiModels.js';
 import { saveManager } from './saveManager.js';
 import { CITIZEN_DIALOGUES } from './dialogueSystem.js';
+import { AvatarBuilder } from './avatar.js';
 
 class Game {
   constructor() {
@@ -908,7 +909,9 @@ class Game {
     }
 
     // 6. Limb Animation
-    AvatarBuilder.updateAnimation(this.player.avatarMesh, true, dt, speed / 14.0, !this.player.isGrounded);
+    if (typeof AvatarBuilder !== 'undefined' && AvatarBuilder.updateAnimation && this.player?.avatarMesh) {
+      AvatarBuilder.updateAnimation(this.player.avatarMesh, true, dt, speed / 14.0, !this.player.isGrounded);
+    }
 
     // 7. Check Karachi Milestone Badges
     for (let i = 0; i < this.milestones.length; i++) {
