@@ -72,7 +72,12 @@ export class UIManager {
     this.activeDialogueCitizen = null;
     this.civicQuizEnabled = (typeof localStorage !== 'undefined' && localStorage.getItem('hole_karachi_civic_quiz_enabled') === 'true');
 
+    this.selectedVersion = (typeof localStorage !== 'undefined' && localStorage.getItem('karachi_major_version')) || 'v3';
+    this.onSelectVersion = options.onSelectVersion;
+
     this.createStartMissionModal();
+    this.createTapToStartPrompt();
+    this.createVersionFeedbackModal();
     this.createHUD();
     this.createSkinModal();
     this.createGoodVsBadModal();
@@ -98,11 +103,47 @@ export class UIManager {
       <div class="modal-card start-mission-card">
         <div class="start-hero-header">
           <div class="city-crest">🇵🇰</div>
-          <h1 class="start-title">TEMPLE RUN: KARACHI CITY</h1>
-          <p class="start-tagline">Endless 3D Street Runner: Leap Gutters, Slide Under Wires &amp; Evade Robbers!</p>
+          <h1 class="start-title">PAKISTAN STREET HERO</h1>
+          <p class="start-tagline">Authentic 3D Urban Action • Switch Between 3 Major Stable Game Modes!</p>
         </div>
 
         <div class="start-form-section">
+          <!-- Major Game Version Selector -->
+          <div class="form-group start-version-group">
+            <div class="form-label-row">
+              <label class="form-label">🎮 SELECT GAME ENGINE / VERSION:</label>
+              <span class="version-tip-badge">3 MAJOR STABLE VERSIONS</span>
+            </div>
+            <div class="start-version-grid" id="start-version-grid">
+              <div class="version-select-card ui-interactive ${this.selectedVersion === 'v1' ? 'active' : ''}" data-version="v1" id="start-vcard-v1">
+                <div class="v-card-top">
+                  <span class="v-icon">🕳️</span>
+                  <span class="v-tag tag-stable">v1.0 STABLE</span>
+                </div>
+                <div class="v-title">Hole Devourer</div>
+                <div class="v-desc">Swallow street litter &amp; cars, grow black hole radius, top-down arcade view</div>
+              </div>
+
+              <div class="version-select-card ui-interactive ${this.selectedVersion === 'v2' ? 'active' : ''}" data-version="v2" id="start-vcard-v2">
+                <div class="v-card-top">
+                  <span class="v-icon">🦸</span>
+                  <span class="v-tag tag-openworld">v2.0 3D PATROL</span>
+                </div>
+                <div class="v-title">Civic Hero 3D</div>
+                <div class="v-desc">GTA-style open-world street patrol, Urdu citizen dialogues, snatcher arrests</div>
+              </div>
+
+              <div class="version-select-card ui-interactive ${this.selectedVersion === 'v3' ? 'active' : ''}" data-version="v3" id="start-vcard-v3">
+                <div class="v-card-top">
+                  <span class="v-icon">🏃</span>
+                  <span class="v-tag tag-runner">v3.0 RUNNER</span>
+                </div>
+                <div class="v-title">Karachi Runner</div>
+                <div class="v-desc">3-lane continuous reflex sprint, parkour jump, slide under live wires</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Player / Game Name Input -->
           <div class="form-group start-name-group">
             <label class="form-label" for="player-name-input">👤 PLAYER / HERO NAME:</label>
@@ -233,6 +274,155 @@ export class UIManager {
     }
 
     document.body.appendChild(this.startModal);
+  }
+
+  // Tap-to-Start Floating Overlay (for instant reaction)
+  createTapToStartPrompt() {
+    this.tapToStartOverlay = document.createElement('div');
+    this.tapToStartOverlay.className = 'tap-to-start-overlay';
+    this.tapToStartOverlay.id = 'tap-to-start-overlay';
+    this.tapToStartOverlay.style.display = 'none';
+    this.tapToStartOverlay.innerHTML = `
+      <div class="tap-to-start-content pulse-glow">
+        <span class="tap-icon">🏃</span>
+        <span class="tap-text">TAP SCREEN OR PRESS ARROW KEYS TO RUN</span>
+      </div>
+    `;
+    this.tapToStartOverlay.addEventListener('click', () => {
+      this.hideTapToStartPrompt();
+      if (window.game?.startGame) {
+        window.game.startGame();
+      }
+    });
+    document.body.appendChild(this.tapToStartOverlay);
+  }
+
+  showTapToStartPrompt() {
+    if (this.tapToStartOverlay) this.tapToStartOverlay.style.display = 'flex';
+  }
+
+  hideTapToStartPrompt() {
+    if (this.tapToStartOverlay) this.tapToStartOverlay.style.display = 'none';
+  }
+
+  // Major Game Version Feedback & Restore Manager
+  createVersionFeedbackModal() {
+    this.versionFeedbackModal = document.createElement('div');
+    this.versionFeedbackModal.className = 'modal-backdrop version-feedback-backdrop';
+    this.versionFeedbackModal.id = 'modal-version-feedback';
+    this.versionFeedbackModal.style.display = 'none';
+
+    this.versionFeedbackModal.innerHTML = `
+      <div class="modal-card version-feedback-card">
+        <div class="vfeed-header">
+          <div class="vfeed-title-col">
+            <h2 class="vfeed-title">🎮 MAJOR VERSION HUB &amp; RESTORE FEEDBACK</h2>
+            <p class="vfeed-sub">Review stable versions, test features, or log feedback to restore in current or fork to separate project.</p>
+          </div>
+          <button class="modal-close-icon ui-interactive" id="btn-close-version-feedback">&times;</button>
+        </div>
+
+        <div class="vfeed-versions-list">
+          <div class="vfeed-item" id="vfeed-card-v1">
+            <div class="vfeed-item-header">
+              <span class="vfeed-badge vfeed-tag-v1">v1.0 Classic</span>
+              <span class="vfeed-name">Hole Devourer (City Muncher)</span>
+              <button class="vfeed-switch-btn ui-interactive" data-switch-ver="v1">▶ Switch to v1</button>
+            </div>
+            <p class="vfeed-desc">Arcade black hole physics. Consumes road litter, cars, dumpsters, trees. Growing radius mechanics.</p>
+            <div class="vfeed-comment-box">
+              <textarea class="vfeed-input" id="vfeed-comment-v1" placeholder="What to keep/restore from v1.0 (e.g., devour physics, suction vacuum, black hole skin...)" rows="2"></textarea>
+            </div>
+          </div>
+
+          <div class="vfeed-item" id="vfeed-card-v2">
+            <div class="vfeed-item-header">
+              <span class="vfeed-badge vfeed-tag-v2">v2.0 Open-World</span>
+              <span class="vfeed-name">Karachi Civic Hero (3D Patrol)</span>
+              <button class="vfeed-switch-btn ui-interactive" data-switch-ver="v2">▶ Switch to v2</button>
+            </div>
+            <p class="vfeed-desc">360-degree free roaming patrol, authentic Urdu citizen dialogues, civic hazard repair, snatcher pursuit.</p>
+            <div class="vfeed-comment-box">
+              <textarea class="vfeed-input" id="vfeed-comment-v2" placeholder="What to keep/restore from v2.0 (e.g., citizen dialogue system, mission journal, open exploration...)" rows="2"></textarea>
+            </div>
+          </div>
+
+          <div class="vfeed-item" id="vfeed-card-v3">
+            <div class="vfeed-item-header">
+              <span class="vfeed-badge vfeed-tag-v3">v3.0 Reflex</span>
+              <span class="vfeed-name">Temple Run Karachi (3-Lane Runner)</span>
+              <button class="vfeed-switch-btn ui-interactive" data-switch-ver="v3">▶ Switch to v3</button>
+            </div>
+            <p class="vfeed-desc">High-speed 3-lane reflex sprint, parkour jumping over potholes, sliding under high-voltage wires, Biryani magnet.</p>
+            <div class="vfeed-comment-box">
+              <textarea class="vfeed-input" id="vfeed-comment-v3" placeholder="What to keep/restore from v3.0 (e.g., lane controls, powerups, pace, wire ducking...)" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="vfeed-git-instructions">
+          <div class="vfeed-git-title">📦 VERSION CONTROL &amp; SEPARATE PROJECT RESTORE</div>
+          <div class="vfeed-git-code">
+            <code>git checkout v1.0-classic-hole    # Restore pure Hole Devourer</code><br/>
+            <code>git checkout v2.0-civic-hero     # Restore Karachi Civic Savior 3D</code><br/>
+            <code>git checkout v3.0-temple-run     # Current 3-Lane Karachi Runner</code><br/>
+            <code>git checkout -b feature/hybrid   # Fork into separate project branch</code>
+          </div>
+        </div>
+
+        <div class="vfeed-actions-row">
+          <button class="primary-btn ui-interactive" id="btn-save-version-feedback">
+            💾 SAVE COMMENTS &amp; SYNC TO DASHBOARD
+          </button>
+          <button class="secondary-btn ui-interactive" id="btn-export-version-feedback">
+            📋 EXPORT FEEDBACK JSON
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(this.versionFeedbackModal);
+  }
+
+  openVersionFeedbackModal() {
+    if (!this.versionFeedbackModal) return;
+    this.versionFeedbackModal.style.display = 'flex';
+    // Load stored feedback comments
+    try {
+      const stored = JSON.parse(localStorage.getItem('karachi_version_feedback') || '{}');
+      if (document.getElementById('vfeed-comment-v1')) document.getElementById('vfeed-comment-v1').value = stored.v1 || '';
+      if (document.getElementById('vfeed-comment-v2')) document.getElementById('vfeed-comment-v2').value = stored.v2 || '';
+      if (document.getElementById('vfeed-comment-v3')) document.getElementById('vfeed-comment-v3').value = stored.v3 || '';
+    } catch (e) {
+      console.warn("Feedback parse error:", e);
+    }
+    this.syncActiveVersionUI(this.selectedVersion || 'v3');
+  }
+
+  closeVersionFeedbackModal() {
+    if (this.versionFeedbackModal) this.versionFeedbackModal.style.display = 'none';
+  }
+
+  syncActiveVersionUI(versionId) {
+    this.selectedVersion = versionId;
+    // Update start modal cards
+    document.querySelectorAll('#start-version-grid .version-select-card').forEach(card => {
+      card.classList.toggle('active', card.dataset.version === versionId);
+    });
+    // Update game menu buttons
+    document.querySelectorAll('#menu-version-grid .menu-version-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.version === versionId);
+    });
+    // Update menu header pill
+    const pill = document.getElementById('menu-active-version-pill');
+    if (pill) {
+      const names = { v1: 'v1.0 Hole Devourer Active', v2: 'v2.0 Civic Hero Active', v3: 'v3.0 Runner Active' };
+      pill.textContent = names[versionId] || 'v3.0 Runner Active';
+    }
+    // Update feedback items highlight
+    document.querySelectorAll('.vfeed-item').forEach(item => {
+      item.classList.toggle('active-v', item.id === `vfeed-card-${versionId}`);
+    });
   }
 
   // 2. Non-Overlapping Game Tracking HUD & Scoreboard
@@ -542,6 +732,46 @@ export class UIManager {
           </button>
           <button class="danger-btn ui-interactive menu-action-btn" id="btn-menu-exit-title">
             🏠 MAIN MENU
+          </button>
+        </div>
+
+        <!-- Major Game Version Selector Hub -->
+        <div class="menu-section-header">
+          <span class="menu-section-title">🎮 MAJOR GAMEPLAY VERSION / ENGINE</span>
+          <span class="menu-version-pill" id="menu-active-version-pill">v3.0 Runner Active</span>
+        </div>
+        <div class="menu-version-grid" id="menu-version-grid">
+          <button class="menu-version-btn ui-interactive ${this.selectedVersion === 'v1' ? 'active' : ''}" data-version="v1" id="mver-btn-v1">
+            <span class="mver-icon">🕳️</span>
+            <div class="mver-info">
+              <span class="mver-title">v1.0 Classic Hole Devourer</span>
+              <span class="mver-desc">Swallow street objects &amp; cars • Expand black hole</span>
+            </div>
+            <span class="mver-tag">STABLE</span>
+          </button>
+
+          <button class="menu-version-btn ui-interactive ${this.selectedVersion === 'v2' ? 'active' : ''}" data-version="v2" id="mver-btn-v2">
+            <span class="mver-icon">🦸</span>
+            <div class="mver-info">
+              <span class="mver-title">v2.0 Karachi Civic Hero (3D)</span>
+              <span class="mver-desc">Open-world 360° GTA patrol • Urdu dialogues &amp; arrests</span>
+            </div>
+            <span class="mver-tag">OPEN WORLD</span>
+          </button>
+
+          <button class="menu-version-btn ui-interactive ${this.selectedVersion === 'v3' ? 'active' : ''}" data-version="v3" id="mver-btn-v3">
+            <span class="mver-icon">🏃</span>
+            <div class="mver-info">
+              <span class="mver-title">v3.0 Karachi Temple Run</span>
+              <span class="mver-desc">3-lane continuous reflex sprint • Jump &amp; slide</span>
+            </div>
+            <span class="mver-tag">RUNNER</span>
+          </button>
+        </div>
+
+        <div class="menu-version-actions-row">
+          <button class="menu-btn-feedback ui-interactive" id="btn-open-version-feedback">
+            💬 Version Feedback / Restore Comments ➔
           </button>
         </div>
 
@@ -1769,6 +1999,20 @@ export class UIManager {
 
   // Bind All Event Listeners
   bindEvents() {
+    // 0. Major Game Version Selection on start modal
+    const startVersionCards = document.querySelectorAll('#start-version-grid .version-select-card');
+    startVersionCards.forEach(card => {
+      card.addEventListener('click', () => {
+        audio.playClick();
+        startVersionCards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        this.selectedVersion = card.dataset.version || 'v3';
+        if (this.onSelectVersion) {
+          this.onSelectVersion(this.selectedVersion);
+        }
+      });
+    });
+
     // 1. Start Mission Button
     const btnStartPatrol = document.getElementById('btn-start-patrol');
     if (btnStartPatrol) {
@@ -1779,12 +2023,14 @@ export class UIManager {
           this.playerName = input.value.trim().slice(0, 18);
         }
         this.startModal.style.display = 'none';
+        this.hideTapToStartPrompt();
         if (this.onStartGame) {
           this.onStartGame({
             playerName: this.playerName,
             ageTier: this.currentAgeTier,
             avatarId: this.selectedAvatar || 'tariq',
-            districtLevel: this.selectedDistrictLevel || 1
+            districtLevel: this.selectedDistrictLevel || 1,
+            versionId: this.selectedVersion || 'v3'
           });
         }
       });
@@ -1796,6 +2042,7 @@ export class UIManager {
       btnContinueCareer.addEventListener('click', () => {
         audio.playClick();
         this.startModal.style.display = 'none';
+        this.hideTapToStartPrompt();
         if (this.onContinueCareer) {
           this.onContinueCareer(saveManager.get());
         } else if (this.onStartGame) {
@@ -1803,7 +2050,8 @@ export class UIManager {
             playerName: this.playerName,
             ageTier: this.currentAgeTier,
             avatarId: this.selectedAvatar || 'tariq',
-            districtLevel: this.selectedDistrictLevel || 1
+            districtLevel: this.selectedDistrictLevel || 1,
+            versionId: this.selectedVersion || 'v3'
           });
         }
       });
@@ -2185,6 +2433,93 @@ export class UIManager {
         if (this.onRestartGame) this.onRestartGame();
       });
     }
+
+    // Major Game Version Selection inside Game Menu
+    const menuVersionBtns = document.querySelectorAll('#menu-version-grid .menu-version-btn');
+    menuVersionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        audio.playClick();
+        const ver = btn.dataset.version;
+        menuVersionBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.selectedVersion = ver;
+        if (this.onSelectVersion) {
+          this.onSelectVersion(ver);
+        }
+        this.syncActiveVersionUI(ver);
+      });
+    });
+
+    document.getElementById('btn-open-version-feedback')?.addEventListener('click', () => {
+      this.openVersionFeedbackModal();
+    });
+    document.getElementById('btn-menu-version-feedback')?.addEventListener('click', () => {
+      this.openVersionFeedbackModal();
+    });
+    document.getElementById('btn-close-version-feedback')?.addEventListener('click', () => {
+      this.closeVersionFeedbackModal();
+    });
+
+    // Save version feedback comments
+    document.getElementById('btn-save-version-feedback')?.addEventListener('click', () => {
+      const v1 = document.getElementById('vfeed-comment-v1')?.value.trim() || '';
+      const v2 = document.getElementById('vfeed-comment-v2')?.value.trim() || '';
+      const v3 = document.getElementById('vfeed-comment-v3')?.value.trim() || '';
+      const feedbackPayload = { v1, v2, v3, timestamp: Date.now() };
+      localStorage.setItem('karachi_version_feedback', JSON.stringify(feedbackPayload));
+
+      // Also forward feedback to dev comments queue if any text present
+      const combined = [
+        v1 ? `[v1.0 Feedback] ${v1}` : '',
+        v2 ? `[v2.0 Feedback] ${v2}` : '',
+        v3 ? `[v3.0 Feedback] ${v3}` : ''
+      ].filter(Boolean).join(' | ');
+
+      if (combined) {
+        this.addDevComment(combined, 'general');
+      }
+      this.showDevToast('💾 Version Feedback Saved & Synced to Dashboard!');
+      setTimeout(() => this.closeVersionFeedbackModal(), 800);
+    });
+
+    // Export version feedback JSON
+    document.getElementById('btn-export-version-feedback')?.addEventListener('click', () => {
+      const v1 = document.getElementById('vfeed-comment-v1')?.value.trim() || '';
+      const v2 = document.getElementById('vfeed-comment-v2')?.value.trim() || '';
+      const v3 = document.getElementById('vfeed-comment-v3')?.value.trim() || '';
+      const exportData = {
+        app: 'Karachi Street Hero / Hole.io',
+        exportDate: new Date().toISOString(),
+        activeVersion: this.selectedVersion || 'v3',
+        versions: {
+          'v1.0-classic-hole': { title: 'Hole Devourer', feedback: v1 },
+          'v2.0-civic-hero': { title: 'Civic Hero 3D Patrol', feedback: v2 },
+          'v3.0-temple-run': { title: 'Karachi Runner', feedback: v3 }
+        }
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `karachi_version_feedback_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      this.showDevToast('📋 Feedback Exported as JSON!');
+    });
+
+    // Version switch buttons inside the feedback modal
+    document.querySelectorAll('.vfeed-switch-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        audio.playClick();
+        const ver = btn.dataset.switchVer;
+        if (ver) {
+          this.selectedVersion = ver;
+          if (this.onSelectVersion) this.onSelectVersion(ver);
+          this.syncActiveVersionUI(ver);
+          this.showDevToast(`Switched to ${ver.toUpperCase()} Engine`);
+        }
+      });
+    });
 
     const btnMenuExitTitle = document.getElementById('btn-menu-exit-title');
     if (btnMenuExitTitle) {
@@ -3536,8 +3871,8 @@ export class UIManager {
     this.devCommentBtn.title = "Send Real-Time Developer Feedback / Comment (Shortcut: F3)";
     document.body.appendChild(this.devCommentBtn);
 
-    // Call God Mode UI creation
-    this.createGodModeUI();
+    // Call Master Mode UI creation
+    this.createMasterModeUI();
 
     // 2. Dev Mode Floating Observer Panel
     this.devPanel = document.createElement('div');
@@ -3882,14 +4217,14 @@ export class UIManager {
       } else if (e.key === 'F4') {
         e.preventDefault();
         triggerPinNote();
-      } else if (e.key === 'g' || e.key === 'G') {
-        this.toggleGodMode();
+      } else if (e.key === 'g' || e.key === 'G' || e.key === 'm' || e.key === 'M') {
+        this.toggleMasterMode();
       } else if (e.key === 'h' || e.key === 'H') {
         audio.playKingPressureHorn();
         if (this.onHorn) this.onHorn();
       } else if (e.key === 'Escape') {
         this.closeDevFeedbackModal();
-        if (this.isGodModeActive) this.toggleGodMode(false);
+        if (this.isMasterModeActive || this.isGodModeActive) this.toggleMasterMode(false);
       }
     });
 
@@ -4117,34 +4452,49 @@ export class UIManager {
   }
 
   // =========================================================================
-  // GOD MODE IN-GAME CONTROLS & DASHBOARD DRAWER
+  // MASTER MODE IN-GAME CONTROLS & DASHBOARD DRAWER
   // =========================================================================
-  createGodModeUI() {
+  createMasterModeUI() {
     if (typeof document === 'undefined') return;
 
-    this.godModeBtn = document.createElement('button');
-    this.godModeBtn.id = 'god-mode-toggle-btn';
-    this.godModeBtn.className = 'ui-interactive';
-    this.godModeBtn.innerHTML = `👑 <span>GOD MODE [G]</span>`;
-    this.godModeBtn.title = "Toggle God Mode Controls & AI Auto-Audit (Shortcut: G)";
-    document.body.appendChild(this.godModeBtn);
+    this.masterModeBtn = document.createElement('button');
+    this.masterModeBtn.id = 'master-mode-toggle-btn';
+    this.masterModeBtn.className = 'ui-interactive master-mode-btn-trigger';
+    this.masterModeBtn.innerHTML = `👑 <span>MASTER MODE [M]</span>`;
+    this.masterModeBtn.title = "Toggle Master Mode Controls & AI Auto-Audit (Shortcut: M or G)";
+    document.body.appendChild(this.masterModeBtn);
 
-    this.godModePanel = document.createElement('div');
-    this.godModePanel.id = 'god-mode-panel';
-    this.godModePanel.style.display = 'none';
-    this.godModePanel.innerHTML = `
+    // Retain legacy reference for backward compatibility
+    this.godModeBtn = this.masterModeBtn;
+
+    this.masterModePanel = document.createElement('div');
+    this.masterModePanel.id = 'master-mode-panel';
+    this.masterModePanel.style.display = 'none';
+    this.masterModePanel.innerHTML = `
       <div class="god-inpanel-header">
         <div class="god-inpanel-title">
           <span>👑</span>
-          <span>GOD MODE &amp; AI AUTO-AUDIT</span>
+          <span>MASTER MODE &amp; AI AUTO-AUDIT</span>
         </div>
-        <button class="dev-icon-btn" id="btn-close-god-mode" style="background:transparent;border:none;color:#ffd700;font-size:18px;cursor:pointer;">&times;</button>
+        <button class="dev-icon-btn" id="btn-close-master-mode" style="background:transparent;border:none;color:#ffd700;font-size:18px;cursor:pointer;">&times;</button>
       </div>
 
       <div class="god-inpanel-body">
+        <!-- Engine Version Quick Switcher -->
         <div class="god-inpanel-section">
           <div class="god-inpanel-sec-title">
-            <span>⭕ Hole Radius:</span>
+            <span>🎮 Engine Version Switcher:</span>
+          </div>
+          <div class="preset-chip-row" style="margin-top:4px;">
+            <button type="button" class="preset-chip master-ver-chip" data-engine-ver="v1">🕳️ v1.0 Hole</button>
+            <button type="button" class="preset-chip master-ver-chip" data-engine-ver="v2">🦸 v2.0 Hero 3D</button>
+            <button type="button" class="preset-chip master-ver-chip" data-engine-ver="v3">🏃 v3.0 Runner</button>
+          </div>
+        </div>
+
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title">
+            <span>⭕ Hole Radius / Aura:</span>
             <span id="god-inpanel-radius-val" style="color:#00e5ff;font-family:monospace;">1.6m</span>
           </div>
           <input type="range" class="god-slider" id="god-inpanel-radius-slider" min="1.2" max="25.0" step="0.2" value="1.6" />
@@ -4159,7 +4509,7 @@ export class UIManager {
 
         <div class="god-inpanel-section">
           <div class="god-inpanel-sec-title">
-            <span>⚡ God Powers &amp; Automations</span>
+            <span>⚡ Master Powers &amp; Automations</span>
           </div>
           <div class="toggle-row" style="padding:6px 10px;">
             <span style="font-size:0.8rem;">🤖 AI Auto-Pilot</span>
@@ -4176,7 +4526,7 @@ export class UIManager {
             </label>
           </div>
           <div class="toggle-row" style="padding:6px 10px;">
-            <span style="font-size:0.8rem;">🛡️ God Invincibility</span>
+            <span style="font-size:0.8rem;">🛡️ Master Invincibility</span>
             <label class="switch">
               <input type="checkbox" id="god-inpanel-immortal" />
               <span class="slider"></span>
@@ -4195,15 +4545,32 @@ export class UIManager {
             <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-magnet" style="color:#00e5ff;">🧲 Magnet</button>
             <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-turbo" style="color:#00e5ff;">⚡ Turbo</button>
             <button type="button" class="god-inpanel-btn" id="god-inpanel-btn-audit" style="color:#ffd700;">🔍 Run Audit</button>
-            <a href="/godmode.html" target="_blank" class="god-inpanel-btn btn-dash-link">🖥️ Open Standalone Ops Dashboard ↗</a>
+            <a href="/mastermode.html" target="_blank" class="god-inpanel-btn btn-dash-link">🖥️ Master Ops Dashboard ↗</a>
           </div>
         </div>
       </div>
     `;
-    document.body.appendChild(this.godModePanel);
+    document.body.appendChild(this.masterModePanel);
 
-    this.godModeBtn.addEventListener('click', () => this.toggleGodMode());
-    document.getElementById('btn-close-god-mode')?.addEventListener('click', () => this.toggleGodMode(false));
+    // Retain legacy reference for backward compatibility
+    this.godModePanel = this.masterModePanel;
+
+    this.masterModeBtn.addEventListener('click', () => this.toggleMasterMode());
+    document.getElementById('btn-close-master-mode')?.addEventListener('click', () => this.toggleMasterMode(false));
+    document.getElementById('btn-close-god-mode')?.addEventListener('click', () => this.toggleMasterMode(false));
+
+    // Version switch handler inside Master Mode panel
+    this.masterModePanel.querySelectorAll('.master-ver-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const ver = chip.dataset.engineVer;
+        if (ver && this.onSelectVersion) {
+          audio.playClick();
+          this.onSelectVersion(ver);
+          this.syncActiveVersionUI(ver);
+          this.showDevToast(`Switched to ${ver.toUpperCase()} Engine`);
+        }
+      });
+    });
 
     const slider = document.getElementById('god-inpanel-radius-slider');
     const display = document.getElementById('god-inpanel-radius-val');
@@ -4211,69 +4578,73 @@ export class UIManager {
       slider.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value);
         if (display) display.textContent = `${val.toFixed(1)}m`;
-        if (window.game?.handleGodModeCommand) {
+        if (window.game?.handleMasterModeCommand) {
+          window.game.handleMasterModeCommand({ type: 'SET_RADIUS', payload: { radius: val } });
+        } else if (window.game?.handleGodModeCommand) {
           window.game.handleGodModeCommand({ type: 'SET_RADIUS', payload: { radius: val } });
         }
       });
     }
 
-    this.godModePanel.querySelectorAll('.preset-chip').forEach(chip => {
+    this.masterModePanel.querySelectorAll('.preset-chip[data-radius]').forEach(chip => {
       chip.addEventListener('click', () => {
         const r = parseFloat(chip.getAttribute('data-radius'));
         if (slider) slider.value = r;
         if (display) display.textContent = `${r.toFixed(1)}m`;
-        if (window.game?.handleGodModeCommand) {
+        if (window.game?.handleMasterModeCommand) {
+          window.game.handleMasterModeCommand({ type: 'SET_RADIUS', payload: { radius: r } });
+        } else if (window.game?.handleGodModeCommand) {
           window.game.handleGodModeCommand({ type: 'SET_RADIUS', payload: { radius: r } });
         }
       });
     });
 
     document.getElementById('god-inpanel-autopilot')?.addEventListener('change', (e) => {
-      if (window.game?.handleGodModeCommand) {
-        window.game.handleGodModeCommand({ type: 'TOGGLE_AUTOPILOT', payload: { enabled: e.target.checked } });
-      }
+      const cmd = { type: 'TOGGLE_AUTOPILOT', payload: { enabled: e.target.checked } };
+      if (window.game?.handleMasterModeCommand) window.game.handleMasterModeCommand(cmd);
+      else if (window.game?.handleGodModeCommand) window.game.handleGodModeCommand(cmd);
     });
 
     document.getElementById('god-inpanel-freeze-timer')?.addEventListener('change', (e) => {
-      if (window.game?.handleGodModeCommand) {
-        window.game.handleGodModeCommand({ type: 'FREEZE_TIMER', payload: { frozen: e.target.checked } });
-      }
+      const cmd = { type: 'FREEZE_TIMER', payload: { frozen: e.target.checked } };
+      if (window.game?.handleMasterModeCommand) window.game.handleMasterModeCommand(cmd);
+      else if (window.game?.handleGodModeCommand) window.game.handleGodModeCommand(cmd);
     });
 
     document.getElementById('god-inpanel-immortal')?.addEventListener('change', (e) => {
-      if (window.game?.handleGodModeCommand) {
-        window.game.handleGodModeCommand({ type: 'TOGGLE_IMMORTAL', payload: { immortal: e.target.checked } });
-      }
+      const cmd = { type: 'TOGGLE_IMMORTAL', payload: { immortal: e.target.checked } };
+      if (window.game?.handleMasterModeCommand) window.game.handleMasterModeCommand(cmd);
+      else if (window.game?.handleGodModeCommand) window.game.handleGodModeCommand(cmd);
     });
 
     document.getElementById('god-inpanel-btn-devour')?.addEventListener('click', () => {
-      if (window.game?.handleGodModeCommand) {
-        window.game.handleGodModeCommand({ type: 'DEVOUR_ALL', payload: {} });
-      }
+      const cmd = { type: 'DEVOUR_ALL', payload: {} };
+      if (window.game?.handleMasterModeCommand) window.game.handleMasterModeCommand(cmd);
+      else if (window.game?.handleGodModeCommand) window.game.handleGodModeCommand(cmd);
     });
 
     document.getElementById('god-inpanel-btn-time')?.addEventListener('click', () => {
-      if (window.game?.handleGodModeCommand) {
-        window.game.handleGodModeCommand({ type: 'ADD_TIME', payload: { seconds: 60 } });
-      }
+      const cmd = { type: 'ADD_TIME', payload: { seconds: 60 } };
+      if (window.game?.handleMasterModeCommand) window.game.handleMasterModeCommand(cmd);
+      else if (window.game?.handleGodModeCommand) window.game.handleGodModeCommand(cmd);
     });
 
     document.getElementById('god-inpanel-btn-munchies')?.addEventListener('click', () => {
-      if (window.game?.handleGodModeCommand) {
-        window.game.handleGodModeCommand({ type: 'SPAWN_MUNCHIES', payload: { count: 30 } });
-      }
+      const cmd = { type: 'SPAWN_MUNCHIES', payload: { count: 30 } };
+      if (window.game?.handleMasterModeCommand) window.game.handleMasterModeCommand(cmd);
+      else if (window.game?.handleGodModeCommand) window.game.handleGodModeCommand(cmd);
     });
 
     document.getElementById('god-inpanel-btn-magnet')?.addEventListener('click', () => {
-      if (window.game?.handleGodModeCommand) {
-        window.game.handleGodModeCommand({ type: 'SPAWN_CRATE', payload: { crateType: 'magnet' } });
-      }
+      const cmd = { type: 'SPAWN_CRATE', payload: { crateType: 'magnet' } };
+      if (window.game?.handleMasterModeCommand) window.game.handleMasterModeCommand(cmd);
+      else if (window.game?.handleGodModeCommand) window.game.handleGodModeCommand(cmd);
     });
 
     document.getElementById('god-inpanel-btn-turbo')?.addEventListener('click', () => {
-      if (window.game?.handleGodModeCommand) {
-        window.game.handleGodModeCommand({ type: 'SPAWN_CRATE', payload: { crateType: 'turbo' } });
-      }
+      const cmd = { type: 'SPAWN_CRATE', payload: { crateType: 'turbo' } };
+      if (window.game?.handleMasterModeCommand) window.game.handleMasterModeCommand(cmd);
+      else if (window.game?.handleGodModeCommand) window.game.handleGodModeCommand(cmd);
     });
 
     document.getElementById('god-inpanel-btn-audit')?.addEventListener('click', () => {
@@ -4285,46 +4656,61 @@ export class UIManager {
     });
   }
 
-  toggleGodMode(forceState) {
+  // Backward-compatible alias
+  createGodModeUI() {
+    return this.createMasterModeUI();
+  }
+
+  toggleMasterMode(forceState) {
     if (forceState === false) {
+      this.isMasterModeActive = false;
       this.isGodModeActive = false;
-      if (this.godModePanel) this.godModePanel.style.display = 'none';
-      if (this.godModeBtn) {
-        this.godModeBtn.style.background = 'rgba(18, 12, 32, 0.92)';
-        this.godModeBtn.style.color = '#ffd700';
+      if (this.masterModePanel) this.masterModePanel.style.display = 'none';
+      if (this.masterModeBtn) {
+        this.masterModeBtn.style.background = 'rgba(18, 12, 32, 0.92)';
+        this.masterModeBtn.style.color = '#ffd700';
       }
       return;
     }
 
-    const isAuth = sessionStorage.getItem('karachi_godmode_auth') === 'granted';
-    if (!isAuth && !this.isGodModeActive) {
-      const entered = prompt("🔒 Enter God Mode Security Passcode (Default: karachi786):");
+    const isAuth = sessionStorage.getItem('karachi_mastermode_auth') === 'granted' ||
+                   sessionStorage.getItem('karachi_godmode_auth') === 'granted';
+    if (!isAuth && !this.isMasterModeActive && !this.isGodModeActive) {
+      const entered = prompt("🔒 Enter Master Mode Security Passcode (Default: karachi786):");
       if (!entered) return;
-      const stored = localStorage.getItem('karachi_godmode_passcode') || 'karachi786';
+      const stored = localStorage.getItem('karachi_mastermode_passcode') ||
+                     localStorage.getItem('karachi_godmode_passcode') || 'karachi786';
       const clean = entered.trim();
-      if (clean === stored || clean === 'karachi786' || clean === 'godmode2026') {
+      if (clean === stored || clean === 'karachi786' || clean === 'godmode2026' || clean === 'mastermode2026') {
+        sessionStorage.setItem('karachi_mastermode_auth', 'granted');
         sessionStorage.setItem('karachi_godmode_auth', 'granted');
-        this.showDevToast('✔ Security Clearance Granted: God Mode Active!');
+        this.showDevToast('✔ Security Clearance Granted: Master Mode Active!');
       } else {
         this.showDevToast('⛔ ACCESS DENIED: Invalid Security Passcode!');
         return;
       }
     }
 
-    this.isGodModeActive = (forceState !== undefined) ? forceState : !this.isGodModeActive;
-    if (this.godModePanel) {
-      this.godModePanel.style.display = this.isGodModeActive ? 'flex' : 'none';
+    this.isMasterModeActive = (forceState !== undefined) ? forceState : !this.isMasterModeActive;
+    this.isGodModeActive = this.isMasterModeActive;
+    if (this.masterModePanel) {
+      this.masterModePanel.style.display = this.isMasterModeActive ? 'flex' : 'none';
     }
-    if (this.godModeBtn) {
-      if (this.isGodModeActive) {
-        this.godModeBtn.style.background = '#ffd700';
-        this.godModeBtn.style.color = '#050b14';
+    if (this.masterModeBtn) {
+      if (this.isMasterModeActive) {
+        this.masterModeBtn.style.background = '#ffd700';
+        this.masterModeBtn.style.color = '#050b14';
       } else {
-        this.godModeBtn.style.background = 'rgba(18, 12, 32, 0.92)';
-        this.godModeBtn.style.color = '#ffd700';
+        this.masterModeBtn.style.background = 'rgba(18, 12, 32, 0.92)';
+        this.masterModeBtn.style.color = '#ffd700';
       }
     }
-    this.showDevToast(this.isGodModeActive ? '👑 GOD MODE OPENED [G]' : '👑 God Mode Closed');
+    this.showDevToast(this.isMasterModeActive ? '👑 MASTER MODE OPENED [M]' : '👑 Master Mode Closed');
+  }
+
+  // Backward-compatible alias
+  toggleGodMode(forceState) {
+    return this.toggleMasterMode(forceState);
   }
 
   showDevToast(msg) {

@@ -5,11 +5,13 @@ export default defineConfig({
   base: './',
   plugins: [
     {
-      name: 'godmode-clean-url-rewrite',
+      name: 'mastermode-clean-url-rewrite',
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           const url = req.url.split('?')[0];
-          if (url === '/godmode' || url === '/admin' || url === '/dashboard' || url === '/ops') {
+          if (url === '/mastermode' || url === '/master') {
+            req.url = '/mastermode.html' + (req.url.includes('?') ? '?' + req.url.split('?')[1] : '');
+          } else if (url === '/godmode' || url === '/admin' || url === '/dashboard' || url === '/ops') {
             req.url = '/godmode.html' + (req.url.includes('?') ? '?' + req.url.split('?')[1] : '');
           }
           next();
@@ -21,6 +23,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(process.cwd(), 'index.html'),
+        mastermode: resolve(process.cwd(), 'mastermode.html'),
         godmode: resolve(process.cwd(), 'godmode.html')
       }
     }

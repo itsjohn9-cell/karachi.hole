@@ -1169,8 +1169,9 @@ export class CityGenerator {
 
     roadLines.forEach(line => {
       for (let pos = line.from; pos <= line.to; pos += line.step) {
-        if (line.axis === 'z' && Math.abs(line.fixedX) < 8 && Math.abs(pos) < 10) continue;
-        if (line.axis === 'x' && Math.abs(line.fixedZ) < 8 && Math.abs(pos) < 10) continue;
+        // 100% Unobstructed Spawn Buffer: Keep central avenue clear around Z=0 (Classic/Civic spawn) and Z=48..86 (Runner spawn corridor)
+        if (line.axis === 'z' && Math.abs(line.fixedX) < 8 && (Math.abs(pos) < 12 || (pos >= 48 && pos <= 86))) continue;
+        if (line.axis === 'x' && Math.abs(line.fixedZ) < 8 && Math.abs(pos) < 12) continue;
 
         clutterCount++;
         const lateralOffset = (Math.random() - 0.5) * 6.5;

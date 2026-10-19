@@ -58,8 +58,13 @@ class Game {
     this.robberyLosses = 0;
     this.score = 0;
 
-    // Karachi Temple Run Continuous 3D Street Runner State
-    this.isTempleRun = true;
+    // Major Game Versioning Hub: 'v1' (Classic Hole.io Devourer) | 'v2' (Karachi Civic Hero 3D Patrol) | 'v3' (Karachi Temple Run Street Runner)
+    let savedVersion = 'v3';
+    try {
+      savedVersion = localStorage.getItem('karachi_major_version') || 'v3';
+    } catch (e) {}
+    this.majorVersion = savedVersion;
+    this.isTempleRun = (this.majorVersion === 'v3');
     this.currentLane = 0; // -1: Left ($X = -3.2$), 0: Center ($X = 0$), 1: Right ($X = +3.2$)
     this.laneWidth = 3.2;
     this.targetLaneX = 0;
@@ -85,11 +90,14 @@ class Game {
     ];
     this.passedMilestoneIndices = new Set([0]);
 
-    // God Mode & AI Auto-Pilot State
-    this.isGodImmortal = false;
+    // Master Mode & AI Auto-Pilot State (Renamed from God Mode per user directive)
+    this.isMasterImmortal = false;
+    this.isGodImmortal = false; // Alias for backward compatibility
     this.isTimerFrozen = false;
-    this.godSpeedMult = 1.0;
+    this.masterSpeedMult = 1.0;
+    this.godSpeedMult = 1.0; // Alias for backward compatibility
     this.isAutoPilotActive = false;
+    this.__lastMasterTelemetryBroadcast = 0;
     this.__lastGodTelemetryBroadcast = 0;
     this.__lastAutonomousAudit = 0;
 
@@ -101,7 +109,8 @@ class Game {
     this.createNavigationGuide();
     this.initUI();
     this.initAudioTriggers();
-    this.initGodModeComms();
+    this.initMasterModeComms();
+    this.initGodModeComms = this.initMasterModeComms; // Alias
     this.loadDistrictLevel(1, false);
 
     // Start Game Loop
@@ -231,6 +240,9 @@ class Game {
   initJoystick() {
     this.joystick = new VirtualJoystick({
       onMove: (vx, vz) => {
+        if (!this.isGameStarted && (Math.abs(vx) > 0.05 || Math.abs(vz) > 0.05)) {
+          this.startGame();
+        }
         this.moveVector.x = vx;
         this.moveVector.y = vz;
       },
@@ -255,7 +267,10 @@ class Game {
 
   initUI() {
     this.ui = new UIManager({
-      onStartGame: ({ playerName, ageTier, avatarId, districtLevel }) => {
+      onStartGame: ({ playerName, ageTier, avatarId, districtLevel, versionId }) => {
+        if (versionId) {
+          this.setMajorGameVersion(versionId, false);
+        }
         if (this.player) {
           this.player.name = playerName || "Karachi Hero";
           if (avatarId) {
@@ -268,6 +283,9 @@ class Game {
         this.loadDistrictLevel(targetLevel, true);
         audio.startMusic();
         this.ui.showAnnouncement(`🚦 COMMUTE SURVIVAL: SOLDIER BAZAR ➔ PECHS TARIQ ROAD! WATCH FOR GUTTERS & ROBBERS!`, '#00e5ff');
+      },
+      onSelectVersion: (versionId) => {
+        this.setMajorGameVersion(versionId, true);
       },
       onContinueCareer: (saveData) => {
         this.loadCareerSave(saveData);
@@ -373,7 +391,8 @@ class Game {
    * Agile Street Parkour Traversal Jump Mechanic (Space / Mobile Jump)
    */
   performJump() {
-    if (!this.player || !this.isGameStarted || this.isPaused) return;
+    if (!this.player || this.isPaused) return;
+    if (!this.isGameStarted) this.startGame();
 
     // Fluid Jump/Slide cancellation: cancel active slide immediately when jumping
     if (this.isSliding) {
@@ -408,7 +427,8 @@ class Game {
    * Emits supersonic acoustic shockwave, stuns robbers, scatters traffic
    */
   triggerKingPressureHorn() {
-    if (!this.player || !this.isGameStarted || this.isPaused) return;
+    if (!this.player || this.isPaused) return;
+    if (!this.isGameStarted) this.startGame();
     audio.playKingPressureHorn();
     audio.vibrate([60, 30, 80]);
     this.cameraShakeTimer = 0.35;
@@ -486,7 +506,8 @@ class Game {
    * Temple Run: Slide Crouch Traversal Mechanic (S / ArrowDown / Touch Slide / Swipe Down)
    */
   performSlide() {
-    if (!this.player || !this.isGameStarted || this.isPaused || this.isGameOver) return;
+    if (!this.player || this.isPaused || this.isGameOver) return;
+    if (!this.isGameStarted) this.startGame();
     
     // If airborne, immediately dive down to slide under incoming wires
     if (!this.player.isGrounded) {
@@ -510,7 +531,8 @@ class Game {
    * Temple Run: Lane Switching Mechanic (A / D / ArrowLeft / ArrowRight / Touch Lane Buttons / Swipe)
    */
   changeLane(dir) {
-    if (!this.player || !this.isGameStarted || this.isPaused || this.isGameOver) return;
+    if (!this.player || this.isPaused || this.isGameOver) return;
+    if (!this.isGameStarted) this.startGame();
     this.currentLane = Math.max(-1, Math.min(1, this.currentLane + dir));
     this.targetLaneX = this.currentLane * this.laneWidth;
     audio.playClick();
@@ -546,8 +568,8 @@ class Game {
   handleRunnerHit(obstacle, reason) {
     if (!obstacle || obstacle.isHit || !this.player || this.isGameOver) return;
 
-    if (this.isGodImmortal) {
-      this.ui.showFloatingFeedback('👑 IMMORTAL GOD MODE!', this.player.position, '#ffd700');
+    if (this.isMasterImmortal || this.isGodImmortal) {
+      this.ui.showFloatingFeedback('👑 IMMORTAL MASTER MODE!', this.player.position, '#ffd700');
       return;
     }
 
@@ -1168,10 +1190,77 @@ class Game {
     this.ui.showAnnouncement(`💾 CAREER RESUMED: WELCOME ${this.player.name.toUpperCase()} (LV.${this.player.level})!`, '#00e5ff');
   }
 
+  startGame() {
+    if (this.isGameStarted && !this.isPaused) return;
+    this.isGameStarted = true;
+    this.isPaused = false;
+    this.clock.getDelta(); // Clear delta buffer so physics ticks smoothly from frame 1
+    audio.startMusic();
+    audio.resumeAudio();
+    if (this.ui) {
+      if (this.ui.startModal) this.ui.startModal.style.display = 'none';
+      if (this.ui.hideAutoPauseModal) this.ui.hideAutoPauseModal();
+      if (this.ui.hideTapToStartPrompt) this.ui.hideTapToStartPrompt();
+    }
+  }
+
+  setMajorGameVersion(versionId, reloadDistrict = true) {
+    if (!['v1', 'v2', 'v3'].includes(versionId)) {
+      if (versionId === 'holeDevourer' || versionId === 'classic') versionId = 'v1';
+      else if (versionId === 'civicSavior' || versionId === 'openWorld') versionId = 'v2';
+      else if (versionId === 'templeRun' || versionId === 'runner') versionId = 'v3';
+      else versionId = 'v3';
+    }
+    this.majorVersion = versionId;
+    try {
+      localStorage.setItem('karachi_major_version', versionId);
+    } catch (e) {}
+
+    this.isTempleRun = (versionId === 'v3');
+
+    if (this.player) {
+      if (versionId === 'v1') {
+        // v1.0: Classic Hole Devourer
+        if (this.player.avatarMesh) this.player.avatarMesh.visible = false;
+        if (this.player.ringMesh) this.player.ringMesh.visible = true;
+        if (this.player.innerRingMesh) this.player.innerRingMesh.visible = true;
+        if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
+        this.cameraWideMode = true;
+      } else {
+        // v2.0 Civic Hero or v3.0 Temple Run
+        if (this.player.avatarMesh) this.player.avatarMesh.visible = true;
+        if (this.player.ringMesh) this.player.ringMesh.visible = false;
+        if (this.player.innerRingMesh) this.player.innerRingMesh.visible = false;
+        if (this.player.shadowMesh) this.player.shadowMesh.visible = true;
+        this.cameraWideMode = false;
+      }
+    }
+
+    if (this.ui && typeof this.ui.syncActiveVersionUI === 'function') {
+      this.ui.syncActiveVersionUI(versionId);
+    }
+
+    const versionNames = {
+      v1: 'v1.0 Classic Hole Devourer 🕳️',
+      v2: 'v2.0 Karachi Civic Hero (3D Patrol) 🦸',
+      v3: 'v3.0 Karachi Temple Run (Street Runner) 🏃'
+    };
+    if (this.ui) {
+      this.ui.showAnnouncement(`🔄 MODE ACTIVE: ${versionNames[versionId] || versionId}`, '#00e5ff');
+    }
+
+    if (reloadDistrict) {
+      this.loadDistrictLevel(this.currentDistrictLevel || 1, this.isGameStarted);
+    }
+  }
+
   initAudioTriggers() {
-    // Start music on first user interaction
+    // Start music on first user interaction or auto-start game
     const startAudio = () => {
       audio.startMusic();
+      if (!this.isGameStarted) {
+        this.startGame();
+      }
       window.removeEventListener('click', startAudio);
       window.removeEventListener('touchstart', startAudio);
     };
@@ -2173,8 +2262,8 @@ class Game {
     }
     this.recentCleaned = [];
 
-    // Reset player position smoothly: In Temple Run Karachi mode, start at South (Z=70) for the full 152m sprint down to North finish gate (Z=-82)
-    const startZ = this.isTempleRun ? 70.0 : ((this.currentDistrictLevel === 1) ? 70.0 : 0.0);
+    // Reset player position smoothly: In Temple Run Karachi mode, start at South (Z=70) for the sprint; in v1 / v2 start at center (Z=0)
+    const startZ = this.isTempleRun ? 70.0 : 0.0;
     this.player.position.set(0, 0, startZ);
     this.player.group.position.set(0, 0, startZ);
     this.player.facingAngle = Math.PI;
@@ -2193,25 +2282,34 @@ class Game {
     }
     this.player.currentSpeed = this.player.baseSpeed;
 
-    // Reset bots to distant perimeter coordinates so they never collide with new district evils
-    const botPositions = [[-45, 15], [-20, 45], [45, 45], [-55, 30], [45, -35]];
-    this.holes.forEach((h, idx) => {
-      if (h.isPlayer) return;
-      const pos = botPositions[idx - 1] || [0, 0];
-      h.position.set(pos[0], 0, pos[1]);
-      h.group.position.copy(h.position);
-      h.aiTarget = null;
-      h.aiTimer = 0;
-    });
-
-    // Explicitly reset camera position and orientation behind player facing north down avenue
-    this.camAngle = Math.PI;
-    this.cameraPivot = null;
-    this.backwardBaseAngle = null;
-    this.smoothGazeLead = 0;
-    this.cameraBankX = 0;
-    this.camera.position.set(0, 2.35, startZ + 4.4);
-    this.camera.lookAt(0, 1.35, startZ - 7.0);
+    // Apply version-specific mesh visibility and camera setup
+    if (this.majorVersion === 'v1') {
+      if (this.player.avatarMesh) this.player.avatarMesh.visible = false;
+      if (this.player.ringMesh) this.player.ringMesh.visible = true;
+      if (this.player.innerRingMesh) this.player.innerRingMesh.visible = true;
+      if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
+      this.camAngle = Math.PI;
+      this.cameraPivot = null;
+      this.camera.position.set(0, 22.0, 14.0);
+      this.camera.lookAt(0, 0, 0);
+    } else {
+      if (this.player.avatarMesh) this.player.avatarMesh.visible = true;
+      if (this.player.ringMesh) this.player.ringMesh.visible = false;
+      if (this.player.innerRingMesh) this.player.innerRingMesh.visible = false;
+      if (this.player.shadowMesh) this.player.shadowMesh.visible = true;
+      this.camAngle = Math.PI;
+      this.cameraPivot = null;
+      this.backwardBaseAngle = null;
+      this.smoothGazeLead = 0;
+      this.cameraBankX = 0;
+      if (this.isTempleRun) {
+        this.camera.position.set(0, 2.35, startZ + 4.4);
+        this.camera.lookAt(0, 1.35, startZ - 7.0);
+      } else {
+        this.camera.position.set(0, 3.4, startZ + 5.8);
+        this.camera.lookAt(0, 1.5, startZ - 9.5);
+      }
+    }
     this.camera.updateMatrixWorld(true);
 
     this.particles.createLevelUpShockwave(this.player.position, 18);
@@ -4083,15 +4181,19 @@ class Game {
           this.ui.updateDevModeHUD(window.__DEV_TELEMETRY__);
         }
 
-        // Broadcast telemetry to God Mode Dashboard
-        if (this.godChannel) {
+        // Broadcast telemetry to Master Mode / God Mode Dashboard
+        const targetChannel = this.masterChannel || this.godChannel;
+        if (targetChannel || this.masterChannel || this.godChannel) {
           const nowMs = performance.now();
-          if (!this.__lastGodTelemetryBroadcast || nowMs - this.__lastGodTelemetryBroadcast > 100) {
+          if (!this.__lastMasterTelemetryBroadcast || nowMs - this.__lastMasterTelemetryBroadcast > 100) {
+            this.__lastMasterTelemetryBroadcast = nowMs;
             this.__lastGodTelemetryBroadcast = nowMs;
-            this.godChannel.postMessage({
+            const teleMsg = {
               type: 'TELEMETRY_UPDATE',
               telemetry: window.__DEV_TELEMETRY__
-            });
+            };
+            if (this.masterChannel) this.masterChannel.postMessage(teleMsg);
+            if (this.godChannel) this.godChannel.postMessage(teleMsg);
           }
         }
 
@@ -4112,37 +4214,49 @@ class Game {
   }
 
   // =========================================================================
-  // GOD MODE & BIDIRECTIONAL CONTROL SUITE
+  // MASTER MODE & BIDIRECTIONAL CONTROL SUITE (Formerly God Mode)
   // =========================================================================
-  initGodModeComms() {
+  initMasterModeComms() {
     try {
-      this.godChannel = new BroadcastChannel('karachi_hole_godmode');
-      this.godChannel.onmessage = (event) => this.handleGodModeCommand(event.data);
+      this.masterChannel = new BroadcastChannel('karachi_hole_mastermode');
+      this.masterChannel.onmessage = (event) => this.handleMasterModeCommand(event.data);
     } catch (e) {
-      console.warn('[GOD_MODE] BroadcastChannel unsupported in game');
+      console.warn('[MASTER_MODE] BroadcastChannel unsupported in game');
     }
 
+    try {
+      this.godChannel = new BroadcastChannel('karachi_hole_godmode');
+      this.godChannel.onmessage = (event) => this.handleMasterModeCommand(event.data);
+    } catch (e) {}
+
     window.addEventListener('storage', (e) => {
-      if (e.key === 'karachi_godmode_cmd' && e.newValue) {
+      if ((e.key === 'karachi_mastermode_cmd' || e.key === 'karachi_godmode_cmd') && e.newValue) {
         try {
           const cmd = JSON.parse(e.newValue);
-          this.handleGodModeCommand(cmd);
+          this.handleMasterModeCommand(cmd);
         } catch (err) {}
       }
     });
   }
 
-  handleGodModeCommand(data) {
+  handleMasterModeCommand(data) {
     if (!data || !data.type) return;
     const { type, payload } = data;
 
     switch (type) {
       case 'PING':
+        const reply = { type: 'PONG', telemetry: window.__DEV_TELEMETRY__ };
+        if (this.masterChannel && window.__DEV_TELEMETRY__) {
+          this.masterChannel.postMessage(reply);
+        }
         if (this.godChannel && window.__DEV_TELEMETRY__) {
-          this.godChannel.postMessage({
-            type: 'PONG',
-            telemetry: window.__DEV_TELEMETRY__
-          });
+          this.godChannel.postMessage(reply);
+        }
+        break;
+
+      case 'SET_VERSION':
+        if (payload && payload.version) {
+          this.setMajorGameVersion(payload.version, true);
         }
         break;
 
@@ -4155,18 +4269,19 @@ class Game {
           if (this.camera) {
             this.camera.position.set(0, 6.2 + r * 1.15, 6.8 + r * 1.15);
           }
-          if (this.ui?.showDevToast) this.ui.showDevToast(`👑 God Radius: ${r.toFixed(1)}m`);
+          if (this.ui?.showDevToast) this.ui.showDevToast(`👑 Master Radius: ${r.toFixed(1)}m`);
         }
         break;
 
       case 'SET_SPEED':
         if (payload.speedMult) {
-          this.godSpeedMult = Math.max(0.2, Math.min(10.0, payload.speedMult));
+          this.masterSpeedMult = Math.max(0.2, Math.min(10.0, payload.speedMult));
+          this.godSpeedMult = this.masterSpeedMult;
           if (this.player) {
-            this.player.baseSpeed = 13.5 * this.godSpeedMult;
+            this.player.baseSpeed = 13.5 * this.masterSpeedMult;
             this.player.currentSpeed = this.player.baseSpeed;
           }
-          if (this.ui?.showDevToast) this.ui.showDevToast(`⚡ God Speed: ${this.godSpeedMult.toFixed(1)}x`);
+          if (this.ui?.showDevToast) this.ui.showDevToast(`⚡ Master Speed: ${this.masterSpeedMult.toFixed(1)}x`);
         }
         break;
 
@@ -4176,8 +4291,9 @@ class Game {
         break;
 
       case 'TOGGLE_IMMORTAL':
-        this.isGodImmortal = !!payload.immortal;
-        if (this.ui?.showDevToast) this.ui.showDevToast(this.isGodImmortal ? '🛡️ God Invincibility ACTIVE!' : '🛡️ Standard Vulnerability');
+        this.isMasterImmortal = !!payload.immortal;
+        this.isGodImmortal = this.isMasterImmortal;
+        if (this.ui?.showDevToast) this.ui.showDevToast(this.isMasterImmortal ? '🛡️ Master Invincibility ACTIVE!' : '🛡️ Standard Vulnerability');
         break;
 
       case 'TOGGLE_AUTOPILOT':
@@ -4231,7 +4347,7 @@ class Game {
         break;
 
       case 'TRIGGER_AUDIT':
-        this.recordDevNote('AI_MANUAL_AUDIT', 'Manual AI audit triggered from God Mode Dashboard', payload.audit || {});
+        this.recordDevNote('AI_MANUAL_AUDIT', 'Manual AI audit triggered from Master Mode Dashboard', payload.audit || {});
         break;
 
       case 'NEW_DEV_NOTE':
