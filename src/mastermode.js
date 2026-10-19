@@ -339,8 +339,48 @@ class MasterModeController {
     });
 
     // AI Audit Actions
+    this.bindClick('btn-trigger-audit', () => {
+      this.runLiveAutonomousAudit();
+    });
     this.bindClick('btn-run-live-audit', () => {
       this.runLiveAutonomousAudit();
+    });
+
+    // NASCAR & Temple Run Tactical Powers
+    this.bindClick('btn-trigger-slingshot', () => {
+      this.sendCommand('TRIGGER_SLINGSHOT', {});
+      this.showToast('🚀 NASCAR Slingshot Turbo Boost Injected!');
+    });
+
+    this.bindClick('btn-max-draft', () => {
+      this.sendCommand('MAX_DRAFT', {});
+      this.showToast('💨 100% Slipstream Drafting Charge Applied!');
+    });
+
+    this.bindClick('btn-spawn-convoy', () => {
+      this.sendCommand('SPAWN_CONVOY', {});
+      this.showToast('🚚 Highway Traffic Convoy Deployed Ahead!');
+    });
+
+    this.bindClick('btn-toggle-nascar-speed', () => {
+      this.sendCommand('TOGGLE_NASCAR_SPEED', {});
+      this.showToast('🏁 Toggled NASCAR 200+ KM/H Speed Mode!');
+    });
+
+    // Central Karachi Fleet Broadcast Actions
+    this.bindClick('btn-broadcast-fleet-nitro', () => {
+      this.sendCommand('FLEET_NITRO', {});
+      this.showToast('🚀 Fleet Nitro Broadcast Sent to All Patrollers!');
+    });
+
+    this.bindClick('btn-broadcast-fleet-shield', () => {
+      this.sendCommand('FLEET_SHIELD', {});
+      this.showToast('🛡️ Fleet Water Tanker Iron Shield Deployed!');
+    });
+
+    this.bindClick('btn-broadcast-fleet-horn', () => {
+      this.sendCommand('FLEET_HORN', {});
+      this.showToast('📢 City-Wide King Pressure Horn Blasted!');
     });
 
     // Timeline Filters
@@ -458,6 +498,10 @@ class MasterModeController {
         }
         this.renderFleetGrid();
       }
+    }
+
+    if (t.nascar) {
+      setTxt('stat-active-powerup', `${t.nascar.speedKmh} KM/H (G${t.nascar.gear}) ${t.nascar.isDrafting ? '💨 DRAFT ' + t.nascar.draftPct + '%' : ''}`);
     }
   }
 

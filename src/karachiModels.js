@@ -5825,6 +5825,93 @@ export const KarachiModels = {
     group.add(flag);
 
     return group;
+  },
+
+  // ---------------------------------------------------------------------------
+  // NASCAR ASPHALT NITRO CHEVRON BOOST PAD
+  // ---------------------------------------------------------------------------
+  createAsphaltBoostPad(width = 2.4, length = 4.0) {
+    const group = new THREE.Group();
+
+    // Dark asphalt pad base
+    const baseGeo = new THREE.PlaneGeometry(width, length);
+    baseGeo.rotateX(-Math.PI / 2);
+    const baseMat = new THREE.MeshStandardMaterial({
+      color: 0x111827,
+      roughness: 0.8,
+      metalness: 0.2
+    });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.02;
+    base.receiveShadow = true;
+    group.add(base);
+
+    // Glowing Neon Cyan / Lime Chevrons
+    const chevronColor = 0x00e5ff;
+    const chevronMat = new THREE.MeshBasicMaterial({
+      color: chevronColor,
+      transparent: true,
+      opacity: 0.95
+    });
+
+    [-1.0, 0.0, 1.0].forEach(zOffset => {
+      const chevron = new THREE.Group();
+      const wingGeo = new THREE.BoxGeometry(0.7, 0.04, 0.22);
+      
+      const wingL = new THREE.Mesh(wingGeo, chevronMat);
+      wingL.position.set(-0.32, 0.035, 0);
+      wingL.rotation.y = 0.55;
+      chevron.add(wingL);
+
+      const wingR = new THREE.Mesh(wingGeo, chevronMat);
+      wingR.position.set(0.32, 0.035, 0);
+      wingR.rotation.y = -0.55;
+      chevron.add(wingR);
+
+      chevron.position.set(0, 0, zOffset);
+      group.add(chevron);
+    });
+
+    // Glowing outer edge strips
+    const edgeGeo = new THREE.BoxGeometry(0.08, 0.04, length);
+    const edgeMat = new THREE.MeshBasicMaterial({ color: 0x76ff03 });
+    const edgeL = new THREE.Mesh(edgeGeo, edgeMat);
+    edgeL.position.set(-width * 0.48, 0.03, 0);
+    const edgeR = new THREE.Mesh(edgeGeo, edgeMat);
+    edgeR.position.set(width * 0.48, 0.03, 0);
+    group.add(edgeL);
+    group.add(edgeR);
+
+    group.userData = { isBoostPad: true, boostDuration: 3.5 };
+    return group;
+  },
+
+  // ---------------------------------------------------------------------------
+  // NASCAR AERODYNAMIC SLIPSTREAM STREAMLINE RIBBONS
+  // ---------------------------------------------------------------------------
+  createSlipstreamRibbons(width = 1.6, length = 7.0) {
+    const group = new THREE.Group();
+
+    const ribbonMat = new THREE.MeshBasicMaterial({
+      color: 0x00e5ff,
+      transparent: true,
+      opacity: 0.65,
+      side: THREE.DoubleSide
+    });
+
+    const ribbonGeo = new THREE.PlaneGeometry(0.18, length);
+    ribbonGeo.rotateX(-Math.PI / 2);
+
+    const ribbonL = new THREE.Mesh(ribbonGeo, ribbonMat);
+    ribbonL.position.set(-width * 0.4, 0.65, length * 0.5);
+    group.add(ribbonL);
+
+    const ribbonR = new THREE.Mesh(ribbonGeo, ribbonMat);
+    ribbonR.position.set(width * 0.4, 0.65, length * 0.5);
+    group.add(ribbonR);
+
+    group.visible = false;
+    return group;
   }
 };
 

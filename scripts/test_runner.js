@@ -1022,6 +1022,121 @@ async function runTestSuite() {
   recordTest('TC-20', 'Water Tanker Iron Shield Absorption, Heart Depletion & Doodh Patti Heal', res20.success ? 'PASSED' : 'FAILED', Date.now() - t20Start, 'Verified 1-hit Water Tanker Shield absorption, heart depletion, invulnerability grace, Chai healing, and King Horn snatcher scatter');
 
   // -------------------------------------------------------------------------
+  // TC-21: NASCAR Slipstream Drafting, Slingshot Boost & Cockpit Tachometer HUD
+  // -------------------------------------------------------------------------
+  const t21Start = Date.now();
+  const res21 = await runChromeTest({
+    testId: 'TC-21',
+    screenshotName: 'tc21_nascar_drafting_cockpit.png',
+    extraStyle: '#modal-start-mission { display: none !important; }',
+    scriptInjection: `
+      window.addEventListener('DOMContentLoaded', () => {
+        const startBtn = document.getElementById('btn-start-patrol');
+        if (startBtn) startBtn.click();
+
+        setTimeout(() => {
+          const game = window.game;
+          if (!game) throw new Error('Game instance not found');
+
+          // 1. Verify NASCAR 3D Models
+          if (typeof window.KarachiModels.createAsphaltBoostPad !== 'function') {
+            throw new Error('KarachiModels.createAsphaltBoostPad is not a function');
+          }
+          if (typeof window.KarachiModels.createSlipstreamRibbons !== 'function') {
+            throw new Error('KarachiModels.createSlipstreamRibbons is not a function');
+          }
+          const pad = window.KarachiModels.createAsphaltBoostPad(2.4, 4.0);
+          if (!pad || !pad.userData.isBoostPad) {
+            throw new Error('createAsphaltBoostPad failed to return boost pad');
+          }
+          const ribbons = window.KarachiModels.createSlipstreamRibbons(2.0, 7.0);
+          if (!ribbons) {
+            throw new Error('createSlipstreamRibbons failed to return group');
+          }
+
+          // 2. Verify Cockpit Gauge Cluster DOM Elements
+          const cockpit = document.getElementById('hud-nascar-cluster');
+          const speedEl = document.getElementById('hud-nascar-speed');
+          const rpmEl = document.getElementById('hud-nascar-rpm');
+          const gearEl = document.getElementById('hud-nascar-gear');
+          const draftPill = document.getElementById('hud-drafting-pill');
+          const speedCanvas = document.getElementById('speed-lines-canvas');
+
+          if (!cockpit || !speedEl || !rpmEl || !gearEl || !draftPill) {
+            throw new Error('NASCAR Cockpit HUD elements missing from DOM');
+          }
+          if (!speedCanvas) {
+            throw new Error('Speed lines canvas missing from DOM');
+          }
+
+          // 3. Verify Drafting Slipstream Physics
+          const pZ = game.player.position.z;
+          const leadVehicle = window.KarachiModels.createBedfordTruck();
+          leadVehicle.position.set(0, 0, pZ - 5.0); // 5m ahead in same lane
+          game.scene.add(leadVehicle);
+          const truckRibbons = window.KarachiModels.createSlipstreamRibbons(2.0, 7.5);
+          leadVehicle.add(truckRibbons);
+
+          game.runnerTraffic.push({
+            type: 'traffic_vehicle',
+            mesh: leadVehicle,
+            laneX: 0,
+            speed: 12.0,
+            label: '🚚 Test Bedford Truck',
+            ribbons: truckRibbons,
+            isHit: false,
+            nearMissAwarded: false
+          });
+
+          // Run several corridor simulation frames behind lead vehicle
+          game.player.position.x = 0;
+          game.targetLaneX = 0;
+          for (let f = 0; f < 10; f++) {
+            game.updateTempleRunCorridor(0.033);
+          }
+
+          if (!game.isDrafting) {
+            throw new Error('Drafting failed to engage when running 5m behind lead truck');
+          }
+          if (game.draftCharge <= 0) {
+            throw new Error('Draft charge did not accumulate while drafting: ' + game.draftCharge);
+          }
+          if (!truckRibbons.visible) {
+            throw new Error('Aerodynamic slipstream ribbons not made visible during active drafting');
+          }
+
+          // 4. Verify NASCAR Slingshot Boost Trigger on Lane Change
+          game.draftCharge = 0.95; // Fully charged
+          const prevScore = game.score || 0;
+          game.changeLane(1); // Pull out to right lane to slingshot!
+
+          if (game.nitroTimer <= 0) {
+            throw new Error('Slingshot Boost failed to activate nitroTimer upon lane change from full draft');
+          }
+          if (game.draftCharge !== 0) {
+            throw new Error('Draft charge was not reset upon executing Slingshot Boost');
+          }
+          if (game.score < prevScore + 500) {
+            throw new Error('Slingshot Boost did not award +500 PTS');
+          }
+
+          // 5. Verify Master Mode Command Handling
+          game.handleMasterModeCommand({ type: 'MAX_DRAFT' });
+          if (game.draftCharge !== 1.0) {
+            throw new Error('Master Mode MAX_DRAFT failed to set draftCharge to 1.0');
+          }
+
+          game.handleMasterModeCommand({ type: 'SWITCH_VERSION', payload: { versionId: 'v3' } });
+          if (game.majorVersion !== 'v3') {
+            throw new Error('Master Mode SWITCH_VERSION failed to switch majorVersion to v3');
+          }
+        }, 500);
+      });
+    `
+  });
+  recordTest('TC-21', 'NASCAR Slipstream Drafting, Slingshot Boost & Cockpit Tachometer HUD', res21.success ? 'PASSED' : 'FAILED', Date.now() - t21Start, 'Verified 3D boost pads, slipstream drafting accumulation, ribbons visibility, slingshot lane change boost, cockpit cluster, and Master Mode command bridge');
+
+  // -------------------------------------------------------------------------
   // Summary Report Output
   // -------------------------------------------------------------------------
   const totalDuration = Date.now() - startTime;

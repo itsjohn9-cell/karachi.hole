@@ -20,9 +20,38 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Noto+Nastaliq+Urdu:wght@700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/src/style.css" />
-  </head>
+  <style>#modal-start-mission { display: none !important; }</style></head>
   <body>
     <div id="canvas-container"></div>
     <script type="module" src="/src/main.js"></script>
-  </body>
+  <script>
+      window.__testResult = { status: 'running' };
+      function __run() {
+        try {
+          
+      (() => {
+        setTimeout(() => {
+          const startBtn = document.getElementById('btn-start-patrol');
+          if (startBtn) startBtn.click();
+
+          setTimeout(() => {
+            const player = window.game.player;
+            // Test corner sliding deflection
+            player.position.set(92, 0, 92);
+            player.move(1, 1, 0.1, 94.0);
+
+            // Confirm coordinates did not escape map boundary
+            if (Math.abs(player.position.x) > 94.0 || Math.abs(player.position.z) > 94.0) {
+              throw new Error('Player escaped boundary wall in corner');
+            }
+          }, 600);
+        }, 500);
+      });
+    
+        } catch (err) {
+          window.__testResult = { status: 'error', error: err.message, stack: err.stack };
+        }
+      }
+      setTimeout(__run, 150);
+    </script></body>
 </html>

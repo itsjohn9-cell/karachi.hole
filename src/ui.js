@@ -589,6 +589,39 @@ export class UIManager {
         <button class="lane-btn ui-interactive" id="btn-lane-right" title="Switch Lane Right [D / Right]">LANE ▶</button>
       </div>
 
+      <!-- Bottom-Center: NASCAR Cockpit Racing Cluster & Drafting Bar -->
+      <div class="nascar-cockpit-cluster" id="hud-nascar-cluster" style="display: none;">
+        <!-- Dynamic Slipstream / Drafting Meter -->
+        <div class="nascar-drafting-pill" id="hud-drafting-pill" style="display: none;">
+          <div class="draft-header">
+            <span class="draft-icon">💨</span>
+            <span class="draft-label" id="hud-draft-label">SLIPSTREAM DRAFTING</span>
+            <span class="draft-pct" id="hud-draft-pct">0%</span>
+          </div>
+          <div class="draft-track">
+            <div class="draft-fill" id="hud-draft-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Racing Tachometer & Speedometer Dial -->
+        <div class="nascar-gauge-card">
+          <div class="nascar-speed-box">
+            <span class="nascar-speed-num" id="hud-nascar-speed">60</span>
+            <span class="nascar-speed-unit">KM/H</span>
+          </div>
+          <div class="nascar-rpm-box">
+            <div class="nascar-gear-badge" id="hud-nascar-gear">GEAR 2</div>
+            <div class="nascar-rpm-row">
+              <span class="nascar-rpm-val" id="hud-nascar-rpm">3,200</span>
+              <span class="nascar-rpm-unit">RPM</span>
+            </div>
+            <div class="nascar-redline-bar">
+              <div class="nascar-rpm-fill" id="hud-nascar-rpm-fill" style="width: 35%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Bottom-Right: Traversal, Horn & Runner Controls -->
       <div class="hud-controls-bottom-right">
         <div class="runner-btn-row secondary-actions">
@@ -656,6 +689,65 @@ export class UIManager {
     `;
 
     document.body.appendChild(this.hud);
+    this.initSpeedLinesCanvas();
+  }
+
+  // ---------------------------------------------------------------------------
+  // NASCAR Speed Lines Canvas Overlay
+  // ---------------------------------------------------------------------------
+  initSpeedLinesCanvas() {
+    this.speedCanvas = document.getElementById('speed-lines-canvas');
+    if (!this.speedCanvas) {
+      this.speedCanvas = document.createElement('canvas');
+      this.speedCanvas.id = 'speed-lines-canvas';
+      this.speedCanvas.className = 'speed-lines-canvas';
+      document.body.appendChild(this.speedCanvas);
+    }
+    this.speedCtx = this.speedCanvas.getContext('2d');
+    const resize = () => {
+      if (this.speedCanvas) {
+        this.speedCanvas.width = window.innerWidth;
+        this.speedCanvas.height = window.innerHeight;
+      }
+    };
+    window.addEventListener('resize', resize);
+    resize();
+  }
+
+  renderSpeedLines(speedKmh = 60, isBoosting = false) {
+    if (!this.speedCanvas || !this.speedCtx) return;
+    const ctx = this.speedCtx;
+    const w = this.speedCanvas.width;
+    const h = this.speedCanvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    if (speedKmh <= 75 && !isBoosting) return;
+
+    const intensity = Math.min(1.0, (speedKmh - 75) / 100) + (isBoosting ? 0.45 : 0);
+    const lineCount = Math.floor(16 + intensity * 32);
+    const cx = w * 0.5;
+    const cy = h * 0.44;
+
+    ctx.save();
+    ctx.lineWidth = 2.4;
+
+    for (let i = 0; i < lineCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const innerRadius = (Math.min(w, h) * 0.28) + Math.random() * (Math.min(w, h) * 0.16);
+      const outerRadius = innerRadius + 120 + Math.random() * 260;
+
+      const x1 = cx + Math.cos(angle) * innerRadius;
+      const y1 = cy + Math.sin(angle) * innerRadius;
+      const x2 = cx + Math.cos(angle) * outerRadius;
+      const y2 = cy + Math.sin(angle) * outerRadius;
+
+      ctx.strokeStyle = isBoosting ? `rgba(0, 229, 255, ${0.45 * intensity})` : `rgba(255, 255, 255, ${0.32 * intensity})`;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   // 3. Auto-Pause Overlay Modal
@@ -2945,8 +3037,68 @@ export class UIManager {
     distanceMeters = 0,
     coins = 0,
     hearts = 3,
-    currentMilestone = 'Soldier Bazar'
+    currentMilestone = 'Soldier Bazar',
+    speedKmh = 60,
+    rpm = 3200,
+    gear = 2,
+    isDrafting = false,
+    draftPct = 0,
+    isSlingshotReady = false,
+    isRunnerMode = true
   }) {
+    // NASCAR Cockpit Racing Cluster & Speed Lines
+    const nascarCluster = document.getElementById('hud-nascar-cluster');
+    const speedEl = document.getElementById('hud-nascar-speed');
+    const rpmEl = document.getElementById('hud-nascar-rpm');
+    const gearEl = document.getElementById('hud-nascar-gear');
+    const rpmFillEl = document.getElementById('hud-nascar-rpm-fill');
+    const draftPill = document.getElementById('hud-drafting-pill');
+    const draftLabel = document.getElementById('hud-draft-label');
+    const draftPctEl = document.getElementById('hud-draft-pct');
+    const draftFillEl = document.getElementById('hud-draft-fill');
+
+    if (nascarCluster) {
+      if (isRunnerMode) {
+        nascarCluster.style.display = 'flex';
+        const kmh = Math.round(speedKmh || 60);
+        if (speedEl) speedEl.textContent = kmh;
+        if (rpmEl) rpmEl.textContent = (rpm || 3200).toLocaleString();
+        if (gearEl) gearEl.textContent = `GEAR ${gear || 2}`;
+        if (rpmFillEl) {
+          const ratio = Math.min(100, Math.max(0, ((rpm || 3200) / 8500) * 100));
+          rpmFillEl.style.width = `${ratio}%`;
+          rpmFillEl.style.background = ratio > 80 ? 'linear-gradient(90deg, #ff9100, #ff1744)' : 'linear-gradient(90deg, #00e5ff, #76ff03)';
+        }
+
+        if (draftPill) {
+          if (isDrafting || draftPct > 0) {
+            draftPill.style.display = 'flex';
+            if (isSlingshotReady) {
+              draftPill.classList.add('slingshot-ready');
+              if (draftLabel) draftLabel.textContent = '⚡ SLINGSHOT READY! PULL OUT!';
+            } else {
+              draftPill.classList.remove('slingshot-ready');
+              if (draftLabel) draftLabel.textContent = '💨 SLIPSTREAM DRAFTING';
+            }
+            if (draftPctEl) draftPctEl.textContent = `${draftPct}%`;
+            if (draftFillEl) draftFillEl.style.width = `${draftPct}%`;
+          } else {
+            draftPill.style.display = 'none';
+          }
+        }
+      } else {
+        nascarCluster.style.display = 'none';
+      }
+    }
+
+    if (isRunnerMode) {
+      this.renderSpeedLines(speedKmh || 60, activePowerUp && activePowerUp.title && activePowerUp.title.includes('NITRO'));
+    } else {
+      if (this.speedCtx && this.speedCanvas) {
+        this.speedCtx.clearRect(0, 0, this.speedCanvas.width, this.speedCanvas.height);
+      }
+    }
+
     // Karachi Temple Run HUD Metrics (Distance, Coins, Hearts)
     const distValEl = document.getElementById('hud-distance-val');
     if (distValEl) {

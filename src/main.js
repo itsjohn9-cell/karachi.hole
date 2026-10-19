@@ -75,10 +75,20 @@ class Game {
     this.maxHearts = 3;
     this.isSliding = false;
     this.slideTimer = 0;
-    this.runSpeed = 13.5;
+    this.runSpeed = 16.5; // High-octane initial street pace
     this.runnerObstacles = [];
     this.runnerCoins = [];
     this.runnerPowerups = [];
+    this.runnerTraffic = [];
+    this.runnerBoostPads = [];
+    this.isDrafting = false;
+    this.draftCharge = 0;
+    this.currentKmh = 60;
+    this.currentRpm = 3200;
+    this.currentGear = 2;
+    this.targetBankRoll = 0;
+    this.currentBankRoll = 0;
+    this.isNascarSuperSpeed = false;
     this.nextRunnerWaveZ = 45.0;
     this.currentMilestone = 'Soldier Bazar';
     this.milestones = [
@@ -560,13 +570,34 @@ class Game {
   changeLane(dir) {
     if (!this.player || this.isPaused || this.isGameOver) return;
     if (!this.isGameStarted) this.startGame();
+
+    // Check if NASCAR Slingshot Boost was primed from drafting behind a vehicle!
+    if ((this.draftCharge || 0) >= 0.72) {
+      this.nitroTimer = 4.5;
+      this.draftCharge = 0;
+      this.isDrafting = false;
+      this.score += 500;
+      this.player.addXP(500);
+      audio.playSlingshotBoost();
+      this.cameraShakeTimer = 0.35;
+      this.particles.createDevourSparkles(this.player.position, 25, 0x00e5ff);
+      this.ui.showAnnouncement('🏁 NASCAR SLINGSHOT BOOST ENGAGED! +500 PTS!', '#ffd700');
+      this.ui.showFloatingFeedback('🚀 SLINGSHOT BOOST!', this.player.position, '#ffd700');
+    } else {
+      audio.playClick();
+    }
+
     this.currentLane = Math.max(-1, Math.min(1, this.currentLane + dir));
     this.targetLaneX = this.currentLane * this.laneWidth;
-    audio.playClick();
+
+    // Stock-Car dynamic lateral banking roll into turns + asphalt tire skid
+    this.targetBankRoll = -dir * 0.16;
+    audio.playTireScreech();
+    this.particles.createSkidSmoke(this.player.position, 4);
   }
 
   /**
-   * Clear all active runner 3D obstacles, coins, and power-ups from scene
+   * Clear all active runner 3D obstacles, coins, traffic and power-ups from scene
    */
   clearRunnerObjects() {
     if (this.runnerObstacles) {
@@ -587,6 +618,20 @@ class Game {
       });
       this.runnerPowerups = [];
     }
+    if (this.runnerTraffic) {
+      this.runnerTraffic.forEach(v => {
+        if (v && v.mesh) this.scene.remove(v.mesh);
+      });
+      this.runnerTraffic = [];
+    }
+    if (this.runnerBoostPads) {
+      this.runnerBoostPads.forEach(b => {
+        if (b && b.mesh) this.scene.remove(b.mesh);
+      });
+      this.runnerBoostPads = [];
+    }
+    this.isDrafting = false;
+    this.draftCharge = 0;
   }
 
   /**
@@ -708,7 +753,7 @@ class Game {
    */
   spawnRunnerWave(waveZ) {
     const lanes = [-this.laneWidth, 0, this.laneWidth]; // [-3.2, 0, 3.2]
-    const archetype = Math.floor(Math.random() * 6);
+    const archetype = Math.floor(Math.random() * 8);
 
     if (archetype === 0) {
       // 1. Low Hanging K-Electric Dangling Live Wires (Overhead - Must SLIDE under!)
@@ -832,7 +877,7 @@ class Game {
         this.scene.add(coin);
         this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
       });
-    } else {
+    } else if (archetype === 5) {
       // 6. 70cc Snatcher Motorcycle (Evade or blast with King Pressure Horn [H]!)
       const bikeLaneIdx = Math.floor(Math.random() * 3);
       const bikeLaneX = lanes[bikeLaneIdx];
@@ -855,6 +900,83 @@ class Game {
         this.scene.add(coin);
         this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
       });
+    } else if (archetype === 6) {
+      // 7. NASCAR Highway Traffic Convoy (Cruising vehicle - Draft behind for 100% Slingshot Turbo!)
+      const trafficLaneIdx = Math.floor(Math.random() * 3);
+      const trafficLaneX = lanes[trafficLaneIdx];
+      const vTypes = ['bedford', 'w11', 'tanker', 'rickshaw'];
+      const vChoice = vTypes[Math.floor(Math.random() * vTypes.length)];
+      let vMesh, vLabel, vSpeed, vWidth;
+
+      if (vChoice === 'bedford') {
+        vMesh = KarachiModels.createBedfordTruck();
+        vLabel = '🚚 Bedford Truck';
+        vSpeed = 13.0;
+        vWidth = 2.0;
+      } else if (vChoice === 'w11') {
+        vMesh = KarachiModels.createW11MiniBus();
+        vLabel = '🚐 W11 Minibus';
+        vSpeed = 15.0;
+        vWidth = 1.8;
+      } else if (vChoice === 'tanker') {
+        vMesh = KarachiModels.createWaterTanker();
+        vLabel = '🚰 Water Tanker';
+        vSpeed = 12.0;
+        vWidth = 2.1;
+      } else {
+        vMesh = KarachiModels.createAutoRickshaw();
+        vLabel = '🛺 Qingqi Rickshaw';
+        vSpeed = 11.0;
+        vWidth = 1.5;
+      }
+
+      vMesh.position.set(trafficLaneX, 0, waveZ);
+      this.scene.add(vMesh);
+
+      // Attach Aerodynamic Slipstream Streamlines to rear
+      const ribbons = KarachiModels.createSlipstreamRibbons(vWidth, 7.5);
+      vMesh.add(ribbons);
+
+      this.runnerTraffic.push({
+        type: 'traffic_vehicle',
+        mesh: vMesh,
+        laneX: trafficLaneX,
+        speed: vSpeed,
+        label: vLabel,
+        ribbons,
+        isHit: false,
+        nearMissAwarded: false
+      });
+
+      // Free lane coins
+      const freeLaneX = lanes[(trafficLaneIdx + 1) % 3];
+      [-3.0, 0, 3.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(freeLaneX, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
+      });
+    } else {
+      // 8. NASCAR Asphalt Nitro Chevron Boost Pad (Instant Turbo Catapult!)
+      const padLaneIdx = Math.floor(Math.random() * 3);
+      const padLaneX = lanes[padLaneIdx];
+      const pad = KarachiModels.createAsphaltBoostPad(2.4, 4.2);
+      pad.position.set(padLaneX, 0.02, waveZ);
+      this.scene.add(pad);
+      this.runnerBoostPads.push({
+        mesh: pad,
+        laneX: padLaneX,
+        z: waveZ,
+        isUsed: false
+      });
+
+      // Line of high-value golden coins along the boost pad
+      [-2.0, 0, 2.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(100);
+        coin.position.set(padLaneX, 0.8, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 100, x: padLaneX, z: waveZ + zOff });
+      });
     }
 
     // Occasional Karachi Tactical Power-Up spawn (every ~3 waves)
@@ -875,6 +997,28 @@ class Game {
   }
 
   /**
+   * Spawn a 2-vehicle Highway Traffic Convoy ahead (Tactical Master Mode / Scripted Event)
+   */
+  spawnTrafficConvoyAhead() {
+    const waveZ = this.player ? this.player.position.z - 35.0 : -40.0;
+    const lanes = [-this.laneWidth, 0, this.laneWidth];
+
+    const v1 = KarachiModels.createBedfordTruck();
+    v1.position.set(lanes[0], 0, waveZ);
+    this.scene.add(v1);
+    const r1 = KarachiModels.createSlipstreamRibbons(2.0, 7.5);
+    v1.add(r1);
+    this.runnerTraffic.push({ mesh: v1, laneX: lanes[0], speed: 12.0, label: '🚚 Bedford Truck', ribbons: r1, isHit: false });
+
+    const v2 = KarachiModels.createW11MiniBus();
+    v2.position.set(lanes[2], 0, waveZ - 14.0);
+    this.scene.add(v2);
+    const r2 = KarachiModels.createSlipstreamRibbons(1.8, 7.0);
+    v2.add(r2);
+    this.runnerTraffic.push({ mesh: v2, laneX: lanes[2], speed: 14.5, label: '🚐 W11 Minibus', ribbons: r2, isHit: false });
+  }
+
+  /**
    * Main Karachi Temple Run Corridor Physics, Movement, Obstacle & Coin Collision Loop
    */
   updateTempleRunCorridor(dt) {
@@ -882,14 +1026,31 @@ class Game {
 
     // 1. Calculate Forward Running Speed
     let speed = this.runSpeed;
+    if (this.isNascarSuperSpeed) {
+      speed *= 2.2;
+    }
     if (this.nitroTimer > 0) {
-      speed *= 2.0;
+      speed *= 2.1;
     } else if (this.turboTimer > 0 || this.isBoosting) {
       speed *= 1.45;
     }
+    // Speed boost while actively drafting behind a lead vehicle
+    if (this.isDrafting && this.draftCharge > 0) {
+      speed += 8.5 * this.draftCharge;
+    }
     // Subtle speed ramp with distance
-    speed += Math.min(6.0, this.distanceMeters * 0.002);
+    speed += Math.min(8.0, this.distanceMeters * 0.0025);
     this.player.currentSpeed = speed;
+
+    // Calculate real-time NASCAR Cockpit metrics
+    const kmh = Math.round(speed * 3.6);
+    this.currentKmh = kmh;
+    const gear = kmh < 45 ? 1 : kmh < 85 ? 2 : kmh < 125 ? 3 : kmh < 165 ? 4 : 5;
+    this.currentGear = gear;
+    const gearMin = [0, 0, 45, 85, 125, 165][gear];
+    const gearMax = [0, 45, 85, 125, 165, 230][gear];
+    const rpm = Math.round(2500 + ((kmh - gearMin) / Math.max(1, gearMax - gearMin)) * 5500);
+    this.currentRpm = rpm;
 
     // 2. Lateral Movement & Continuous Lane Lerp
     if (this.moveVector && this.moveVector.x !== 0) {
@@ -1083,26 +1244,143 @@ class Game {
       }
     }
 
-    // 12. Despawn Passed Objects Behind Player (> 24m)
+    // 11b. Update Highway Cruising Traffic Vehicles & Drafting Physics
+    const nowTime = performance.now();
+    this.isDrafting = false;
+
+    if (this.runnerTraffic) {
+      for (let i = 0; i < this.runnerTraffic.length; i++) {
+        const v = this.runnerTraffic[i];
+        if (!v || !v.mesh) continue;
+
+        // Traffic vehicles cruise forward along the street
+        v.mesh.position.z -= v.speed * dt;
+        v.mesh.position.x = v.laneX;
+
+        // Check if player is drafting directly behind vehicle
+        const distZ = pPos.z - v.mesh.position.z; // positive when player is behind vehicle
+        const distX = Math.abs(pPos.x - v.laneX);
+
+        if (distX < 1.35 && distZ > 1.8 && distZ < 12.0) {
+          this.isDrafting = true;
+          this.draftCharge = Math.min(1.0, (this.draftCharge || 0) + dt * 0.85);
+          if (v.ribbons) v.ribbons.visible = true;
+
+          if (!this.lastDraftSfx || (nowTime - this.lastDraftSfx > 350)) {
+            audio.playDraftingWhoosh();
+            this.lastDraftSfx = nowTime;
+          }
+        } else {
+          if (v.ribbons) v.ribbons.visible = false;
+        }
+
+        // Check crash into traffic vehicle
+        if (!v.isHit) {
+          const absDz = Math.abs(pPos.z - v.mesh.position.z);
+          if (absDz < 1.6 && distX < 1.3) {
+            if (this.nitroTimer > 0) {
+              v.isHit = true;
+              audio.playCrash();
+              this.particles.createDevourSparkles(v.mesh.position, 25, 0xffd700);
+              this.ui.showAnnouncement(`💥 NASCAR SMASH! Obliterated ${v.label}! +500 PTS`, '#ff9100');
+              this.player.addXP(500);
+              this.score += 500;
+              this.scene.remove(v.mesh);
+            } else {
+              this.handleRunnerHit(v, v.label);
+            }
+          } else if (absDz < 1.5 && distX >= 1.35 && distX <= 2.2 && !v.nearMissAwarded && kmh >= 75) {
+            v.nearMissAwarded = true;
+            audio.playNearMiss();
+            this.player.addXP(250);
+            this.score += 250;
+            this.ui.showFloatingFeedback('⚡ DRAFT OVERTAKE! +250 XP', pPos, '#00e5ff');
+          }
+        }
+      }
+    }
+
+    if (!this.isDrafting) {
+      this.draftCharge = Math.max(0, (this.draftCharge || 0) - dt * 0.45);
+    }
+
+    // 11c. Check NASCAR Asphalt Nitro Boost Pads
+    if (this.runnerBoostPads) {
+      for (let i = 0; i < this.runnerBoostPads.length; i++) {
+        const b = this.runnerBoostPads[i];
+        if (!b || !b.mesh || b.isUsed) continue;
+        const absDz = Math.abs(pPos.z - b.z);
+        const distX = Math.abs(pPos.x - b.laneX);
+        if (absDz < 1.9 && distX < 1.3) {
+          b.isUsed = true;
+          audio.playBoostPad();
+          this.nitroTimer = Math.max(this.nitroTimer, 3.8);
+          this.cameraShakeTimer = 0.3;
+          this.player.addXP(300);
+          this.score += 300;
+          this.particles.createDevourSparkles(b.mesh.position, 22, 0x00e5ff);
+          this.ui.showAnnouncement('🚀 NASCAR NITRO BOOST PAD! 180+ KM/H!', '#76ff03');
+          this.ui.showFloatingFeedback('⚡ NITRO BOOST!', pPos, '#76ff03');
+        }
+      }
+    }
+
+    // 11d. Stock-Car Dynamic Banking Roll & Camera FOV Punch
+    if (!this.currentBankRoll) this.currentBankRoll = 0;
+    if (!this.targetBankRoll) this.targetBankRoll = 0;
+    this.currentBankRoll = THREE.MathUtils.lerp(this.currentBankRoll, this.targetBankRoll, dt * 10.0);
+    this.targetBankRoll = THREE.MathUtils.lerp(this.targetBankRoll, 0, dt * 4.0);
+    if (this.player?.group) {
+      this.player.group.rotation.z = this.currentBankRoll;
+    }
+
+    if (this.camera) {
+      const targetFov = 60 + Math.min(18, Math.max(0, (kmh - 60) * 0.15)) + (this.nitroTimer > 0 ? 6 : 0);
+      this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, dt * 4.0);
+      this.camera.updateProjectionMatrix();
+
+      const rollAngle = (this.targetLaneX - this.player.position.x) * -0.015;
+      this.camera.rotation.z = THREE.MathUtils.lerp(this.camera.rotation.z, rollAngle, dt * 6.0);
+    }
+
+    // 12. Despawn Passed Objects Behind Player (> 28m)
     for (let i = this.runnerObstacles.length - 1; i >= 0; i--) {
       const obs = this.runnerObstacles[i];
-      if (obs && obs.z > pPos.z + 24.0) {
+      if (obs && obs.z > pPos.z + 28.0) {
         if (obs.mesh) this.scene.remove(obs.mesh);
         this.runnerObstacles.splice(i, 1);
       }
     }
     for (let i = this.runnerCoins.length - 1; i >= 0; i--) {
       const c = this.runnerCoins[i];
-      if (c && c.z > pPos.z + 24.0) {
+      if (c && c.z > pPos.z + 28.0) {
         if (c.mesh) this.scene.remove(c.mesh);
         this.runnerCoins.splice(i, 1);
       }
     }
     for (let i = this.runnerPowerups.length - 1; i >= 0; i--) {
       const p = this.runnerPowerups[i];
-      if (p && p.z > pPos.z + 24.0) {
+      if (p && p.z > pPos.z + 28.0) {
         if (p.mesh) this.scene.remove(p.mesh);
         this.runnerPowerups.splice(i, 1);
+      }
+    }
+    if (this.runnerTraffic) {
+      for (let i = this.runnerTraffic.length - 1; i >= 0; i--) {
+        const v = this.runnerTraffic[i];
+        if (v && v.mesh && v.mesh.position.z > pPos.z + 32.0) {
+          this.scene.remove(v.mesh);
+          this.runnerTraffic.splice(i, 1);
+        }
+      }
+    }
+    if (this.runnerBoostPads) {
+      for (let i = this.runnerBoostPads.length - 1; i >= 0; i--) {
+        const b = this.runnerBoostPads[i];
+        if (b && b.mesh && b.z > pPos.z + 32.0) {
+          this.scene.remove(b.mesh);
+          this.runnerBoostPads.splice(i, 1);
+        }
       }
     }
   }
@@ -4098,7 +4376,14 @@ class Game {
           distanceMeters: this.distanceMeters,
           coins: this.coins,
           hearts: this.hearts,
-          currentMilestone: this.currentMilestone
+          currentMilestone: this.currentMilestone,
+          speedKmh: this.currentKmh || 60,
+          rpm: this.currentRpm || 3200,
+          gear: this.currentGear || 2,
+          isDrafting: !!this.isDrafting,
+          draftPct: Math.round((this.draftCharge || 0) * 100),
+          isSlingshotReady: (this.draftCharge || 0) >= 0.72,
+          isRunnerMode: this.isTempleRun
         });
 
         // Real-Time Dev Mode Telemetry Bridge
@@ -4133,6 +4418,15 @@ class Game {
           isGameStarted: this.isGameStarted,
           gameMode: this.gameMode,
           timeLeft: Number(this.timeLeft.toFixed(2)),
+          nascar: {
+            speedKmh: this.currentKmh || 60,
+            rpm: this.currentRpm || 3200,
+            gear: this.currentGear || 2,
+            isDrafting: !!this.isDrafting,
+            draftPct: Math.round((this.draftCharge || 0) * 100),
+            isSlingshotReady: (this.draftCharge || 0) >= 0.72,
+            trafficCount: (this.runnerTraffic || []).length
+          },
           player: {
             x: Number((this.player?.position?.x || 0).toFixed(2)),
             z: Number((this.player?.position?.z || 0).toFixed(2)),
@@ -4284,8 +4578,69 @@ class Game {
         break;
 
       case 'SET_VERSION':
-        if (payload && payload.version) {
-          this.setMajorGameVersion(payload.version, true);
+      case 'SWITCH_VERSION':
+        const targetVer = payload.version || payload.versionId;
+        if (targetVer) {
+          this.setMajorGameVersion(targetVer, true);
+        }
+        break;
+
+      case 'TRIGGER_SLINGSHOT':
+        this.nitroTimer = 5.0;
+        this.draftCharge = 0;
+        this.score += 500;
+        if (this.player) this.player.addXP(500);
+        audio.playSlingshotBoost();
+        if (this.ui) {
+          this.ui.showAnnouncement('🏁 NASCAR SLINGSHOT OVERTAKE ENGAGED! +500 PTS!', '#ffd700');
+          this.ui.showFloatingFeedback('🚀 SLINGSHOT BOOST!', this.player?.position, '#ffd700');
+        }
+        break;
+
+      case 'MAX_DRAFT':
+        this.draftCharge = 1.0;
+        this.isDrafting = true;
+        audio.playDraftingWhoosh();
+        if (this.ui) {
+          this.ui.showAnnouncement('💨 100% SLIPSTREAM DRAFTING CHARGE! Slingshot Ready!', '#00e5ff');
+          this.ui.showFloatingFeedback('💨 100% DRAFT', this.player?.position, '#00e5ff');
+        }
+        break;
+
+      case 'SPAWN_CONVOY':
+        this.spawnTrafficConvoyAhead();
+        if (this.ui?.showDevToast) this.ui.showDevToast('🏎️ Highway Traffic Convoy Deployed!');
+        break;
+
+      case 'TOGGLE_NASCAR_SPEED':
+        this.isNascarSuperSpeed = !this.isNascarSuperSpeed;
+        if (this.ui?.showDevToast) this.ui.showDevToast(this.isNascarSuperSpeed ? '🏁 NASCAR 200+ KM/H Speed Active!' : '🏎️ Standard Highway Speed');
+        break;
+
+      case 'FLEET_NITRO':
+        this.nitroTimer = 6.0;
+        if (this.player) this.player.isBoosting = true;
+        audio.playSlingshotBoost();
+        if (this.ui) {
+          this.ui.showAnnouncement('🚀 FLEET BROADCAST: CNG TURBO NITRO INJECTED TO ALL!', '#00e5ff');
+        }
+        break;
+
+      case 'FLEET_SHIELD':
+        this.shieldTimer = 18.0;
+        if (this.player) this.player.isShielded = true;
+        audio.playShieldAbsorb();
+        if (this.ui) {
+          this.ui.showAnnouncement('🛡️ FLEET BROADCAST: WATER TANKER IRON SHIELDS DEPLOYED!', '#00bcd4');
+        }
+        break;
+
+      case 'FLEET_HORN':
+        if (typeof this.triggerKingPressureHorn === 'function') {
+          this.triggerKingPressureHorn();
+        }
+        if (this.ui) {
+          this.ui.showAnnouncement('📢 FLEET BROADCAST: CITY-WIDE KING PRESSURE HORN BLASTED!', '#ffd700');
         }
         break;
 
