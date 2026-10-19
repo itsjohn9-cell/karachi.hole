@@ -180,46 +180,74 @@ html, body {
   box-shadow: 0 0 8px rgba(0, 229, 255, 0.8);
 }
 
-/* Center: Timer & Score */
+/* Center: Streamlined Horizontal Stats Bar & Sub-row */
 .hud-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 60;
+  max-width: 68vw;
+}
+
+.hud-center-stats-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.hud-center-sub-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .timer-pill {
-  background: var(--card-bg);
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(10, 16, 26, 0.85);
   border: 1.5px solid var(--primary-glow);
   color: #ffffff;
-  font-size: 1.4rem;
+  font-size: 1.05rem;
   font-weight: 900;
-  padding: 4px 18px;
+  padding: 3px 12px;
   border-radius: 999px;
-  letter-spacing: 1.5px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 0 16px rgba(0, 229, 255, 0.3);
+  letter-spacing: 1px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .score-pill {
-  display: flex;
+  display: inline-flex !important;
   align-items: baseline;
-  gap: 6px;
-  background: rgba(10, 14, 22, 0.7);
-  padding: 2px 14px;
+  gap: 4px;
+  background: rgba(10, 14, 22, 0.75);
+  padding: 3px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .score-label {
   color: #94a3b8;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
 }
 
 .score-val {
   color: var(--gold);
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   font-weight: 900;
 }
 
@@ -234,6 +262,8 @@ html, body {
   box-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
   backdrop-filter: blur(12px);
   pointer-events: none;
+  white-space: nowrap;
+  max-width: 200px;
   animation: nav-pulse 2s infinite ease-in-out;
 }
 
@@ -257,7 +287,7 @@ html, body {
   color: #f8fafc;
   font-size: 0.82rem;
   font-weight: 800;
-  max-width: 140px;
+  max-width: 85px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -463,16 +493,17 @@ html, body {
 
 .leaderboard-card {
   position: fixed;
-  top: 72px;
+  top: 60px;
   right: 16px;
-  width: 220px;
-  background: rgba(10, 16, 28, 0.92);
-  border: 1.5px solid rgba(255, 215, 0, 0.35);
-  padding: 10px 14px;
-  border-radius: 16px;
-  backdrop-filter: blur(14px);
+  width: 175px;
+  background: rgba(10, 16, 28, 0.78);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  padding: 8px 12px;
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
   z-index: 50;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 16px rgba(255, 215, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
 }
 
 .leaderboard-header {
@@ -531,22 +562,22 @@ html, body {
 /* Center Announcement Banner */
 .announcement-banner {
   position: fixed;
-  top: 14%;
+  top: 58px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: clamp(0.9rem, 3.5vw, 1.25rem);
+  font-size: clamp(0.8rem, 2.2vw, 1.05rem);
   font-weight: 900;
   text-align: center;
-  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.8), 0 0 20px currentColor;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
   transition: all 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
   pointer-events: none;
   white-space: normal;
-  max-width: 90vw;
-  padding: 6px 16px;
-  background: rgba(10, 16, 28, 0.9);
+  max-width: 82vw;
+  padding: 4px 14px;
+  background: rgba(10, 16, 28, 0.92);
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
   z-index: 65;
 }
 
@@ -2829,13 +2860,15 @@ html, body {
   padding-top: 4px;
 }
 
-/* GTA Circular Radar Mini-Map Card */
+/* GTA Circular Radar Mini-Map Card (Docked in bottom-left corner with zero overlap) */
 .gta-radar-card {
   position: fixed !important;
-  bottom: 18px !important;
-  left: 18px !important;
+  bottom: 16px !important;
+  left: 16px !important;
   top: auto !important;
   right: auto !important;
+  width: 120px !important;
+  height: 120px !important;
   z-index: 50 !important;
   border-radius: 20px !important;
   border: 1.5px solid rgba(0, 229, 255, 0.45) !important;
@@ -2847,26 +2880,33 @@ html, body {
   pointer-events: none !important;
 }
 
-/* Bottom-Right Traversal, Horn & Runner Action Controls */
+/* Bottom-Right Traversal, Horn & Runner Action Controls (Ergonomic 2-row layout) */
 .hud-controls-bottom-right {
   display: flex !important;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
   position: fixed;
-  bottom: 24px;
-  right: 20px;
+  bottom: 16px;
+  right: 16px;
   z-index: 100;
   pointer-events: auto;
 }
 
-.jump-btn {
+.runner-btn-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.primary-actions .jump-btn {
   background: linear-gradient(135deg, #00e676, #00b0ff);
   color: #050b14;
   font-weight: 900;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   letter-spacing: 0.8px;
-  padding: 12px 20px;
+  padding: 12px 24px;
   border-radius: 999px;
   border: 2px solid #ffffff;
   box-shadow: 0 6px 20px rgba(0, 230, 118, 0.45);
@@ -2877,18 +2917,18 @@ html, body {
   font-family: inherit;
 }
 
-.jump-btn:active {
+.primary-actions .jump-btn:active {
   transform: scale(0.92);
   box-shadow: 0 2px 8px rgba(0, 230, 118, 0.8);
 }
 
-.slide-btn {
+.primary-actions .slide-btn {
   background: linear-gradient(135deg, #ff9100, #ff3d00);
   color: #ffffff;
   font-weight: 900;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   letter-spacing: 0.8px;
-  padding: 12px 20px;
+  padding: 12px 24px;
   border-radius: 999px;
   border: 2px solid #ffffff;
   box-shadow: 0 6px 20px rgba(255, 61, 0, 0.45);
@@ -2899,21 +2939,21 @@ html, body {
   font-family: inherit;
 }
 
-.slide-btn:active {
+.primary-actions .slide-btn:active {
   transform: scale(0.92);
   box-shadow: 0 2px 8px rgba(255, 61, 0, 0.8);
 }
 
-.horn-btn {
+.secondary-actions .horn-btn {
   background: linear-gradient(135deg, #ff1744, #d50000);
   color: #ffffff;
-  font-weight: 900;
-  font-size: 0.92rem;
-  letter-spacing: 0.8px;
-  padding: 12px 18px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.6px;
+  padding: 8px 14px;
   border-radius: 999px;
-  border: 2px solid #ffebee;
-  box-shadow: 0 6px 20px rgba(255, 23, 68, 0.45);
+  border: 1.5px solid #ffebee;
+  box-shadow: 0 4px 14px rgba(255, 23, 68, 0.4);
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
@@ -2921,18 +2961,18 @@ html, body {
   font-family: inherit;
 }
 
-.horn-btn:active {
+.secondary-actions .horn-btn:active {
   transform: scale(0.92);
   box-shadow: 0 2px 8px rgba(255, 23, 68, 0.8);
 }
 
-.journal-btn {
+.secondary-actions .journal-btn {
   background: rgba(10, 20, 35, 0.85);
   color: #ffd700;
   font-weight: 800;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   letter-spacing: 0.5px;
-  padding: 11px 16px;
+  padding: 8px 13px;
   border-radius: 999px;
   border: 1.5px solid rgba(255, 215, 0, 0.5);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
@@ -2944,22 +2984,22 @@ html, body {
   font-family: inherit;
 }
 
-.journal-btn:active {
+.secondary-actions .journal-btn:active {
   transform: scale(0.92);
   background: #ffd700;
   color: #050b14;
 }
 
-.sprint-btn {
+.secondary-actions .sprint-btn {
   background: linear-gradient(135deg, #ffea00, #ff9100);
   color: #050b14;
   font-weight: 900;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   letter-spacing: 0.5px;
-  padding: 11px 16px;
+  padding: 8px 13px;
   border-radius: 999px;
-  border: 2px solid #ffffff;
-  box-shadow: 0 4px 14px rgba(255, 145, 0, 0.4);
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 4px 14px rgba(255, 145, 0, 0.35);
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
@@ -2967,24 +3007,24 @@ html, body {
   font-family: inherit;
 }
 
-.sprint-btn:active {
+.secondary-actions .sprint-btn:active {
   transform: scale(0.92);
   box-shadow: 0 2px 8px rgba(255, 145, 0, 0.8);
 }
 
 @media (max-width: 768px) {
   .hud-controls-bottom-right {
-    bottom: 16px;
+    bottom: 12px;
     right: 12px;
     gap: 6px;
   }
-  .jump-btn, .slide-btn, .horn-btn {
-    padding: 10px 14px;
-    font-size: 0.82rem;
+  .primary-actions .jump-btn, .primary-actions .slide-btn {
+    padding: 10px 16px;
+    font-size: 0.85rem;
   }
-  .sprint-btn, .journal-btn {
-    padding: 8px 12px;
-    font-size: 0.78rem;
+  .secondary-actions .horn-btn, .secondary-actions .sprint-btn, .secondary-actions .journal-btn {
+    padding: 6px 10px;
+    font-size: 0.74rem;
   }
 }
 
@@ -3312,41 +3352,341 @@ html, body {
    ============================================================== */
 @media (max-width: 768px) {
   .hud-top-bar {
-    gap: 6px;
+    gap: 4px;
     align-items: center;
+    flex-wrap: nowrap !important;
+    padding: 2px 4px;
   }
 
   .hud-left {
-    transform: scale(0.85);
-    transform-origin: top left;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .karachi-badge {
+    padding: 2px 6px !important;
+    gap: 4px !important;
+  }
+
+  .karachi-badge .urdu-title {
+    font-size: 0.8rem !important;
+  }
+
+  .karachi-badge .game-title {
+    font-size: 0.68rem !important;
+    max-width: 65px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .player-title-col .hero-tag-sub {
+    display: none !important;
+  }
+
+  .level-indicator {
+    padding: 2px 6px !important;
+    gap: 4px !important;
+    border-radius: 999px !important;
+  }
+
+  .level-badge {
+    font-size: 0.65rem !important;
+    padding: 1px 4px !important;
+  }
+
+  .xp-bar-track {
+    width: 32px !important;
+    height: 4px !important;
   }
 
   .hud-center {
-    transform: scale(0.85);
+    flex-shrink: 1;
+    flex-grow: 1;
+    min-width: 0;
+    max-width: 100%;
+    gap: 2px;
   }
 
-  .hud-right {
-    transform: scale(0.85);
-    transform-origin: top right;
+  .hud-center-stats-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    flex-wrap: nowrap !important;
+  }
+
+  .hud-center-stats-row .runner-hearts-pill {
+    padding: 2px 5px !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0px !important;
+  }
+
+  .hud-center-stats-row .timer-pill {
+    font-size: 0.78rem !important;
+    padding: 2px 6px !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  .hud-center-stats-row .runner-coins-pill {
+    padding: 2px 6px !important;
+    font-size: 0.72rem !important;
+    gap: 3px !important;
+  }
+
+  .hud-center-stats-row .coin-val {
+    font-size: 0.76rem !important;
+  }
+
+  .hud-center-stats-row .runner-dist-pill {
+    padding: 2px 6px !important;
+    font-size: 0.72rem !important;
+    gap: 3px !important;
+  }
+
+  .hud-center-stats-row .runner-dist-val {
+    font-size: 0.76rem !important;
+  }
+
+  .hud-center-stats-row .runner-milestone-tag {
+    display: none !important;
+  }
+
+  .hud-center-stats-row .score-pill {
+    padding: 2px 6px !important;
+    gap: 2px !important;
+  }
+
+  .hud-center-stats-row .score-label {
+    display: none !important;
+  }
+
+  .hud-center-stats-row .score-val {
+    font-size: 0.76rem !important;
+  }
+
+  .hud-center-sub-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex-wrap: nowrap !important;
+    margin-top: 1px;
+  }
+
+  .route-progress-pill {
+    display: none !important;
+  }
+
+  .nav-target-pill {
+    padding: 2px 8px !important;
+    gap: 4px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .nav-target-badge {
+    display: none !important;
+  }
+
+  .nav-target-name {
+    max-width: 70px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .nav-target-dist {
+    font-size: 0.7rem !important;
+    padding: 1px 5px !important;
+  }
+
+  .combo-pill {
+    padding: 2px 6px !important;
+    font-size: 0.68rem !important;
   }
 
   .hud-top-controls {
-    gap: 4px;
-    flex-wrap: nowrap;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-wrap: nowrap !important;
   }
 
-  .hud-top-controls .icon-btn {
-    width: 32px !important;
-    height: 32px !important;
-    font-size: 0.82rem !important;
+  #btn-toggle-sound,
+  #btn-toggle-music,
+  #btn-open-skins,
+  #btn-open-guide,
+  #btn-top-journal,
+  #btn-open-quiz {
+    display: none !important;
+  }
+
+  #btn-open-game-menu {
+    padding: 3px 8px !important;
+    font-size: 0.68rem !important;
+    height: 26px !important;
+    border-radius: 999px !important;
+  }
+
+  #btn-manual-pause {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 0.72rem !important;
     padding: 0 !important;
   }
 
+  .leaderboard-card {
+    position: fixed !important;
+    top: 64px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-width: 110px !important;
+    padding: 3px 8px !important;
+    border-radius: 999px !important;
+    display: block !important;
+    z-index: 50 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .leaderboard-header {
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    font-size: 0.65rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+  }
+
+  .leaderboard-header span:first-child {
+    display: none !important;
+  }
+
+  .leaderboard-card .rank-tag {
+    font-size: 0.68rem !important;
+    font-weight: 900 !important;
+    color: #ffd700 !important;
+    padding: 0 !important;
+  }
+
+  .leaderboard-list {
+    display: none !important;
+  }
+
   .hud-mission-card {
-    top: 62px;
-    left: 10px;
-    max-width: min(290px, 86vw);
-    padding: 8px 10px;
+    top: 64px !important;
+    left: 8px !important;
+    max-width: 165px !important;
+    padding: 4px 8px !important;
+    border-radius: 999px !important;
+    z-index: 50 !important;
+  }
+
+  .mission-card-header {
+    gap: 4px !important;
+    padding-bottom: 0 !important;
+  }
+
+  .district-badge-pill {
+    font-size: 0.65rem !important;
+    padding: 1px 5px !important;
+  }
+
+  .district-name-text {
+    max-width: 70px !important;
+    font-size: 0.68rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .district-mini-counter {
+    font-size: 0.65rem !important;
+    padding: 1px 4px !important;
+  }
+
+  .mission-toggle-btn {
+    width: 18px !important;
+    height: 18px !important;
+    font-size: 0.6rem !important;
+  }
+
+  .active-crisis-card {
+    top: auto;
+    left: auto;
+    transform: none;
+    margin-top: 4px !important;
+    width: 100% !important;
+    max-width: 170px !important;
+    padding: 4px 8px !important;
+    border-radius: 10px !important;
+  }
+
+  .crisis-desc {
+    display: none !important;
+  }
+
+  .gta-radar-card {
+    bottom: 12px !important;
+    left: 10px !important;
+    width: 90px !important;
+    height: 90px !important;
+    border-radius: 16px !important;
+  }
+
+  .minimap-card canvas {
+    width: 78px !important;
+    height: 78px !important;
+  }
+
+  .minimap-canvas-wrapper {
+    width: 78px !important;
+    height: 78px !important;
+  }
+
+  .minimap-header {
+    display: none !important;
+  }
+
+  .hud-runner-lanes {
+    bottom: 108px !important;
+    left: 10px !important;
+    gap: 4px !important;
+  }
+
+  .lane-btn {
+    padding: 6px 10px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .hud-controls-bottom-right {
+    bottom: 12px !important;
+    right: 10px !important;
+    gap: 5px !important;
+  }
+
+  .primary-actions .jump-btn,
+  .primary-actions .slide-btn {
+    padding: 8px 12px !important;
+    font-size: 0.78rem !important;
+    min-width: 56px !important;
+  }
+
+  .secondary-actions .horn-btn,
+  .secondary-actions .sprint-btn,
+  .secondary-actions .journal-btn {
+    padding: 4px 7px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .announcement-banner {
+    top: 60px !important;
+    padding: 2px 10px !important;
+    font-size: 0.78rem !important;
+    max-width: 85vw !important;
   }
 
   .hud-interaction-prompt {
@@ -3361,70 +3701,25 @@ html, body {
     padding: 8px 16px !important;
   }
 
-  .gta-radar-card {
-    bottom: 12px !important;
-    left: 12px !important;
-    transform: scale(0.85);
-    transform-origin: bottom left;
-  }
-
-  .hud-controls-bottom-right {
-    bottom: 14px;
-    right: 12px;
-    gap: 6px;
-  }
-
-  .hud-controls-bottom-right button {
-    padding: 8px 12px;
-    font-size: 0.78rem;
-  }
-
-  .minimap-card canvas {
-    width: 95px !important;
-    height: 95px !important;
-  }
-
-  .leaderboard-card {
-    display: none; /* Hide full leaderboard on narrow portrait phones to save screen real-estate */
-  }
-
   .district-mission-banner {
-    top: 64px;
-    left: 10px;
+    top: 64px !important;
+    left: 8px !important;
     transform: none;
     width: auto;
-    max-width: min(310px, 92vw);
+    max-width: 165px;
     flex-direction: column;
     align-items: stretch;
-    padding: 6px 12px;
-    gap: 6px;
+    padding: 4px 8px;
+    gap: 4px;
   }
 
   .district-mission-banner.collapsed {
     width: auto !important;
-    max-width: 270px !important;
-    padding: 5px 10px !important;
+    max-width: 165px !important;
+    padding: 4px 8px !important;
     flex-direction: row !important;
     align-items: center !important;
     border-radius: 999px !important;
-  }
-
-  .active-crisis-card {
-    top: auto;
-    left: auto;
-    transform: none;
-    width: 100%;
-    max-width: 100%;
-    min-width: auto;
-    padding: 6px 10px;
-  }
-
-  .crisis-desc {
-    display: none;
-  }
-
-  .district-targets-right {
-    display: none;
   }
 
   .age-selection-grid {
@@ -3446,46 +3741,48 @@ html, body {
 
 @media (max-width: 480px) {
   .hud-top-bar {
-    flex-wrap: wrap;
+    gap: 2px !important;
+    padding: 2px 2px !important;
   }
 
   .karachi-badge {
-    padding: 4px 10px;
+    padding: 2px 4px !important;
   }
 
-  .timer-pill {
-    font-size: 1.1rem;
-    padding: 2px 12px;
+  .karachi-badge .urdu-title {
+    display: none !important;
   }
 
-  .score-pill {
-    padding: 3px 10px;
+  .hud-center-stats-row {
+    gap: 2px !important;
   }
 
-  .bottom-left-controls {
-    flex-wrap: wrap;
-    max-width: 75%;
+  .hud-center-stats-row .runner-hearts-pill,
+  .hud-center-stats-row .timer-pill,
+  .hud-center-stats-row .runner-coins-pill,
+  .hud-center-stats-row .runner-dist-pill,
+  .hud-center-stats-row .score-pill {
+    padding: 1px 4px !important;
+    font-size: 0.7rem !important;
   }
 
-  .pill-btn {
-    font-size: 0.75rem !important;
-    padding: 6px 10px !important;
+  .primary-actions .jump-btn,
+  .primary-actions .slide-btn {
+    padding: 7px 10px !important;
+    font-size: 0.74rem !important;
+    min-width: 50px !important;
   }
 
-  .boost-btn {
-    width: 70px !important;
-    height: 70px !important;
-    font-size: 0.85rem !important;
+  .secondary-actions .horn-btn,
+  .secondary-actions .sprint-btn,
+  .secondary-actions .journal-btn {
+    padding: 3px 6px !important;
+    font-size: 0.65rem !important;
   }
 
-  .pictorial-icon-box {
-    font-size: 1.8rem;
-    min-width: 42px;
-    height: 42px;
-  }
-
-  .pictorial-desc {
-    font-size: 0.8rem;
+  .lane-btn {
+    padding: 5px 8px !important;
+    font-size: 0.68rem !important;
   }
 }
 
@@ -3949,10 +4246,12 @@ html, body {
   background: rgba(10, 16, 26, 0.88);
   border: 1.5px solid #00e676;
   border-radius: 999px;
-  padding: 4px 14px;
+  padding: 3px 12px;
   box-shadow: 0 0 14px rgba(0, 230, 118, 0.35);
   backdrop-filter: blur(12px);
   pointer-events: none;
+  white-space: nowrap;
+  max-width: 270px;
 }
 
 .route-point {
@@ -3967,12 +4266,16 @@ html, body {
 
 .route-point.dest {
   color: #00e676;
+  max-width: 95px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .route-track {
   position: relative;
-  width: 90px;
-  height: 6px;
+  width: 50px;
+  height: 5px;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 999px;
   overflow: visible;
@@ -4948,10 +5251,12 @@ html, body {
    DEV MODE OBSERVER HUD & TELEMETRY SUITE
    ========================================================================== */
 #dev-mode-toggle-btn {
+  display: none;
   position: fixed;
-  bottom: 84px;
-  right: 14px;
-  z-index: 99998;
+  bottom: 12px;
+  right: 500px;
+  top: auto;
+  z-index: 90;
   background: rgba(10, 15, 24, 0.88);
   border: 1px solid #00e5ff;
   color: #00e5ff;
@@ -4962,12 +5267,17 @@ html, body {
   border-radius: 20px;
   cursor: pointer;
   box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
-  display: flex;
   align-items: center;
   gap: 6px;
   backdrop-filter: blur(8px);
   user-select: none;
   transition: all 0.2s ease;
+}
+
+@media (min-width: 1200px) {
+  #dev-mode-toggle-btn {
+    display: flex;
+  }
 }
 
 #dev-mode-toggle-btn:hover {
@@ -5211,10 +5521,12 @@ html, body {
    DEV MODE REAL-TIME COMMENT & FEEDBACK STYLES
    ========================================================================== */
 #dev-comment-btn {
+  display: none;
   position: fixed;
-  bottom: 122px;
-  right: 14px;
-  z-index: 99998;
+  bottom: 12px;
+  right: 370px;
+  top: auto;
+  z-index: 90;
   background: rgba(15, 23, 42, 0.9);
   border: 1px solid #38bdf8;
   color: #38bdf8;
@@ -5225,12 +5537,17 @@ html, body {
   border-radius: 20px;
   cursor: pointer;
   box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
-  display: flex;
   align-items: center;
   gap: 6px;
   backdrop-filter: blur(8px);
   user-select: none;
   transition: all 0.2s ease;
+}
+
+@media (min-width: 1200px) {
+  #dev-comment-btn {
+    display: flex;
+  }
 }
 
 #dev-comment-btn:hover {
@@ -5502,10 +5819,12 @@ html, body {
    GOD MODE IN-GAME DRAWER & CONTROLS
    ========================================================================== */
 #god-mode-toggle-btn {
+  display: none;
   position: fixed;
-  bottom: 164px;
-  right: 14px;
-  z-index: 99998;
+  bottom: 12px;
+  right: 240px;
+  top: auto;
+  z-index: 90;
   background: rgba(18, 12, 32, 0.92);
   border: 1.5px solid #ffd700;
   color: #ffd700;
@@ -5516,12 +5835,17 @@ html, body {
   border-radius: 20px;
   cursor: pointer;
   box-shadow: 0 0 14px rgba(255, 215, 0, 0.4);
-  display: flex;
   align-items: center;
   gap: 6px;
   backdrop-filter: blur(8px);
   user-select: none;
   transition: all 0.2s ease;
+}
+
+@media (min-width: 1200px) {
+  #god-mode-toggle-btn {
+    display: flex;
+  }
 }
 
 #god-mode-toggle-btn:hover {
@@ -5650,7 +5974,7 @@ html, body {
    KARACHI TEMPLE RUN - RUNNER HUD & CONTROLS
    ============================================================ */
 .runner-dist-pill {
-  display: flex;
+  display: inline-flex !important;
   align-items: center;
   gap: 8px;
   background: rgba(10, 16, 26, 0.88);
@@ -5659,6 +5983,8 @@ html, body {
   padding: 4px 14px;
   box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
   backdrop-filter: blur(12px);
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 .runner-dist-icon {
   font-size: 1.15rem;
@@ -5685,7 +6011,7 @@ html, body {
 }
 
 .runner-coins-pill {
-  display: flex;
+  display: inline-flex !important;
   align-items: center;
   gap: 6px;
   background: rgba(20, 16, 8, 0.88);
@@ -5694,6 +6020,8 @@ html, body {
   padding: 4px 12px;
   box-shadow: 0 0 16px rgba(255, 215, 0, 0.35);
   backdrop-filter: blur(12px);
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 .coin-icon {
   font-size: 1.1rem;
@@ -5712,8 +6040,11 @@ html, body {
 }
 
 .runner-hearts-pill {
-  display: flex;
-  align-items: center;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
   gap: 4px;
   background: rgba(26, 10, 14, 0.88);
   border: 1.5px solid #ff1744;
@@ -5725,43 +6056,27 @@ html, body {
 .hearts-display {
   font-size: 1.0rem;
   letter-spacing: 2px;
+  white-space: nowrap !important;
+  display: inline-block !important;
 }
 
-/* Runner Traversal Buttons */
-.slide-btn {
-  background: linear-gradient(135deg, #e65100 0%, #ff9800 100%);
-  color: #ffffff;
-  border: 1.5px solid #ffd54f;
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(230, 81, 0, 0.5);
-  transition: all 0.15s ease;
-  font-family: inherit;
-}
-.slide-btn:active {
-  transform: scale(0.94);
-  box-shadow: 0 2px 8px rgba(230, 81, 0, 0.8);
-}
-
-/* Touch Mobile Lane Buttons (Bottom-Left) */
+/* Touch Mobile Lane Buttons (Bottom-Left: Ergonomically docked directly above the GTA Radar) */
 .hud-runner-lanes {
-  position: absolute;
-  bottom: 24px;
-  left: 20px;
+  position: fixed;
+  bottom: 146px;
+  left: 16px;
   display: flex;
-  gap: 12px;
+  gap: 8px;
   z-index: 100;
+  pointer-events: auto;
 }
 .lane-btn {
-  background: rgba(10, 18, 30, 0.85);
+  background: rgba(10, 18, 30, 0.88);
   color: #00e5ff;
   border: 1.5px solid #00e5ff;
-  padding: 12px 18px;
-  border-radius: 12px;
-  font-size: 0.9rem;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 0.85rem;
   font-weight: 800;
   cursor: pointer;
   backdrop-filter: blur(10px);
@@ -5769,6 +6084,7 @@ html, body {
   transition: all 0.12s ease;
   font-family: inherit;
   touch-action: manipulation;
+  user-select: none;
 }
 .lane-btn:active {
   transform: scale(0.92);
