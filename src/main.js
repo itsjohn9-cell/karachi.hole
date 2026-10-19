@@ -138,13 +138,39 @@ class Game {
     this.camera.position.set(0, 3.4, 5.8);
     this.camera.lookAt(0, 1.5, -9.5);
 
-    // Renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    // Progressive WebGL Renderer Creation with Multi-Tier Fallbacks
+    let renderer = null;
+    const canvasContainer = this.container || document.getElementById('canvas-container') || document.body;
+
+    const renderConfigs = [
+      { antialias: true, powerPreference: 'default', failIfMajorPerformanceCaveat: false },
+      { antialias: false, powerPreference: 'low-power', precision: 'mediump', failIfMajorPerformanceCaveat: false },
+      { antialias: false, failIfMajorPerformanceCaveat: false },
+      {}
+    ];
+
+    for (const cfg of renderConfigs) {
+      try {
+        renderer = new THREE.WebGLRenderer(cfg);
+        if (renderer && renderer.getContext()) break;
+      } catch (e) {
+        console.warn('[WEBGL_FALLBACK] Failed renderer config:', cfg, e.message);
+      }
+    }
+
+    if (!renderer) {
+      console.error('[WEBGL_ERROR] WebGL context could not be created with any config');
+      throw new Error("WebGL graphics context could not be created. Please verify that hardware acceleration is enabled in your browser settings (chrome://settings/system) and refresh.");
+    }
+
+    this.renderer = renderer;
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.container.appendChild(this.renderer.domElement);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    try {
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    } catch (e) {}
+    canvasContainer.appendChild(this.renderer.domElement);
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xfff3e0, 0.65);
@@ -4538,9 +4564,31 @@ class Game {
   }
 }
 
-// Initialize on DOM load
-window.addEventListener('DOMContentLoaded', () => {
+// Robust Bootstrap: Check readyState immediately in case DOMContentLoaded already fired
+function bootKarachiGame() {
+  if (window.__karachi_game_initialized__) return;
+  window.__karachi_game_initialized__ = true;
   window.KarachiModels = KarachiModels;
-  window.game = new Game();
-});
+
+  try {
+    window.game = new Game();
+  } catch (err) {
+    console.error('[CRITICAL_BOOT_ERROR] Failed to start Karachi Street Hero:', err);
+    const errBox = document.createElement('div');
+    errBox.style.cssText = 'position:fixed;inset:0;background:#050b14;color:#ff3366;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;font-family:sans-serif;z-index:999999;text-align:center;';
+    errBox.innerHTML = `
+      <div style="font-size:3rem;margin-bottom:12px;">⚠️</div>
+      <h2 style="color:#00e5ff;margin:0 0 8px 0;letter-spacing:1px;">KARACHI STREET HERO - GRAPHICS NOTICE</h2>
+      <p style="color:#e2e8f0;max-width:520px;margin-bottom:16px;line-height:1.5;font-size:0.95rem;">${err.message || 'WebGL context could not be created'}</p>
+      <button onclick="location.reload()" style="background:#00e5ff;color:#050b14;border:none;padding:12px 28px;border-radius:24px;font-weight:bold;cursor:pointer;font-size:0.95rem;">🔄 Reload Game</button>
+    `;
+    document.body.appendChild(errBox);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootKarachiGame);
+} else {
+  bootKarachiGame();
+}
 

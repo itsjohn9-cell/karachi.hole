@@ -36,8 +36,9 @@ export class UIManager {
     onOpenMissionJournal,
     onContinueCareer,
     onSelectDistrict,
-    onReturnToMainMenu
-  }) {
+    onReturnToMainMenu,
+    onSelectVersion
+  } = {}) {
     this.onStartGame = onStartGame;
     this.onSelectSkin = onSelectSkin;
     this.onRestartGame = onRestartGame;
@@ -73,7 +74,7 @@ export class UIManager {
     this.civicQuizEnabled = (typeof localStorage !== 'undefined' && localStorage.getItem('hole_karachi_civic_quiz_enabled') === 'true');
 
     this.selectedVersion = (typeof localStorage !== 'undefined' && localStorage.getItem('karachi_major_version')) || 'v3';
-    this.onSelectVersion = options.onSelectVersion;
+    this.onSelectVersion = onSelectVersion;
 
     this.createStartMissionModal();
     this.createTapToStartPrompt();
