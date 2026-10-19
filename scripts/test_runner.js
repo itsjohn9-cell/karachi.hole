@@ -66,15 +66,57 @@ function recordTest(id, name, status, durationMs, details = '') {
   }
 }
 
+// Hardcoded pristine template so index.html can NEVER be corrupted by an interrupted test!
+const indexPath = path.join(projectDir, 'index.html');
+const PRISTINE_INDEX_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#0d1117" />
+    <meta name="description" content="Pakistan Street Hero! Run the streets of Karachi, Lahore, Islamabad, and Quetta in 3D! Stop extortion mafias, resolve civic crises, interact with citizens, and restore authentic Pakistani cities!" />
+    
+    <title>Pakistan Street Hero - Open World Civic Action</title>
+    
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Noto+Nastaliq+Urdu:wght@700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="canvas-container"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+`;
+
+function ensureCleanIndex() {
+  try {
+    fs.writeFileSync(indexPath, PRISTINE_INDEX_HTML, 'utf8');
+  } catch (e) {}
+}
+
+process.on('exit', ensureCleanIndex);
+process.on('SIGINT', () => { ensureCleanIndex(); process.exit(1); });
+process.on('SIGTERM', () => { ensureCleanIndex(); process.exit(1); });
+process.on('uncaughtException', (e) => { ensureCleanIndex(); console.error(e); process.exit(1); });
+
 // Helper to run headless chrome script injection test
 async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800', screenshotName, waitMs = 2800, extraStyle = '' }) {
-  const indexPath = path.join(projectDir, 'index.html');
-  const originalHtml = fs.readFileSync(indexPath, 'utf8');
+  ensureCleanIndex();
   const screenshotPath = path.join(reportDir, screenshotName || `${testId.toLowerCase()}.png`);
 
   try {
     const sanitizedScript = scriptInjection.replace(/window\.addEventListener\('DOMContentLoaded',\s*\(\)\s*=>\s*\{/g, '(() => {');
-    let injectedHtml = originalHtml;
+    let injectedHtml = PRISTINE_INDEX_HTML;
     if (extraStyle) {
       injectedHtml = injectedHtml.replace('</head>', `<style>${extraStyle}</style></head>`);
     }
@@ -89,7 +131,7 @@ async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800',
       }
       setTimeout(__run, 150);
     </script></body>`);
-    fs.writeFileSync(indexPath, injectedHtml);
+    fs.writeFileSync(indexPath, injectedHtml, 'utf8');
 
     const cmd = `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --virtual-time-budget=${waitMs} --screenshot="${screenshotPath}" --window-size=${windowSize} "http://127.0.0.1:${targetPort}/"`;
     execSync(cmd, { stdio: 'pipe' });
@@ -98,7 +140,7 @@ async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800',
   } catch (err) {
     return { success: false, error: err.message };
   } finally {
-    fs.writeFileSync(indexPath, originalHtml);
+    ensureCleanIndex();
   }
 }
 
