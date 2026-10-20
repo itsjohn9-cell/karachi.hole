@@ -37,7 +37,9 @@ export class UIManager {
     onContinueCareer,
     onSelectDistrict,
     onReturnToMainMenu,
-    onSelectVersion
+    onSelectVersion,
+    onQuickRevive,
+    onEmergencyUnstick
   } = {}) {
     this.onStartGame = onStartGame;
     this.onSelectSkin = onSelectSkin;
@@ -59,6 +61,9 @@ export class UIManager {
     this.onContinueCareer = onContinueCareer;
     this.onSelectDistrict = onSelectDistrict;
     this.onReturnToMainMenu = onReturnToMainMenu;
+    this.onSelectVersion = onSelectVersion;
+    this.onQuickRevive = onQuickRevive;
+    this.onEmergencyUnstick = onEmergencyUnstick;
 
     this.playerName = 'Karachi Hero';
     this.currentSkin = 'gutter';
@@ -710,6 +715,7 @@ export class UIManager {
         <div class="runner-btn-row primary-actions">
           <button class="jump-btn ui-interactive" id="btn-jump" title="Parkour Jump Traversal [Space / W] - Leap Over Open Gutters & Rubble">🦘 JUMP</button>
           <button class="slide-btn ui-interactive" id="btn-slide" title="Slide Duck [S / Down] - Slide Under Dangling K-Electric Wires">🏃 SLIDE [S]</button>
+          <button class="runner-unstick-btn ui-interactive" id="btn-runner-unstick" title="Emergency Unstick & Clear Road [R]">🔄 UNSTICK [R]</button>
         </div>
       </div>
 
@@ -1496,6 +1502,52 @@ export class UIManager {
         <div class="results-header">
           <h1 id="results-headline">MISSION FINISHED!</h1>
           <div class="results-sub" id="results-sub">Karachi Street Patrol Complete</div>
+        </div>
+
+        <!-- Dedicated Subway Run / Temple Run Crash Recovery & Action Card -->
+        <div id="runner-crash-card" style="display: none;">
+          <div class="crash-hazard-badge">
+            <span id="crash-hazard-icon" style="font-size: 2.8rem; line-height: 1;">⚡</span>
+            <div style="flex: 1;">
+              <div class="crash-hazard-title" id="crash-hazard-title">CRASHED!</div>
+              <div class="crash-hazard-hint" id="crash-hazard-hint">💡 ACTION NEEDED: Press [S] to slide under wires</div>
+            </div>
+          </div>
+
+          <div class="runner-stats-summary">
+            <div class="stat-box">
+              <span class="stat-label">DISTANCE</span>
+              <span class="stat-num" id="crash-stat-dist" style="color: #00e5ff;">0m</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">COINS</span>
+              <span class="stat-num" id="crash-stat-coins" style="color: #ffd700;">0 Rs</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">SCORE</span>
+              <span class="stat-num" id="crash-stat-score" style="color: #76ff03;">0</span>
+            </div>
+          </div>
+
+          <div class="crash-actions-list">
+            <button class="btn-crash-revive ui-interactive" id="btn-crash-revive">
+              ☕ QUICK REVIVE WITH CHAI (Press C or Space)
+            </button>
+            <button class="btn-crash-retry ui-interactive" id="btn-crash-retry">
+              🔄 RETRY SPRINT FROM START (Press Enter)
+            </button>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+              <button class="ghost-btn ui-interactive" id="btn-crash-switch-v2" style="flex: 1; font-size: 0.78rem; padding: 10px 8px;">
+                🏙️ Play v2.0 Civic Savior
+              </button>
+              <button class="ghost-btn ui-interactive" id="btn-crash-switch-v1" style="flex: 1; font-size: 0.78rem; padding: 10px 8px;">
+                🕳️ Play v1.0 Classic Hole
+              </button>
+            </div>
+            <button class="ghost-btn ui-interactive" id="btn-crash-main-menu" style="font-size: 0.78rem; color: #94a3b8; padding: 6px; border: none; background: transparent; cursor: pointer;">
+              🏠 Return to Main Title Menu
+            </button>
+          </div>
         </div>
 
         <div class="podium-section" id="results-podium">
@@ -2862,7 +2914,23 @@ export class UIManager {
         }
       }
 
-      // Temple Run Runner Keyboard Controls (Lane switch, Jump, Slide, Horn)
+      // Crash Modal Keyboard Shortcuts (Quick Revive / Retry)
+      if (this.gameOverModal && this.gameOverModal.style.display !== 'none') {
+        const crashCard = document.getElementById('runner-crash-card');
+        if (crashCard && crashCard.style.display !== 'none') {
+          if (e.code === 'KeyC' || e.code === 'Space') {
+            e.preventDefault();
+            if (this.onQuickRevive) this.onQuickRevive();
+            return;
+          } else if (e.code === 'Enter') {
+            e.preventDefault();
+            if (this.onRestartGame) this.onRestartGame();
+            return;
+          }
+        }
+      }
+
+      // Temple Run Runner Keyboard Controls (Lane switch, Jump, Slide, Horn, Unstick)
       if (window.game && window.game.isGameStarted && !this.isAutoPaused && !window.game.isPaused) {
         if (e.code === 'KeyS' || e.code === 'ArrowDown') {
           this.hideRunnerTutorial();
@@ -2879,6 +2947,9 @@ export class UIManager {
         } else if (e.code === 'KeyH') {
           this.hideRunnerTutorial();
           if (this.onHorn) this.onHorn();
+        } else if (e.code === 'KeyR') {
+          this.hideRunnerTutorial();
+          if (this.onEmergencyUnstick) this.onEmergencyUnstick();
         }
       }
     });
@@ -2971,6 +3042,61 @@ export class UIManager {
         audio.playClick();
         if (this.gameOverModal) this.gameOverModal.style.display = 'none';
         if (this.onNextLevel) this.onNextLevel();
+      });
+    }
+
+    // Crash Card Action Buttons
+    const btnCrashRevive = document.getElementById('btn-crash-revive');
+    if (btnCrashRevive) {
+      btnCrashRevive.addEventListener('click', () => {
+        audio.playClick();
+        if (this.gameOverModal) this.gameOverModal.style.display = 'none';
+        if (this.onQuickRevive) this.onQuickRevive();
+      });
+    }
+
+    const btnCrashRetry = document.getElementById('btn-crash-retry');
+    if (btnCrashRetry) {
+      btnCrashRetry.addEventListener('click', () => {
+        audio.playClick();
+        if (this.gameOverModal) this.gameOverModal.style.display = 'none';
+        if (this.onRestartGame) this.onRestartGame();
+      });
+    }
+
+    const btnCrashSwitchV2 = document.getElementById('btn-crash-switch-v2');
+    if (btnCrashSwitchV2) {
+      btnCrashSwitchV2.addEventListener('click', () => {
+        audio.playClick();
+        if (this.gameOverModal) this.gameOverModal.style.display = 'none';
+        if (this.onSelectVersion) this.onSelectVersion('v2');
+      });
+    }
+
+    const btnCrashSwitchV1 = document.getElementById('btn-crash-switch-v1');
+    if (btnCrashSwitchV1) {
+      btnCrashSwitchV1.addEventListener('click', () => {
+        audio.playClick();
+        if (this.gameOverModal) this.gameOverModal.style.display = 'none';
+        if (this.onSelectVersion) this.onSelectVersion('v1');
+      });
+    }
+
+    const btnCrashMainMenu = document.getElementById('btn-crash-main-menu');
+    if (btnCrashMainMenu) {
+      btnCrashMainMenu.addEventListener('click', () => {
+        audio.playClick();
+        if (this.gameOverModal) this.gameOverModal.style.display = 'none';
+        if (this.onReturnToMainMenu) this.onReturnToMainMenu();
+      });
+    }
+
+    // Emergency Unstick Button on HUD
+    const btnRunnerUnstick = document.getElementById('btn-runner-unstick');
+    if (btnRunnerUnstick) {
+      btnRunnerUnstick.addEventListener('click', () => {
+        audio.playClick();
+        if (this.onEmergencyUnstick) this.onEmergencyUnstick();
       });
     }
 
@@ -3955,47 +4081,114 @@ export class UIManager {
     const modal = this.gameOverModal;
     const playerRank = (rankedHoles && rankedHoles.length > 0) ? (rankedHoles.findIndex(h => h.isPlayer) + 1) : 1;
 
-    let headline = playerRank === 1 ? '👑 1ST PLACE CHAMPION! 👑' :
-                   playerRank === 2 ? '🥈 2ND PLACE! GREAT JOB!' :
-                   playerRank === 3 ? '🥉 3RD PLACE!' : 'MATCH COMPLETED';
+    const crashCard = document.getElementById('runner-crash-card');
+    const podiumEl = document.getElementById('results-podium');
+    const statsGrid = document.querySelector('.stats-grid');
+    const defaultButtons = document.querySelector('.results-button-row');
 
     if (isCrash) {
-      headline = '💥 RUN CRASHED! (دوڑ ختم ہو گئی)';
-    }
+      document.getElementById('results-headline').textContent = '💥 RUN CRASHED! (دوڑ ختم ہو گئی)';
+      document.getElementById('results-sub').textContent = 'Karachi streets are unforgiving, but heroes get right back up!';
 
-    document.getElementById('results-headline').textContent = headline;
-    document.getElementById('results-sub').textContent = isCrash
-      ? (crashReason || `Distance Ran: ${Math.round(distanceMeters)}m | Coins: ${coins} Rs`)
-      : `Ranked #${playerRank} in Karachi Street Patrol`;
+      if (crashCard) crashCard.style.display = 'block';
+      if (podiumEl) podiumEl.style.display = 'none';
+      if (statsGrid) statsGrid.style.display = 'none';
+      if (defaultButtons) defaultButtons.style.display = 'none';
 
-    document.getElementById('stat-score').textContent = player.score.toLocaleString();
-    document.getElementById('stat-level').textContent = `Lv ${player.level} (${LEVEL_CONFIG[player.level - 1].title})`;
-    document.getElementById('stat-swallowed').textContent = player.swallowedCount;
-    document.getElementById('stat-kills').textContent = player.kills;
+      // Parse and display actionable cause + guide
+      let icon = '💥';
+      let title = crashReason || 'Obstacle Impact';
+      let hint = '💡 TIP: Stay alert and react early to hazards ahead!';
 
-    // Podium HTML
-    const podiumEl = document.getElementById('results-podium');
-    podiumEl.innerHTML = '';
-    const top3 = [rankedHoles[1], rankedHoles[0], rankedHoles[2]];
-    const ranks = [2, 1, 3];
+      const rLower = (crashReason || '').toLowerCase();
+      if (rLower.includes('wire') || rLower.includes('k-electric')) {
+        icon = '⚡';
+        title = '⚡ K-Electric Live Wires';
+        hint = '💡 HOW TO CLEAR: Press [S] or Swipe Down to SLIDE underneath!';
+      } else if (rLower.includes('gutter') || rLower.includes('manhole')) {
+        icon = '🕳️';
+        title = '🕳️ Open Road Gutter';
+        hint = '💡 HOW TO CLEAR: Press [W], [Space], or Swipe Up to JUMP over it!';
+      } else if (rLower.includes('digging') || rLower.includes('barricade') || rLower.includes('hazard')) {
+        icon = '🚧';
+        title = '🚧 Unmarked Road Digging';
+        hint = '💡 HOW TO CLEAR: Press [W], [Space], or Swipe Up to JUMP over it!';
+      } else if (rLower.includes('rickshaw') || rLower.includes('qingqi')) {
+        icon = '🛺';
+        title = '🛺 Stalled Qingqi Rickshaw';
+        hint = '💡 HOW TO CLEAR: Press [A] / [D] or Swipe Left/Right to SWITCH LANES!';
+      } else if (rLower.includes('truck') || rLower.includes('bedford')) {
+        icon = '🚚';
+        title = '🚚 Bedford Cargo Truck';
+        hint = '💡 HOW TO CLEAR: Switch lanes early or Draft behind it for a Slingshot Boost!';
+      } else if (rLower.includes('bus') || rLower.includes('w11')) {
+        icon = '🚐';
+        title = '🚐 W11 Minibus';
+        hint = '💡 HOW TO CLEAR: Switch lanes early with [A] or [D]!';
+      } else if (rLower.includes('sewage')) {
+        icon = '🌊';
+        title = '🌊 Gutter Overflow Sewage';
+        hint = '💡 HOW TO CLEAR: Leap high with [W] or [Space]!';
+      }
 
-    top3.forEach((hole, idx) => {
-      if (!hole) return;
-      const rankNum = ranks[idx];
-      const pCol = document.createElement('div');
-      pCol.className = `podium-col rank-${rankNum} ${hole.isPlayer ? 'is-player' : ''}`;
-      pCol.innerHTML = `
-        <div class="podium-avatar">${rankNum === 1 ? '👑' : rankNum === 2 ? '🥈' : '🥉'}</div>
-        <div class="podium-name">${hole.name}</div>
-        <div class="podium-score">${hole.score} pts</div>
-        <div class="podium-block">#${rankNum}</div>
-      `;
-      podiumEl.appendChild(pCol);
-    });
+      const iconEl = document.getElementById('crash-hazard-icon');
+      const titleEl = document.getElementById('crash-hazard-title');
+      const hintEl = document.getElementById('crash-hazard-hint');
+      const distEl = document.getElementById('crash-stat-dist');
+      const coinsEl = document.getElementById('crash-stat-coins');
+      const scoreEl = document.getElementById('crash-stat-score');
 
-    const nextBtn = document.getElementById('btn-results-next');
-    if (nextBtn) {
-      nextBtn.style.display = canAdvanceNext ? 'inline-block' : 'none';
+      if (iconEl) iconEl.textContent = icon;
+      if (titleEl) titleEl.textContent = title;
+      if (hintEl) hintEl.textContent = hint;
+      if (distEl) distEl.textContent = `${Math.round(distanceMeters)}m`;
+      if (coinsEl) coinsEl.textContent = `${(coins || 0).toLocaleString()} Rs`;
+      if (scoreEl) scoreEl.textContent = (player?.score || 0).toLocaleString();
+
+    } else {
+      // Standard Free-Roam Match Results (v1 / v2)
+      if (crashCard) crashCard.style.display = 'none';
+      if (podiumEl) podiumEl.style.display = 'flex';
+      if (statsGrid) statsGrid.style.display = 'grid';
+      if (defaultButtons) defaultButtons.style.display = 'flex';
+
+      let headline = playerRank === 1 ? '👑 1ST PLACE CHAMPION! 👑' :
+                     playerRank === 2 ? '🥈 2ND PLACE! GREAT JOB!' :
+                     playerRank === 3 ? '🥉 3RD PLACE!' : 'MATCH COMPLETED';
+
+      document.getElementById('results-headline').textContent = headline;
+      document.getElementById('results-sub').textContent = `Ranked #${playerRank} in Karachi Street Patrol`;
+
+      if (player) {
+        document.getElementById('stat-score').textContent = (player.score || 0).toLocaleString();
+        document.getElementById('stat-level').textContent = `Lv ${player.level || 1} (${LEVEL_CONFIG[(player.level || 1) - 1]?.title || 'Hero'})`;
+        document.getElementById('stat-swallowed').textContent = player.swallowedCount || 0;
+        document.getElementById('stat-kills').textContent = player.kills || 0;
+      }
+
+      // Podium HTML
+      podiumEl.innerHTML = '';
+      const top3 = [(rankedHoles && rankedHoles[1]), (rankedHoles && rankedHoles[0]), (rankedHoles && rankedHoles[2])];
+      const ranks = [2, 1, 3];
+
+      top3.forEach((hole, idx) => {
+        if (!hole) return;
+        const rankNum = ranks[idx];
+        const pCol = document.createElement('div');
+        pCol.className = `podium-col rank-${rankNum} ${hole.isPlayer ? 'is-player' : ''}`;
+        pCol.innerHTML = `
+          <div class="podium-avatar">${rankNum === 1 ? '👑' : rankNum === 2 ? '🥈' : '🥉'}</div>
+          <div class="podium-name">${hole.name}</div>
+          <div class="podium-score">${hole.score} pts</div>
+          <div class="podium-block">#${rankNum}</div>
+        `;
+        podiumEl.appendChild(pCol);
+      });
+
+      const nextBtn = document.getElementById('btn-results-next');
+      if (nextBtn) {
+        nextBtn.style.display = canAdvanceNext ? 'inline-block' : 'none';
+      }
     }
 
     modal.style.display = 'flex';

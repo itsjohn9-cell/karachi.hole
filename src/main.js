@@ -398,6 +398,12 @@ class Game {
       },
       onReturnToMainMenu: () => {
         this.returnToMainMenu();
+      },
+      onQuickRevive: () => {
+        this.quickReviveWithChai();
+      },
+      onEmergencyUnstick: () => {
+        this.emergencyUnstick();
       }
     });
   }
@@ -656,6 +662,9 @@ class Game {
       return;
     }
 
+    // If currently in invulnerability grace window, ignore hit
+    if ((this.runnerInvulnerableTimer || 0) > 0) return;
+
     // Check CNG Turbo Nitro (Invulnerability Smash)
     if (this.nitroTimer > 0) {
       obstacle.isHit = true;
@@ -664,7 +673,7 @@ class Game {
       this.ui.showAnnouncement(`💥 CNG NITRO SMASH! Obliterated ${reason}! +500 XP`, '#ff9100');
       this.player.addXP(500);
       this.score += 500;
-      this.scene.remove(obstacle.mesh);
+      if (obstacle.mesh) this.scene.remove(obstacle.mesh);
       return;
     }
 
@@ -678,7 +687,7 @@ class Game {
       this.particles.createSkidSmoke(this.player.position, 10);
       this.ui.showAnnouncement(`🛡️ WATER TANKER SHIELD BROKE! Absorbed Impact on ${reason}!`, '#00e5ff');
       this.ui.showFloatingFeedback('🛡️ SHIELD BROKE!', this.player.position, '#00e5ff');
-      this.scene.remove(obstacle.mesh);
+      if (obstacle.mesh) this.scene.remove(obstacle.mesh);
       return;
     }
 
@@ -690,17 +699,29 @@ class Game {
     this.cameraShakeTimer = 0.45;
     this.particles.createSkidSmoke(this.player.position, 12);
 
+    // Deflect and remove the hit obstacle so player never gets trapped behind it
+    if (obstacle.mesh) this.scene.remove(obstacle.mesh);
+
     if (this.hearts > 0) {
-      this.ui.showAnnouncement(`⚠️ CRASH! Stumbled on ${reason}! ${'❤️'.repeat(this.hearts)} left!`, '#ff1744');
-      this.ui.showFloatingFeedback(`-1 ❤️ (${reason})`, this.player.position, '#ff1744');
+      // Grant 2.0s invulnerability grace window so player has time to orient themselves
+      this.runnerInvulnerableTimer = 2.0;
+
+      let hint = 'Switch [A/D]!';
+      const rLower = (reason || '').toLowerCase();
+      if (rLower.includes('wire') || rLower.includes('k-electric')) hint = 'Slide [S]!';
+      else if (rLower.includes('gutter') || rLower.includes('digging') || rLower.includes('sewage')) hint = 'Jump [W/Space]!';
+
+      this.ui.showAnnouncement(`⚠️ STUMBLED ON ${reason}! ${'❤️'.repeat(this.hearts)} left! (2s Grace)`, '#ff1744');
+      this.ui.showFloatingFeedback(`-1 ❤️ | ${hint}`, this.player.position, '#ff1744');
+
       // Temporary slowdown
       const origSpeed = this.player.currentSpeed;
-      this.player.currentSpeed = this.player.baseSpeed * 0.5;
+      this.player.currentSpeed = this.player.baseSpeed * 0.65;
       setTimeout(() => {
         if (this.player && !this.isGameOver) {
           this.player.currentSpeed = origSpeed;
         }
-      }, 1200);
+      }, 1000);
     } else {
       this.triggerTempleRunGameOver(reason);
     }
@@ -720,9 +741,124 @@ class Game {
       isCrash: true,
       distanceMeters: Math.round(this.distanceMeters),
       coins: this.coins,
-      crashReason: `💥 CRASHED: ${reason || 'Karachi Street Hazard'} | Distance: ${Math.round(this.distanceMeters)}m | Coins: ${this.coins} Rs`,
+      crashReason: reason || 'Karachi Street Hazard',
       canAdvanceNext: false
     });
+  }
+
+  /**
+   * Quick Revive With Kadak Chai (Resumes sprint with 2 hearts, invulnerable shield, and cleared road)
+   */
+  quickReviveWithChai() {
+    if (!this.player) return;
+    audio.playPowerUp();
+    audio.playChaiSip();
+    audio.resumeAudio();
+
+    this.isGameOver = false;
+    this.isPaused = false;
+    this.hearts = 2; // Revive with 2 hearts
+    this.nitroTimer = 4.0; // 4 seconds CNG Turbo Invulnerable Blast
+    this.runnerInvulnerableTimer = 4.0;
+
+    // Reset player position cleanly to center lane
+    this.currentLane = 0;
+    this.targetLaneX = 0;
+    this.player.position.x = 0;
+    this.player.isGrounded = true;
+    this.player.position.y = 0;
+    this.player.velocityY = 0;
+    if (this.player.group) {
+      this.player.group.position.x = 0;
+      this.player.group.position.y = 0;
+    }
+    if (this.player.avatarMesh) {
+      this.player.avatarMesh.visible = true;
+      this.player.avatarMesh.scale.set(1, 1, 1);
+    }
+
+    // Clear nearby obstacles & traffic within 45 meters forward
+    const pZ = this.player.position.z;
+    if (this.runnerObstacles) {
+      for (let i = this.runnerObstacles.length - 1; i >= 0; i--) {
+        const obs = this.runnerObstacles[i];
+        if (obs && Math.abs(obs.z - pZ) < 45.0) {
+          if (obs.mesh) this.scene.remove(obs.mesh);
+          this.runnerObstacles.splice(i, 1);
+        }
+      }
+    }
+    if (this.runnerTraffic) {
+      for (let i = this.runnerTraffic.length - 1; i >= 0; i--) {
+        const v = this.runnerTraffic[i];
+        if (v && v.mesh && Math.abs(v.mesh.position.z - pZ) < 45.0) {
+          this.scene.remove(v.mesh);
+          this.runnerTraffic.splice(i, 1);
+        }
+      }
+    }
+
+    this.particles.createCelebrationConfetti(this.player.position, 35);
+    this.particles.createDevourSparkles(this.player.position, 40, 0x76ff03);
+    this.ui.showAnnouncement('☕ KADAK CHAI REVIVAL! +2 HEARTS & 4s NITRO SHIELD!', '#76ff03');
+    this.ui.showFloatingFeedback('☕ REVIVED!', this.player.position, '#76ff03');
+  }
+
+  /**
+   * Emergency Unstick (Vault forward, clear road, restore heart & grant shield)
+   */
+  emergencyUnstick() {
+    if (!this.player) return;
+    audio.playPowerUp();
+    audio.playSlingshotBoost();
+    this.cameraShakeTimer = 0.35;
+
+    // 1. Reset lateral lane to center lane
+    this.currentLane = 0;
+    this.targetLaneX = 0;
+    this.player.position.x = 0;
+    if (this.player.group) this.player.group.position.x = 0;
+
+    // 2. Vault upward and forward with jump
+    this.player.isGrounded = false;
+    this.player.velocityY = 8.5;
+    this.player.position.y = 1.8;
+    if (this.player.group) this.player.group.position.y = 1.8;
+
+    // 3. Clear all active obstacles and traffic within 40 meters
+    const pZ = this.player.position.z;
+    if (this.runnerObstacles) {
+      for (let i = this.runnerObstacles.length - 1; i >= 0; i--) {
+        const obs = this.runnerObstacles[i];
+        if (obs && Math.abs(obs.z - pZ) < 40.0) {
+          if (obs.mesh) this.scene.remove(obs.mesh);
+          this.runnerObstacles.splice(i, 1);
+        }
+      }
+    }
+    if (this.runnerTraffic) {
+      for (let i = this.runnerTraffic.length - 1; i >= 0; i--) {
+        const v = this.runnerTraffic[i];
+        if (v && v.mesh && Math.abs(v.mesh.position.z - pZ) < 40.0) {
+          this.scene.remove(v.mesh);
+          this.runnerTraffic.splice(i, 1);
+        }
+      }
+    }
+
+    // 4. Restore Heart & grant shield
+    this.hearts = Math.max(1, Math.min(3, this.hearts + 1));
+    this.nitroTimer = 3.0; // 3 seconds CNG Turbo Invulnerable Blast
+    this.runnerInvulnerableTimer = 3.0;
+
+    // 5. Unpause if paused
+    if (this.isPaused && !this.isGameOver) {
+      this.isPaused = false;
+    }
+
+    this.particles.createDevourSparkles(this.player.position, 30, 0x00e5ff);
+    this.ui.showAnnouncement('🚀 EMERGENCY UNSTUCK! Path Cleared + CNG Turbo Shield!', '#00e5ff');
+    this.ui.showFloatingFeedback('🛡️ UNSTUCK & SHIELDED!', this.player.position, '#ffd700');
   }
 
   /**
@@ -1222,12 +1358,28 @@ class Game {
     const rpm = Math.round(2500 + ((kmh - gearMin) / Math.max(1, gearMax - gearMin)) * 5500);
     this.currentRpm = rpm;
 
-    // 2. Lateral Movement & Continuous Lane Lerp
-    if (this.moveVector && this.moveVector.x !== 0) {
-      this.targetLaneX += this.moveVector.x * dt * 9.0;
-      this.targetLaneX = Math.max(-4.2, Math.min(4.2, this.targetLaneX));
+    // 2. Lateral Movement & Subway Surfers 3-Lane Snap
+    if (this.moveVector && Math.abs(this.moveVector.x) > 0.45 && !this.lateralSwipeLocked) {
+      this.lateralSwipeLocked = true;
+      this.changeLane(this.moveVector.x > 0 ? 1 : -1);
+    } else if (this.moveVector && Math.abs(this.moveVector.x) < 0.2) {
+      this.lateralSwipeLocked = false;
     }
-    this.player.position.x = THREE.MathUtils.lerp(this.player.position.x, this.targetLaneX, Math.min(1.0, dt * 14.0));
+
+    this.targetLaneX = this.currentLane * this.laneWidth;
+    this.player.position.x = THREE.MathUtils.lerp(this.player.position.x, this.targetLaneX, Math.min(1.0, dt * 16.0));
+
+    // Update Runner Invulnerability Grace Timer & Blinking Mesh
+    if ((this.runnerInvulnerableTimer || 0) > 0) {
+      this.runnerInvulnerableTimer = Math.max(0, this.runnerInvulnerableTimer - dt);
+      if (this.player.avatarMesh) {
+        this.player.avatarMesh.visible = (Math.floor(Date.now() / 90) % 2 === 0);
+      }
+    } else {
+      if (this.player && this.player.avatarMesh) {
+        this.player.avatarMesh.visible = true;
+      }
+    }
 
     // 3. Forward Movement Along Street (Heading North towards -Z)
     this.player.position.z -= speed * dt;
@@ -1369,11 +1521,12 @@ class Game {
     }
 
     // 11. Check Runner Obstacle Collisions
-    for (let i = 0; i < this.runnerObstacles.length; i++) {
-      const obs = this.runnerObstacles[i];
-      if (!obs || obs.isHit || !obs.mesh) continue;
+    if ((this.runnerInvulnerableTimer || 0) <= 0) {
+      for (let i = 0; i < this.runnerObstacles.length; i++) {
+        const obs = this.runnerObstacles[i];
+        if (!obs || obs.isHit || !obs.mesh) continue;
 
-      const dz = Math.abs(pPos.z - obs.z);
+        const dz = Math.abs(pPos.z - obs.z);
       if (dz < 1.4) {
         if (obs.type === 'wire') {
           if (this.isSliding) {
@@ -1408,6 +1561,7 @@ class Game {
         }
       }
     }
+  }
 
     // 11b. Update Highway Cruising Traffic Vehicles & Drafting Physics
     const nowTime = performance.now();
@@ -1440,7 +1594,7 @@ class Game {
         }
 
         // Check crash into traffic vehicle
-        if (!v.isHit) {
+        if (!v.isHit && (this.runnerInvulnerableTimer || 0) <= 0) {
           const absDz = Math.abs(pPos.z - v.mesh.position.z);
           if (absDz < 1.6 && distX < 1.3) {
             if (this.nitroTimer > 0) {
@@ -1547,6 +1701,21 @@ class Game {
           this.runnerBoostPads.splice(i, 1);
         }
       }
+    }
+
+    // 13. Auto-Stuck Watchdog (Triggers rescue if player stops moving forward for > 1.8s)
+    if (this.lastRunnerZ === undefined) this.lastRunnerZ = this.player.position.z;
+    const deltaRunnerZ = Math.abs(this.player.position.z - this.lastRunnerZ);
+    if (deltaRunnerZ < 0.25) {
+      this.stuckWatchdogTimer = (this.stuckWatchdogTimer || 0) + dt;
+      if (this.stuckWatchdogTimer >= 1.8) {
+        this.stuckWatchdogTimer = 0;
+        this.lastRunnerZ = this.player.position.z;
+        this.emergencyUnstick();
+      }
+    } else {
+      this.stuckWatchdogTimer = 0;
+      this.lastRunnerZ = this.player.position.z;
     }
   }
 

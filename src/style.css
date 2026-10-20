@@ -6878,4 +6878,129 @@ body.mode-runner .powerup-slot-pill {
   text-align: center;
 }
 
+/* ==========================================================================
+   Runner Crash & Recovery "What Happens Next" System
+   ========================================================================== */
+#runner-crash-card {
+  width: 100%;
+  animation: modalPopIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.crash-hazard-badge {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 23, 68, 0.12);
+  border: 1.5px solid rgba(255, 23, 68, 0.4);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.crash-hazard-title {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #ff5252;
+  letter-spacing: 0.5px;
+}
+
+.crash-hazard-hint {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #00e5ff;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.runner-stats-summary {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0 20px 0;
+  justify-content: center;
+}
+
+.runner-stats-summary .stat-box {
+  flex: 1;
+  padding: 12px 8px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+}
+
+.crash-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.btn-crash-revive {
+  background: linear-gradient(135deg, #00e676, #00b0ff) !important;
+  color: #050b14 !important;
+  font-size: 1.05rem !important;
+  font-weight: 900 !important;
+  padding: 16px 20px !important;
+  border-radius: 30px !important;
+  box-shadow: 0 4px 24px rgba(0, 230, 118, 0.45) !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  letter-spacing: 0.5px;
+}
+
+.btn-crash-revive:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 30px rgba(0, 230, 118, 0.65) !important;
+}
+
+.btn-crash-retry {
+  background: rgba(0, 229, 255, 0.15) !important;
+  border: 1.5px solid #00e5ff !important;
+  color: #00e5ff !important;
+  font-size: 0.95rem !important;
+  font-weight: 800 !important;
+  padding: 13px 20px !important;
+  border-radius: 25px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-crash-retry:hover {
+  background: rgba(0, 229, 255, 0.3) !important;
+  transform: scale(1.02);
+}
+
+/* In-Game Emergency Unstick Floating Button */
+.runner-unstick-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  position: fixed;
+  bottom: 84px;
+  right: 18px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid #ffd700;
+  color: #ffd700;
+  padding: 8px 16px;
+  border-radius: 24px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 10px rgba(255, 215, 0, 0.3);
+  transition: transform 0.15s ease, background 0.15s ease;
+  backdrop-filter: blur(8px);
+}
+
+.runner-unstick-btn:hover {
+  transform: scale(1.06);
+  background: rgba(255, 215, 0, 0.2);
+}
+
+body.mode-runner .runner-unstick-btn {
+  display: flex !important;
+}
+
+
 
