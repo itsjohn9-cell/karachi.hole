@@ -2,6 +2,8 @@
 class AudioManager {
   constructor() {
     this.ctx = null;
+    this.masterGain = null;
+    this.isPaused = false;
     this.soundEnabled = true;
     this.musicEnabled = true;
     this.hapticsEnabled = true;
@@ -51,16 +53,32 @@ class AudioManager {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
+        try {
+          this.masterGain = this.ctx.createGain();
+          this.masterGain.gain.setValueAtTime(this.isPaused ? 0 : 1, this.ctx.currentTime);
+          this.masterGain.connect(this.ctx.destination);
+        } catch (e) {}
       }
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+    if (this.ctx && this.ctx.state === 'suspended' && !this.isPaused) {
+      try {
+        this.ctx.resume();
+      } catch (e) {}
     }
+  }
+
+  getDestination() {
+    this.initContext();
+    return this.masterGain || (this.ctx ? this.ctx.destination : null);
+  }
+
+  canPlaySound() {
+    return this.soundEnabled && !this.isPaused;
   }
 
   // Tactile Android vibration
   vibrate(pattern = 20) {
-    if (!this.hapticsEnabled) return;
+    if (!this.hapticsEnabled || this.isPaused) return;
     try {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(pattern);
@@ -72,7 +90,7 @@ class AudioManager {
 
   // Object swallowed sound - pitch varies dynamically with object tier
   playSwallow(tier = 1) {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -93,7 +111,7 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
 
     osc.start(t);
     osc.stop(t + duration);
@@ -110,7 +128,7 @@ class AudioManager {
 
   // Comical cartoon sound when a corrupt politician gets devoured!
   playPoliticianSwallow() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -127,7 +145,7 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.35);
 
@@ -154,7 +172,7 @@ class AudioManager {
 
   // Desi stray dog barking sound (Woof! Woof!)
   playDogBark() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -172,7 +190,7 @@ class AudioManager {
       gain.gain.exponentialRampToValueAtTime(0.001, st + 0.1);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(st);
       osc.stop(st + 0.1);
     });
@@ -180,7 +198,7 @@ class AudioManager {
 
   // Street cat meow sound
   playCatMeow() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -197,14 +215,14 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.3);
   }
 
   // Sewer rat squeak sound
   playRatSqueak() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -221,14 +239,14 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.08);
   }
 
   // Street Justice: Robber Devoured with Police Siren & Heroic Victory Punch!
   playRobberDevour() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -249,7 +267,7 @@ class AudioManager {
       gain.gain.exponentialRampToValueAtTime(0.001, st + 0.18);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(st);
       osc.stop(st + 0.18);
     }
@@ -274,7 +292,7 @@ class AudioManager {
 
   // Open Gutter Wet Splash & Slosh Sound
   playGutterSplash() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -290,14 +308,14 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.16);
   }
 
   // Water Tanker Mafia Devoured: Huge rushing water splash & air horn explosion
   playWaterTankerDevour() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -334,7 +352,7 @@ class AudioManager {
 
   // VIP Protocol Hooter Siren (PAAN-PAAN!)
   playVIPHooter() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -349,7 +367,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.35, st);
       gain.gain.exponentialRampToValueAtTime(0.001, st + 0.12);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(st);
       osc.stop(st + 0.12);
     });
@@ -357,7 +375,7 @@ class AudioManager {
 
   // Burns Road Bun Kabab Tawa Sizzle & Chutney Turbo Boost chime
   playBunKababSizzle() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -381,7 +399,7 @@ class AudioManager {
 
   // Triumphant Karachi Civic Crisis Resolved Fanfare!
   playChallengeSuccess() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -397,7 +415,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.35, noteTime);
       gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.45);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(noteTime);
       osc.stop(noteTime + 0.45);
     });
@@ -419,7 +437,7 @@ class AudioManager {
 
   // Kid-Friendly Educational Quiz Opening Chime (G4, C5, E5, G5 bright marimba)
   playQuizOpen() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -434,7 +452,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.32, st);
       gain.gain.exponentialRampToValueAtTime(0.001, st + 0.3);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(st);
       osc.stop(st + 0.3);
     });
@@ -443,7 +461,7 @@ class AudioManager {
 
   // Gentle, warm cartoon boing for kids when an answer needs reconsideration
   playQuizTryAgain() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -456,7 +474,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.28, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.32);
     this.vibrate(25);
@@ -464,7 +482,7 @@ class AudioManager {
 
   // Crowd Cheering & Whistling ("Karachi Zindabad!")
   playCrowdCheer() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -480,7 +498,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.2, st);
       gain.gain.exponentialRampToValueAtTime(0.001, st + 0.25);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(st);
       osc.stop(st + 0.25);
     });
@@ -488,7 +506,7 @@ class AudioManager {
 
   // Pothole / Broken Road Repaired Crushing Sound
   playPotholeDevour() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -501,7 +519,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.4, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.25);
     this.vibrate(35);
@@ -509,7 +527,7 @@ class AudioManager {
 
   // K-Electric Kunda Electric Spark / Zap Sound
   playKESpark() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -523,7 +541,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.35, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.22);
     this.vibrate([20, 20, 40]);
@@ -531,7 +549,7 @@ class AudioManager {
 
   // China Cutting Demolish / Concrete Rubble Sound
   playChinaCuttingDemolish() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -544,7 +562,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.4, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.35);
     this.vibrate([40, 25, 60]);
@@ -552,7 +570,7 @@ class AudioManager {
 
   // Bhatta Parchi Confiscated Sound
   playBhattaConfiscate() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -566,7 +584,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.3, st);
       gain.gain.exponentialRampToValueAtTime(0.001, st + 0.12);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(st);
       osc.stop(st + 0.12);
     });
@@ -575,7 +593,7 @@ class AudioManager {
 
   // Reckless One-Wheeler Impounded Motorbike Sputter
   playOneWheelerImpound() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -588,7 +606,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.4, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.32);
     this.vibrate([35, 20, 50]);
@@ -596,7 +614,7 @@ class AudioManager {
 
   // Quetta Alamgir Karak Chai Slurp / Energy Chime
   playChaiSip() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -610,7 +628,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.28, st);
       gain.gain.exponentialRampToValueAtTime(0.001, st + 0.22);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(st);
       osc.stop(st + 0.22);
     });
@@ -619,7 +637,7 @@ class AudioManager {
 
   // Innocent Citizen Cheering
   playCitizenCheer() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -632,14 +650,14 @@ class AudioManager {
     gain.gain.setValueAtTime(0.22, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.18);
   }
 
   // Level up fanfare sound
   playLevelUp() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -659,7 +677,7 @@ class AudioManager {
       gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.35);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
 
       osc.start(noteTime);
       osc.stop(noteTime + 0.35);
@@ -670,7 +688,7 @@ class AudioManager {
 
   // Grand District Cleared Victory Fanfare & Anthem
   playDistrictClearedFanfare() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -696,7 +714,7 @@ class AudioManager {
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + c.d);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.masterGain || this.ctx.destination);
         osc.start(startTime);
         osc.stop(startTime + c.d);
       });
@@ -707,7 +725,7 @@ class AudioManager {
 
   // Uplifting Civic Cleanse Transformation Chime (Before ➔ After Renovation)
   playCleanseTransformation() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -726,7 +744,7 @@ class AudioManager {
       gain.gain.exponentialRampToValueAtTime(0.001, st + 0.45);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(st);
       osc.stop(st + 0.45);
     });
@@ -736,7 +754,7 @@ class AudioManager {
 
   // Combo burst sound
   playCombo(comboCount = 2) {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -753,7 +771,7 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
 
     osc.start(now);
     osc.stop(now + 0.2);
@@ -761,7 +779,7 @@ class AudioManager {
 
   // Player swallowed bot or was swallowed
   playHoleKill(isVictim = false) {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -788,14 +806,14 @@ class AudioManager {
     }
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(now);
     osc.stop(now + 0.6);
   }
 
   // Subtle button click
   playClick() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -811,7 +829,7 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
 
     osc.start(now);
     osc.stop(now + 0.04);
@@ -819,7 +837,7 @@ class AudioManager {
 
   // Dynamic procedural upbeat synth loop
   startMusic() {
-    if (!this.musicEnabled || this.isPlayingMusic) return;
+    if (!this.musicEnabled || this.isPaused || this.isPlayingMusic) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -836,7 +854,7 @@ class AudioManager {
     const stepIntervalMs = 180; // ~166 BPM 8th notes
 
     this.musicInterval = setInterval(() => {
-      if (!this.musicEnabled || !this.isPlayingMusic || !this.ctx) return;
+      if (!this.musicEnabled || this.isPaused || !this.isPlayingMusic || !this.ctx) return;
 
       const t = this.ctx.currentTime;
       const noteIdx = this.musicStep % melody.length;
@@ -853,7 +871,7 @@ class AudioManager {
         gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.masterGain || this.ctx.destination);
 
         osc.start(t);
         osc.stop(t + 0.16);
@@ -885,7 +903,7 @@ class AudioManager {
 
   // Coastal Arabian Sea Wave Splash & Spray (Triggered at water corners & seawall)
   playWaterSplash() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -959,7 +977,7 @@ class AudioManager {
 
   // Joyous celebration when a citizen is saved from a robbery!
   playRescuedCitizenCheer() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -977,7 +995,7 @@ class AudioManager {
       gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.08 + 0.22);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(t + idx * 0.08);
       osc.stop(t + idx * 0.08 + 0.24);
     });
@@ -1010,7 +1028,7 @@ class AudioManager {
 
   // Rhythmic celebratory car honking when VIP protocol is crushed and traffic is freed!
   playTrafficFreedCelebration() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -1029,7 +1047,7 @@ class AudioManager {
       gain.gain.exponentialRampToValueAtTime(0.001, t + startTime + 0.07);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(t + startTime);
       osc.stop(t + startTime + 0.08);
     });
@@ -1039,7 +1057,7 @@ class AudioManager {
 
   // Gushing pressurized freshwater fountain when tanker mafia is devoured!
   playFreshwaterEruption() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -1065,7 +1083,7 @@ class AudioManager {
 
     noise.connect(filter);
     filter.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     noise.start(t);
 
     this.vibrate([30, 20, 50]);
@@ -1073,7 +1091,7 @@ class AudioManager {
 
   // Agile Parkour Jump Whoosh (Space / Jump button)
   playJump() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
@@ -1085,7 +1103,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.25, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.18);
     this.vibrate(12);
@@ -1093,7 +1111,7 @@ class AudioManager {
 
   // Authentic Karachi King Pressure Horn (بادشاہ پریشر ہارن)
   playKingPressureHorn() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
@@ -1109,7 +1127,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.28, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(t);
       osc.stop(t + 0.55);
     });
@@ -1118,7 +1136,7 @@ class AudioManager {
 
   // Muddy Sewer / Gutter Trap Splash Sound
   playGutterSplash() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
@@ -1130,7 +1148,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.4, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.35);
     this.vibrate([80, 40, 100]);
@@ -1138,7 +1156,7 @@ class AudioManager {
 
   // Melodic Citizen Dialogue Chime (Warm Sitar/Accordion chime)
   playDialogueChime() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
@@ -1150,7 +1168,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.2, t + i * 0.08);
       gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.35);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(t + i * 0.08);
       osc.stop(t + i * 0.08 + 0.35);
     });
@@ -1159,7 +1177,7 @@ class AudioManager {
 
   // Sparkling Civic Restoration Arpeggio (Pothole repaired, tap water flowing)
   playCivicRestore() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
@@ -1171,7 +1189,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.25, t + i * 0.07);
       gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.4);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(t + i * 0.07);
       osc.stop(t + i * 0.07 + 0.4);
     });
@@ -1180,7 +1198,7 @@ class AudioManager {
 
   // Metallic Heavy Slam (Heavy iron manhole cover slamming shut, industrial valve shut)
   playMetallicSlam() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
@@ -1195,7 +1213,7 @@ class AudioManager {
       gain.gain.setValueAtTime(0.45 / (idx + 1), t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(t);
       osc.stop(t + 0.32);
     });
@@ -1204,7 +1222,7 @@ class AudioManager {
 
   // Sudden Vehicle Brake Screech & Roadblock Halt
   playBrakeScreech() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
@@ -1218,7 +1236,7 @@ class AudioManager {
     gain.gain.setValueAtTime(0.32, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.3);
 
@@ -1231,7 +1249,7 @@ class AudioManager {
     thudGain.gain.setValueAtTime(0.5, t + 0.15);
     thudGain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
     thud.connect(thudGain);
-    thudGain.connect(this.ctx.destination);
+    thudGain.connect(this.masterGain || this.ctx.destination);
     thud.start(t + 0.15);
     thud.stop(t + 0.38);
 
@@ -1247,10 +1265,16 @@ class AudioManager {
   }
 
   pauseAudio() {
+    this.isPaused = true;
     this.isPlayingMusic = false;
     if (this.musicInterval) {
       clearInterval(this.musicInterval);
       this.musicInterval = null;
+    }
+    if (this.masterGain && this.ctx) {
+      try {
+        this.masterGain.gain.setValueAtTime(0, this.ctx.currentTime);
+      } catch (e) {}
     }
     if (this.ctx && this.ctx.state === 'running') {
       try {
@@ -1260,6 +1284,13 @@ class AudioManager {
   }
 
   resumeAudio() {
+    this.isPaused = false;
+    this.initContext();
+    if (this.masterGain && this.ctx) {
+      try {
+        this.masterGain.gain.setValueAtTime(1, this.ctx.currentTime);
+      } catch (e) {}
+    }
     if (this.ctx && this.ctx.state === 'suspended') {
       try {
         this.ctx.resume();
@@ -1270,9 +1301,55 @@ class AudioManager {
     }
   }
 
+  // Game Over Sad Defeat Jingle
+  playGameOver() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const dest = this.getDestination();
+    const notes = [440, 415.3, 392, 349.2]; // A4 -> G#4 -> G4 -> F4
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.18);
+      gain.gain.setValueAtTime(0.2, t + idx * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.18 + 0.3);
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t + idx * 0.18);
+      osc.stop(t + idx * 0.18 + 0.32);
+    });
+  }
+
+  // Celebration Victory Fanfare Arpeggio
+  playCelebration() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const dest = this.getDestination();
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.08);
+      gain.gain.setValueAtTime(0.25, t + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.08 + 0.4);
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t + idx * 0.08);
+      osc.stop(t + idx * 0.08 + 0.42);
+    });
+  }
+
   // Arcade Power-Up Chime: Ascending joyful arpeggio
   playPowerUp() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -1288,7 +1365,7 @@ class AudioManager {
       gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.05 + 0.25);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
 
       osc.start(t + idx * 0.05);
       osc.stop(t + idx * 0.05 + 0.25);
@@ -1297,7 +1374,7 @@ class AudioManager {
 
   // Temple Run Street Slide duck sound: White noise whoosh with bass friction
   playSlide() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     this.vibrate(25);
@@ -1313,14 +1390,14 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.25);
   }
 
   // Golden Rupee Coin pickup ding: High metallic two-tone chime
   playCoin() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     this.vibrate(10);
@@ -1341,7 +1418,7 @@ class AudioManager {
 
     osc1.connect(gain);
     osc2.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
 
     osc1.start(t);
     osc2.start(t + 0.06);
@@ -1351,7 +1428,7 @@ class AudioManager {
 
   // Obstacle collision impact thud & stumble
   playCrash() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     this.vibrate([40, 30, 60]);
@@ -1368,14 +1445,14 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.35);
   }
 
   // Restored heart / health pickup chime
   playHeartGain() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
     this.vibrate(20);
@@ -1391,7 +1468,7 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.25);
   }
@@ -1400,7 +1477,7 @@ class AudioManager {
   // NASCAR RACING SOUND SYNTHESIS
   // ---------------------------------------------------------------------------
   playEngineRev(rpm = 3500) {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -1418,13 +1495,13 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.15);
   }
 
   playDraftingWhoosh() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -1447,7 +1524,7 @@ class AudioManager {
 
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
 
     osc.start(t);
     osc.stop(t + 0.32);
@@ -1455,7 +1532,7 @@ class AudioManager {
   }
 
   playSlingshotBoost() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -1478,7 +1555,7 @@ class AudioManager {
 
     osc1.connect(gain);
     osc2.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
 
     osc1.start(t);
     osc2.start(t);
@@ -1488,7 +1565,7 @@ class AudioManager {
   }
 
   playTireScreech() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -1509,14 +1586,14 @@ class AudioManager {
 
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
 
     osc.start(t);
     osc.stop(t + 0.19);
   }
 
   playNearMiss() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -1533,7 +1610,7 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.005, t + 0.24);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
 
     osc.start(t);
     osc.stop(t + 0.25);
@@ -1541,7 +1618,7 @@ class AudioManager {
   }
 
   playBoostPad() {
-    if (!this.soundEnabled) return;
+    if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
 
@@ -1557,7 +1634,7 @@ class AudioManager {
     gain.gain.exponentialRampToValueAtTime(0.005, t + 0.28);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain || this.ctx.destination);
 
     osc.start(t);
     osc.stop(t + 0.3);

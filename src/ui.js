@@ -3133,6 +3133,7 @@ export class UIManager {
 
     this.isAutoPaused = true;
     if (this.onPauseGame) this.onPauseGame();
+    audio.pauseAudio();
     if (this.autoPauseModal) {
       this.autoPauseModal.style.display = 'flex';
     }
@@ -3150,8 +3151,8 @@ export class UIManager {
 
   showGameMenuModal() {
     if (!this.gameMenuModal) return;
-    audio.playClick();
     if (this.onPauseGame) this.onPauseGame();
+    audio.pauseAudio();
 
     // Sync current player stats
     if (window.game && window.game.player) {
@@ -3219,7 +3220,6 @@ export class UIManager {
 
   hideGameMenuModal() {
     if (!this.gameMenuModal) return;
-    audio.playClick();
     this.gameMenuModal.style.display = 'none';
     if (this.onResumeGame) this.onResumeGame();
   }
