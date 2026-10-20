@@ -6642,4 +6642,240 @@ html, body {
   transition: width 0.08s linear;
 }
 
+/* ==========================================================================
+   SUBWAY SURFERS & TEMPLE RUN PURE UNCLUTTERED HUD (v3 Karachi Runner)
+   ========================================================================== */
+body.mode-runner #district-mission-banner,
+body.mode-runner #radar-container,
+body.mode-runner #minimap-canvas,
+body.mode-runner #scoreboard,
+body.mode-runner .scoreboard-container,
+body.mode-runner #hud-nav-target,
+body.mode-runner #hud-route-progress,
+body.mode-runner #hud-nascar-cluster,
+body.mode-runner .hud-left .karachi-badge,
+body.mode-runner .hud-left .level-indicator,
+body.mode-runner .hud-top-controls button:not(#btn-manual-pause) {
+  display: none !important;
+}
+
+body.mode-runner .hud-top-bar {
+  padding: 16px 24px;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+body.mode-runner .hud-center-stats-row {
+  display: flex !important;
+  align-items: center;
+  gap: 18px;
+  background: rgba(10, 18, 30, 0.88);
+  border: 1.5px solid rgba(0, 229, 255, 0.45);
+  padding: 8px 22px;
+  border-radius: 999px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), 0 0 20px rgba(0, 229, 255, 0.2);
+  backdrop-filter: blur(16px);
+  pointer-events: auto;
+}
+
+body.mode-runner .runner-coins-pill {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  color: #ffd700;
+  font-size: 1.35rem;
+  text-shadow: 0 0 14px rgba(255, 215, 0, 0.8);
+}
+
+body.mode-runner .runner-dist-pill {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  color: #00e5ff;
+  font-weight: 800;
+  font-size: 1.15rem;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.6);
+}
+
+body.mode-runner .runner-milestone-tag {
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  color: #76ff03;
+  font-weight: 800;
+  margin-left: 6px;
+}
+
+body.mode-runner .score-pill {
+  display: flex !important;
+  align-items: baseline;
+  gap: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  color: #ffffff;
+  font-size: 1.4rem;
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
+}
+
+body.mode-runner .runner-hearts-pill {
+  display: flex !important;
+  align-items: center;
+  font-size: 1.3rem;
+  letter-spacing: 3px;
+}
+
+body.mode-runner .hud-top-controls {
+  pointer-events: auto;
+}
+
+body.mode-runner #btn-manual-pause {
+  display: flex !important;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(10, 18, 30, 0.88);
+  border: 1.5px solid rgba(0, 229, 255, 0.45);
+  color: #ffffff;
+  font-size: 1.35rem;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+body.mode-runner #btn-manual-pause:hover {
+  transform: scale(1.08);
+  border-color: #00e5ff;
+}
+
+/* Floating Subway Surfers Powerup Slot */
+body.mode-runner .powerup-slot-pill {
+  position: fixed;
+  top: 82px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(10, 18, 30, 0.94);
+  border: 1.5px solid #00e5ff;
+  padding: 8px 20px;
+  border-radius: 999px;
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.55);
+  backdrop-filter: blur(14px);
+  z-index: 105;
+}
+
+/* ==========================================================================
+   SUBWAY SPRINT ANIMATED CONTROLS TUTORIAL OVERLAY
+   ========================================================================== */
+.runner-tutorial-card {
+  position: fixed;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(8, 14, 24, 0.94);
+  border: 2px solid #00e5ff;
+  border-radius: 20px;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  z-index: 999;
+  box-shadow: 0 16px 54px rgba(0, 0, 0, 0.88), 0 0 28px rgba(0, 229, 255, 0.45);
+  backdrop-filter: blur(16px);
+  pointer-events: none;
+  animation: tutPopIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.runner-tutorial-card.fade-out {
+  opacity: 0;
+  transform: translate(-50%, -55%) scale(0.95);
+}
+
+@keyframes tutPopIn {
+  0% { transform: translate(-50%, -40%) scale(0.85); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+.tut-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tut-badge {
+  background: linear-gradient(90deg, #00e5ff, #00b0ff);
+  color: #050b14;
+  font-weight: 900;
+  font-size: 0.72rem;
+  letter-spacing: 1.5px;
+  padding: 4px 14px;
+  border-radius: 999px;
+}
+
+.tut-title {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.tut-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.tut-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 8px 16px;
+}
+
+.tut-icon {
+  font-size: 1.6rem;
+  min-width: 48px;
+  text-align: center;
+}
+
+.tut-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tut-action {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #ffd700;
+}
+
+.tut-sub {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.tut-footer {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #76ff03;
+  text-align: center;
+}
+
 

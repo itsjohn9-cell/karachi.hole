@@ -764,6 +764,19 @@ class Game {
    */
   spawnRunnerWave(waveZ) {
     const lanes = [-this.laneWidth, 0, this.laneWidth]; // [-3.2, 0, 3.2]
+
+    // 0. Safe Onboarding Warmup Zone (First 50 meters): Spawn ONLY pleasant golden coin paths!
+    if (this.distanceMeters < 50) {
+      const laneX = lanes[Math.floor(Math.random() * 3)];
+      [-4.0, -2.0, 0, 2.0, 4.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(laneX, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: laneX, z: waveZ + zOff });
+      });
+      return;
+    }
+
     const archetype = Math.floor(Math.random() * 8);
 
     if (archetype === 0) {
@@ -1030,10 +1043,156 @@ class Game {
   }
 
   /**
+   * Initialize Infinite Procedural 3-Lane Corridor for Karachi Subway Run
+   */
+  initCorridorTerrain() {
+    if (this.corridorChunks && this.corridorChunks.length > 0) {
+      this.corridorChunks.forEach(chunk => this.scene.remove(chunk));
+    }
+    this.corridorChunks = [];
+
+    // Create 7 modular chunks spanning from Z = 60m down to Z = -360m (420m of continuous track)
+    for (let i = 0; i < 7; i++) {
+      const chunkZ = 60.0 - (i * 60.0);
+      const chunk = this.createCorridorChunk(chunkZ);
+      this.scene.add(chunk);
+      this.corridorChunks.push(chunk);
+    }
+  }
+
+  /**
+   * Create a single 60-meter modular Corridor Segment (Asphalt, painted lane lines, sidewalks, buildings)
+   */
+  createCorridorChunk(chunkZ) {
+    const chunkGroup = new THREE.Group();
+    chunkGroup.position.z = chunkZ;
+
+    // 1. Smooth Dark Asphalt Road Surface (13m wide, 60m long)
+    const roadGeo = new THREE.PlaneGeometry(13.0, 60.0);
+    roadGeo.rotateX(-Math.PI / 2);
+    const roadMat = new THREE.MeshLambertMaterial({
+      color: 0x181e26
+    });
+    const roadMesh = new THREE.Mesh(roadGeo, roadMat);
+    roadMesh.position.y = 0.02;
+    roadMesh.receiveShadow = true;
+    chunkGroup.add(roadMesh);
+
+    // 2. Crisp Painted White Dashed Lane Dividers at X = -1.6 and X = +1.6
+    [-1.6, 1.6].forEach(divX => {
+      for (let dz = -25; dz <= 25; dz += 10) {
+        const dashGeo = new THREE.PlaneGeometry(0.18, 5.0);
+        dashGeo.rotateX(-Math.PI / 2);
+        const dashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const dash = new THREE.Mesh(dashGeo, dashMat);
+        dash.position.set(divX, 0.026, dz);
+        chunkGroup.add(dash);
+      }
+    });
+
+    // Outer Yellow Curbside Lines at X = -5.8 and X = +5.8
+    [-5.8, 5.8].forEach(borderX => {
+      const bGeo = new THREE.PlaneGeometry(0.24, 60.0);
+      bGeo.rotateX(-Math.PI / 2);
+      const bMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+      const bLine = new THREE.Mesh(bGeo, bMat);
+      bLine.position.set(borderX, 0.026, 0);
+      chunkGroup.add(bLine);
+    });
+
+    // 3. Sidewalks on Left and Right
+    [-8.0, 8.0].forEach(sideX => {
+      const walkGeo = new THREE.BoxGeometry(4.0, 0.28, 60.0);
+      const walkMat = new THREE.MeshLambertMaterial({ color: 0x64748b });
+      const walk = new THREE.Mesh(walkGeo, walkMat);
+      walk.position.set(sideX, 0.14, 0);
+      walk.receiveShadow = true;
+      chunkGroup.add(walk);
+    });
+
+    // 4. Streetlights every 30m along sidewalks
+    [-20, 10].forEach(lz => {
+      [-6.5, 6.5].forEach(lx => {
+        const lightPole = KarachiModels.createStreetLamp();
+        lightPole.position.set(lx, 0.28, lz);
+        if (lx < 0) lightPole.rotation.y = Math.PI;
+        chunkGroup.add(lightPole);
+      });
+    });
+
+    // 5. Flanking Karachi Buildings, Paan Shops & Chai Stalls
+    const bldColors = [0x94a3b8, 0xb0bec5, 0xcfd8dc, 0xef9a9a, 0xffcc80, 0x80deea, 0xa5d6a7];
+    [-13.5, 13.5].forEach(sideX => {
+      for (let bz = -20; bz <= 20; bz += 20) {
+        const w = 6 + (Math.abs(bz) % 3);
+        const h = 8 + ((Math.abs(bz) * 7) % 15);
+        const d = 18;
+        const color = bldColors[Math.abs(Math.round(chunkZ + bz + sideX)) % bldColors.length];
+        const bGeo = new THREE.BoxGeometry(w, h, d);
+        const bMat = new THREE.MeshLambertMaterial({ color });
+        const bld = new THREE.Mesh(bGeo, bMat);
+        bld.position.set(sideX, h / 2, bz);
+        chunkGroup.add(bld);
+      }
+    });
+
+    return chunkGroup;
+  }
+
+  /**
+   * Spawn a Ceremonial Karachi Milestone Welcome Arch across all 3 lanes
+   */
+  spawnMilestoneArchAhead(name, archZ) {
+    const archGroup = new THREE.Group();
+    archGroup.position.set(0, 0, archZ);
+
+    const pillarMat = new THREE.MeshLambertMaterial({ color: 0x00e5ff });
+    const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 6.0, 0.8), pillarMat);
+    p1.position.set(-6.0, 3.0, 0);
+    archGroup.add(p1);
+
+    const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 6.0, 0.8), pillarMat);
+    p2.position.set(6.0, 3.0, 0);
+    archGroup.add(p2);
+
+    const crossBar = new THREE.Mesh(new THREE.BoxGeometry(13.2, 1.4, 0.8), new THREE.MeshStandardMaterial({
+      color: 0x0d47a1,
+      emissive: 0x00e5ff,
+      emissiveIntensity: 0.4
+    }));
+    crossBar.position.set(0, 5.8, 0);
+    archGroup.add(crossBar);
+
+    this.scene.add(archGroup);
+    this.runnerObstacles.push({
+      type: 'scenery_arch',
+      z: archZ,
+      mesh: archGroup,
+      isHit: true
+    });
+  }
+
+  /**
    * Main Karachi Temple Run Corridor Physics, Movement, Obstacle & Coin Collision Loop
    */
   updateTempleRunCorridor(dt) {
     if (!this.player || !this.player.isAlive || this.isGameOver || this.isPaused) return;
+
+    // 0. Endless Procedural Corridor Chunk Recycling (Track never ends!)
+    if (this.corridorChunks && this.corridorChunks.length > 0) {
+      let minZ = 0;
+      for (let i = 0; i < this.corridorChunks.length; i++) {
+        const cz = this.corridorChunks[i].position.z;
+        if (cz < minZ) minZ = cz;
+      }
+      for (let i = 0; i < this.corridorChunks.length; i++) {
+        const chunk = this.corridorChunks[i];
+        if (chunk.position.z > this.player.position.z + 45.0) {
+          chunk.position.z = minZ - 60.0;
+          minZ = chunk.position.z;
+        }
+      }
+    }
 
     // 1. Calculate Forward Running Speed
     let speed = this.runSpeed;
@@ -1111,24 +1270,19 @@ class Game {
       AvatarBuilder.updateAnimation(this.player.avatarMesh, true, dt, speed / 14.0, !this.player.isGrounded);
     }
 
-    // 7. Check Karachi Milestone Badges
+    // 7. Check Karachi Milestone Badges & Archway Celebrations (Every 500m)
     for (let i = 0; i < this.milestones.length; i++) {
       const m = this.milestones[i];
       if (this.distanceMeters >= m.dist && !this.passedMilestoneIndices.has(i)) {
         this.passedMilestoneIndices.add(i);
         this.currentMilestone = m.name;
         audio.playDistrictClearedFanfare();
-        this.particles.createCelebrationConfetti(this.player.position, 40);
+        this.particles.createCelebrationConfetti(this.player.position, 50);
         this.ui.showAnnouncement(`🚩 KARACHI MILESTONE: ${m.name}! +1000 PTS`, '#00e5ff');
         this.player.addXP(1000);
         this.score += 1000;
+        this.spawnMilestoneArchAhead(m.name, this.player.position.z - 25.0);
       }
-    }
-
-    // 7b. Check District Finish Gate Crossing (Z <= -82.0)
-    if (this.player.position.z <= -82.0 && !this.districtClearing) {
-      this.handleDistrictCleared();
-      return;
     }
 
     // 8. Dynamic Runner Waves Spawning Ahead
@@ -1515,6 +1669,31 @@ class Game {
     this.clock.getDelta(); // Clear delta buffer so physics ticks smoothly from frame 1
     audio.startMusic();
     audio.resumeAudio();
+
+    if (this.isTempleRun) {
+      this.initCorridorTerrain();
+      this.distanceMeters = 0;
+      this.coins = 0;
+      this.hearts = 3;
+      this.currentLane = 0;
+      this.targetLaneX = 0;
+      this.player.position.set(0, 0, 60.0);
+      this.player.group.position.set(0, 0, 60.0);
+      this.nextRunnerWaveZ = 40.0; // safe coin-only warmup ahead
+      if (this.camera) {
+        this.camera.position.set(0, 2.85, 65.2);
+        this.camera.lookAt(0, 1.25, 42.0);
+      }
+      if (this.ui) {
+        this.ui.setRunnerMode(true);
+        this.ui.showRunnerTutorial(4000);
+      }
+    } else {
+      if (this.ui) {
+        this.ui.setRunnerMode(false);
+      }
+    }
+
     if (this.ui) {
       if (this.ui.startModal) this.ui.startModal.style.display = 'none';
       if (this.ui.hideAutoPauseModal) this.ui.hideAutoPauseModal();
@@ -1535,6 +1714,9 @@ class Game {
     } catch (e) {}
 
     this.isTempleRun = (versionId === 'v3');
+    if (this.ui && typeof this.ui.setRunnerMode === 'function') {
+      this.ui.setRunnerMode(this.isTempleRun);
+    }
 
     if (this.player) {
       if (versionId === 'v1') {
@@ -1573,12 +1755,9 @@ class Game {
   }
 
   initAudioTriggers() {
-    // Start music on first user interaction or auto-start game
+    // Unlock Web Audio API on first user interaction without starting game prematurely
     const startAudio = () => {
       audio.startMusic();
-      if (!this.isGameStarted) {
-        this.startGame();
-      }
       window.removeEventListener('click', startAudio);
       window.removeEventListener('touchstart', startAudio);
     };
@@ -1599,16 +1778,28 @@ class Game {
     this.targetLaneX = 0;
     this.isSliding = false;
     this.slideTimer = 0;
-    this.nextRunnerWaveZ = 45.0;
+    this.nextRunnerWaveZ = 40.0;
     this.currentMilestone = 'Soldier Bazar';
     this.passedMilestoneIndices = new Set([0]);
 
-    // Reset Player
-    const diff = DIFFICULTY_CONFIG[this.difficulty || 'kidsEasy'] || DIFFICULTY_CONFIG.kidsEasy;
-    const startZ = (this.currentDistrictLevel === 1) ? 70.0 : 0.0;
-    this.player.position.set(0, 0, startZ);
-    this.nextRunnerWaveZ = startZ - 25.0;
-    this.player.group.position.copy(this.player.position);
+    if (this.isTempleRun) {
+      this.initCorridorTerrain();
+      this.player.position.set(0, 0, 60.0);
+      this.player.group.position.set(0, 0, 60.0);
+      if (this.camera) {
+        this.camera.position.set(0, 2.85, 65.2);
+        this.camera.lookAt(0, 1.25, 42.0);
+      }
+      if (this.ui) {
+        this.ui.setRunnerMode(true);
+        this.ui.showRunnerTutorial(3500);
+      }
+    } else {
+      const startZ = (this.currentDistrictLevel === 1) ? 70.0 : 0.0;
+      this.player.position.set(0, 0, startZ);
+      this.player.group.position.copy(this.player.position);
+      if (this.ui) this.ui.setRunnerMode(false);
+    }
     this.player.level = 1;
     this.player.xp = 0;
     this.player.score = 0;
@@ -2580,8 +2771,8 @@ class Game {
     }
     this.recentCleaned = [];
 
-    // Reset player position smoothly: In Temple Run Karachi mode, start at South (Z=70) for the sprint; in v1 / v2 start at center (Z=0)
-    const startZ = this.isTempleRun ? 70.0 : 0.0;
+    // Reset player position smoothly: In Temple Run Karachi mode, start at Z=60 for the sprint; in v1 / v2 start at center (Z=0)
+    const startZ = this.isTempleRun ? 60.0 : 0.0;
     this.player.position.set(0, 0, startZ);
     this.player.group.position.set(0, 0, startZ);
     this.player.facingAngle = Math.PI;
@@ -2593,12 +2784,19 @@ class Game {
     this.targetLaneX = 0;
     this.isSliding = false;
     this.slideTimer = 0;
-    this.nextRunnerWaveZ = startZ - 25.0;
+    this.nextRunnerWaveZ = 40.0;
     this.player.targetRadius = 1.45;
     if (!isFinite(this.player.baseSpeed) || this.player.baseSpeed <= 0) {
       this.player.baseSpeed = 13.5;
     }
     this.player.currentSpeed = this.player.baseSpeed;
+
+    if (this.isTempleRun) {
+      this.initCorridorTerrain();
+      if (this.ui) this.ui.setRunnerMode(true);
+    } else {
+      if (this.ui) this.ui.setRunnerMode(false);
+    }
 
     // Apply version-specific mesh visibility and camera setup
     if (this.majorVersion === 'v1') {
@@ -2621,8 +2819,8 @@ class Game {
       this.smoothGazeLead = 0;
       this.cameraBankX = 0;
       if (this.isTempleRun) {
-        this.camera.position.set(0, 2.35, startZ + 4.4);
-        this.camera.lookAt(0, 1.35, startZ - 7.0);
+        this.camera.position.set(0, 2.85, startZ + 5.2);
+        this.camera.lookAt(0, 1.25, startZ - 18.0);
       } else {
         this.camera.position.set(0, 3.4, startZ + 5.8);
         this.camera.lookAt(0, 1.5, startZ - 9.5);
@@ -4016,6 +4214,7 @@ class Game {
 
   updateCamera(dt) {
     if (!this.player) return;
+    if (this.isTempleRun) return; // Dedicated elevated runner camera runs in updateTempleRunCorridor
 
     // Enhanced 3D Chase Camera: elevated height and clear street viewing angle
     const isPortrait = (window.innerHeight || 1) > (window.innerWidth || 1);
@@ -4939,7 +5138,7 @@ function bootKarachiGame() {
   try {
     window.game = new Game();
   } catch (err) {
-    console.error('[CRITICAL_BOOT_ERROR] Failed to start Karachi Street Hero:', err);
+    console.error('[CRITICAL_BOOT_ERROR] Failed to start Karachi Street Hero:', err ? (err.stack || err.message || String(err)) : 'Unknown error');
     const errBox = document.createElement('div');
     errBox.style.cssText = 'position:fixed;inset:0;background:#050b14;color:#ff3366;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;font-family:sans-serif;z-index:999999;text-align:center;';
     errBox.innerHTML = `

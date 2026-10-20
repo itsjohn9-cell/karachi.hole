@@ -938,6 +938,10 @@ export const KarachiModels = {
     return group;
   },
 
+  createStreetLight(height = 5.2) {
+    return this.createStreetLamp();
+  },
+
   // 17. Traffic Cones / Concrete Barricades - Tier 1
   createTrafficCone() {
     const group = new THREE.Group();

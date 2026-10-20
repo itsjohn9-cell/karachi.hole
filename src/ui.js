@@ -89,6 +89,7 @@ export class UIManager {
     this.createDistrictClearedModal();
     this.createCitizenDialogueModal();
     this.createMissionJournalModal();
+    this.createRunnerTutorialOverlay();
     this.createDevModeUI();
     this.bindEvents();
   }
@@ -304,6 +305,83 @@ export class UIManager {
 
   hideTapToStartPrompt() {
     if (this.tapToStartOverlay) this.tapToStartOverlay.style.display = 'none';
+  }
+
+  // Subway Surfers / Temple Run Visual Controls Tutorial Overlay
+  createRunnerTutorialOverlay() {
+    this.runnerTutorialOverlay = document.createElement('div');
+    this.runnerTutorialOverlay.id = 'runner-tutorial-overlay';
+    this.runnerTutorialOverlay.className = 'runner-tutorial-card';
+    this.runnerTutorialOverlay.style.display = 'none';
+    this.runnerTutorialOverlay.innerHTML = `
+      <div class="tut-header">
+        <span class="tut-badge">🏃 RUNNER CONTROLS</span>
+        <span class="tut-title">Subway Sprint Karachi</span>
+      </div>
+      <div class="tut-grid">
+        <div class="tut-row">
+          <span class="tut-icon">⬅️ ➡️</span>
+          <div class="tut-text">
+            <span class="tut-action">SWIPE or [A] / [D]</span>
+            <span class="tut-sub">Switch between 3 Lanes</span>
+          </div>
+        </div>
+        <div class="tut-row">
+          <span class="tut-icon">⬆️</span>
+          <div class="tut-text">
+            <span class="tut-action">SWIPE UP or [W] / [Space]</span>
+            <span class="tut-sub">Parkour Jump over Gutters &amp; Barriers</span>
+          </div>
+        </div>
+        <div class="tut-row">
+          <span class="tut-icon">⬇️</span>
+          <div class="tut-text">
+            <span class="tut-action">SWIPE DOWN or [S]</span>
+            <span class="tut-sub">Slide Crouch under Live Wires</span>
+          </div>
+        </div>
+        <div class="tut-row">
+          <span class="tut-icon">📢</span>
+          <div class="tut-text">
+            <span class="tut-action">PRESS [H] or Tap Horn</span>
+            <span class="tut-sub">King Pressure Horn (Scatter Snatchers)</span>
+          </div>
+        </div>
+      </div>
+      <div class="tut-footer">
+        <span>🪙 Follow Rupee coin paths &amp; collect Biryani Magnets!</span>
+      </div>
+    `;
+    document.body.appendChild(this.runnerTutorialOverlay);
+  }
+
+  showRunnerTutorial(durationMs = 4000) {
+    if (!this.runnerTutorialOverlay) return;
+    this.runnerTutorialOverlay.style.display = 'flex';
+    this.runnerTutorialOverlay.classList.remove('fade-out');
+    clearTimeout(this.__tutTimeout);
+    this.__tutTimeout = setTimeout(() => {
+      this.hideRunnerTutorial();
+    }, durationMs);
+  }
+
+  hideRunnerTutorial() {
+    if (!this.runnerTutorialOverlay) return;
+    this.runnerTutorialOverlay.classList.add('fade-out');
+    setTimeout(() => {
+      if (this.runnerTutorialOverlay) this.runnerTutorialOverlay.style.display = 'none';
+    }, 380);
+  }
+
+  setRunnerMode(isRunner) {
+    this.isRunnerMode = !!isRunner;
+    if (this.isRunnerMode) {
+      document.body.classList.add('mode-runner');
+      if (this.hud) this.hud.classList.add('runner-mode');
+    } else {
+      document.body.classList.remove('mode-runner');
+      if (this.hud) this.hud.classList.remove('runner-mode');
+    }
   }
 
   // Major Game Version Feedback & Restore Manager
@@ -2787,14 +2865,19 @@ export class UIManager {
       // Temple Run Runner Keyboard Controls (Lane switch, Jump, Slide, Horn)
       if (window.game && window.game.isGameStarted && !this.isAutoPaused && !window.game.isPaused) {
         if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+          this.hideRunnerTutorial();
           if (this.onSlide) this.onSlide();
         } else if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
+          this.hideRunnerTutorial();
           if (this.onLaneLeft) this.onLaneLeft();
         } else if (e.code === 'KeyD' || e.code === 'ArrowRight') {
+          this.hideRunnerTutorial();
           if (this.onLaneRight) this.onLaneRight();
         } else if (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === 'Space') {
+          this.hideRunnerTutorial();
           if (this.onJump) this.onJump();
         } else if (e.code === 'KeyH') {
+          this.hideRunnerTutorial();
           if (this.onHorn) this.onHorn();
         }
       }
@@ -2815,6 +2898,7 @@ export class UIManager {
         const dx = e.changedTouches[0].clientX - touchStartX;
         const dy = e.changedTouches[0].clientY - touchStartY;
         if (Math.abs(dx) > 35 || Math.abs(dy) > 35) {
+          this.hideRunnerTutorial();
           if (Math.abs(dx) > Math.abs(dy)) {
             if (dx < 0 && this.onLaneLeft) this.onLaneLeft();
             else if (dx > 0 && this.onLaneRight) this.onLaneRight();
@@ -2825,6 +2909,35 @@ export class UIManager {
         }
       }
     }, { passive: true });
+
+    // Mouse Drag Swipe for Desktop Web
+    let mouseStartX = 0;
+    let mouseStartY = 0;
+    let isMouseDown = false;
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        mouseStartX = e.clientX;
+        mouseStartY = e.clientY;
+        isMouseDown = true;
+      }
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (isMouseDown) {
+        isMouseDown = false;
+        const dx = e.clientX - mouseStartX;
+        const dy = e.clientY - mouseStartY;
+        if (Math.abs(dx) > 35 || Math.abs(dy) > 35) {
+          this.hideRunnerTutorial();
+          if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0 && this.onLaneLeft) this.onLaneLeft();
+            else if (dx > 0 && this.onLaneRight) this.onLaneRight();
+          } else {
+            if (dy < 0 && this.onJump) this.onJump();
+            else if (dy > 0 && this.onSlide) this.onSlide();
+          }
+        }
+      }
+    });
 
     // Boost button
     const btnBoost = document.getElementById('btn-boost');
@@ -3046,6 +3159,9 @@ export class UIManager {
     isSlingshotReady = false,
     isRunnerMode = true
   }) {
+    if (this.isRunnerMode !== isRunnerMode) {
+      this.setRunnerMode(isRunnerMode);
+    }
     // NASCAR Cockpit Racing Cluster & Speed Lines
     const nascarCluster = document.getElementById('hud-nascar-cluster');
     const speedEl = document.getElementById('hud-nascar-speed');
