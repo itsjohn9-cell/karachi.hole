@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="./assets/runnerConsole-BC346Hta.js"></script>
+    <script type="module" crossorigin src="./assets/runnerConsole-d0ruKgTN.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/game-ops-engine-D1SQmJNN.js">
     <link rel="stylesheet" crossorigin href="./assets/runnerConsole-D8Bz9V-g.css">
   </head>
@@ -123,6 +123,42 @@
             <div><h3>Run live self-check</h3><p>Verify Runner mode, scene, lane setup, player coordinates, hazard metadata, and route distance.</p></div>
             <button class="god-btn btn-cyan" id="btn-runner-self-check" type="button" data-run-action>Run self-check</button>
           </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🤖</span>
+            <div><h3>Auto-run bot</h3><p>Let the bot change lanes, jump and slide through hazards. Toggle off to take over.</p></div>
+            <button class="god-btn btn-green" id="btn-toggle-autorun" type="button" data-run-action aria-pressed="false">Start auto-run</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🛡️</span>
+            <div><h3>Invincibility</h3><p>Ignore hazard hits while testing a route.</p></div>
+            <button class="god-btn btn-amber" id="btn-toggle-immortal" type="button" data-run-action aria-pressed="false">Enable invincibility</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">⚡</span>
+            <div><h3>Run speed</h3><p>Scale base Runner speed for faster test passes.</p></div>
+            <select id="ops-speed-mult" aria-label="Run speed multiplier">
+              <option value="1">1x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2x</option>
+              <option value="3">3x</option>
+            </select>
+            <button class="god-btn btn-cyan" id="btn-set-speed" type="button" data-run-action>Apply speed</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🏁</span>
+            <div><h3>Complete current area</h3><p>Jump to the next Karachi patrol area, unlocking it like a normal run.</p></div>
+            <button class="god-btn btn-green" id="btn-complete-area" type="button" data-run-action>Complete area</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🏆</span>
+            <div><h3>Complete full route</h3><p>Finish the city route and show the route-complete screen.</p></div>
+            <button class="god-btn btn-amber" id="btn-complete-route" type="button" data-run-action>Complete route</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">❤️</span>
+            <div><h3>Restore hearts</h3><p>Refill hearts for the current run.</p></div>
+            <button class="god-btn btn-green" id="btn-restore-hearts" type="button" data-run-action>Restore hearts</button>
+          </article>
         </div>
         <p class="console-helper">Scheduled CI runs the production build and browser regression suite daily, on manual dispatch, and when an issue is tagged <code>game-ops</code>. Reports are retained as workflow artifacts; import a downloaded <code>test_results.json</code> into the Master Board to keep it with local operations history.</p>
       </section>
@@ -157,6 +193,14 @@
           </select>
           <button class="god-btn btn-amber" id="btn-spawn-test-obstacle" type="button" data-run-action>Spawn test obstacle</button>
           <button class="god-btn btn-outline" id="btn-clear-test-obstacles" type="button" data-run-action>Clear test obstacles</button>
+          <button class="god-btn btn-amber" id="btn-clear-all-hazards" type="button" data-run-action>Clear ALL obstacles &amp; traffic</button>
+          <label for="ops-junction-type">Junction</label>
+          <select id="ops-junction-type">
+            <option value="turn-left">Turn left</option>
+            <option value="turn-right">Turn right</option>
+            <option value="fork">Fork (flyover / underpass)</option>
+          </select>
+          <button class="god-btn btn-amber" id="btn-spawn-junction" type="button" data-run-action>Spawn junction ahead</button>
         </div>
       </section>
 
