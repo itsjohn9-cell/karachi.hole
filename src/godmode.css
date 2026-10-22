@@ -49,6 +49,425 @@ body {
   background-attachment: fixed;
 }
 
+.runner-dashboard-mode .legacy-game-controls,
+.classic-dashboard-mode .runner-control-card {
+  display: none;
+}
+
+.runner-console {
+  --console-accent: #00e5ff;
+}
+
+.runner-console-main {
+  width: min(1200px, calc(100% - 32px));
+  margin: 24px auto 64px;
+  display: grid;
+  gap: 20px;
+}
+
+.console-notice,
+.console-live,
+.console-panel,
+.console-persistent-action {
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  border-radius: 18px;
+  background: rgba(14, 21, 35, 0.86);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.22);
+}
+
+.console-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.console-notice strong {
+  flex: 0 0 auto;
+  color: var(--accent-amber);
+}
+
+.console-live,
+.console-panel {
+  padding: clamp(16px, 3vw, 24px);
+}
+
+.console-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.console-section-heading h2 {
+  color: var(--text-main);
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
+}
+
+.console-eyebrow {
+  margin-bottom: 3px;
+  color: var(--accent-cyan);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.console-live-state {
+  padding: 7px 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  color: var(--accent-amber);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.console-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.console-stat {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(7, 14, 24, 0.72);
+}
+
+.console-stat > span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.console-stat strong {
+  overflow-wrap: anywhere;
+  color: #ffffff;
+  font-size: clamp(0.98rem, 2.2vw, 1.2rem);
+}
+
+.console-stat small {
+  min-height: 1em;
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.runner-console .console-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: rgba(14, 21, 35, 0.82);
+}
+
+.runner-console .console-tabs .god-tab-btn {
+  flex: 1 1 150px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.runner-console .console-tabs .god-tab-btn.active {
+  border-color: var(--border-active);
+  background: rgba(0, 229, 255, 0.1);
+  color: #ffffff;
+}
+
+.runner-console .tab-pane {
+  display: none;
+}
+
+.runner-console .tab-pane.active {
+  display: block;
+}
+
+.console-helper {
+  max-width: 420px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.console-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.console-action-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(7, 14, 24, 0.7);
+}
+
+.console-action-icon {
+  grid-row: span 2;
+  font-size: 1.4rem;
+}
+
+.console-action-card h3 {
+  margin: 0 0 4px;
+  font-size: 0.94rem;
+}
+
+.console-action-card p,
+.console-persistent-action p {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.console-action-card .god-btn {
+  grid-column: 2;
+  justify-self: start;
+  min-height: 42px;
+  padding: 9px 14px;
+}
+
+.console-action-card .god-btn:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.7);
+  opacity: 0.48;
+}
+
+.console-persistent-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 12px;
+  padding: 16px;
+}
+
+.console-persistent-action strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.console-persistent-action .god-btn,
+.console-qa-actions .god-btn,
+.console-submit-row .god-btn {
+  min-height: 44px;
+  padding: 10px 16px;
+}
+
+.console-qa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.console-history {
+  display: grid;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.console-history-item {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(7, 14, 24, 0.72);
+  overflow-wrap: anywhere;
+}
+
+.console-history-item strong {
+  color: var(--text-main);
+}
+
+.console-history-item span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.console-ops-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.console-ops-board > section {
+  min-width: 0;
+}
+
+.console-ops-board h3 {
+  margin: 0 0 10px;
+}
+
+.console-history-item .console-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.console-history-actions button {
+  min-height: 34px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.runner-console .console-obstacle-controls {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 1fr) auto minmax(110px, 0.5fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.runner-console .console-obstacle-controls label {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.runner-console .console-obstacle-controls select {
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9px;
+  background: #101a2a;
+  color: var(--text-main);
+  font: inherit;
+}
+
+.runner-console .console-obstacle-controls .god-btn {
+  min-height: 44px;
+  grid-column: span 2;
+}
+
+.console-feedback-label {
+  display: block;
+  margin: 14px 0 6px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.runner-console #dash-feedback-cat {
+  width: 100%;
+  max-width: 440px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9px;
+  background: #101a2a;
+  color: var(--text-main);
+  font: inherit;
+}
+
+.runner-console .feedback-textarea {
+  min-height: 118px;
+}
+
+.console-submit-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 10px 0 18px;
+}
+
+.console-toast {
+  position: fixed;
+  z-index: 3000;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 16px;
+  border: 1px solid var(--border-active);
+  border-radius: 12px;
+  background: #101a2a;
+  color: #ffffff;
+  box-shadow: var(--glow-cyan);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.console-toast.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 640px) {
+  .runner-console-main {
+    width: min(100% - 20px, 1200px);
+    margin-top: 12px;
+    gap: 12px;
+  }
+
+  .console-notice,
+  .console-section-heading,
+  .console-persistent-action {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .console-helper {
+    text-align: left;
+  }
+
+  .console-ops-board {
+    grid-template-columns: 1fr;
+  }
+
+  .runner-console .console-obstacle-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .runner-console .console-obstacle-controls .god-btn {
+    grid-column: auto;
+    width: 100%;
+  }
+
+  .console-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .console-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .console-action-card .god-btn {
+    width: 100%;
+  }
+
+  .console-qa-actions .god-btn,
+  .console-persistent-action .god-btn {
+    width: 100%;
+  }
+}
+
 /* Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;

@@ -11,14 +11,14 @@
 **Karachi Hole.io** began as an arcade void-growth prototype and evolved into a **3D Third-Person Urban Action & Civic Educational Simulator** set in the vibrant megacity of **Karachi, Pakistan**.
 
 ### Core Gameplay Loop
-1. **Street-Level Patrol (GTA / Subway Surfers Style):** Players navigate authentic Karachi streets, boulevards, and side alleys behind a 3D procedural humanoid hero avatar.
+1. **Street-Level Patrol:** Players navigate authentic Karachi streets, boulevards, and side alleys behind a 3D procedural humanoid hero avatar.
 2. **Civic Cleansing & District Missions:** Instead of devouring innocent civilians, the player devours real-world Karachi urban issues:
    - 💧 **Water Tanker Mafia:** Stealing residential water supply. Devouring them transforms the block into overflowing public tap water sabeels and restores water to 2,500+ homes.
    - 🔫 **Mobile Snatchers & Thugs:** Street criminals terrorizing pedestrians.
    - 🕳️ **Broken Road Potholes:** Asphalt craters repaired into smooth carpet roads.
    - 🛑 **Gutka Mafia:** Illegal tobacco peddlers cleared from school zones.
    - 🚨 **VIP Protocols:** Reckless black SUV convoys blocking ambulances.
-   - ⚡ **K-Electric Kundas:** Hazardous illegal electricity bypass wires.
+   - ⚡ **Exposed Utility Wires:** Hazardous illegal electricity bypass wires.
    - 🗑️ **Kachra Garbage Piles:** Replaced with flowerbeds and clean trash sorting stations.
 3. **Age-Adaptive Educational Quizzes:** Whenever an active crisis is cleared, the game pauses and presents an interactive civic puzzle tailored to the player's age group:
    - **Kids (Ages 5–8):** Visual pictorial waste sorting (compost vs. recycling) with friendly hints.
@@ -87,7 +87,7 @@ hole-io-android/
 
 ### B. Third-Person Street Camera vs. Overhead Badges
 * **Issue:** Overhead billboard badges designed for top-down hole view floated at 4.8m height, blocking the street view and overlapping across the screen.
-* **Resolution:** Scaled badges down from `4.6m` to `2.4m`, lowered height to eye level (`y: 2.3m`), and reduced text clutter into sleek GTA-style danger pills.
+* **Resolution:** Scaled badges down from `4.6m` to `2.4m`, lowered height to eye level (`y: 2.3m`), and reduced text clutter into compact danger indicators.
 
 ### C. Responsiveness Across Small Screens & Mobiles
 * **Issue:** Start modal card overflowed on screens with height < 760px, pushing the "START PATROL" button offscreen.
@@ -124,7 +124,7 @@ GitHub Repository: https://github.com/itsjohn9-cell/karachi.hole.git
 
 Here is the architectural context:
 - Engine: Three.js (WebGL) + Vanilla JavaScript (ES modules) + Vite build system.
-- Camera: Third-person street-level camera (GTA / Subway Surfers style) behind 3D humanoid Karachi avatars.
+- Camera: Third-person street-level camera behind 3D humanoid Karachi avatars.
 - Mechanics: Circle-to-AABB solid obstacle physics, building transparency occlusion shader, 65m mini-map radar.
 - Theme: Solving civic crises in Karachi (water tanker mafia, mobile snatchers, potholes, gutka peddlers, VIP protocols).
 - Education: Interactive age-specific quizzes (recycling sorting for kids, water pipe flow puzzles for junior, emergency dispatch for adults).

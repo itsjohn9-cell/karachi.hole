@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Hole.io Karachi</string>
-    <string name="title_activity_main">Hole.io Karachi</string>
+    <string name="app_name">KARACHI RUNNER</string>
+    <string name="title_activity_main">KARACHI RUNNER</string>
     <string name="package_name">com.holeio.karachi</string>
     <string name="custom_url_scheme">com.holeio.karachi</string>
 </resources>

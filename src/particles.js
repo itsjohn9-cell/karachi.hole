@@ -304,6 +304,61 @@ export class ParticleSystem {
     }
   }
 
+  // New: createDevourSparkles – short burst of colored spark particles (used for devouring objects)
+  createDevourSparkles(pos, count = 6, color = 0xffffff) {
+    const mat = new THREE.MeshBasicMaterial({ color });
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(this.sparkGeo, mat);
+      mesh.position.copy(pos);
+      mesh.position.y += 0.3 + Math.random() * 0.2;
+
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 + Math.random() * 3;
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        2.5 + Math.random() * 4,
+        Math.sin(angle) * speed
+      );
+
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -12,
+        life: 0.8 + Math.random() * 0.4,
+        maxLife: 1.0,
+        scale: 0.7 + Math.random() * 0.5
+      });
+    }
+  }
+  createSwallowBurst(pos, tier = 1, count = 12) {
+    const burstCount = count * Math.min(3, tier);
+    for (let i = 0; i < burstCount; i++) {
+      const mat = this.palette[Math.floor(Math.random() * this.palette.length)];
+      const mesh = new THREE.Mesh(this.sparkGeo, mat);
+      mesh.position.copy(pos);
+      mesh.position.y += 0.3;
+
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 + Math.random() * 4 * Math.min(2.5, tier);
+      const vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        2.5 + Math.random() * 5,
+        Math.sin(angle) * speed
+      );
+
+      this.scene.add(mesh);
+      this.particles.push({
+        mesh,
+        vel,
+        gravity: -16,
+        life: 0.6 + Math.random() * 0.4,
+        maxLife: 0.8,
+        scale: 0.8 + Math.random() * 0.8
+      });
+    }
+  }
+
   // Level Up Expanding Shockwave Ring
   createLevelUpShockwave(pos, radius = 2) {
     const ringGeo = new THREE.RingGeometry(radius * 0.8, radius, 32);

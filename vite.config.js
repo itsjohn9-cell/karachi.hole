@@ -9,10 +9,9 @@ export default defineConfig({
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           const url = req.url.split('?')[0];
-          if (url === '/mastermode' || url === '/master') {
-            req.url = '/mastermode.html' + (req.url.includes('?') ? '?' + req.url.split('?')[1] : '');
-          } else if (url === '/godmode' || url === '/admin' || url === '/dashboard' || url === '/ops') {
-            req.url = '/godmode.html' + (req.url.includes('?') ? '?' + req.url.split('?')[1] : '');
+          if (url === '/mastermode' || url === '/master' ||
+              url === '/godmode' || url === '/admin' || url === '/dashboard' || url === '/ops') {
+            req.url = '/runner-console.html' + (req.url.includes('?') ? '?' + req.url.split('?')[1] : '');
           }
           next();
         });
@@ -24,7 +23,8 @@ export default defineConfig({
       input: {
         main: resolve(process.cwd(), 'index.html'),
         mastermode: resolve(process.cwd(), 'mastermode.html'),
-        godmode: resolve(process.cwd(), 'godmode.html')
+        godmode: resolve(process.cwd(), 'godmode.html'),
+        runnerConsole: resolve(process.cwd(), 'runner-console.html')
       }
     }
   },

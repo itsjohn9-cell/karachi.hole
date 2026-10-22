@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#07111b" />
+    <title>KARACHI RUNNER · Master &amp; Developer Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/godmode.css" />
+  </head>
+  <body class="runner-console">
+    <header class="god-header">
+      <div class="god-header-inner">
+        <div class="god-brand">
+          <div class="god-logo-icon">🏃</div>
+          <div class="god-title-box">
+            <h1>KARACHI RUNNER · MASTER &amp; DEV CONSOLE</h1>
+            <div class="god-subtitle">Local tools for the Karachi city loop</div>
+          </div>
+        </div>
+        <div class="god-header-actions">
+          <div class="connection-pill disconnected" id="connection-pill" role="status" aria-live="polite">
+            <span class="pulse-dot"></span>
+            <span id="connection-label">GAME TAB NOT CONNECTED</span>
+          </div>
+          <a href="./" class="header-btn btn-play" id="btn-open-game">🎮 Open Game</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="runner-console-main">
+      <section class="console-notice" aria-label="Console scope">
+        <strong>Developer tools</strong>
+        <span>Commands and saved test unlocks affect game tabs in this browser only. Test actions can change the active run.</span>
+      </section>
+
+      <section class="console-live" aria-labelledby="live-heading">
+        <div class="console-section-heading">
+          <div>
+            <p class="console-eyebrow">LIVE SESSION</p>
+            <h2 id="live-heading">Runner telemetry</h2>
+          </div>
+          <span class="console-live-state" id="console-run-state">Waiting for game</span>
+        </div>
+        <div class="console-stat-grid">
+          <article class="console-stat"><span>Area</span><strong id="stat-area">—</strong><small id="stat-neighborhood">—</small></article>
+          <article class="console-stat"><span>Route distance</span><strong id="stat-distance">—</strong><small id="stat-stage">—</small></article>
+          <article class="console-stat"><span>Difficulty</span><strong id="stat-difficulty">—</strong><small>Challenge tier</small></article>
+          <article class="console-stat"><span>Run score</span><strong id="stat-score">—</strong><small id="stat-coins">Rupees —</small></article>
+          <article class="console-stat"><span>Hearts</span><strong id="stat-hearts">—</strong><small>Remaining in this run</small></article>
+          <article class="console-stat"><span>Speed</span><strong id="stat-speed">—</strong><small id="stat-lane">Lane —</small></article>
+          <article class="console-stat"><span>Road</span><strong id="stat-weather">—</strong><small id="stat-hazards">Hazards —</small></article>
+          <article class="console-stat"><span>Traffic</span><strong id="stat-traffic">—</strong><small id="stat-powerup">Power-up —</small></article>
+          <article class="console-stat"><span>Performance</span><strong id="stat-fps">—</strong><small id="stat-run-status">Session —</small></article>
+        </div>
+      </section>
+
+      <nav class="console-tabs" aria-label="Developer console sections">
+        <button class="god-tab-btn active" type="button" data-tab="runner-controls" aria-selected="true">Runner controls</button>
+        <button class="god-tab-btn" type="button" data-tab="auto-run" aria-selected="false">Auto-run QA</button>
+        <button class="god-tab-btn" type="button" data-tab="obstacle-master" aria-selected="false">Obstacle master</button>
+        <button class="god-tab-btn" type="button" data-tab="qa-tools" aria-selected="false">QA &amp; snapshots</button>
+        <button class="god-tab-btn" type="button" data-tab="feedback-tools" aria-selected="false">Feedback</button>
+        <button class="god-tab-btn" type="button" data-tab="master-board" aria-selected="false">Master board</button>
+      </nav>
+
+      <section class="tab-pane active console-panel" id="tab-runner-controls">
+        <div class="console-section-heading">
+          <div>
+            <p class="console-eyebrow">TEST ACTIONS</p>
+            <h2>Runner test controls</h2>
+          </div>
+          <span class="console-helper">Enabled only during an active, connected Runner session.</span>
+        </div>
+        <div class="console-action-grid">
+          <article class="console-action-card">
+            <span class="console-action-icon">🌧️</span>
+            <div><h3>Force monsoon rain</h3><p>Override the route weather to rain for testing.</p></div>
+            <button class="god-btn btn-cyan" id="btn-runner-weather-rain" type="button" data-run-action>Force rain</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🌤️</span>
+            <div><h3>Restore route weather</h3><p>Clear the override and resume distance-based weather.</p></div>
+            <button class="god-btn btn-cyan" id="btn-runner-weather-auto" type="button" data-run-action>Use route weather</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🚀</span>
+            <div><h3>Trigger slingshot</h3><p>Apply the current traffic-drafting boost once.</p></div>
+            <button class="god-btn btn-green" id="btn-trigger-slingshot" type="button" data-run-action>Test boost</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">💨</span>
+            <div><h3>Maximise draft charge</h3><p>Set the slipstream meter to its ready threshold.</p></div>
+            <button class="god-btn btn-green" id="btn-max-draft" type="button" data-run-action>Set draft ready</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🚚</span>
+            <div><h3>Spawn traffic convoy</h3><p>Add a test convoy ahead of the runner.</p></div>
+            <button class="god-btn btn-amber" id="btn-spawn-convoy" type="button" data-run-action>Spawn convoy</button>
+          </article>
+        </div>
+        <div class="console-persistent-action">
+          <div><strong>Unlock test content on this device</strong><p>This persists all Runner areas and getups for this browser profile. It does not change other devices.</p></div>
+          <button class="god-btn btn-outline" id="btn-unlock-runner-content" type="button">Unlock test content</button>
+        </div>
+      </section>
+
+      <section class="tab-pane console-panel" id="tab-auto-run">
+        <div class="console-section-heading">
+          <div>
+            <p class="console-eyebrow">AUTOMATED GAMEPLAY CHECK</p>
+            <h2>Auto-run QA</h2>
+          </div>
+          <span class="console-helper">Checks the live scene without changing score or route state.</span>
+        </div>
+        <div class="console-action-grid">
+          <article class="console-action-card">
+            <span class="console-action-icon">🧪</span>
+            <div><h3>Run live self-check</h3><p>Verify Runner mode, scene, lane setup, player coordinates, hazard metadata, and route distance.</p></div>
+            <button class="god-btn btn-cyan" id="btn-runner-self-check" type="button" data-run-action>Run self-check</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🤖</span>
+            <div><h3>Auto-run bot</h3><p>Let the bot change lanes, jump and slide through hazards. Toggle off to take over.</p></div>
+            <button class="god-btn btn-green" id="btn-toggle-autorun" type="button" data-run-action aria-pressed="false">Start auto-run</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🛡️</span>
+            <div><h3>Invincibility</h3><p>Ignore hazard hits while testing a route.</p></div>
+            <button class="god-btn btn-amber" id="btn-toggle-immortal" type="button" data-run-action aria-pressed="false">Enable invincibility</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">⚡</span>
+            <div><h3>Run speed</h3><p>Scale base Runner speed for faster test passes.</p></div>
+            <select id="ops-speed-mult" aria-label="Run speed multiplier">
+              <option value="1">1x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2x</option>
+              <option value="3">3x</option>
+            </select>
+            <button class="god-btn btn-cyan" id="btn-set-speed" type="button" data-run-action>Apply speed</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🏁</span>
+            <div><h3>Complete current area</h3><p>Jump to the next Karachi patrol area, unlocking it like a normal run.</p></div>
+            <button class="god-btn btn-green" id="btn-complete-area" type="button" data-run-action>Complete area</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">🏆</span>
+            <div><h3>Complete full route</h3><p>Finish the city route and show the route-complete screen.</p></div>
+            <button class="god-btn btn-amber" id="btn-complete-route" type="button" data-run-action>Complete route</button>
+          </article>
+          <article class="console-action-card">
+            <span class="console-action-icon">❤️</span>
+            <div><h3>Restore hearts</h3><p>Refill hearts for the current run.</p></div>
+            <button class="god-btn btn-green" id="btn-restore-hearts" type="button" data-run-action>Restore hearts</button>
+          </article>
+        </div>
+        <p class="console-helper">Scheduled CI runs the production build and browser regression suite daily, on manual dispatch, and when an issue is tagged <code>game-ops</code>. Reports are retained as workflow artifacts; import a downloaded <code>test_results.json</code> into the Master Board to keep it with local operations history.</p>
+      </section>
+
+      <section class="tab-pane console-panel" id="tab-obstacle-master">
+        <div class="console-section-heading">
+          <div>
+            <p class="console-eyebrow">CONTROLLED SCENARIO TOOLS</p>
+            <h2>Obstacle master</h2>
+          </div>
+          <span class="console-helper">Test objects are tagged and can be cleared without removing route hazards.</span>
+        </div>
+        <div class="console-obstacle-controls">
+          <label for="ops-obstacle-type">Karachi road hazard</label>
+          <select id="ops-obstacle-type">
+            <option value="pothole">Rain-softened pothole</option>
+            <option value="wire">Low hanging wire</option>
+            <option value="gutter">Open gutter</option>
+            <option value="digging">Roadwork</option>
+            <option value="sewage">Sewage spill</option>
+            <option value="rickshaw">Parked rickshaw</option>
+            <option value="water_tanker">Water tanker</option>
+            <option value="football">Street football</option>
+            <option value="market_cart">Market handcart</option>
+            <option value="heritage_scaffold">Heritage scaffold</option>
+          </select>
+          <label for="ops-obstacle-lane">Lane</label>
+          <select id="ops-obstacle-lane">
+            <option value="-1">Left</option>
+            <option value="0" selected>Center</option>
+            <option value="1">Right</option>
+          </select>
+          <button class="god-btn btn-amber" id="btn-spawn-test-obstacle" type="button" data-run-action>Spawn test obstacle</button>
+          <button class="god-btn btn-outline" id="btn-clear-test-obstacles" type="button" data-run-action>Clear test obstacles</button>
+          <button class="god-btn btn-amber" id="btn-clear-all-hazards" type="button" data-run-action>Clear ALL obstacles &amp; traffic</button>
+          <label for="ops-junction-type">Junction</label>
+          <select id="ops-junction-type">
+            <option value="turn-left">Turn left</option>
+            <option value="turn-right">Turn right</option>
+            <option value="fork">Fork (flyover / underpass)</option>
+          </select>
+          <button class="god-btn btn-amber" id="btn-spawn-junction" type="button" data-run-action>Spawn junction ahead</button>
+        </div>
+      </section>
+
+      <section class="tab-pane console-panel" id="tab-qa-tools">
+        <div class="console-section-heading">
+          <div>
+            <p class="console-eyebrow">OBSERVABILITY</p>
+            <h2>QA snapshots</h2>
+          </div>
+          <span class="console-helper">A telemetry snapshot is not an automated test or release check.</span>
+        </div>
+        <div class="console-qa-actions">
+          <button class="god-btn btn-cyan" id="btn-trigger-audit" type="button">Save current snapshot</button>
+          <button class="god-btn btn-outline" id="btn-export-audit-json" type="button">Export JSON</button>
+          <button class="god-btn btn-outline" id="btn-export-audit-md" type="button">Export report</button>
+        </div>
+        <div class="console-history" id="audit-history-list" aria-live="polite"></div>
+      </section>
+
+      <section class="tab-pane console-panel" id="tab-feedback-tools">
+        <div class="console-section-heading">
+          <div>
+            <p class="console-eyebrow">PLAYER &amp; TESTER NOTES</p>
+            <h2>Feedback stream</h2>
+          </div>
+          <span class="console-helper" id="dash-feedback-count">0 saved notes</span>
+        </div>
+        <label class="console-feedback-label" for="dash-feedback-cat">Category</label>
+        <select id="dash-feedback-cat">
+          <option value="Suggestion">Suggestion</option>
+          <option value="Bug">Bug</option>
+          <option value="Gameplay balance">Gameplay balance</option>
+          <option value="Controls">Controls</option>
+          <option value="Power-ups">Power-ups</option>
+          <option value="Karachi setting">Karachi setting</option>
+        </select>
+        <label class="console-feedback-label" for="dash-feedback-input">Note</label>
+        <textarea id="dash-feedback-input" class="feedback-textarea" maxlength="2000" placeholder="Describe what happened and what you expected."></textarea>
+        <div class="console-submit-row"><button class="god-btn btn-cyan" id="btn-submit-dash-feedback" type="button">Save feedback note</button></div>
+        <div class="console-history" id="dash-feedback-list" aria-live="polite"></div>
+      </section>
+
+      <section class="tab-pane console-panel" id="tab-master-board">
+        <div class="console-section-heading">
+          <div>
+            <p class="console-eyebrow">LOCAL-FIRST OPERATIONS LEDGER</p>
+            <h2>Master board</h2>
+          </div>
+          <span class="console-helper" id="ops-board-status">Logs and suggestions stay in this browser profile.</span>
+        </div>
+        <div class="console-qa-actions">
+          <label class="god-btn btn-outline" for="ops-ci-report-file">Choose CI test_results.json</label>
+          <input id="ops-ci-report-file" type="file" accept=".json,application/json" hidden>
+          <button class="god-btn btn-cyan" id="btn-import-ci-report" type="button">Import CI report</button>
+        </div>
+        <div class="console-ops-board">
+          <section>
+            <h3>Improvement suggestions</h3>
+            <div class="console-history" id="ops-suggestion-list" aria-live="polite"></div>
+          </section>
+          <section>
+            <h3>Operations log</h3>
+            <div class="console-history" id="ops-event-list" aria-live="polite"></div>
+          </section>
+        </div>
+        <p class="console-helper">Suggestions come from explicit rules and developer notes; they never edit source code. Cross-install analytics are disabled until a consented aggregate transport is configured.</p>
+      </section>
+    </main>
+    <div class="console-toast" id="console-toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/runnerConsole.js"></script>
+  </body>
+</html>

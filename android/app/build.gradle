@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+def releaseSigningValues = [
+    storeFile: System.getenv('KARACHI_RUNNER_KEYSTORE'),
+    storePassword: System.getenv('KARACHI_RUNNER_KEYSTORE_PASSWORD'),
+    keyAlias: System.getenv('KARACHI_RUNNER_KEY_ALIAS'),
+    keyPassword: System.getenv('KARACHI_RUNNER_KEY_PASSWORD')
+]
+def hasReleaseSigning = releaseSigningValues.values().every { it }
+def releaseVersionCodeValue = project.findProperty('releaseVersionCode') ?: System.getenv('KARACHI_RUNNER_VERSION_CODE') ?: '1'
+def releaseVersionNameValue = project.findProperty('releaseVersionName') ?: System.getenv('KARACHI_RUNNER_VERSION_NAME') ?: '1.0'
+def releaseVersionCode = releaseVersionCodeValue.toString().toInteger()
+def releaseVersionName = releaseVersionNameValue.toString()
+
 android {
     namespace "com.holeio.karachi"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,13 +19,23 @@ android {
         applicationId "com.holeio.karachi"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode releaseVersionCode
+        versionName releaseVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseSigningValues.storeFile)
+                storePassword releaseSigningValues.storePassword
+                keyAlias releaseSigningValues.keyAlias
+                keyPassword releaseSigningValues.keyPassword
+            }
         }
     }
     buildTypes {
@@ -22,8 +44,29 @@ android {
         }
         release {
             minifyEnabled false
-            signingConfig signingConfigs.debug
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name in ['assembleRelease', 'bundleRelease', 'packageRelease']) {
+        task.doFirst {
+            if (!hasReleaseSigning) {
+                throw new GradleException(
+                    'Release signing is not configured. Set KARACHI_RUNNER_KEYSTORE, ' +
+                    'KARACHI_RUNNER_KEYSTORE_PASSWORD, KARACHI_RUNNER_KEY_ALIAS, and KARACHI_RUNNER_KEY_PASSWORD.'
+                )
+            }
+            if (!System.getenv('KARACHI_RUNNER_VERSION_NAME') && !project.hasProperty('releaseVersionName')) {
+                throw new GradleException('Set KARACHI_RUNNER_VERSION_NAME or -PreleaseVersionName for a Play release.')
+            }
+            if (!System.getenv('KARACHI_RUNNER_VERSION_CODE') && !project.hasProperty('releaseVersionCode')) {
+                throw new GradleException('Set KARACHI_RUNNER_VERSION_CODE or -PreleaseVersionCode for a Play release.')
+            }
         }
     }
 }

@@ -1,6 +1,18 @@
-# Karachi Hole.io - Complete Features Breakdown
+# KARACHI RUNNER - Gameplay & Master Operations Features
 
-This document provides a comprehensive technical and functional breakdown of all gameplay systems, visual presentation features, educational modules, and civic mechanics in **Karachi Hole.io**.
+This document covers the Karachi Runner experience and its Master/Developer operations tools. The shared console is focused on the current Karachi city loop; it no longer exposes legacy civic-mode controls as Runner options.
+
+## Runner Weather & Road Hazards
+
+KARACHI RUNNER begins in Soldier Bazar and follows a 20,000 m city loop through named Karachi neighborhoods. The HUD, results and operations console show neighborhood names only; internal route progression values are not shown to players. The route advances through Soldier Bazar/PECHS, Lyari/Chakiwara and Saddar/Burns Road, switching street scenery and local hazards as each area is reached, then finishes back at Soldier Bazar. Running speed, hazard spacing and fair multi-lane combinations scale up during the loop. The bundled locality names are curated from [Wikipedia's Karachi neighborhoods category](https://en.wikipedia.org/wiki/Category:Neighbourhoods_of_Karachi), accessed October 22, 2026.
+
+The route also includes a recurring monsoon sequence after the 450 m warmup. Rain uses a lightweight animated rainfall effect; puddled potholes then appear during the post-rain phase. Potholes can be jumped or avoided by lane switching, and supplemental rain or difficulty hazards preserve at least one open lane.
+
+The start screen is a route preview rather than a route picker: every new or restarted run begins in Soldier Bazar. Help, Progress and Run use a clear utility/action hierarchy, with mobile-sized buttons, accessible focus and dialogs that remain within the viewport.
+
+## Unified Master & Developer Console
+
+The Master/Developer console is a browser-local operations UI for live Runner telemetry, explicitly labelled active-run test actions, progression unlocks, weather QA snapshots and feedback notes. Both Master and Developer URLs redirect to the same page. Telemetry reports area, neighborhood name, loop distance, challenge tier, score, hearts, lane/speed, hazards, weather, rupees and active power-ups. Test actions stay disabled unless a connected Runner session is actively running; local test unlocks are identified as persistent to this browser profile.
 
 ---
 
@@ -28,7 +40,7 @@ Moving completely away from an abstract dark hole in the ground, Karachi Hole.io
 
 ---
 
-## 2. GTA Street-Level Third-Person Perspective Camera
+## 2. Karachi Street-Level Third-Person Perspective Camera
 
 ### Camera Specifications & Dynamics
 * **Street-Level Framing**: Third-person perspective positioned at human eye-level ($Y \approx 2.35\text{m}$, distance $\approx 4.4\text{m}$) looking straight forward down the road ($6.5\text{m}$ ahead).
@@ -74,7 +86,7 @@ The UI has been engineered into 4 clean, dedicated quadrants with zero overlaps 
 * **Top Fixed Header**: Player avatar badge, current level, match timer, score pill, and sound/pause icons.
 * **Top-Left Card**: District title, multi-mission checklist, remaining counter, and active crisis indicator.
 * **Top-Right Card**: Live competitor scoreboard with real-time rankings and active player rank tag.
-* **Bottom-Left Card**: Circular GTA Radar mini-map with real-time player, evil, and district boundaries.
+* **Bottom-Left Card**: Circular Karachi mini-map with real-time player, threat, and district boundaries.
 * **Bottom-Right**: Glowing orange ⚡ SPRINT button.
 
 ---
@@ -115,7 +127,7 @@ Each bad guy is highlighted with a **bouncing red chevron arrow**, an **animated
 | **Bhatta Extortionists** | Criminals waving extortion slips demanding money from bazaar shopkeepers. | **+700 XP**, confiscates extortion slips, reopens peaceful market. |
 | **Reckless One-Wheelers** | Loud silencer-less racing bikes performing dangerous stunts in public avenues. | **+500 XP**, impounds racing bike, creates safe pedestrian walkway. |
 | **Road Potholes** | Broken asphalt craters and burst municipal water leaks. | **+80 XP**, transforms broken crater into smooth carpet road with flowerpots. |
-| **Illegal Power Kundas** | Sparking overloaded wire nests on K-Electric transformers causing load shedding. | **+750 XP**, chops illegal wires, replaces with clean solar microgrid. |
+| **Illegal Power Kundas** | Sparking overloaded wire nests on utility transformers causing load shedding. | **+750 XP**, clears illegal wires and replaces them with a clean solar microgrid. |
 | **China-Cutting Encroachers** | Illegal brick walls built over public footpaths. | **+650 XP**, demolishes wall, restores open public promenade. |
 | **Corrupt Politicians** | VIP politicians fleeing with foreign currency briefcases. | **+600 XP**, recovers public funds with confetti money bursts. |
 

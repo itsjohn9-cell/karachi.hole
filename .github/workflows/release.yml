@@ -1,0 +1,173 @@
+name: Prepare and publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Release destination
+        type: choice
+        required: true
+        options:
+          - website
+          - android
+          - both
+      confirm_website:
+        description: Type DEPLOY to publish to the live website (website/both only)
+        type: string
+        required: false
+        default: ''
+      android_version_name:
+        description: Android display version (android/both only, for example 2.3.0)
+        type: string
+        required: false
+        default: ''
+      android_version_code:
+        description: Positive Android version code, greater than any previously uploaded build
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Require explicit website publication approval
+        if: inputs.target == 'website' || inputs.target == 'both'
+        env:
+          CONFIRM_WEBSITE: ${{ inputs.confirm_website }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Website releases must run from the main branch."
+            exit 1
+          fi
+          if [ "$CONFIRM_WEBSITE" != "DEPLOY" ]; then
+            echo "::error::Website release not approved. Re-run and type DEPLOY in the confirmation field."
+            exit 1
+          fi
+
+      - name: Validate Android release version
+        if: inputs.target == 'android' || inputs.target == 'both'
+        env:
+          VERSION_NAME: ${{ inputs.android_version_name }}
+          VERSION_CODE: ${{ inputs.android_version_code }}
+        run: |
+          if [[ ! "$VERSION_NAME" =~ ^[0-9]+(\.[0-9]+){1,2}([+-][A-Za-z0-9.-]+)?$ ]]; then
+            echo "::error::Provide a valid Android version name, such as 2.3.0."
+            exit 1
+          fi
+          if [[ ! "$VERSION_CODE" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::Provide a positive Android version code greater than any previously uploaded build."
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+
+      - name: Run release checks and build website
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          npm ci
+          npm run release:check
+
+      - name: Set up Java
+        if: inputs.target == 'android' || inputs.target == 'both'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Configure Android upload signing
+        if: inputs.target == 'android' || inputs.target == 'both'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KARACHI_RUNNER_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || {
+            echo "::error::Configure the KARACHI_RUNNER_KEYSTORE_BASE64 repository secret."
+            exit 1
+          }
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/karachi-runner-upload.jks"
+
+      - name: Build signed Android App Bundle
+        if: inputs.target == 'android' || inputs.target == 'both'
+        env:
+          KARACHI_RUNNER_KEYSTORE: ${{ runner.temp }}/karachi-runner-upload.jks
+          KARACHI_RUNNER_KEYSTORE_PASSWORD: ${{ secrets.KARACHI_RUNNER_KEYSTORE_PASSWORD }}
+          KARACHI_RUNNER_KEY_ALIAS: ${{ secrets.KARACHI_RUNNER_KEY_ALIAS }}
+          KARACHI_RUNNER_KEY_PASSWORD: ${{ secrets.KARACHI_RUNNER_KEY_PASSWORD }}
+          KARACHI_RUNNER_VERSION_NAME: ${{ inputs.android_version_name }}
+          KARACHI_RUNNER_VERSION_CODE: ${{ inputs.android_version_code }}
+        run: |
+          npm run build:android
+          cd android
+          ./gradlew :app:bundleRelease
+
+      - name: Retain signed Android App Bundle
+        if: inputs.target == 'android' || inputs.target == 'both'
+        uses: actions/upload-artifact@v4
+        with:
+          name: karachi-runner-play-upload
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain website bundle
+        if: inputs.target == 'website' || inputs.target == 'both'
+        uses: actions/upload-artifact@v4
+        with:
+          name: karachi-runner-website
+          path: dist/
+          if-no-files-found: error
+          retention-days: 2
+
+  publish-website:
+    if: inputs.target == 'website' || inputs.target == 'both'
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Check out Pages history
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download validated website bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: karachi-runner-website
+          path: dist
+
+      - name: Publish website to GitHub Pages
+        run: |
+          pages_dir="$RUNNER_TEMP/gh-pages"
+          git worktree add --detach "$pages_dir" origin/gh-pages
+          rsync -a --delete --exclude=.git dist/ "$pages_dir/"
+          touch "$pages_dir/.nojekyll"
+          git -C "$pages_dir" config user.name "github-actions[bot]"
+          git -C "$pages_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$pages_dir" add --all
+          if ! git -C "$pages_dir" diff --cached --quiet; then
+            git -C "$pages_dir" commit -m "Deploy website from ${GITHUB_SHA}"
+            git -C "$pages_dir" push origin HEAD:gh-pages
+          else
+            echo "The website bundle is unchanged; nothing to publish."
+          fi

@@ -6,9 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:android": "npm run build && cap copy android",
+    "build:android:aab": "npm run build:android && cd android && ./gradlew :app:bundleRelease",
     "preview": "vite preview",
-    "test": "node scripts/test_runner.js",
+    "test": "npm run test:ops && node scripts/test_runner.js",
+    "test:ops": "node --test scripts/test_game_ops_engine.mjs",
     "test:5173": "node scripts/test_runner.js --port=5173",
+    "release:check": "npm test && npm run build",
     "build:apk": "node scripts/sign_apk.mjs"
   },
   "devDependencies": {

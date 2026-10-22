@@ -9,15 +9,29 @@ import forge from 'node-forge';
 
 const rootDir = process.cwd();
 const templateApk = path.join(rootDir, 'android', 'base-template.apk');
-const keyPath = path.join(rootDir, 'android', 'keystores', 'debug.key.pem');
-const certPath = path.join(rootDir, 'android', 'keystores', 'debug.cert.pem');
-const outputApk = path.join(rootDir, 'karachi-hole.apk');
+const keyPath = process.env.KARACHI_RUNNER_SIGNING_KEY_PEM
+  ? path.resolve(process.env.KARACHI_RUNNER_SIGNING_KEY_PEM)
+  : null;
+const certPath = process.env.KARACHI_RUNNER_SIGNING_CERT_PEM
+  ? path.resolve(process.env.KARACHI_RUNNER_SIGNING_CERT_PEM)
+  : null;
+const outputApk = process.env.KARACHI_RUNNER_OUTPUT_APK
+  ? path.resolve(process.env.KARACHI_RUNNER_OUTPUT_APK)
+  : path.join(rootDir, 'android', 'app', 'build', 'outputs', 'apk', 'release', 'karachi-runner-release.apk');
 const workApk = path.join('/tmp', `work-${Date.now()}.apk`);
 
 console.log('====================================================');
-console.log('  KARACHI HOLE.IO - STANDALONE APK BUILD & SIGNER   ');
+console.log('  KARACHI RUNNER - STANDALONE APK BUILD & SIGNER   ');
 console.log('====================================================');
 
+if (!keyPath || !certPath) {
+  console.error('[ERROR] Set KARACHI_RUNNER_SIGNING_KEY_PEM and KARACHI_RUNNER_SIGNING_CERT_PEM to production signing files.');
+  process.exit(1);
+}
+if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+  console.error('[ERROR] The configured production signing key or certificate file does not exist.');
+  process.exit(1);
+}
 if (!fs.existsSync(templateApk)) {
   console.error(`[ERROR] Base template APK not found at: ${templateApk}`);
   process.exit(1);
@@ -45,15 +59,6 @@ const {
   createV2SignaturePair,
   createV3SignaturePair
 } = await import(pathToFileURL(path.join(apkSignTsDist, 'ApkSigningBlock.js')).href);
-
-// 1. Ensure persistent debug keystore & certificate exist
-if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
-  console.log('[KEYGEN] Generating fresh debug key & certificate...');
-  fs.mkdirSync(path.dirname(keyPath), { recursive: true });
-  execSync(
-    `openssl req -x509 -newkey rsa:2048 -nodes -keyout "${keyPath}" -out "${certPath}" -days 10000 -subj "/CN=Android Debug/O=Android/C=US"`
-  );
-}
 
 // 2. Ensure Vite production build exists
 const distIndex = path.join(rootDir, 'dist', 'index.html');
@@ -325,11 +330,8 @@ if (unalignedCount > 0) {
 }
 
 // 10. Write signed APK to target destinations
+fs.mkdirSync(path.dirname(outputApk), { recursive: true });
 fs.writeFileSync(outputApk, signedApk);
-
-const debugOutputDir = path.join(rootDir, 'android', 'app', 'build', 'outputs', 'apk', 'debug');
-fs.mkdirSync(debugOutputDir, { recursive: true });
-fs.writeFileSync(path.join(debugOutputDir, 'app-debug.apk'), signedApk);
 
 // Clean up temp file
 try { fs.unlinkSync(workApk); } catch (e) {}

@@ -1,20 +1,97 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { CityGenerator } from './cityGenerator.js';
-import { Hole, LEVEL_CONFIG } from './hole.js';
+import { DIFFICULTY_CONFIG, Hole, LEVEL_CONFIG } from './hole.js';
 import { DISTRICT_CONFIGS, getDistrictConfig } from './districts.js';
 import { VirtualJoystick } from './joystick.js';
 import { ParticleSystem } from './particles.js';
 import { UIManager } from './ui.js';
 import { audio } from './audio.js';
 import { KarachiModels } from './karachiModels.js';
-import { saveManager } from './saveManager.js';
+import { MAX_REVIVE_TOKENS, saveManager } from './saveManager.js';
 import { CITIZEN_DIALOGUES } from './dialogueSystem.js';
 import { AvatarBuilder } from './avatar.js';
+import { getNextSafeRenderScale, PortableGameOpsEngine } from './game-ops-engine.js';
+import { getKarachiNeighborhoodName } from './karachi-neighborhoods.js';
+
+const RUNNER_POTHOLE_RIM_GEOMETRY = new THREE.RingGeometry(0.66, 1.0, 24);
+const RUNNER_POTHOLE_RIM_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x202a31 });
+const RUNNER_POTHOLE_WARNING_RING_GEOMETRY = new THREE.RingGeometry(0.98, 1.18, 24);
+const RUNNER_POTHOLE_WARNING_RING_MATERIAL = new THREE.MeshBasicMaterial({
+  color: 0xffc400,
+  side: THREE.DoubleSide
+});
+const RUNNER_POTHOLE_WATER_GEOMETRY = new THREE.CircleGeometry(0.48, 24);
+const RUNNER_POTHOLE_WATER_MATERIAL = new THREE.MeshBasicMaterial({
+  color: 0x20c9ec,
+  transparent: true,
+  opacity: 0.9,
+  side: THREE.DoubleSide
+});
+const RUNNER_POTHOLE_ARROW_GEOMETRY = (() => {
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.52, -0.18);
+  shape.lineTo(0, 0.46);
+  shape.lineTo(0.52, -0.18);
+  shape.lineTo(0.2, -0.18);
+  shape.lineTo(0, 0.1);
+  shape.lineTo(-0.2, -0.18);
+  shape.closePath();
+  return new THREE.ShapeGeometry(shape);
+})();
+const RUNNER_POTHOLE_ARROW_MATERIAL = new THREE.MeshBasicMaterial({
+  color: 0xffe45c,
+  side: THREE.DoubleSide
+});
+const RUNNER_NEIGHBORHOOD_COUNT = 200;
+const RUNNER_METERS_PER_NEIGHBORHOOD = 100;
+const RUNNER_CITY_LOOP_METERS = RUNNER_NEIGHBORHOOD_COUNT * RUNNER_METERS_PER_NEIGHBORHOOD;
+const RUNNER_AREA_NAMES = ['Soldier Bazar · PECHS', 'Lyari · Chakiwara', 'Saddar · Burns Road'];
+
+function runnerSegmentDistanceSquared(x, z, start, end) {
+  const dx = end.x - start.x;
+  const dz = end.z - start.z;
+  const lengthSquared = dx * dx + dz * dz;
+  const t = lengthSquared > 0
+    ? THREE.MathUtils.clamp(((x - start.x) * dx + (z - start.z) * dz) / lengthSquared, 0, 1)
+    : 0;
+  const closestX = start.x + dx * t;
+  const closestZ = start.z + dz * t;
+  const distanceX = x - closestX;
+  const distanceZ = z - closestZ;
+  return distanceX * distanceX + distanceZ * distanceZ;
+}
+
+function runnerSegmentDistanceSquared3D(point, start, end) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const dz = end.z - start.z;
+  const lengthSquared = dx * dx + dy * dy + dz * dz;
+  const t = lengthSquared > 0
+    ? THREE.MathUtils.clamp(
+      ((point.x - start.x) * dx + (point.y - start.y) * dy + (point.z - start.z) * dz) / lengthSquared,
+      0,
+      1
+    )
+    : 0;
+  const closestX = start.x + dx * t;
+  const closestY = start.y + dy * t;
+  const closestZ = start.z + dz * t;
+  const distanceX = point.x - closestX;
+  const distanceY = point.y - closestY;
+  const distanceZ = point.z - closestZ;
+  return distanceX * distanceX + distanceY * distanceY + distanceZ * distanceZ;
+}
+
+function runnerSegmentCrossesZ(z, startZ, endZ, radius) {
+  return z >= Math.min(startZ, endZ) - radius && z <= Math.max(startZ, endZ) + radius;
+}
 
 class Game {
   constructor() {
     this.container = document.getElementById('canvas-container');
     this.clock = new THREE.Clock();
+    this.opsEngine = null;
 
     // Game Mode & State
     this.gameMode = 'battleRoyale'; // 'battleRoyale' or 'sandbox'
@@ -25,7 +102,8 @@ class Game {
     this.isPaused = false;
 
     // Karachi Civic District Progression System (Leveling up via Civic Cleanse!)
-    this.currentDistrictLevel = 1;
+    const savedDistrictLevel = Number(saveManager.get().currentDistrictLevel || 1);
+    this.currentDistrictLevel = saveManager.isDistrictUnlocked(savedDistrictLevel) ? savedDistrictLevel : 1;
     this.districtClearing = false;
     this.districtEvils = [];
     this.districtTotal = 0;
@@ -60,11 +138,7 @@ class Game {
     this.score = 0;
 
     // Major Game Versioning Hub: 'v1' (Classic Hole.io Devourer) | 'v2' (Karachi Civic Hero 3D Patrol) | 'v3' (Karachi Temple Run Street Runner)
-    let savedVersion = 'v3';
-    try {
-      savedVersion = localStorage.getItem('karachi_major_version') || 'v3';
-    } catch (e) {}
-    this.majorVersion = savedVersion;
+    this.majorVersion = 'v3';
     this.isTempleRun = (this.majorVersion === 'v3');
     this.currentLane = 0; // -1: Left ($X = -3.2$), 0: Center ($X = 0$), 1: Right ($X = +3.2$)
     this.laneWidth = 3.2;
@@ -73,14 +147,27 @@ class Game {
     this.coins = 0;
     this.hearts = 3;
     this.maxHearts = 3;
+    this.runnerWaveCount = 0;
+    this.runnerPowerupDropCount = 0;
+    this.runnerNearMissCount = 0;
+    this.runnerRunRecorded = false;
+    this.runnerRouteComplete = false;
+    this.runnerNeighborhoodIndex = 1;
+    this.runnerAreaIndex = 0;
+    this.runnerDifficulty = 'standard';
     this.isSliding = false;
     this.slideTimer = 0;
     this.runSpeed = 16.5; // High-octane initial street pace
     this.runnerObstacles = [];
     this.runnerCoins = [];
     this.runnerPowerups = [];
+    this.runnerReviveTokens = [];
     this.runnerTraffic = [];
     this.runnerBoostPads = [];
+    this.runnerRainOverride = null;
+    this.runnerRainEffect = null;
+    this.runnerWeatherState = 'clear';
+    this.corridorDistrictLevel = null;
     this.isDrafting = false;
     this.draftCharge = 0;
     this.currentKmh = 60;
@@ -90,14 +177,20 @@ class Game {
     this.currentBankRoll = 0;
     this.isNascarSuperSpeed = false;
     this.nextRunnerWaveZ = 45.0;
-    this.currentMilestone = 'Soldier Bazar';
+    this.runnerJunction = null;
+    this.runnerTurn = null;
+    this.runnerSection = null;
+    this.runnerSectionDecor = [];
+    this.runnerHeading = 0;
+    this.runnerTurnsCompleted = 0;
+    this.runnerJunctionIndex = 0;
+    this.runnerCameraLift = 0;
+    this.nextJunctionAt = 500;
+    this.currentMilestone = getKarachiNeighborhoodName(1);
     this.milestones = [
-      { dist: 0, name: 'Soldier Bazar (سولجر بازار)' },
-      { dist: 500, name: 'M.A. Jinnah Road (ایم اے جناح روڈ)' },
-      { dist: 1200, name: 'Saddar Empress Market (صدر مارکیٹ)' },
-      { dist: 2200, name: 'PECHS Tariq Road (طارق روڈ)' },
-      { dist: 3500, name: 'Clifton Teen Talwar (تین تلوار)' },
-      { dist: 5000, name: 'Sea View Arabian Beach (سی ویو ساحل)' }
+      { dist: 0, name: 'Soldier Bazar · Karachi Loop Start' },
+      { dist: 6700, name: 'Lyari · Chakiwara' },
+      { dist: 13400, name: 'Saddar · Burns Road' }
     ];
     this.passedMilestoneIndices = new Set([0]);
 
@@ -109,20 +202,20 @@ class Game {
     this.godSpeedMult = 1.0; // Alias for backward compatibility
     this.isAutoPilotActive = false;
     this.__lastMasterTelemetryBroadcast = 0;
-    this.__lastGodTelemetryBroadcast = 0;
-    this.__lastAutonomousAudit = 0;
+    this.__lastRuntimeSnapshot = 0;
 
     this.initThree();
     this.initScene();
     this.initHoles();
     this.initJoystick();
-    this.initDistrictChallenges(getDistrictConfig(1));
+    this.initDistrictChallenges(getDistrictConfig(this.currentDistrictLevel));
     this.createNavigationGuide();
     this.initUI();
     this.initAudioTriggers();
     this.initMasterModeComms();
     this.initGodModeComms = this.initMasterModeComms; // Alias
-    this.loadDistrictLevel(1, false);
+    this.loadDistrictLevel(this.currentDistrictLevel, false);
+    this.restoreSavedCareerProgress();
 
     // Start Game Loop
     this.animate = this.animate.bind(this);
@@ -315,10 +408,8 @@ class Game {
 
   initUI() {
     this.ui = new UIManager({
-      onStartGame: ({ playerName, ageTier, avatarId, districtLevel, versionId }) => {
-        if (versionId) {
-          this.setMajorGameVersion(versionId, false);
-        }
+      onStartGame: ({ playerName, ageTier, runnerDifficulty, avatarId, versionId }) => {
+        this.setMajorGameVersion(versionId === 'v3' ? versionId : 'v3', false);
         if (this.player) {
           this.player.name = playerName || "Karachi Hero";
           if (avatarId) {
@@ -326,17 +417,24 @@ class Game {
           }
           this.player.updateNameTag();
         }
+        const savedProfile = saveManager.get().player;
+        savedProfile.name = this.player?.name || 'Karachi Hero';
+        savedProfile.avatarId = this.player?.avatarId || 'tariq';
+        if (!saveManager.save()) {
+          console.error('[SAVE] Could not persist runner profile.');
+          this.ui.showAnnouncement('Could not save your profile. Check device storage.', '#ff5252');
+        }
         this.difficulty = ageTier === 'kids' ? 'kidsEasy' : 'classic';
-        const targetLevel = districtLevel ? parseInt(districtLevel) : 1;
-        this.loadDistrictLevel(targetLevel, true);
+        const runnerSpeeds = { easy: 12.5, standard: 16.5, hard: 20 };
+        this.runnerDifficulty = Object.hasOwn(runnerSpeeds, runnerDifficulty) ? runnerDifficulty : 'standard';
+        this.runSpeed = runnerSpeeds[this.runnerDifficulty];
+        this.loadDistrictLevel(1, false);
+        this.startGame();
         audio.startMusic();
-        this.ui.showAnnouncement(`🚦 COMMUTE SURVIVAL: SOLDIER BAZAR ➔ PECHS TARIQ ROAD! WATCH FOR GUTTERS & ROBBERS!`, '#00e5ff');
+        this.ui.showAnnouncement('🏃 KARACHI RUNNER · STARTING IN SOLDIER BAZAR', '#00e5ff');
       },
-      onSelectVersion: (versionId) => {
-        this.setMajorGameVersion(versionId, true);
-      },
-      onContinueCareer: (saveData) => {
-        this.loadCareerSave(saveData);
+      onSelectVersion: (versionId, source = 'main') => {
+        this.setMajorGameVersion(versionId, true, source);
       },
       onSelectDistrict: (level) => {
         this.loadDistrictLevel(level);
@@ -365,9 +463,7 @@ class Game {
       onNextLevel: () => {
         this.advanceToNextDistrict();
       },
-      onSelectSkin: (skinName) => {
-        this.player.setSkin(skinName);
-      },
+      onResetCareer: () => this.resetCareerProgress(),
       onRestartGame: () => {
         this.restartGame();
       },
@@ -400,10 +496,7 @@ class Game {
         this.returnToMainMenu();
       },
       onQuickRevive: () => {
-        this.quickReviveWithChai();
-      },
-      onEmergencyUnstick: () => {
-        this.emergencyUnstick();
+        return this.quickReviveWithChai();
       }
     });
   }
@@ -427,18 +520,27 @@ class Game {
   }
 
   returnToMainMenu() {
+    this.persistRunnerRun();
     this.pauseGame();
     this.isGameStarted = false;
     audio.playClick();
     if (this.ui) {
       this.ui.returnToMainMenu();
     }
-    // Also save current career state
-    try {
-      if (typeof saveManager !== 'undefined' && saveManager.save) {
-        saveManager.save();
-      }
-    } catch (e) {}
+    if (!saveManager.save()) {
+      console.error('[SAVE] Could not persist career when returning to the main menu.');
+    }
+  }
+
+  persistRunnerRun() {
+    if (!this.isTempleRun || !this.isGameStarted || this.runnerRunRecorded) return true;
+    if (!saveManager.recordRunnerRun(this.distanceMeters, this.score, this.coins)) {
+      console.error('[SAVE] Could not persist completed KARACHI RUNNER results.');
+      return false;
+    }
+    this.runnerRunRecorded = true;
+    this.ui?.refreshRunnerProgress();
+    return true;
   }
 
   /**
@@ -523,7 +625,7 @@ class Game {
     if (stunnedCount > 0) {
       const pts = stunnedCount * 300;
       this.score = (this.score || 0) + pts;
-      this.player.addXP(pts);
+      this.awardRunnerXP(pts);
       this.robbersEvaded = (this.robbersEvaded || 0) + stunnedCount;
       this.ui.showAnnouncement(`📢 KING HORN BLAST! Stunned & Scared Off ${stunnedCount} Bandits! +${pts} PTS`, '#ffd600');
       this.ui.showFloatingFeedback(`+${pts} 📢 ROBBER STUNNED!`, this.player.position, '#ffd600');
@@ -548,7 +650,7 @@ class Game {
             } else {
               this.scene.remove(obs.mesh);
             }
-            this.player.addXP(250);
+            this.awardRunnerXP(250);
             this.score += 250;
           }
         }
@@ -587,6 +689,8 @@ class Game {
   changeLane(dir) {
     if (!this.player || this.isPaused || this.isGameOver) return;
     if (!this.isGameStarted) this.startGame();
+    if (this.runnerTurn) return;
+    if (!this._autoLaneChange && this.attemptRunnerTurn(dir)) return;
 
     // Check if NASCAR Slingshot Boost was primed from drafting behind a vehicle!
     if ((this.draftCharge || 0) >= 0.72) {
@@ -594,11 +698,11 @@ class Game {
       this.draftCharge = 0;
       this.isDrafting = false;
       this.score += 500;
-      this.player.addXP(500);
+      this.awardRunnerXP(500);
       audio.playSlingshotBoost();
       this.cameraShakeTimer = 0.35;
       this.particles.createDevourSparkles(this.player.position, 25, 0x00e5ff);
-      this.ui.showAnnouncement('🏁 NASCAR SLINGSHOT BOOST ENGAGED! +500 PTS!', '#ffd700');
+      this.ui.showAnnouncement('🏁 STREET SLINGSHOT BOOST! +500 PTS!', '#ffd700');
       this.ui.showFloatingFeedback('🚀 SLINGSHOT BOOST!', this.player.position, '#ffd700');
     } else {
       audio.playClick();
@@ -635,6 +739,12 @@ class Game {
       });
       this.runnerPowerups = [];
     }
+    if (this.runnerReviveTokens) {
+      this.runnerReviveTokens.forEach(token => {
+        if (token?.mesh) this.scene.remove(token.mesh);
+      });
+      this.runnerReviveTokens = [];
+    }
     if (this.runnerTraffic) {
       this.runnerTraffic.forEach(v => {
         if (v && v.mesh) this.scene.remove(v.mesh);
@@ -649,6 +759,22 @@ class Game {
     }
     this.isDrafting = false;
     this.draftCharge = 0;
+  }
+
+  awardRunnerXP(amount) {
+    if (!this.player || !Number.isFinite(amount) || amount <= 0) return;
+    const previousLevel = saveManager.getCareerLevel();
+    this.player.addXP(amount);
+    saveManager.addPlayerXP(amount);
+    if (saveManager.getCareerLevel() > previousLevel) {
+      this.ui?.refreshProgressionContent();
+    }
+  }
+
+  unlockRunnerBadge(badgeId) {
+    if (!saveManager.unlockBadge(badgeId)) return;
+    this.ui?.refreshProgressionContent();
+    this.ui?.showAnnouncement(`🏅 RUNNER ACHIEVEMENT: ${badgeId.replaceAll('_', ' ').toUpperCase()}!`, '#ffd700');
   }
 
   /**
@@ -669,9 +795,9 @@ class Game {
     if (this.nitroTimer > 0) {
       obstacle.isHit = true;
       audio.playCrash();
-      this.particles.createDevourSparkles(obstacle.mesh.position, 20, 0xffd700);
+      this.particles.createDevourSparkles(obstacle.mesh?.position || this.player.position, 20, 0xffd700);
       this.ui.showAnnouncement(`💥 CNG NITRO SMASH! Obliterated ${reason}! +500 XP`, '#ff9100');
-      this.player.addXP(500);
+      this.awardRunnerXP(500);
       this.score += 500;
       if (obstacle.mesh) this.scene.remove(obstacle.mesh);
       return;
@@ -692,6 +818,12 @@ class Game {
     }
 
     // Deduct 1 Heart
+    this.recordGameOpsEvent('runner.crash', {
+      reason,
+      obstacleType: obstacle.type || 'unknown',
+      distanceMeters: Math.round(this.distanceMeters),
+      area: this.currentMilestone || ''
+    });
     obstacle.isHit = true;
     this.hearts = Math.max(0, this.hearts - 1);
     audio.playCrash();
@@ -708,7 +840,7 @@ class Game {
 
       let hint = 'Switch [A/D]!';
       const rLower = (reason || '').toLowerCase();
-      if (rLower.includes('wire') || rLower.includes('k-electric')) hint = 'Slide [S]!';
+      if (rLower.includes('wire')) hint = 'Slide [S]!';
       else if (rLower.includes('gutter') || rLower.includes('digging') || rLower.includes('sewage')) hint = 'Jump [W/Space]!';
 
       this.ui.showAnnouncement(`⚠️ STUMBLED ON ${reason}! ${'❤️'.repeat(this.hearts)} left! (2s Grace)`, '#ff1744');
@@ -727,6 +859,15 @@ class Game {
     }
   }
 
+  recordGameOpsEvent(type, detail) {
+    try {
+      this.opsEngine ||= new PortableGameOpsEngine();
+      this.opsEngine.record(type, detail);
+    } catch (error) {
+      console.error('[GAME_OPS] Could not maintain the local operations log.', error);
+    }
+  }
+
   /**
    * Game Over when runner runs out of hearts
    */
@@ -741,16 +882,24 @@ class Game {
       isCrash: true,
       distanceMeters: Math.round(this.distanceMeters),
       coins: this.coins,
+      runScore: this.score,
+      reviveTokens: saveManager.getReviveTokenCount(),
       crashReason: reason || 'Karachi Street Hazard',
       canAdvanceNext: false
     });
   }
 
   /**
-   * Quick Revive With Kadak Chai (Resumes sprint with 2 hearts, invulnerable shield, and cleared road)
+   * Spend one saved Rescue Token to continue a crashed run.
    */
   quickReviveWithChai() {
-    if (!this.player) return;
+    if (!this.player || !this.isTempleRun || !this.isGameOver) return false;
+    if (saveManager.getReviveTokenCount() < 1) return false;
+    if (!saveManager.consumeReviveToken()) {
+      this.ui.showCrashReviveError('Could not save the token change. Check device storage and try again.');
+      return false;
+    }
+
     audio.playPowerUp();
     audio.playChaiSip();
     audio.resumeAudio();
@@ -800,65 +949,47 @@ class Game {
 
     this.particles.createCelebrationConfetti(this.player.position, 35);
     this.particles.createDevourSparkles(this.player.position, 40, 0x76ff03);
-    this.ui.showAnnouncement('☕ KADAK CHAI REVIVAL! +2 HEARTS & 4s NITRO SHIELD!', '#76ff03');
+    this.ui.updateReviveTokenCount(saveManager.getReviveTokenCount());
+    if (this.ui.hud) this.ui.hud.style.display = '';
+    this.ui.showAnnouncement('☕ RESCUE TOKEN USED! KADAK CHAI REVIVAL!', '#76ff03');
     this.ui.showFloatingFeedback('☕ REVIVED!', this.player.position, '#76ff03');
+    return true;
   }
 
   /**
-   * Emergency Unstick (Vault forward, clear road, restore heart & grant shield)
+   * Recover the runner after a stalled forward-position watchdog check.
    */
-  emergencyUnstick() {
+  recoverStuckRunner() {
     if (!this.player) return;
-    audio.playPowerUp();
-    audio.playSlingshotBoost();
-    this.cameraShakeTimer = 0.35;
-
-    // 1. Reset lateral lane to center lane
+    const previousPosition = {
+      x: Number(this.player.position.x.toFixed(2)),
+      z: Number(this.player.position.z.toFixed(2))
+    };
     this.currentLane = 0;
     this.targetLaneX = 0;
     this.player.position.x = 0;
-    if (this.player.group) this.player.group.position.x = 0;
-
-    // 2. Vault upward and forward with jump
-    this.player.isGrounded = false;
-    this.player.velocityY = 8.5;
-    this.player.position.y = 1.8;
-    if (this.player.group) this.player.group.position.y = 1.8;
-
-    // 3. Clear all active obstacles and traffic within 40 meters
-    const pZ = this.player.position.z;
-    if (this.runnerObstacles) {
-      for (let i = this.runnerObstacles.length - 1; i >= 0; i--) {
-        const obs = this.runnerObstacles[i];
-        if (obs && Math.abs(obs.z - pZ) < 40.0) {
-          if (obs.mesh) this.scene.remove(obs.mesh);
-          this.runnerObstacles.splice(i, 1);
-        }
+    this.player.position.z = Math.min(this.player.position.z, (this.lastRunnerZ ?? this.player.position.z) - 1);
+    this.player.position.y = 0;
+    this.player.velocityY = 0;
+    this.player.isGrounded = true;
+    if (this.player.group) this.player.group.position.copy(this.player.position);
+    this.isSliding = false;
+    this.slideTimer = 0;
+    if (this.player.avatarMesh) {
+      this.player.avatarMesh.scale.set(1, 1, 1);
+      this.player.avatarMesh.position.y = 0;
+    }
+    this.lastRunnerZ = this.player.position.z;
+    this.recordGameOpsEvent('fix.applied', {
+      rule: 'recover-stalled-runner',
+      summary: 'Returned stalled runner to the center lane and resumed forward movement.',
+      previousPosition,
+      position: {
+        x: Number(this.player.position.x.toFixed(2)),
+        z: Number(this.player.position.z.toFixed(2))
       }
-    }
-    if (this.runnerTraffic) {
-      for (let i = this.runnerTraffic.length - 1; i >= 0; i--) {
-        const v = this.runnerTraffic[i];
-        if (v && v.mesh && Math.abs(v.mesh.position.z - pZ) < 40.0) {
-          this.scene.remove(v.mesh);
-          this.runnerTraffic.splice(i, 1);
-        }
-      }
-    }
-
-    // 4. Restore Heart & grant shield
-    this.hearts = Math.max(1, Math.min(3, this.hearts + 1));
-    this.nitroTimer = 3.0; // 3 seconds CNG Turbo Invulnerable Blast
-    this.runnerInvulnerableTimer = 3.0;
-
-    // 5. Unpause if paused
-    if (this.isPaused && !this.isGameOver) {
-      this.isPaused = false;
-    }
-
-    this.particles.createDevourSparkles(this.player.position, 30, 0x00e5ff);
-    this.ui.showAnnouncement('🚀 EMERGENCY UNSTUCK! Path Cleared + CNG Turbo Shield!', '#00e5ff');
-    this.ui.showFloatingFeedback('🛡️ UNSTUCK & SHIELDED!', this.player.position, '#ffd700');
+    });
+    this.ui.showFloatingFeedback('↔ POSITION RESTORED', this.player.position, '#00e5ff');
   }
 
   /**
@@ -866,6 +997,27 @@ class Game {
    */
   createRunnerPowerupMesh(type) {
     const group = new THREE.Group();
+    if (type === 'revive_token') {
+      const token = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.48, 0.48, 0.12, 24),
+        new THREE.MeshStandardMaterial({
+          color: 0xffd700,
+          emissive: 0xb8860b,
+          emissiveIntensity: 0.65,
+          metalness: 0.8,
+          roughness: 0.22
+        })
+      );
+      token.rotation.x = Math.PI / 2;
+      group.add(token);
+      group.add(new THREE.Mesh(
+        new THREE.TorusGeometry(0.64, 0.07, 8, 24),
+        new THREE.MeshBasicMaterial({ color: 0xffd700 })
+      ));
+      group.userData = { powerupType: type, isRare: true };
+      return group;
+    }
+
     let color = 0x00e5ff;
     if (type === 'cng') color = 0x00e5ff;
     else if (type === 'shield') color = 0x00bcd4;
@@ -900,6 +1052,9 @@ class Game {
    */
   spawnRunnerWave(waveZ) {
     const lanes = [-this.laneWidth, 0, this.laneWidth]; // [-3.2, 0, 3.2]
+    const obstacleStartIndex = this.runnerObstacles.length;
+    const trafficStartIndex = this.runnerTraffic.length;
+    const boostPadStartIndex = this.runnerBoostPads.length;
 
     // 0. Safe Onboarding Warmup Zone (First 50 meters): Spawn ONLY pleasant golden coin paths!
     if (this.distanceMeters < 50) {
@@ -913,11 +1068,21 @@ class Game {
       return;
     }
 
-    const archetype = Math.floor(Math.random() * 8);
+    const localArchetypes = this.currentDistrictLevel === 1
+      ? ['soldier_tanker']
+      : this.currentDistrictLevel === 2
+        ? ['lyari_football']
+        : this.currentDistrictLevel === 3
+          ? ['saddar_handcart', 'saddar_scaffold']
+          : [];
+    const archetypes = [...Array(8).keys(), ...localArchetypes];
+    const archetype = this.runnerSection?.type === 'underpass' && Math.random() < 0.6
+      ? 0
+      : archetypes[Math.floor(Math.random() * archetypes.length)];
 
     if (archetype === 0) {
-      // 1. Low Hanging K-Electric Dangling Live Wires (Overhead - Must SLIDE under!)
-      const wires = KarachiModels.createKElectricDanglingWires(7.5);
+      // Low hanging wires span the road; slide underneath.
+      const wires = KarachiModels.createHangingWireHazard(12.4);
       wires.position.set(0, 0, waveZ);
       this.scene.add(wires);
       this.runnerObstacles.push({
@@ -1116,7 +1281,7 @@ class Game {
         this.scene.add(coin);
         this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
       });
-    } else {
+    } else if (archetype === 7) {
       // 8. NASCAR Asphalt Nitro Chevron Boost Pad (Instant Turbo Catapult!)
       const padLaneIdx = Math.floor(Math.random() * 3);
       const padLaneX = lanes[padLaneIdx];
@@ -1137,13 +1302,170 @@ class Game {
         this.scene.add(coin);
         this.runnerCoins.push({ mesh: coin, value: 100, x: padLaneX, z: waveZ + zOff });
       });
+    } else if (archetype === 'soldier_tanker') {
+      const laneX = lanes[Math.floor(Math.random() * lanes.length)];
+      const tanker = KarachiModels.createWaterTanker();
+      tanker.position.set(laneX, 0, waveZ);
+      this.scene.add(tanker);
+      this.runnerObstacles.push({
+        type: 'water_tanker',
+        laneX,
+        z: waveZ,
+        requiredAction: 'dodge',
+        mesh: tanker,
+        isHit: false
+      });
+      tanker.userData.patrolAreaLevel = 1;
+
+      const safeLaneX = lanes[(lanes.indexOf(laneX) + 1) % lanes.length];
+      [-3.0, 0, 3.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(safeLaneX, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: safeLaneX, z: waveZ + zOff });
+      });
+    } else if (archetype === 'lyari_football') {
+      const laneX = lanes[Math.floor(Math.random() * lanes.length)];
+      const football = KarachiModels.createLyariStreetFootball();
+      football.position.set(laneX, 0, waveZ);
+      this.scene.add(football);
+      this.runnerObstacles.push({
+        type: 'football',
+        laneX,
+        z: waveZ,
+        requiredAction: 'dodge',
+        mesh: football,
+        isHit: false
+      });
+      football.userData.patrolAreaLevel = 2;
+
+      const safeLaneX = lanes[(lanes.indexOf(laneX) + 1) % lanes.length];
+      [-3.0, 0, 3.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(safeLaneX, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: safeLaneX, z: waveZ + zOff });
+      });
+    } else if (archetype === 'saddar_handcart') {
+      const laneX = lanes[Math.floor(Math.random() * lanes.length)];
+      const handcart = KarachiModels.createSaddarMarketHandcart();
+      handcart.position.set(laneX, 0, waveZ);
+      this.scene.add(handcart);
+      this.runnerObstacles.push({
+        type: 'market_cart',
+        laneX,
+        z: waveZ,
+        requiredAction: 'dodge',
+        mesh: handcart,
+        isHit: false
+      });
+      handcart.userData.patrolAreaLevel = 3;
+
+      const safeLaneX = lanes[(lanes.indexOf(laneX) + 1) % lanes.length];
+      [-3.0, 0, 3.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(safeLaneX, 0, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: safeLaneX, z: waveZ + zOff });
+      });
+    } else if (archetype === 'saddar_scaffold') {
+      const scaffold = KarachiModels.createSaddarHeritageScaffold(7.5);
+      scaffold.position.set(0, 0, waveZ);
+      this.scene.add(scaffold);
+      this.runnerObstacles.push({
+        type: 'heritage_scaffold',
+        z: waveZ,
+        requiredAction: 'slide',
+        mesh: scaffold,
+        isHit: false
+      });
+      scaffold.userData.patrolAreaLevel = 3;
     }
 
-    // Occasional Karachi Tactical Power-Up spawn (every ~3 waves)
-    if (Math.random() < 0.35) {
+    if (this.getRunnerWeatherState() === 'potholes' &&
+        !this.runnerObstacles.slice(obstacleStartIndex).some(obstacle =>
+          obstacle.type === 'wire' || obstacle.type === 'heritage_scaffold'
+        )) {
+      const blockedLanes = [
+        ...this.runnerObstacles.slice(obstacleStartIndex).map(obstacle => obstacle.laneX),
+        ...this.runnerTraffic.slice(trafficStartIndex).map(vehicle => vehicle.laneX),
+        ...this.runnerBoostPads.slice(boostPadStartIndex).map(pad => pad.laneX)
+      ];
+      const openLanes = lanes.filter(laneX =>
+        !blockedLanes.some(blockedLaneX =>
+          Number.isFinite(blockedLaneX) && Math.abs(blockedLaneX - laneX) < 0.1
+        )
+      );
+      const potholeCount = this.runnerWaveCount % 3 === 2 ? 2 : 1;
+      for (let index = 0; index < Math.min(potholeCount, openLanes.length - 1); index++) {
+        const laneX = openLanes[(this.runnerWaveCount + index) % openLanes.length];
+        const pothole = this.createRunnerPotholeMesh();
+        pothole.position.set(laneX, 0, waveZ - (index * 3.0));
+        this.scene.add(pothole);
+        this.runnerObstacles.push({
+          type: 'pothole',
+          laneX,
+          z: waveZ - (index * 3.0),
+          requiredAction: 'jump_or_dodge',
+          mesh: pothole,
+          isHit: false
+        });
+      }
+    }
+
+    const challengeTier = this.getRunnerChallengeTier();
+    const obstaclesThisWave = this.runnerObstacles.slice(obstacleStartIndex);
+    const hasFullWidthHazard = obstaclesThisWave.some(obstacle =>
+      obstacle.type === 'wire' || obstacle.type === 'heritage_scaffold'
+    );
+    const blockedLanes = [
+      ...obstaclesThisWave.map(obstacle => obstacle.laneX),
+      ...this.runnerTraffic.slice(trafficStartIndex).map(vehicle => vehicle.laneX)
+    ];
+    const occupiedLanes = lanes.filter(laneX =>
+      blockedLanes.some(blockedLaneX =>
+        Number.isFinite(blockedLaneX) && Math.abs(blockedLaneX - laneX) < 0.1
+      )
+    );
+    const openLanes = lanes.filter(laneX =>
+      !occupiedLanes.some(occupiedLaneX => Math.abs(occupiedLaneX - laneX) < 0.1)
+    );
+    const comboInterval = Math.max(2, 6 - challengeTier);
+    if (challengeTier >= 2 &&
+        this.runnerWaveCount % comboInterval === comboInterval - 1 &&
+        !hasFullWidthHazard &&
+        occupiedLanes.length === 1 &&
+        openLanes.length >= 2) {
+      const comboLaneX = openLanes[(this.runnerWaveCount + challengeTier) % openLanes.length];
+      const roadwork = KarachiModels.createRoadDiggingObstacle(2.8);
+      roadwork.position.set(comboLaneX, 0, waveZ);
+      this.scene.add(roadwork);
+      this.runnerObstacles.push({
+        type: 'combined_roadwork',
+        laneX: comboLaneX,
+        z: waveZ,
+        requiredAction: 'jump_or_dodge',
+        mesh: roadwork,
+        isHit: false
+      });
+    }
+
+    this.runnerWaveCount += 1;
+    if (this.runnerWaveCount % 3 === 0) {
       const pTypes = ['cng', 'shield', 'magnet', 'chai', 'jump'];
-      const chosenType = pTypes[Math.floor(Math.random() * pTypes.length)];
-      const pLaneX = lanes[Math.floor(Math.random() * 3)];
+      const chosenType = pTypes[this.runnerPowerupDropCount % pTypes.length];
+      const blockedLanes = [
+        ...this.runnerObstacles.slice(obstacleStartIndex)
+          .filter(obstacle => obstacle.type !== 'wire')
+          .map(obstacle => obstacle.laneX),
+        ...this.runnerTraffic.slice(trafficStartIndex).map(vehicle => vehicle.laneX)
+      ];
+      const safeLanes = lanes.filter(laneX =>
+        !blockedLanes.some(blockedLaneX => Math.abs(blockedLaneX - laneX) < 0.1)
+      );
+      const pLaneX = safeLanes.length
+        ? safeLanes[this.runnerPowerupDropCount % safeLanes.length]
+        : lanes[this.runnerPowerupDropCount % lanes.length];
       const pMesh = this.createRunnerPowerupMesh(chosenType);
       pMesh.position.set(pLaneX, 0, waveZ - 12.0);
       this.scene.add(pMesh);
@@ -1153,7 +1475,217 @@ class Game {
         x: pLaneX,
         z: waveZ - 12.0
       });
+      this.runnerPowerupDropCount += 1;
     }
+
+    if (this.runnerWaveCount % 18 === 0 &&
+        saveManager.getReviveTokenCount() < MAX_REVIVE_TOKENS) {
+      const blockedLanes = [
+        ...this.runnerObstacles.slice(obstacleStartIndex)
+          .filter(obstacle => obstacle.type !== 'wire')
+          .map(obstacle => obstacle.laneX),
+        ...this.runnerTraffic.slice(trafficStartIndex).map(vehicle => vehicle.laneX)
+      ];
+      const safeLanes = lanes.filter(laneX =>
+        !blockedLanes.some(blockedLaneX => Math.abs(blockedLaneX - laneX) < 0.1)
+      );
+      const tokenLaneX = safeLanes.length
+        ? safeLanes[this.runnerWaveCount % safeLanes.length]
+        : lanes[this.runnerWaveCount % lanes.length];
+      const tokenMesh = this.createRunnerPowerupMesh('revive_token');
+      tokenMesh.position.set(tokenLaneX, 0.9, waveZ - 16.0);
+      this.scene.add(tokenMesh);
+      this.runnerReviveTokens.push({
+        mesh: tokenMesh,
+        laneX: tokenLaneX,
+        z: waveZ - 16.0
+      });
+    }
+  }
+
+  createRunnerPotholeMesh() {
+    const group = new THREE.Group();
+    group.name = 'Rain-Softened Road Pothole';
+
+    const rim = new THREE.Mesh(RUNNER_POTHOLE_RIM_GEOMETRY, RUNNER_POTHOLE_RIM_MATERIAL);
+    rim.rotation.x = -Math.PI / 2;
+    rim.position.y = 0.035;
+    group.add(rim);
+
+    const warningRing = new THREE.Mesh(
+      RUNNER_POTHOLE_WARNING_RING_GEOMETRY,
+      RUNNER_POTHOLE_WARNING_RING_MATERIAL
+    );
+    warningRing.rotation.x = -Math.PI / 2;
+    warningRing.position.y = 0.05;
+    group.add(warningRing);
+
+    const water = new THREE.Mesh(RUNNER_POTHOLE_WATER_GEOMETRY, RUNNER_POTHOLE_WATER_MATERIAL);
+    water.rotation.x = -Math.PI / 2;
+    water.position.y = 0.06;
+    group.add(water);
+
+    [2.2, 4.0].forEach(distance => {
+      const approachArrow = new THREE.Mesh(
+        RUNNER_POTHOLE_ARROW_GEOMETRY,
+        RUNNER_POTHOLE_ARROW_MATERIAL
+      );
+      approachArrow.rotation.x = -Math.PI / 2;
+      approachArrow.position.set(0, 0.045, distance);
+      approachArrow.scale.set(0.72, 0.72, 0.72);
+      approachArrow.userData.isApproachMarker = true;
+      group.add(approachArrow);
+    });
+
+    group.userData.isRunnerHazard = true;
+    group.userData.obstacleType = 'pothole';
+    return group;
+  }
+
+  getRunnerWeatherState() {
+    if (this.runnerRainOverride === true) return 'rain';
+    if (this.runnerRainOverride === false) return 'clear';
+    if (this.distanceMeters < 450) return 'clear';
+
+    const cycleDistance = (this.distanceMeters - 450) % 1800;
+    if (cycleDistance < 200) return 'rain';
+    if (cycleDistance < 750) return 'potholes';
+    return 'clear';
+  }
+
+  getRunnerNeighborhoodIndex(distance = this.distanceMeters) {
+    return Math.min(
+      RUNNER_NEIGHBORHOOD_COUNT,
+      Math.max(1, Math.floor(Math.max(0, distance) / RUNNER_METERS_PER_NEIGHBORHOOD) + 1)
+    );
+  }
+
+  getRunnerChallengeTier(distance = this.distanceMeters) {
+    return Math.min(8, Math.floor(Math.max(0, distance) / 2500));
+  }
+
+  getRunnerWaveSpacing(distance = this.distanceMeters) {
+    return Math.max(24, 28 - Math.floor(Math.max(0, distance) / 5000));
+  }
+
+  getRunnerSpeed(distance = this.distanceMeters) {
+    const progress = THREE.MathUtils.clamp(distance / RUNNER_CITY_LOOP_METERS, 0, 1);
+    return this.runSpeed * (1 + progress * 0.35);
+  }
+
+  updateRunnerProgression() {
+    if (this.distanceMeters >= RUNNER_CITY_LOOP_METERS) {
+      this.distanceMeters = RUNNER_CITY_LOOP_METERS;
+      this.finishRunnerCityLoop();
+      return true;
+    }
+
+    const neighborhoodIndex = this.getRunnerNeighborhoodIndex();
+    if (neighborhoodIndex !== this.runnerNeighborhoodIndex) {
+      this.runnerNeighborhoodIndex = neighborhoodIndex;
+      this.currentMilestone = getKarachiNeighborhoodName(neighborhoodIndex);
+    }
+
+    const areaIndex = Math.min(2, Math.floor(this.distanceMeters / 6700));
+    if (areaIndex !== this.runnerAreaIndex) {
+      this.runnerAreaIndex = areaIndex;
+      this.currentDistrictLevel = areaIndex + 1;
+      this.currentMilestone = getKarachiNeighborhoodName(neighborhoodIndex);
+      if (!saveManager.isDistrictUnlocked(this.currentDistrictLevel)) {
+        saveManager.unlockDistrict(this.currentDistrictLevel);
+        this.ui?.refreshProgressionContent();
+      }
+      this.initCorridorTerrain();
+      this.ui?.showAnnouncement(
+        `🏁 KARACHI ROUTE: ${RUNNER_AREA_NAMES[areaIndex].toUpperCase()} · NEW STREET CHALLENGES`,
+        '#00e5ff'
+      );
+    }
+
+    return false;
+  }
+
+  finishRunnerCityLoop() {
+    if (this.runnerRouteComplete) return;
+    this.runnerRouteComplete = true;
+    this.runnerNeighborhoodIndex = RUNNER_NEIGHBORHOOD_COUNT;
+    this.currentDistrictLevel = 1;
+    this.currentMilestone = getKarachiNeighborhoodName(RUNNER_NEIGHBORHOOD_COUNT);
+    this.isGameOver = true;
+    this.isPaused = true;
+    this.score += 10000;
+    this.awardRunnerXP(5000);
+    audio.playDistrictClearedFanfare();
+    this.particles.createCelebrationConfetti(this.player.position, 120);
+    this.persistRunnerRun();
+    this.ui?.showGameOver({
+      rankedHoles: [...(this.holes || [])].sort((a, b) => b.score - a.score),
+      player: this.player,
+      routeComplete: true,
+      distanceMeters: RUNNER_CITY_LOOP_METERS,
+      coins: this.coins,
+      runScore: this.score
+    });
+  }
+
+  updateRunnerWeather(dt) {
+    const weather = this.getRunnerWeatherState();
+    if (weather !== this.runnerWeatherState) {
+      this.runnerWeatherState = weather;
+      if (weather === 'rain') {
+        this.ui?.showAnnouncement('🌧️ KARACHI MONSOON! Slow down and watch the road.', '#80deea');
+      } else if (weather === 'potholes') {
+        this.ui?.showAnnouncement('🕳️ RAIN-SOFTENED ROAD! Puddled potholes ahead.', '#80deea');
+      } else if (weather === 'clear') {
+        this.ui?.showAnnouncement('☀️ RAIN CLEARED. Stay alert for road damage.', '#ffd700');
+      }
+    }
+
+    if (!this.runnerRainEffect) {
+      const positions = new Float32Array(180 * 2 * 3);
+      for (let index = 0; index < 180; index++) {
+        const offset = index * 6;
+        const x = (Math.random() - 0.5) * 24;
+        const y = 2 + Math.random() * 12;
+        const z = (Math.random() - 0.5) * 34;
+        positions[offset] = x;
+        positions[offset + 1] = y;
+        positions[offset + 2] = z;
+        positions[offset + 3] = x - 0.12;
+        positions[offset + 4] = y - 1.1;
+        positions[offset + 5] = z;
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const rain = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({
+        color: 0xa8d8e8,
+        transparent: true,
+        opacity: 0.58,
+        depthWrite: false
+      }));
+      rain.frustumCulled = false;
+      rain.visible = false;
+      this.scene.add(rain);
+      this.runnerRainEffect = { mesh: rain, positions, attribute: geometry.attributes.position };
+    }
+
+    const rain = this.runnerRainEffect;
+    rain.mesh.visible = weather === 'rain';
+    rain.mesh.position.set(this.player.position.x, 0, this.player.position.z);
+    if (weather !== 'rain') return;
+
+    for (let offset = 0; offset < rain.positions.length; offset += 6) {
+      rain.positions[offset + 1] -= 30 * dt;
+      if (rain.positions[offset + 1] < 0) {
+        rain.positions[offset] = (Math.random() - 0.5) * 24;
+        rain.positions[offset + 1] = 8 + Math.random() * 6;
+        rain.positions[offset + 2] = (Math.random() - 0.5) * 34;
+      }
+      rain.positions[offset + 3] = rain.positions[offset] - 0.12;
+      rain.positions[offset + 4] = rain.positions[offset + 1] - 1.1;
+      rain.positions[offset + 5] = rain.positions[offset + 2];
+    }
+    rain.attribute.needsUpdate = true;
   }
 
   /**
@@ -1182,18 +1714,81 @@ class Game {
    * Initialize Infinite Procedural 3-Lane Corridor for Karachi Subway Run
    */
   initCorridorTerrain() {
-    if (this.corridorChunks && this.corridorChunks.length > 0) {
+    const baseZ = this.player?.position.z ?? 60.0;
+    if (this.corridorChunks && this.corridorChunks.length > 0 &&
+        this.corridorDistrictLevel === this.currentDistrictLevel) {
+      this.corridorChunks.forEach((chunk, index) => {
+        chunk.position.z = baseZ - (index * 60.0);
+        this.scene.add(chunk);
+      });
+      return;
+    }
+    if (this.corridorChunks) {
       this.corridorChunks.forEach(chunk => this.scene.remove(chunk));
     }
     this.corridorChunks = [];
+    this.corridorChunkSerial = 0;
 
-    // Create 7 modular chunks spanning from Z = 60m down to Z = -360m (420m of continuous track)
+    // Keep the active area scenery centered on the runner as the route advances.
     for (let i = 0; i < 7; i++) {
-      const chunkZ = 60.0 - (i * 60.0);
+      const chunkZ = baseZ - (i * 60.0);
       const chunk = this.createCorridorChunk(chunkZ);
       this.scene.add(chunk);
       this.corridorChunks.push(chunk);
     }
+    this.corridorDistrictLevel = this.currentDistrictLevel;
+  }
+
+  /**
+   * Place classic-city landmarks, distant towers and palms along a corridor chunk.
+   * Returns the set of sides (-1 / 1) whose roadside is occupied by a landmark.
+   */
+  addCorridorLandmarks(chunkGroup) {
+    const lists = {
+      1: ['createBurnsRoadColonialBuilding', 'createBahadurabadCharminar', 'createTariqRoadFashionPlaza', 'createSaddarClockTower', 'createKMCBuilding', 'createCommercialPlaza', 'createResidentialBungalow'],
+      2: ['createDryResidentialHome', 'createDoDaryaPavilion', 'createCliftonLighthouse', 'createTeenTalwarChowrangi', 'createResidentialBungalow', 'createCommercialPlaza', 'createKMCBuilding'],
+      3: ['createEmpressMarket', 'createFrereHall', 'createMohattaPalace', 'createSaddarClockTower', 'createBurnsRoadColonialBuilding', 'createMazarEQuaid', 'createKMCBuilding']
+    };
+    const list = lists[this.currentDistrictLevel] || lists[1];
+    const serial = this.corridorChunkSerial = (this.corridorChunkSerial || 0) + 1;
+    const occupied = new Set();
+    const names = [];
+
+    [-1, 1].forEach((side, sideIndex) => {
+      // Leave one side per few chunks as plain blocks so the street keeps a varied rhythm.
+      if ((serial + sideIndex) % 4 === 3) return;
+      const name = list[(serial * 2 + sideIndex) % list.length];
+      const model = KarachiModels[name]?.();
+      if (!model) return;
+      const footprint = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+      const fit = Math.min(1, 26 / Math.max(footprint.x, footprint.z));
+      model.scale.setScalar(fit);
+      model.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+      model.position.set(side * (12.5 + (footprint.x * fit) / 2), 0, 0);
+      chunkGroup.add(model);
+      occupied.add(side);
+      names.push(name);
+    });
+
+    const towers = ['createHabibBankPlaza', 'createMCBTower', 'createChundrigarSkyscraper', 'createCommercialPlaza'];
+    const towerName = towers[serial % towers.length];
+    const tower = KarachiModels[towerName]?.();
+    if (tower) {
+      const side = serial % 2 === 0 ? -1 : 1;
+      tower.position.set(side * 50, 0, (serial % 3 - 1) * 12);
+      chunkGroup.add(tower);
+      names.push(towerName);
+    }
+
+    [-1, 1].forEach(side => {
+      const palm = KarachiModels.createPalmTree?.();
+      if (!palm) return;
+      palm.position.set(side * 9.6, 0, side * 24);
+      chunkGroup.add(palm);
+    });
+
+    chunkGroup.userData.landmarks = names;
+    return occupied;
   }
 
   /**
@@ -1202,12 +1797,60 @@ class Game {
   createCorridorChunk(chunkZ) {
     const chunkGroup = new THREE.Group();
     chunkGroup.position.z = chunkZ;
+    const districtStyles = {
+      1: {
+        name: 'SOLDIER BAZAR · PECHS',
+        streets: [
+          { avenue: 'SOLDIER BAZAR', avenueUrdu: 'سولجر بازار', cross: 'NISHTAR ROAD', crossUrdu: 'نشتر روڈ' },
+          { avenue: 'NISHTAR ROAD', avenueUrdu: 'نشتر روڈ', cross: 'SHAHRAH-E-QUAIDEEN', crossUrdu: 'شاہراہ قائدین' },
+          { avenue: 'TARIQ ROAD', avenueUrdu: 'طارق روڈ', cross: 'PECHS', crossUrdu: 'پی ای سی ایچ ایس' },
+          { avenue: 'PECHS', avenueUrdu: 'پی ای سی ایچ ایس', cross: 'BAHADURABAD', crossUrdu: 'بہادرآباد' }
+        ],
+        buildingColors: [0xb0bec5, 0xcfd8dc, 0xffcc80, 0x80deea, 0xa5d6a7],
+        sidewalkColor: 0x64748b,
+        roadColor: 0x181e26,
+        laneMarking: 0xffffff
+      },
+      2: {
+        name: 'LYARI · CHAKIWARA · BAGHDADI',
+        streets: [
+          { avenue: 'LYARI', avenueUrdu: 'لیاری', cross: 'CHAKIWARA', crossUrdu: 'چاکیواڑہ' },
+          { avenue: 'CHAKIWARA', avenueUrdu: 'چاکیواڑہ', cross: 'BAGHDADI', crossUrdu: 'بغدادی' },
+          { avenue: 'BAGHDADI', avenueUrdu: 'بغدادی', cross: 'KALAKOT', crossUrdu: 'کلاکوٹ' },
+          { avenue: 'LYARI FOOTBALL GROUND', avenueUrdu: 'لیاری فٹ بال گراؤنڈ', cross: 'MAURIPUR ROAD', crossUrdu: 'ماری پور روڈ' }
+        ],
+        buildingColors: [0xef9a9a, 0xffcc80, 0xfff176, 0xa5d6a7, 0x80deea],
+        sidewalkColor: 0x8d6e63,
+        roadColor: 0x302b28,
+        laneMarking: 0xf5d6a0
+      },
+      3: {
+        name: 'SADDAR · BURNS ROAD · EMPRESS MARKET',
+        streets: [
+          { avenue: 'SADDAR', avenueUrdu: 'صدر', cross: 'EMPRESS MARKET', crossUrdu: 'ایمپریس مارکیٹ' },
+          { avenue: 'EMPRESS MARKET', avenueUrdu: 'ایمپریس مارکیٹ', cross: 'PREEDY STREET', crossUrdu: 'پریڈی اسٹریٹ' },
+          { avenue: 'BURNS ROAD', avenueUrdu: 'برنس روڈ', cross: 'BOHRI BAZAAR', crossUrdu: 'بوہری بازار' },
+          { avenue: 'M.A. JINNAH ROAD', avenueUrdu: 'ایم اے جناح روڈ', cross: 'BURNS ROAD', crossUrdu: 'برنس روڈ' }
+        ],
+        buildingColors: [0x8d6e63, 0xa1887f, 0xd7ccc8, 0xffcc80, 0xb0bec5],
+        sidewalkColor: 0x795548,
+        roadColor: 0x242326,
+        laneMarking: 0xe6d7b8
+      }
+    };
+    const districtStyle = districtStyles[this.currentDistrictLevel] || districtStyles[1];
+    const routeIndex = Math.abs(Math.floor(chunkZ / 60.0)) % districtStyle.streets.length;
+    const route = districtStyle.streets[routeIndex];
+    chunkGroup.userData.karachiDistrict = route.avenue;
+    chunkGroup.userData.patrolArea = districtStyle.name;
+    chunkGroup.userData.patrolAreaLevel = this.currentDistrictLevel;
+    chunkGroup.userData.runnerIdentity = getDistrictConfig(this.currentDistrictLevel).runnerFocus;
 
     // 1. Smooth Dark Asphalt Road Surface (13m wide, 60m long)
     const roadGeo = new THREE.PlaneGeometry(13.0, 60.0);
     roadGeo.rotateX(-Math.PI / 2);
     const roadMat = new THREE.MeshLambertMaterial({
-      color: 0x181e26
+      color: districtStyle.roadColor
     });
     const roadMesh = new THREE.Mesh(roadGeo, roadMat);
     roadMesh.position.y = 0.02;
@@ -1219,7 +1862,7 @@ class Game {
       for (let dz = -25; dz <= 25; dz += 10) {
         const dashGeo = new THREE.PlaneGeometry(0.18, 5.0);
         dashGeo.rotateX(-Math.PI / 2);
-        const dashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const dashMat = new THREE.MeshBasicMaterial({ color: districtStyle.laneMarking });
         const dash = new THREE.Mesh(dashGeo, dashMat);
         dash.position.set(divX, 0.026, dz);
         chunkGroup.add(dash);
@@ -1238,12 +1881,13 @@ class Game {
 
     // 3. Sidewalks on Left and Right
     [-8.0, 8.0].forEach(sideX => {
-      const walkGeo = new THREE.BoxGeometry(4.0, 0.28, 60.0);
-      const walkMat = new THREE.MeshLambertMaterial({ color: 0x64748b });
-      const walk = new THREE.Mesh(walkGeo, walkMat);
-      walk.position.set(sideX, 0.14, 0);
-      walk.receiveShadow = true;
-      chunkGroup.add(walk);
+      const walkMat = new THREE.MeshLambertMaterial({ color: districtStyle.sidewalkColor });
+      for (let seg = 0; seg < 6; seg++) {
+        const walk = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.28, 10.0), walkMat);
+        walk.position.set(sideX, 0.14, -25 + seg * 10);
+        walk.receiveShadow = true;
+        chunkGroup.add(walk);
+      }
     });
 
     // 4. Streetlights every 30m along sidewalks
@@ -1256,23 +1900,258 @@ class Game {
       });
     });
 
-    // 5. Flanking Karachi Buildings, Paan Shops & Chai Stalls
-    const bldColors = [0x94a3b8, 0xb0bec5, 0xcfd8dc, 0xef9a9a, 0xffcc80, 0x80deea, 0xa5d6a7];
+    // Local road signs and roadside stalls give the runner corridor a Karachi identity.
+    const leftStreetSign = KarachiModels.createKarachiGreenStreetSign(
+      route.avenue,
+      route.avenueUrdu,
+      route.cross,
+      route.crossUrdu
+    );
+    leftStreetSign.position.set(-8.7, 0, -15);
+    leftStreetSign.rotation.y = Math.PI / 2;
+    chunkGroup.add(leftStreetSign);
+
+    const rightStreetSign = KarachiModels.createKarachiGreenStreetSign(
+      route.cross,
+      route.crossUrdu,
+      route.avenue,
+      route.avenueUrdu
+    );
+    rightStreetSign.position.set(8.7, 0, 15);
+    rightStreetSign.rotation.y = -Math.PI / 2;
+    chunkGroup.add(rightStreetSign);
+
+    const roadsideStall = this.currentDistrictLevel === 3
+      ? (routeIndex % 2 === 0 ? KarachiModels.createBurnsRoadBunKababStall() : KarachiModels.createBurnsRoadBiryaniStall())
+      : this.currentDistrictLevel === 2
+        ? (routeIndex % 2 === 0 ? KarachiModels.createChaiDhaba() : KarachiModels.createRoadsidePaanKhokha())
+        : (routeIndex % 2 === 0 ? KarachiModels.createChaiDhaba() : KarachiModels.createRoadsidePaanKhokha());
+    roadsideStall.position.set(routeIndex % 2 === 0 ? -10.8 : 10.8, 0, 0);
+    roadsideStall.rotation.y = routeIndex % 2 === 0 ? Math.PI / 2 : -Math.PI / 2;
+    chunkGroup.add(roadsideStall);
+
+    if (this.currentDistrictLevel === 2 && routeIndex % 2 === 0) {
+      const goal = new THREE.Group();
+      goal.name = 'Lyari Street Football Goal';
+      chunkGroup.userData.lyariFootballGround = true;
+      const frameMaterial = new THREE.MeshLambertMaterial({ color: 0xf5f5f5 });
+      const postGeometry = new THREE.BoxGeometry(0.12, 2.1, 0.12);
+      [-1.35, 1.35].forEach(x => {
+        const post = new THREE.Mesh(postGeometry, frameMaterial);
+        post.position.set(x, 1.05, 0);
+        goal.add(post);
+      });
+      const crossbar = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.12, 0.12), frameMaterial);
+      crossbar.position.y = 2.1;
+      goal.add(crossbar);
+      goal.position.set(8.6, 0, -20);
+      chunkGroup.add(goal);
+      const football = new THREE.Mesh(
+        new THREE.SphereGeometry(0.32, 10, 8),
+        new THREE.MeshLambertMaterial({ color: 0xffffff })
+      );
+      football.position.set(7.0, 0.32, -17);
+      chunkGroup.add(football);
+    }
+
+    if (this.currentDistrictLevel === 1) {
+      chunkGroup.userData.soldierBazarWaterTank = true;
+      const roof = new THREE.Mesh(
+        new THREE.BoxGeometry(4.2, 0.3, 4.2),
+        new THREE.MeshLambertMaterial({ color: 0xc8c2b8 })
+      );
+      roof.position.set(-15.5, 11.5, 0);
+      chunkGroup.add(roof);
+      const tank = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.25, 1.25, 1.8, 14),
+        new THREE.MeshLambertMaterial({ color: 0x416b79 })
+      );
+      tank.position.set(-15.5, 12.55, 0);
+      tank.castShadow = true;
+      chunkGroup.add(tank);
+      const tankTop = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.28, 1.28, 0.12, 14),
+        new THREE.MeshLambertMaterial({ color: 0x698c96 })
+      );
+      tankTop.position.set(-15.5, 13.5, 0);
+      chunkGroup.add(tankTop);
+    } else if (this.currentDistrictLevel === 2) {
+      chunkGroup.userData.lyariMuralWall = true;
+      const muralWall = new THREE.Mesh(
+        new THREE.BoxGeometry(0.16, 3.4, 9.5),
+        new THREE.MeshLambertMaterial({ color: 0x9b4b36 })
+      );
+      muralWall.position.set(-10.35, 2.0, 0);
+      chunkGroup.add(muralWall);
+      [
+        { color: 0x168a73, y: 1.1, z: 0 },
+        { color: 0xe7b94f, y: 2.0, z: -1.4 },
+        { color: 0xd76a48, y: 2.0, z: 1.4 },
+        { color: 0x247f91, y: 2.9, z: 0 }
+      ].forEach(stripe => {
+        const paint = new THREE.Mesh(
+          new THREE.BoxGeometry(0.04, 0.54, 2.5),
+          new THREE.MeshLambertMaterial({ color: stripe.color })
+        );
+        paint.position.set(-10.24, stripe.y, stripe.z);
+        chunkGroup.add(paint);
+      });
+      const muralBall = new THREE.Mesh(
+        new THREE.SphereGeometry(0.72, 16, 12),
+        new THREE.MeshLambertMaterial({ color: 0xf4ead2 })
+      );
+      muralBall.position.set(-10.18, 2.0, 0);
+      muralBall.scale.set(0.12, 1, 1);
+      chunkGroup.add(muralBall);
+    } else if (this.currentDistrictLevel === 3) {
+      chunkGroup.userData.saddarHeritageFacade = true;
+    }
+
+    // Iconic Karachi landmarks from the classic city replace plain box blocks on some roadsides.
+    const landmarkSides = this.addCorridorLandmarks(chunkGroup);
+
+    // Local building styles distinguish the chosen Karachi patrol area.
     [-13.5, 13.5].forEach(sideX => {
+      if (landmarkSides.has(sideX < 0 ? -1 : 1)) return;
       for (let bz = -20; bz <= 20; bz += 20) {
         const w = 6 + (Math.abs(bz) % 3);
-        const h = 8 + ((Math.abs(bz) * 7) % 15);
+        const h = this.currentDistrictLevel === 3
+          ? 12 + ((Math.abs(bz) * 7) % 10)
+          : this.currentDistrictLevel === 2
+            ? 7 + ((Math.abs(bz) * 5) % 12)
+            : 8 + ((Math.abs(bz) * 7) % 15);
         const d = 18;
-        const color = bldColors[Math.abs(Math.round(chunkZ + bz + sideX)) % bldColors.length];
+        const color = districtStyle.buildingColors[Math.abs(Math.round(chunkZ + bz + sideX)) % districtStyle.buildingColors.length];
         const bGeo = new THREE.BoxGeometry(w, h, d);
         const bMat = new THREE.MeshLambertMaterial({ color });
         const bld = new THREE.Mesh(bGeo, bMat);
         bld.position.set(sideX, h / 2, bz);
         chunkGroup.add(bld);
+
+        if (this.currentDistrictLevel === 3) {
+          const facadeX = sideX < 0 ? sideX + w / 2 + 0.08 : sideX - w / 2 - 0.08;
+          const trimMat = new THREE.MeshLambertMaterial({ color: 0xd7c4a1 });
+          const shadowMat = new THREE.MeshLambertMaterial({ color: 0x51473e });
+          const cornice = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.38, d + 0.6), trimMat);
+          cornice.position.set(facadeX, h - 0.7, bz);
+          chunkGroup.add(cornice);
+          [-4.8, 0, 4.8].forEach(windowZ => {
+            const window = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.5, 1.45), shadowMat);
+            window.position.set(facadeX + (sideX < 0 ? 0.06 : -0.06), 4.0, bz + windowZ);
+            chunkGroup.add(window);
+            const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.16, 1.7), trimMat);
+            lintel.position.set(window.position.x, 5.34, bz + windowZ);
+            chunkGroup.add(lintel);
+          });
+          [-7.4, 7.4].forEach(pierZ => {
+            const pier = new THREE.Mesh(new THREE.BoxGeometry(0.28, Math.max(5, h - 2), 0.38), trimMat);
+            pier.position.set(facadeX, Math.max(5, h - 2) / 2, bz + pierZ);
+            chunkGroup.add(pier);
+          });
+        }
       }
     });
 
+    this.mergeCorridorChunk(chunkGroup);
     return chunkGroup;
+  }
+
+  // Collapses a chunk's static meshes into a few draw calls per material. Meshes are
+  // grouped by road side and 6 m slab so a cross-road can hide just the overlapped part.
+  mergeCorridorChunk(chunkGroup) {
+    chunkGroup.updateMatrixWorld(true);
+    const inverse = new THREE.Matrix4().copy(chunkGroup.matrixWorld).invert();
+    const buckets = new Map();
+    const getBucket = (side, slab) => {
+      const id = side + '|' + slab;
+      if (!buckets.has(id)) buckets.set(id, { side, slab, group: new THREE.Group(), groups: new Map() });
+      return buckets.get(id);
+    };
+    const slabOf = (min, max) => (max - min >= 40
+      ? 'full'
+      : THREE.MathUtils.clamp(Math.floor(((min + max) / 2 + 30) / 6), 0, 9));
+    const meshes = [];
+    chunkGroup.traverse(object => { if (object.isMesh) meshes.push(object); });
+    const tmpPos = new THREE.Vector3();
+    const box = new THREE.Box3();
+    meshes.forEach(mesh => {
+      const material = mesh.material;
+      const rel = new THREE.Matrix4().multiplyMatrices(inverse, mesh.matrixWorld);
+      tmpPos.setFromMatrixPosition(rel);
+      const side = tmpPos.x < -7.2 ? 'left' : tmpPos.x > 7.2 ? 'right' : 'core';
+      const mergeable = !mesh.isSkinnedMesh && !mesh.isInstancedMesh && !Array.isArray(material) &&
+        material && !material.transparent && !material.vertexColors && rel.determinant() > 0 &&
+        mesh.geometry?.attributes?.position && !mesh.userData.keepSeparate;
+      if (!mergeable) {
+        box.setFromObject(mesh).applyMatrix4(inverse);
+        getBucket(side, slabOf(box.min.z, box.max.z)).group.attach(mesh);
+        return;
+      }
+      let geo = mesh.geometry.clone().applyMatrix4(rel);
+      if (geo.index) geo = geo.toNonIndexed();
+      const count = geo.attributes.position.count;
+      if (!geo.attributes.normal) geo.computeVertexNormals();
+      if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(count * 2), 2));
+      Object.keys(geo.attributes).forEach(name => {
+        if (!['position', 'normal', 'uv'].includes(name)) geo.deleteAttribute(name);
+      });
+      geo.computeBoundingBox();
+      const bucket = getBucket(side, slabOf(geo.boundingBox.min.z, geo.boundingBox.max.z));
+      const key = [material.type, material.color?.getHex(), material.map?.uuid, material.emissive?.getHex(),
+        material.emissiveIntensity, material.side, mesh.castShadow, mesh.receiveShadow, mesh.visible].join('|');
+      let entry = bucket.groups.get(key);
+      if (!entry) {
+        entry = { material, castShadow: mesh.castShadow, receiveShadow: mesh.receiveShadow, geoms: [] };
+        bucket.groups.set(key, entry);
+      }
+      entry.geoms.push(geo);
+      mesh.parent?.remove(mesh);
+    });
+    // Drop emptied containers so only merged slabs and leftovers remain.
+    [...chunkGroup.children].forEach(child => {
+      if (child.isMesh) return;
+      let hasContent = false;
+      child.traverse(o => { if (o !== child && (o.isMesh || o.isLight)) hasContent = true; });
+      if (!hasContent) chunkGroup.remove(child);
+    });
+    const slabs = [];
+    buckets.forEach(bucket => {
+      bucket.groups.forEach(entry => {
+        const merged = mergeGeometries(entry.geoms, false);
+        entry.geoms.forEach(g => g.dispose());
+        if (!merged) return;
+        const mesh = new THREE.Mesh(merged, entry.material);
+        mesh.castShadow = entry.castShadow;
+        mesh.receiveShadow = entry.receiveShadow;
+        mesh.userData.merged = true;
+        bucket.group.add(mesh);
+      });
+      if (!bucket.group.children.length) return;
+      bucket.group.name = `Merged ${bucket.side} ${bucket.slab}`;
+      const zBox = new THREE.Box3().setFromObject(bucket.group).applyMatrix4(inverse);
+      bucket.group.userData = { side: bucket.side, slab: bucket.slab, zMin: zBox.min.z, zMax: zBox.max.z };
+      chunkGroup.add(bucket.group);
+      slabs.push(bucket.group);
+    });
+    chunkGroup.userData.slabs = slabs;
+  }
+
+  // Hides straight-corridor slabs that overlap a cross-road zone (world z range). Pass null to restore.
+  setCorridorZoneHidden(minZ, maxZ) {
+    (this.corridorChunks || []).forEach(chunk => {
+      (chunk.userData.slabs || []).forEach(slab => {
+        if (slab.userData.slab === 'full') return;
+        const lo = chunk.position.z + slab.userData.zMin;
+        const hi = chunk.position.z + slab.userData.zMax;
+        slab.visible = !(minZ !== null && hi > minZ && lo < maxZ);
+      });
+    });
+  }
+
+  disposeCorridorChunk(chunk) {
+    chunk.traverse(o => {
+      if (o.isMesh && o.userData.merged) o.geometry?.dispose();
+    });
   }
 
   /**
@@ -1312,7 +2191,16 @@ class Game {
    * Main Karachi Temple Run Corridor Physics, Movement, Obstacle & Coin Collision Loop
    */
   updateTempleRunCorridor(dt) {
-    if (!this.player || !this.player.isAlive || this.isGameOver || this.isPaused) return;
+    if (!this.player) return;
+    if (!this.player.isAlive || this.isGameOver || this.isPaused) {
+      this.ui?.updateRunnerHazardWarning([], [], this.player.position.z);
+      return;
+    }
+    if (this.runnerTurn) {
+      this.updateRunnerTurnAnimation(dt);
+      return;
+    }
+    const previousRunnerPosition = this.player.position.clone();
 
     // 0. Endless Procedural Corridor Chunk Recycling (Track never ends!)
     if (this.corridorChunks && this.corridorChunks.length > 0) {
@@ -1331,7 +2219,7 @@ class Game {
     }
 
     // 1. Calculate Forward Running Speed
-    let speed = this.runSpeed;
+    let speed = this.getRunnerSpeed();
     if (this.isNascarSuperSpeed) {
       speed *= 2.2;
     }
@@ -1344,8 +2232,7 @@ class Game {
     if (this.isDrafting && this.draftCharge > 0) {
       speed += 8.5 * this.draftCharge;
     }
-    // Subtle speed ramp with distance
-    speed += Math.min(8.0, this.distanceMeters * 0.0025);
+    if (this.runnerSection?.type === 'flyover') speed *= 1.08;
     this.player.currentSpeed = speed;
 
     // Calculate real-time NASCAR Cockpit metrics
@@ -1358,14 +2245,9 @@ class Game {
     const rpm = Math.round(2500 + ((kmh - gearMin) / Math.max(1, gearMax - gearMin)) * 5500);
     this.currentRpm = rpm;
 
-    // 2. Lateral Movement & Subway Surfers 3-Lane Snap
-    if (this.moveVector && Math.abs(this.moveVector.x) > 0.45 && !this.lateralSwipeLocked) {
-      this.lateralSwipeLocked = true;
-      this.changeLane(this.moveVector.x > 0 ? 1 : -1);
-    } else if (this.moveVector && Math.abs(this.moveVector.x) < 0.2) {
-      this.lateralSwipeLocked = false;
-    }
-
+    // 2. Snap to the selected lane; discrete lane input is handled by keyboard,
+    // touch buttons, and swipe gestures without joystick-based duplicate turns.
+    if (this.isAutoPilotActive) this.executeRunnerAutoPilot(dt);
     this.targetLaneX = this.currentLane * this.laneWidth;
     this.player.position.x = THREE.MathUtils.lerp(this.player.position.x, this.targetLaneX, Math.min(1.0, dt * 16.0));
 
@@ -1384,6 +2266,10 @@ class Game {
     // 3. Forward Movement Along Street (Heading North towards -Z)
     this.player.position.z -= speed * dt;
     this.distanceMeters += speed * dt;
+    if (this.updateRunnerProgression()) return;
+    this.updateRunnerWeather(dt);
+    this.updateRunnerNavigation(dt);
+    if (this.isGameOver) return;
 
     // Sync 3D group position & orientation
     this.player.group.position.x = this.player.position.x;
@@ -1391,6 +2277,24 @@ class Game {
     this.player.facingAngle = Math.PI;
     this.player.targetRotationY = Math.PI;
     this.player.group.rotation.y = Math.PI;
+
+    // Keep the chase camera attached to the runner instead of letting the player
+    // run out of frame as the endless corridor advances.
+    if (this.camera) {
+      const cameraFollow = Math.min(1.0, dt * 12.0);
+      this.camera.position.x = THREE.MathUtils.lerp(
+        this.camera.position.x,
+        this.player.position.x * 0.45,
+        Math.min(1.0, dt * 6.0)
+      );
+      this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, 2.85 + (this.runnerCameraLift || 0), cameraFollow);
+      this.camera.position.z = this.player.position.z + 5.2;
+      this.camera.lookAt(
+        this.player.position.x * 0.65,
+        1.25,
+        this.player.position.z - 18.0
+      );
+    }
 
     // 4. Update Vertical Traversal (Jumps)
     if (!this.player.isGrounded || this.player.position.y > 0 || this.player.velocityY !== 0) {
@@ -1431,23 +2335,29 @@ class Game {
         audio.playDistrictClearedFanfare();
         this.particles.createCelebrationConfetti(this.player.position, 50);
         this.ui.showAnnouncement(`🚩 KARACHI MILESTONE: ${m.name}! +1000 PTS`, '#00e5ff');
-        this.player.addXP(1000);
+        this.awardRunnerXP(1000);
         this.score += 1000;
         this.spawnMilestoneArchAhead(m.name, this.player.position.z - 25.0);
       }
     }
 
     // 8. Dynamic Runner Waves Spawning Ahead
+    const waveSpacing = this.getRunnerWaveSpacing();
     if (this.nextRunnerWaveZ > this.player.position.z - 15.0) {
       this.nextRunnerWaveZ = this.player.position.z - 25.0;
     }
     while (this.nextRunnerWaveZ > this.player.position.z - 110.0) {
+      if (this.runnerJunction && this.nextRunnerWaveZ < this.runnerJunction.z + 20.0) break;
       this.spawnRunnerWave(this.nextRunnerWaveZ);
-      this.nextRunnerWaveZ -= 28.0;
+      this.spawnRunnerSectionExtras(this.nextRunnerWaveZ - waveSpacing * 0.5);
+      this.nextRunnerWaveZ -= waveSpacing;
     }
 
     // 9. Collect Rupee Coins
     const pPos = this.player.position;
+    if (this.ui) {
+      this.ui.updateRunnerHazardWarning(this.runnerObstacles, this.runnerTraffic, pPos.z);
+    }
     for (let i = this.runnerCoins.length - 1; i >= 0; i--) {
       const coin = this.runnerCoins[i];
       if (!coin || !coin.mesh) continue;
@@ -1463,9 +2373,11 @@ class Game {
       }
 
       const dist = coin.mesh.position.distanceTo(pPos);
-      if (dist < 1.45) {
+      const pathDistSq = runnerSegmentDistanceSquared3D(coin.mesh.position, previousRunnerPosition, pPos);
+      if (dist < 1.45 || pathDistSq < 1.45 * 1.45) {
         this.coins += coin.value || 50;
-        this.player.addXP(100);
+        this.awardRunnerXP(100);
+        if (this.coins >= 1000) this.unlockRunnerBadge('clean_green');
         this.score += 100;
         audio.playCoin();
         this.particles.createDevourSparkles(coin.mesh.position, 6, 0xffd700);
@@ -1482,7 +2394,8 @@ class Game {
 
       p.mesh.rotation.y += dt * 2.8;
       const dist = p.mesh.position.distanceTo(pPos);
-      if (dist < 1.55) {
+      const pathDistSq = runnerSegmentDistanceSquared3D(p.mesh.position, previousRunnerPosition, pPos);
+      if (dist < 1.55 || pathDistSq < 1.55 * 1.55) {
         const type = p.type;
         if (type === 'cng') {
           this.nitroTimer = 6.0;
@@ -1502,7 +2415,9 @@ class Game {
           audio.playMagnetHum();
           this.ui.showAnnouncement('🧲 BURNS ROAD BIRYANI MAGNET! Rupee Coins Attracted! 🍛', '#ffd700');
         } else if (type === 'chai') {
+          const previousHearts = this.hearts;
           this.hearts = Math.min(this.maxHearts, this.hearts + 1);
+          if (this.hearts > previousHearts) this.unlockRunnerBadge('lifesaver');
           audio.playHeartGain();
           this.particles.createCelebrationConfetti(this.player.position, 20);
           this.ui.showAnnouncement('🫖 DOODH PATTI CHAI! Restored 1 Heart ❤️!', '#00e676');
@@ -1520,42 +2435,100 @@ class Game {
       }
     }
 
+    for (let i = this.runnerReviveTokens.length - 1; i >= 0; i--) {
+      const token = this.runnerReviveTokens[i];
+      if (!token?.mesh) continue;
+      token.mesh.rotation.y += dt * 2.4;
+      const distance = token.mesh.position.distanceTo(pPos);
+      const pathDistanceSq = runnerSegmentDistanceSquared3D(token.mesh.position, previousRunnerPosition, pPos);
+      if (distance < 1.55 || pathDistanceSq < 1.55 * 1.55) {
+        if (saveManager.addReviveToken()) {
+          audio.playCoin();
+          this.particles.createCelebrationConfetti(token.mesh.position, 16);
+          this.ui.updateReviveTokenCount(saveManager.getReviveTokenCount());
+          this.ui.showAnnouncement(
+            `✨ RESCUE TOKEN! ${saveManager.getReviveTokenCount()} AVAILABLE`,
+            '#ffd700'
+          );
+        } else if (saveManager.getReviveTokenCount() < MAX_REVIVE_TOKENS) {
+          console.error('[SAVE] Could not persist collected runner Rescue Token.');
+          this.ui.showAnnouncement('Could not save this Rescue Token. Check device storage.', '#ff5252');
+        }
+        this.scene.remove(token.mesh);
+        this.runnerReviveTokens.splice(i, 1);
+      }
+    }
+
     // 11. Check Runner Obstacle Collisions
     if ((this.runnerInvulnerableTimer || 0) <= 0) {
       for (let i = 0; i < this.runnerObstacles.length; i++) {
         const obs = this.runnerObstacles[i];
         if (!obs || obs.isHit || !obs.mesh) continue;
 
-        const dz = Math.abs(pPos.z - obs.z);
-      if (dz < 1.4) {
-        if (obs.type === 'wire') {
+        const crossesObstacle = runnerSegmentCrossesZ(obs.z, previousRunnerPosition.z, pPos.z, 1.4);
+        if (crossesObstacle) {
+        if (obs.type === 'wire' || obs.type === 'heritage_scaffold') {
           if (this.isSliding) {
             obs.isHit = true;
-            this.player.addXP(150);
+            this.awardRunnerXP(150);
             this.score += 150;
             audio.playSlide();
-            this.ui.showFloatingFeedback('⚡ SLID UNDER!', this.player.position, '#00e5ff');
+            this.ui.showFloatingFeedback(
+              obs.type === 'wire' ? '⚡ SLID UNDER!' : '🏛️ CLEARED THE SCAFFOLD!',
+              this.player.position,
+              '#00e5ff'
+            );
           } else {
-            this.handleRunnerHit(obs, '⚡ K-Electric Live Wires');
+            this.handleRunnerHit(
+              obs,
+              obs.type === 'wire' ? '⚡ Hanging Wires' : '🏛️ Saddar Heritage Scaffolding'
+            );
           }
-        } else if (obs.type === 'gutter' || obs.type === 'digging' || obs.type === 'sewage') {
-          const dx = Math.abs(pPos.x - obs.laneX);
-          if (dx < 1.35) {
-            if (!this.player.isGrounded && this.player.position.y > 0.35) {
+        } else if (obs.type === 'gutter' || obs.type === 'digging' ||
+                   obs.type === 'sewage' || obs.type === 'pothole') {
+          const laneDistanceSq = runnerSegmentDistanceSquared(
+            obs.laneX,
+            obs.z,
+            previousRunnerPosition,
+            pPos
+          );
+          if (laneDistanceSq < 1.35 * 1.35) {
+            if ((!this.player.isGrounded && this.player.position.y > 0.35) || previousRunnerPosition.y > 0.35) {
               obs.isHit = true;
               this.guttersJumped++;
-              this.player.addXP(150);
+              this.awardRunnerXP(150);
               this.score += 150;
               this.ui.showFloatingFeedback('💨 CLEARED JUMP!', this.player.position, '#00e676');
             } else {
-              const label = obs.type === 'gutter' ? '🕳️ Open Gutter' : obs.type === 'digging' ? '🚧 Road Digging' : '🌊 Sewage Overflow';
+              const label = obs.type === 'gutter'
+                ? '🕳️ Open Gutter'
+                : obs.type === 'digging'
+                  ? '🚧 Road Digging'
+                  : obs.type === 'pothole'
+                    ? '🕳️ Rain-Softened Pothole'
+                    : '🌊 Sewage Overflow';
               this.handleRunnerHit(obs, label);
             }
           }
-        } else if (obs.type === 'rickshaw' || obs.type === 'snatcher') {
-          const dx = Math.abs(pPos.x - obs.laneX);
-          if (dx < 1.35) {
-            const label = obs.type === 'rickshaw' ? '🛺 Stalled Qingqi Rickshaw' : '🏍️ 70cc Snatcher';
+        } else if (obs.type === 'rickshaw' || obs.type === 'snatcher' ||
+                   obs.type === 'water_tanker' ||
+                   obs.type === 'football' || obs.type === 'market_cart') {
+          const laneDistanceSq = runnerSegmentDistanceSquared(
+            obs.laneX,
+            obs.z,
+            previousRunnerPosition,
+            pPos
+          );
+          if (laneDistanceSq < 1.35 * 1.35) {
+            const label = obs.type === 'rickshaw'
+              ? '🛺 Stalled Qingqi Rickshaw'
+              : obs.type === 'snatcher'
+                ? '🏍️ 70cc Snatcher'
+                : obs.type === 'water_tanker'
+                  ? '🚰 PECHS Water-Tanker Queue'
+                  : obs.type === 'football'
+                    ? '⚽ Lyari Street Football'
+                    : '🛒 Saddar Market Handcart';
             this.handleRunnerHit(obs, label);
           }
         }
@@ -1573,6 +2546,7 @@ class Game {
         if (!v || !v.mesh) continue;
 
         // Traffic vehicles cruise forward along the street
+        const previousTrafficZ = v.mesh.position.z;
         v.mesh.position.z -= v.speed * dt;
         v.mesh.position.x = v.laneX;
 
@@ -1596,22 +2570,41 @@ class Game {
         // Check crash into traffic vehicle
         if (!v.isHit && (this.runnerInvulnerableTimer || 0) <= 0) {
           const absDz = Math.abs(pPos.z - v.mesh.position.z);
-          if (absDz < 1.6 && distX < 1.3) {
+          const relativeStartX = previousRunnerPosition.x - v.laneX;
+          const relativeStartZ = previousRunnerPosition.z - previousTrafficZ;
+          const relativeEndX = pPos.x - v.laneX;
+          const relativeEndZ = pPos.z - v.mesh.position.z;
+          const relativeDx = relativeEndX - relativeStartX;
+          const relativeDz = relativeEndZ - relativeStartZ;
+          const relativeLengthSq = relativeDx * relativeDx + relativeDz * relativeDz;
+          const closestT = relativeLengthSq > 0
+            ? THREE.MathUtils.clamp(-(relativeStartX * relativeDx + relativeStartZ * relativeDz) / relativeLengthSq, 0, 1)
+            : 0;
+          const closestRelativeX = relativeStartX + relativeDx * closestT;
+          const closestRelativeZ = relativeStartZ + relativeDz * closestT;
+          const sweptDistanceSq = closestRelativeX * closestRelativeX + closestRelativeZ * closestRelativeZ;
+          if ((absDz < 1.6 && distX < 1.3) || sweptDistanceSq < 1.3 * 1.3) {
             if (this.nitroTimer > 0) {
               v.isHit = true;
               audio.playCrash();
               this.particles.createDevourSparkles(v.mesh.position, 25, 0xffd700);
-              this.ui.showAnnouncement(`💥 NASCAR SMASH! Obliterated ${v.label}! +500 PTS`, '#ff9100');
-              this.player.addXP(500);
+              this.ui.showAnnouncement(`💥 TRAFFIC CRASH! ${v.label} CLEARED! +500 PTS`, '#ff9100');
+              this.awardRunnerXP(500);
               this.score += 500;
               this.scene.remove(v.mesh);
             } else {
               this.handleRunnerHit(v, v.label);
             }
-          } else if (absDz < 1.5 && distX >= 1.35 && distX <= 2.2 && !v.nearMissAwarded && kmh >= 75) {
+          } else if (
+            ((absDz < 1.5 && distX >= 1.35 && distX <= 2.2) ||
+              (sweptDistanceSq >= 1.35 * 1.35 && sweptDistanceSq <= 2.2 * 2.2)) &&
+            !v.nearMissAwarded && kmh >= 75
+          ) {
             v.nearMissAwarded = true;
             audio.playNearMiss();
-            this.player.addXP(250);
+            this.awardRunnerXP(250);
+            this.runnerNearMissCount++;
+            if (this.runnerNearMissCount >= 5) this.unlockRunnerBadge('road_safety');
             this.score += 250;
             this.ui.showFloatingFeedback('⚡ DRAFT OVERTAKE! +250 XP', pPos, '#00e5ff');
           }
@@ -1630,16 +2623,22 @@ class Game {
         if (!b || !b.mesh || b.isUsed) continue;
         const absDz = Math.abs(pPos.z - b.z);
         const distX = Math.abs(pPos.x - b.laneX);
-        if (absDz < 1.9 && distX < 1.3) {
+        const pathDistanceSq = runnerSegmentDistanceSquared(
+          b.laneX,
+          b.z,
+          previousRunnerPosition,
+          pPos
+        );
+        if ((absDz < 1.9 && distX < 1.3) || pathDistanceSq < 1.3 * 1.3) {
           b.isUsed = true;
           audio.playBoostPad();
           this.nitroTimer = Math.max(this.nitroTimer, 3.8);
           this.cameraShakeTimer = 0.3;
-          this.player.addXP(300);
+          this.awardRunnerXP(300);
           this.score += 300;
           this.particles.createDevourSparkles(b.mesh.position, 22, 0x00e5ff);
-          this.ui.showAnnouncement('🚀 NASCAR NITRO BOOST PAD! 180+ KM/H!', '#76ff03');
-          this.ui.showFloatingFeedback('⚡ NITRO BOOST!', pPos, '#76ff03');
+          this.ui.showAnnouncement('🚀 STREET BOOST PAD! 180+ KM/H!', '#76ff03');
+          this.ui.showFloatingFeedback('⚡ SPEED BOOST!', pPos, '#76ff03');
         }
       }
     }
@@ -1684,6 +2683,13 @@ class Game {
         this.runnerPowerups.splice(i, 1);
       }
     }
+    for (let i = this.runnerReviveTokens.length - 1; i >= 0; i--) {
+      const token = this.runnerReviveTokens[i];
+      if (token && token.z > pPos.z + 28.0) {
+        if (token.mesh) this.scene.remove(token.mesh);
+        this.runnerReviveTokens.splice(i, 1);
+      }
+    }
     if (this.runnerTraffic) {
       for (let i = this.runnerTraffic.length - 1; i >= 0; i--) {
         const v = this.runnerTraffic[i];
@@ -1711,7 +2717,7 @@ class Game {
       if (this.stuckWatchdogTimer >= 1.8) {
         this.stuckWatchdogTimer = 0;
         this.lastRunnerZ = this.player.position.z;
-        this.emergencyUnstick();
+        this.recoverStuckRunner();
       }
     } else {
       this.stuckWatchdogTimer = 0;
@@ -1771,7 +2777,7 @@ class Game {
    * Mission Journal & District Restoration Gauges Modal
    */
   openMissionJournal() {
-    if (!this.isGameStarted) return;
+    if (!this.isGameStarted || this.isTempleRun) return;
     this.pauseGame();
 
     const dConfig = getDistrictConfig(this.currentDistrictLevel);
@@ -1831,8 +2837,49 @@ class Game {
     this.ui.showAnnouncement(`💾 CAREER RESUMED: WELCOME ${this.player.name.toUpperCase()} (LV.${this.player.level})!`, '#00e5ff');
   }
 
+  restoreSavedCareerProgress() {
+    const savedPlayer = saveManager.get().player;
+    if (!this.player || !savedPlayer) return;
+    this.player.name = savedPlayer.name || 'Karachi Hero';
+    this.player.setAvatar(
+      saveManager.isAvatarUnlocked(savedPlayer.avatarId) ? savedPlayer.avatarId : 'tariq'
+    );
+    this.player.level = Math.max(1, savedPlayer.level || 1);
+    this.player.xp = savedPlayer.careerXP || 0;
+    this.player.score = savedPlayer.careerXP || 0;
+    this.player.radius = 1.45;
+    this.player.targetRadius = 1.45;
+    this.player.updateNameTag();
+  }
+
+  resetCareerProgress() {
+    if (this.player) {
+      this.player.name = 'Karachi Hero';
+      this.player.setAvatar('tariq');
+      this.player.level = 1;
+      this.player.xp = 0;
+      this.player.score = 0;
+      this.player.radius = 1.45;
+      this.player.targetRadius = 1.45;
+      this.player.updateNameTag();
+    }
+    this.runnerDifficulty = 'standard';
+    this.runSpeed = 16.5;
+    this.currentDistrictLevel = 1;
+    this.distanceMeters = 0;
+    this.coins = 0;
+    this.runnerRunRecorded = true;
+    this.hearts = 3;
+    this.loadDistrictLevel(1, false);
+    this.returnToMainMenu();
+  }
+
   startGame() {
     if (this.isGameStarted && !this.isPaused) return;
+    if (!this.isGameStarted && this.isTempleRun) {
+      this.runnerRunRecorded = false;
+      this.resetRunnerNavigation();
+    }
     this.isGameStarted = true;
     this.isPaused = false;
     this.clock.getDelta(); // Clear delta buffer so physics ticks smoothly from frame 1
@@ -1840,14 +2887,24 @@ class Game {
     audio.resumeAudio();
 
     if (this.isTempleRun) {
-      this.initCorridorTerrain();
       this.distanceMeters = 0;
-      this.coins = 0;
-      this.hearts = 3;
-      this.currentLane = 0;
-      this.targetLaneX = 0;
+      this.runnerRouteComplete = false;
+      this.runnerNeighborhoodIndex = 1;
+      this.runnerAreaIndex = 0;
+      this.currentDistrictLevel = 1;
+      this.currentMilestone = getKarachiNeighborhoodName(1);
       this.player.position.set(0, 0, 60.0);
       this.player.group.position.set(0, 0, 60.0);
+      this.initCorridorTerrain();
+      this.runnerWeatherState = 'clear';
+      this.runnerRainOverride = null;
+      this.coins = 0;
+      this.hearts = 3;
+      this.runnerWaveCount = 0;
+      this.runnerPowerupDropCount = 0;
+      this.runnerNearMissCount = 0;
+      this.currentLane = 0;
+      this.targetLaneX = 0;
       this.nextRunnerWaveZ = 40.0; // safe coin-only warmup ahead
       if (this.camera) {
         this.camera.position.set(0, 2.85, 65.2);
@@ -1855,7 +2912,31 @@ class Game {
       }
       if (this.ui) {
         this.ui.setRunnerMode(true);
-        this.ui.showRunnerTutorial(4000);
+        const tutorialSeenKey = 'karachi_runner_tutorial_seen_v1';
+        let hasSeenTutorial = false;
+        try {
+          hasSeenTutorial = localStorage.getItem(tutorialSeenKey) === 'true';
+        } catch (error) {
+          console.warn('[RUNNER_TUTORIAL] Could not read tutorial state:', error);
+        }
+        if (!hasSeenTutorial) {
+          this.isPaused = true;
+          this.ui.showRunnerTutorial(4000, () => {
+            this.__runnerTutorialResumeTimeout = setTimeout(() => {
+              try {
+                localStorage.setItem(tutorialSeenKey, 'true');
+              } catch (error) {
+                console.warn('[RUNNER_TUTORIAL] Could not save tutorial state:', error);
+              }
+              if (this.isGameStarted && this.isTempleRun && !this.isGameOver) {
+                this.isPaused = false;
+                this.clock.getDelta();
+              }
+            }, 1000);
+          });
+        } else {
+          this.ui.hideRunnerTutorial();
+        }
       }
     } else {
       if (this.ui) {
@@ -1864,18 +2945,24 @@ class Game {
     }
 
     if (this.ui) {
+      if (this.ui.hud) this.ui.hud.style.display = '';
       if (this.ui.startModal) this.ui.startModal.style.display = 'none';
       if (this.ui.hideAutoPauseModal) this.ui.hideAutoPauseModal();
       if (this.ui.hideTapToStartPrompt) this.ui.hideTapToStartPrompt();
     }
   }
 
-  setMajorGameVersion(versionId, reloadDistrict = true) {
+  setMajorGameVersion(versionId, reloadDistrict = true, source = 'main') {
     if (!['v1', 'v2', 'v3'].includes(versionId)) {
       if (versionId === 'holeDevourer' || versionId === 'classic') versionId = 'v1';
       else if (versionId === 'civicSavior' || versionId === 'openWorld') versionId = 'v2';
       else if (versionId === 'templeRun' || versionId === 'runner') versionId = 'v3';
       else versionId = 'v3';
+    }
+    if (versionId !== 'v3' && source !== 'master-control') {
+      this.ui?.syncActiveVersionUI(this.majorVersion);
+      this.ui?.showAnnouncement('🔒 v1 and v2 are available from Master Mode only.', '#ffd700');
+      return false;
     }
     this.majorVersion = versionId;
     try {
@@ -1883,6 +2970,13 @@ class Game {
     } catch (e) {}
 
     this.isTempleRun = (versionId === 'v3');
+    if (this.isTempleRun) {
+      if (this.navGuideGroup) this.navGuideGroup.visible = false;
+      this.currentTargetObjective = null;
+    } else if (this.runnerRainEffect) {
+      this.runnerRainEffect.mesh.visible = false;
+    }
+    this.cityGen?.setWorldVisible(!this.isTempleRun);
     if (this.ui && typeof this.ui.setRunnerMode === 'function') {
       this.ui.setRunnerMode(this.isTempleRun);
     }
@@ -1912,7 +3006,7 @@ class Game {
     const versionNames = {
       v1: 'v1.0 Classic Hole Devourer 🕳️',
       v2: 'v2.0 Karachi Civic Hero (3D Patrol) 🦸',
-      v3: 'v3.0 Karachi Temple Run (Street Runner) 🏃'
+      v3: 'KARACHI RUNNER 🏃'
     };
     if (this.ui) {
       this.ui.showAnnouncement(`🔄 MODE ACTIVE: ${versionNames[versionId] || versionId}`, '#00e5ff');
@@ -1921,6 +3015,7 @@ class Game {
     if (reloadDistrict) {
       this.loadDistrictLevel(this.currentDistrictLevel || 1, this.isGameStarted);
     }
+    return true;
   }
 
   initAudioTriggers() {
@@ -1935,33 +3030,72 @@ class Game {
   }
 
   restartGame() {
+    this.persistRunnerRun();
     this.timeLeft = this.matchDuration;
     this.isGameOver = false;
+    this.isGameStarted = true;
+    this.isPaused = false;
+    this.runnerRunRecorded = false;
+    this.runnerRouteComplete = false;
+    this.resetRunnerNavigation();
+    this.runnerNeighborhoodIndex = 1;
+    this.runnerAreaIndex = 0;
+    if (this.isTempleRun) this.currentDistrictLevel = 1;
+    this.clock.getDelta();
+    const diff = DIFFICULTY_CONFIG[this.difficulty] || DIFFICULTY_CONFIG.kidsEasy;
 
     // Reset Karachi Temple Run Runner State
     this.clearRunnerObjects();
+    this.moveVector = { x: 0, y: 0 };
+    this.score = 0;
     this.distanceMeters = 0;
+    this.runnerWeatherState = 'clear';
+    this.runnerRainOverride = null;
     this.coins = 0;
     this.hearts = 3;
+    this.maxHearts = 3;
+    this.runnerWaveCount = 0;
+    this.runnerPowerupDropCount = 0;
+    this.runnerNearMissCount = 0;
     this.currentLane = 0;
     this.targetLaneX = 0;
     this.isSliding = false;
     this.slideTimer = 0;
     this.nextRunnerWaveZ = 40.0;
-    this.currentMilestone = 'Soldier Bazar';
+    this.currentMilestone = getKarachiNeighborhoodName(1);
     this.passedMilestoneIndices = new Set([0]);
+    this.magnetTimer = 0;
+    this.turboTimer = 0;
+    this.nitroTimer = 0;
+    this.shieldTimer = 0;
+    this.superJumpTimer = 0;
+    this.runnerInvulnerableTimer = 0;
+    this.activePowerUp = null;
+    this.isNascarSuperSpeed = false;
+    this.isDrafting = false;
+    this.draftCharge = 0;
+    this.isBoosting = false;
+    this.currentBankRoll = 0;
+    this.targetBankRoll = 0;
+    this.lastRunnerZ = undefined;
+    this.stuckWatchdogTimer = 0;
+    this.player.isShielded = false;
+    this.player.isTrappedInGutter = false;
+    this.player.gutterTrapTimer = 0;
+    this.player.velocityY = 0;
+    this.player.isGrounded = true;
+    if (this.player.avatarMesh) {
+      this.player.avatarMesh.scale.set(1, 1, 1);
+      this.player.avatarMesh.position.y = 0;
+    }
 
     if (this.isTempleRun) {
-      this.initCorridorTerrain();
       this.player.position.set(0, 0, 60.0);
       this.player.group.position.set(0, 0, 60.0);
-      if (this.camera) {
-        this.camera.position.set(0, 2.85, 65.2);
-        this.camera.lookAt(0, 1.25, 42.0);
-      }
+      this.initCorridorTerrain();
       if (this.ui) {
         this.ui.setRunnerMode(true);
-        this.ui.showRunnerTutorial(3500);
+        this.ui.hideRunnerTutorial();
       }
     } else {
       const startZ = (this.currentDistrictLevel === 1) ? 70.0 : 0.0;
@@ -1982,9 +3116,20 @@ class Game {
     this.player.currentSpeed = 13.5;
     this.player.isAlive = true;
     this.player.group.visible = true;
+    this.player.group.rotation.set(0, Math.PI, 0);
+    this.player.facingAngle = Math.PI;
+    this.player.targetRotationY = Math.PI;
     this.player.updateNameTag();
-    this.camera.position.set(0, 6.2 + this.player.radius * 1.15, 6.8 + this.player.radius * 1.15);
-    this.camera.lookAt(0, 1.2, -4.5);
+    if (this.camera) {
+      if (this.isTempleRun) {
+        this.camera.position.set(0, 2.85, this.player.position.z + 5.2);
+        this.camera.lookAt(0, 1.25, this.player.position.z - 18.0);
+      } else {
+        this.camera.position.set(0, 6.2 + this.player.radius * 1.15, 6.8 + this.player.radius * 1.15);
+        this.camera.lookAt(0, 1.2, -4.5);
+      }
+      this.camera.updateMatrixWorld(true);
+    }
 
     // Reset Bots (Friendly tuning in Kids/Easy mode)
     const botPositions = [[-45, 15], [-20, 45], [45, 45], [-55, 30], [45, -35]];
@@ -2007,43 +3152,52 @@ class Game {
       h.updateNameTag();
     });
 
-    // Re-generate city objects, civic evils, and food stalls
-    this.edibleObjects.forEach(obj => {
-      this.scene.remove(obj.mesh);
-    });
-    if (this.interactiveVictims) this.interactiveVictims.forEach(v => this.scene.remove(v));
-    if (this.interactiveTraffic) this.interactiveTraffic.forEach(v => this.scene.remove(v));
-    if (this.interactiveResidents) this.interactiveResidents.forEach(v => this.scene.remove(v));
+    if (this.isTempleRun) {
+      this.cityGen.setWorldVisible(false);
+    } else {
+      // Re-generate city objects, civic evils, and food stalls for open-world play.
+      this.edibleObjects.forEach(obj => {
+        this.scene.remove(obj.mesh);
+      });
+      if (this.interactiveVictims) this.interactiveVictims.forEach(v => this.scene.remove(v));
+      if (this.interactiveTraffic) this.interactiveTraffic.forEach(v => this.scene.remove(v));
+      if (this.interactiveResidents) this.interactiveResidents.forEach(v => this.scene.remove(v));
 
-    const generated = this.cityGen.generateCity();
-    this.edibleObjects = generated.edibleObjects;
-    this.politicians = generated.politicians || [];
-    this.animals = generated.animals || [];
-    this.robberies = generated.robberies || [];
-    this.badGuys = generated.badGuys || [];
-    this.foodStalls = generated.foodStalls || [];
-    this.buildings = generated.buildings || [];
-    this.citizens = generated.citizens || [];
-    this.interactiveVictims = generated.interactiveVictims || [];
-    this.interactiveTraffic = generated.interactiveTraffic || [];
-    this.interactiveResidents = generated.interactiveResidents || [];
-    this.currentDistrictLevel = 1;
-    this.districtClearing = false;
-    this.districtEvils = generated.currentDistrictEvils || this.badGuys.filter(b => b.isDistrictEvil);
-    this.districtTotal = Math.max(1, this.districtEvils.length);
-    this.districtRemaining = this.districtTotal;
-    this.civicTotal = this.districtTotal;
-    this.civicCleansed = 0;
-    this.frenzyTimer = 0;
-    this.frenzyTriggered = false;
+      const generated = this.cityGen.generateCity();
+      this.edibleObjects = generated.edibleObjects;
+      this.politicians = generated.politicians || [];
+      this.animals = generated.animals || [];
+      this.robberies = generated.robberies || [];
+      this.badGuys = generated.badGuys || [];
+      this.foodStalls = generated.foodStalls || [];
+      this.buildings = generated.buildings || [];
+      this.citizens = generated.citizens || [];
+      this.interactiveVictims = generated.interactiveVictims || [];
+      this.interactiveTraffic = generated.interactiveTraffic || [];
+      this.interactiveResidents = generated.interactiveResidents || [];
+      this.currentDistrictLevel = 1;
+      this.districtClearing = false;
+      this.districtEvils = generated.currentDistrictEvils || this.badGuys.filter(b => b.isDistrictEvil);
+      this.districtTotal = Math.max(1, this.districtEvils.length);
+      this.districtRemaining = this.districtTotal;
+      this.civicTotal = this.districtTotal;
+      this.civicCleansed = 0;
+      this.frenzyTimer = 0;
+      this.frenzyTriggered = false;
+    }
     this.particles.clear();
     if (this.cleanedMonuments) {
       this.cleanedMonuments.forEach(m => this.scene.remove(m));
       this.cleanedMonuments = [];
     }
     this.recentCleaned = [];
-    this.initDistrictChallenges(getDistrictConfig(1));
-    if (this.ui) this.ui.hideDistrictClearedModal();
+    this.initDistrictChallenges(getDistrictConfig(this.currentDistrictLevel));
+    if (this.ui) {
+      this.ui.hideDistrictClearedModal();
+      this.ui.hideGameOverModal();
+      this.ui.hideAutoPauseModal();
+      this.ui.setRunnerMode(this.isTempleRun);
+    }
   }
 
   initDistrictChallenges(config) {
@@ -2237,6 +3391,11 @@ class Game {
 
   updateNavigationGuide(dt, elapsedTime) {
     if (!this.player || !this.navGuideGroup) return;
+    if (this.isTempleRun) {
+      this.navGuideGroup.visible = false;
+      this.currentTargetObjective = null;
+      return;
+    }
 
     const playerPos = this.player.position;
     let target = null;
@@ -2805,7 +3964,11 @@ class Game {
     } else if (type === 'biryani') {
       this.magnetTimer = 10.0;
       this.score = (this.score || 0) + 300;
-      if (this.player) this.player.addXP(300);
+      this.awardRunnerXP(300);
+      if (this.hearts < this.maxHearts) {
+        this.hearts = this.maxHearts;
+        this.unlockRunnerBadge('lifesaver');
+      }
       this.particles.createCelebrationConfetti(playerPos, 45);
       this.ui.showAnnouncement('🍲 BURNS ROAD BIRYANI FEAST! Full Repair + Magnet Active!', '#76ff03');
       this.activePowerUp = { type: 'biryani', title: 'BIRYANI FEAST', icon: '🍲', timer: 10.0, maxDuration: 10.0 };
@@ -2858,6 +4021,9 @@ class Game {
     this.player.addXP(cfg.bonusScore || 3000, (h) => {
       if (h.isPlayer) this.handlePlayerLevelUp(h);
     });
+    saveManager.addPlayerXP(cfg.bonusScore || 3000);
+    saveManager.recordDistrictCleared(this.currentDistrictLevel, this.score, cfg.heroTitle);
+    this.ui?.refreshProgressionContent();
     this.timeLeft += (cfg.timeBonus || 60);
     const rBonus = Number(cfg.holeRadiusBonus) || 0.35;
     const sBonus = Number(cfg.speedBonus) || 0.8;
@@ -2898,7 +4064,16 @@ class Game {
   }
 
   loadDistrictLevel(targetLevel, autoStart = true) {
-    this.currentDistrictLevel = Math.max(1, targetLevel);
+    const districtLevel = Number(targetLevel);
+    if (!Number.isInteger(districtLevel) || districtLevel < 1 || districtLevel > DISTRICT_CONFIGS.length) {
+      console.warn('[DISTRICT] Ignoring invalid patrol area:', targetLevel);
+      return false;
+    }
+    if (this.isTempleRun && !saveManager.isDistrictUnlocked(districtLevel)) {
+      this.ui?.showAnnouncement('🔒 Complete more patrol achievements to unlock this Karachi area.', '#ffd700');
+      return false;
+    }
+    this.currentDistrictLevel = districtLevel;
     this.districtClearing = false;
     this.isGameOver = false;
     this.isPaused = false;
@@ -2923,6 +4098,7 @@ class Game {
 
     // Repopulate dynamic district evils for the new level
     const result = this.cityGen.populateDistrict(this.currentDistrictLevel);
+    this.cityGen.setWorldVisible(!this.isTempleRun);
     this.edibleObjects = this.cityGen.edibleObjects;
     this.badGuys = this.cityGen.badGuys;
     this.interactiveVictims = result.interactiveVictims || [];
@@ -2997,20 +4173,22 @@ class Game {
     }
     this.camera.updateMatrixWorld(true);
 
-    this.particles.createLevelUpShockwave(this.player.position, 18);
-    this.particles.createCelebrationConfetti(this.player.position, 50);
-
     const cfg = getDistrictConfig(this.currentDistrictLevel);
     this.initDistrictChallenges(cfg);
-    audio.playLevelUp();
-    this.ui.showAnnouncement(
-      `🚀 COMMUTE ROUTE: ${cfg.name.toUpperCase()} (${cfg.urdu})!`,
-      '#00e5ff'
-    );
+    if (this.isTempleRun) {
+      this.ui.showAnnouncement(`🏃 KARACHI RUNNER · ${cfg.name.toUpperCase()}`, '#00e5ff');
+    } else {
+      this.particles.createLevelUpShockwave(this.player.position, 18);
+      this.particles.createCelebrationConfetti(this.player.position, 50);
+      audio.playLevelUp();
+      this.ui.showAnnouncement(
+        `🚀 COMMUTE ROUTE: ${cfg.name.toUpperCase()} (${cfg.urdu})!`,
+        '#00e5ff'
+      );
+    }
 
     // Save district progression to local storage
     saveManager.unlockDistrict(this.currentDistrictLevel);
-    saveManager.addPlayerXP(400);
     saveManager.save();
 
     // Clear previous district route hazards & finish gate
@@ -3023,7 +4201,7 @@ class Game {
       this.finishGate = null;
     }
 
-    if (this.currentDistrictLevel === 1) {
+    if (this.currentDistrictLevel === 1 && !this.isTempleRun) {
       this.spawnPECHSFinishGate(0, -82);
       // Spawn authentic open gutters along the Soldier Bazar -> PECHS avenue
       this.spawnGutterHazard(1.8, 52, 1.5);
@@ -3042,6 +4220,7 @@ class Game {
       this.spawnMysteryCrate(1.5, -46, 'nitro');
       this.spawnMysteryCrate(0, -68, 'horn');
     }
+    return true;
   }
 
   spawnMysteryCrate(x, z, type = 'mystery') {
@@ -3120,6 +4299,14 @@ class Game {
       this.activePowerUp = null;
     }
 
+    if (this.isTempleRun) {
+      if (!this.isGameStarted) return;
+      this.updateTempleRunCorridor(dt);
+      this.player.update(dt);
+      this.particles.update(dt);
+      return;
+    }
+
     // Check Bun Kabab Stalls for Spicy Chutney Turbo Boost
     for (let i = 0; i < this.foodStalls.length; i++) {
       const stall = this.foodStalls[i];
@@ -3141,8 +4328,6 @@ class Game {
     // Camera-relative street movement & Karachi Temple Run corridor progression
     if (this.isAutoPilotActive && this.player && this.player.isAlive) {
       this.executeAutoPilotSteering(dt);
-    } else if (this.isTempleRun && this.isGameStarted && !this.isGameOver && !this.isPaused) {
-      this.updateTempleRunCorridor(dt);
     } else if (this.moveVector.x !== 0 || this.moveVector.y !== 0) {
       const inputForward = -this.moveVector.y; // W / Joystick Up is +1 forward
       const inputRight = this.moveVector.x;    // D / Joystick Right is +1 right
@@ -3199,7 +4384,7 @@ class Game {
           this.player.boundaryNoticeCooldown = 1.4;
           audio.vibrate([30, 20]);
           if (isNearNorth) {
-            this.ui.showAnnouncement("🏛️ BAB-E-KARACHI PORTAL! Northern City Boundary! 🇵🇰", "#ffd700");
+            this.ui.showAnnouncement("🏛️ BAB-E-KARACHI PORTAL! Northern City Boundary!", "#ffd700");
           } else if (isNearEast) {
             this.ui.showAnnouncement("🚧 KMC HAZARD BARRIERS! Eastern Boundary Reached! ⚠️", "#ff9100");
           } else {
@@ -3388,7 +4573,7 @@ class Game {
       const bgPos = bgMesh.position;
       const ud = bgMesh.userData;
 
-      // K-Electric Sparking live wires
+      // Sparking utility wires
       if (bg.evilType === 'ke' && ud && ud.sparkGroup) {
         ud.sparkGroup.children.forEach(sp => {
           sp.visible = Math.random() > 0.35;
@@ -4573,7 +5758,7 @@ class Game {
   }
 
   updateMatchTimer(dt) {
-    if (this.isTimerFrozen) return;
+    if (this.isTimerFrozen || this.isTempleRun) return;
     if (this.gameMode === 'battleRoyale' && this.isGameStarted && !this.isGameOver) {
       this.timeLeft -= dt;
       if (this.timeLeft <= 0) {
@@ -4693,7 +5878,7 @@ class Game {
         bhatta: { label: 'Bhatta Parchi', icon: '📜' },
         onewheeler: { label: 'One-Wheeler', icon: '🏍️' },
         tanker: { label: 'Water Tanker', icon: '💧' },
-        ke: { label: 'K-Electric Kunda', icon: '⚡' },
+        ke: { label: 'Exposed Utility Wires', icon: '⚡' },
         chinacutting: { label: 'China Cutting', icon: '📐' },
         politician: { label: 'Corrupt Neta', icon: '💰' }
       };
@@ -4714,7 +5899,7 @@ class Game {
       const districtConfig = getDistrictConfig(this.currentDistrictLevel);
       const activeCrisis = this.crisisChallenges ? this.crisisChallenges[this.currentCrisisIndex] : null;
 
-      // Calculate Route Progress from Soldier Bazar (Z = +70) to PECHS (Z = -82)
+      // Runner HUD tracks the full Karachi loop; civic mode retains its local route meter.
       const startZ = 70.0;
       const destZ = -82.0;
       const totalSpan = 152.0;
@@ -4722,12 +5907,20 @@ class Game {
       const routePct = Math.min(100, Math.max(0, Math.round(((startZ - pZ) / totalSpan) * 100)));
       const distLeft = Math.max(0, Math.round(pZ - destZ));
 
-      const routeProgress = {
-        routePct,
-        distLeft,
-        origin: 'Soldier Bazar',
-        destination: 'PECHS Tariq Road'
-      };
+      const routeProgress = this.isTempleRun
+        ? {
+          routePct: Math.min(100, (this.distanceMeters / RUNNER_CITY_LOOP_METERS) * 100),
+          distLeft: Math.max(0, Math.ceil(RUNNER_CITY_LOOP_METERS - this.distanceMeters)),
+          neighborhoodName: getKarachiNeighborhoodName(this.runnerNeighborhoodIndex),
+          origin: 'Soldier Bazar',
+          destination: 'Soldier Bazar · Finish'
+        }
+        : {
+          routePct,
+          distLeft,
+          origin: 'Soldier Bazar',
+          destination: 'PECHS Tariq Road'
+        };
 
       // Update HUD with Civic Cleanser progress, Hero Frenzy status, District Mission, Route & Active Power-Up
       if (this.ui) {
@@ -4790,13 +5983,38 @@ class Game {
 
         window.__DEV_TELEMETRY__ = {
           timestamp: new Date().toISOString(),
-          fps: this.currentFPS || 60,
+          fps: this.currentFPS || 0,
           level: this.currentDistrictLevel,
           isPaused: this.isPaused,
           isGameOver: this.isGameOver,
           isGameStarted: this.isGameStarted,
+          isRunnerMode: this.isTempleRun,
           gameMode: this.gameMode,
           timeLeft: Number(this.timeLeft.toFixed(2)),
+          score: this.score || 0,
+          distanceMeters: Math.round(this.distanceMeters || 0),
+          runnerNeighborhoodIndex: this.runnerNeighborhoodIndex,
+          runnerNeighborhoodCount: RUNNER_NEIGHBORHOOD_COUNT,
+          runnerNeighborhoodName: getKarachiNeighborhoodName(this.runnerNeighborhoodIndex),
+          runnerChallengeTier: this.getRunnerChallengeTier(),
+          runnerRouteComplete: this.runnerRouteComplete,
+          autoPilot: !!this.isAutoPilotActive,
+          heading: this.getRunnerHeadingLabel(),
+          turnsCompleted: this.runnerTurnsCompleted || 0,
+          nextJunction: this.runnerJunction && !this.runnerJunction.resolved
+            ? { kind: this.runnerJunction.kind, dir: this.runnerJunction.dir }
+            : null,
+          runnerSection: this.runnerSection?.type || null,
+          immortal: !!(this.isMasterImmortal || this.isGodImmortal),
+          speedMult: this.masterSpeedMult,
+          coins: this.coins || 0,
+          hearts: this.hearts || 0,
+          currentLane: this.currentLane || 0,
+          currentMilestone: this.currentMilestone || '',
+          runnerWeather: this.isTempleRun ? this.getRunnerWeatherState() : 'n/a',
+          runnerObstacleCount: (this.runnerObstacles || []).filter(obstacle => !obstacle.isHit).length,
+          runnerTrafficCount: (this.runnerTraffic || []).length,
+          activePowerUp: this.activePowerUp?.title || 'None',
           nascar: {
             speedKmh: this.currentKmh || 60,
             rpm: this.currentRpm || 3200,
@@ -4841,6 +6059,39 @@ class Game {
           }
         };
 
+        if (this.isTempleRun && !this.isPaused &&
+            (!this.__lastGameOpsSample || now - this.__lastGameOpsSample >= 5000)) {
+          this.__lastGameOpsSample = now;
+          try {
+            this.opsEngine ||= new PortableGameOpsEngine();
+            this.opsEngine.observeTelemetry(window.__DEV_TELEMETRY__);
+            if (this.opsEngine.lowFpsSamples >= 3 && this.renderer &&
+                (this.__lowFpsFixCount || 0) < 2) {
+              const previousRatio = this.renderer.getPixelRatio();
+              const nextRatio = getNextSafeRenderScale(previousRatio);
+              if (nextRatio < previousRatio) {
+                this.renderer.setPixelRatio(nextRatio);
+                this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+                this.__lowFpsFixCount = (this.__lowFpsFixCount || 0) + 1;
+                this.recordGameOpsEvent('fix.applied', {
+                  rule: 'reduce-render-resolution',
+                  summary: 'Reduced device render scale after sustained low frame rate.',
+                  previousRatio,
+                  nextRatio,
+                  attempt: this.__lowFpsFixCount,
+                  limit: 2
+                });
+              }
+              this.opsEngine.lowFpsSamples = 0;
+            }
+          } catch (error) {
+            if (!this.__gameOpsStorageErrorLogged) {
+              this.__gameOpsStorageErrorLogged = true;
+              console.error('[GAME_OPS] Telemetry could not be saved to the local operations log.', error);
+            }
+          }
+        }
+
         // Automated Anomaly Detection & Flight Recording
         if (!this.__devAnomalyWatch) {
           this.__devAnomalyWatch = {
@@ -4883,24 +6134,28 @@ class Game {
           this.ui.updateDevModeHUD(window.__DEV_TELEMETRY__);
         }
 
-        // Broadcast telemetry to Master Mode / God Mode Dashboard
-        const targetChannel = this.masterChannel || this.godChannel;
-        if (targetChannel || this.masterChannel || this.godChannel) {
-          const nowMs = performance.now();
-          if (!this.__lastMasterTelemetryBroadcast || nowMs - this.__lastMasterTelemetryBroadcast > 100) {
-            this.__lastMasterTelemetryBroadcast = nowMs;
-            this.__lastGodTelemetryBroadcast = nowMs;
-            const teleMsg = {
-              type: 'TELEMETRY_UPDATE',
-              telemetry: window.__DEV_TELEMETRY__
-            };
-            if (this.masterChannel) this.masterChannel.postMessage(teleMsg);
-            if (this.godChannel) this.godChannel.postMessage(teleMsg);
+        // Broadcast telemetry through the unified Master/Developer channel.
+        const nowMs = performance.now();
+        const telemetryInterval = this.masterChannel ? 100 : 500;
+        if (!this.__lastMasterTelemetryBroadcast ||
+            nowMs - this.__lastMasterTelemetryBroadcast > telemetryInterval) {
+          this.__lastMasterTelemetryBroadcast = nowMs;
+          const teleMsg = {
+            type: 'TELEMETRY_UPDATE',
+            telemetry: window.__DEV_TELEMETRY__
+          };
+          if (this.masterChannel) {
+            this.masterChannel.postMessage(teleMsg);
+          } else {
+            try {
+              localStorage.setItem('karachi_mastermode_telemetry', JSON.stringify(teleMsg));
+            } catch (error) {
+              console.error('[MASTER_MODE] Could not persist fallback telemetry.', error);
+            }
           }
         }
 
-        // Run Periodic Autonomous AI Audit (every 15s)
-        this.runPeriodicAIAudit();
+        this.recordPeriodicRuntimeSnapshot();
       }
     } catch (e) {
       console.error('Error during animate loop:', e);
@@ -4926,19 +6181,104 @@ class Game {
       console.warn('[MASTER_MODE] BroadcastChannel unsupported in game');
     }
 
-    try {
-      this.godChannel = new BroadcastChannel('karachi_hole_godmode');
-      this.godChannel.onmessage = (event) => this.handleMasterModeCommand(event.data);
-    } catch (e) {}
-
     window.addEventListener('storage', (e) => {
-      if ((e.key === 'karachi_mastermode_cmd' || e.key === 'karachi_godmode_cmd') && e.newValue) {
+      if (e.key === 'karachi_mastermode_cmd' && e.newValue) {
         try {
           const cmd = JSON.parse(e.newValue);
           this.handleMasterModeCommand(cmd);
-        } catch (err) {}
+        } catch (error) {
+          console.error('[MASTER_MODE] Could not parse fallback command.', error);
+        }
       }
     });
+  }
+
+  spawnRunnerTestObstacle(type, laneIndex = 0) {
+    if (!this.isTempleRun || !this.player || !this.scene) {
+      throw new Error('Runner test obstacles require an initialized Runner scene.');
+    }
+    const factories = {
+      pothole: () => this.createRunnerPotholeMesh(),
+      wire: () => KarachiModels.createHangingWireHazard(12.4),
+      gutter: () => KarachiModels.createOpenGutterHazard(1.4),
+      digging: () => KarachiModels.createRoadDiggingObstacle(2.8),
+      sewage: () => KarachiModels.createSewageSpillHazard(3.0),
+      rickshaw: () => KarachiModels.createStalledRickshawObstacle(),
+      water_tanker: () => KarachiModels.createWaterTanker(),
+      football: () => KarachiModels.createLyariStreetFootball(),
+      market_cart: () => KarachiModels.createSaddarMarketHandcart(),
+      heritage_scaffold: () => KarachiModels.createSaddarHeritageScaffold(7.5)
+    };
+    const factory = factories[type];
+    if (!factory) throw new TypeError(`Unsupported Runner test obstacle: ${type}`);
+    const lane = Math.max(-1, Math.min(1, Math.round(Number(laneIndex) || 0)));
+    const laneX = lane * this.laneWidth;
+    const z = this.player.position.z - 34;
+    const mesh = factory();
+    mesh.position.set(laneX, type === 'pothole' ? 0 : mesh.position.y, z);
+    this.scene.add(mesh);
+    this.runnerObstacles.push({
+      type,
+      laneX,
+      z,
+      requiredAction: ['wire', 'heritage_scaffold'].includes(type)
+        ? 'slide'
+        : ['gutter', 'digging', 'sewage', 'pothole'].includes(type)
+          ? 'jump_or_dodge'
+          : 'dodge',
+      mesh,
+      isHit: false,
+      isTestObstacle: true
+    });
+    this.recordGameOpsEvent('master.obstacle_spawned', { type, lane, distanceMeters: this.distanceMeters });
+    return mesh;
+  }
+
+  clearRunnerTestObstacles() {
+    let cleared = 0;
+    this.runnerObstacles = this.runnerObstacles.filter(obstacle => {
+      if (!obstacle?.isTestObstacle) return true;
+      if (obstacle.mesh) this.scene.remove(obstacle.mesh);
+      cleared += 1;
+      return false;
+    });
+    this.recordGameOpsEvent('master.obstacles_cleared', { count: cleared });
+    return cleared;
+  }
+
+  runRunnerSelfCheck() {
+    const checks = [
+      ['runner-mode', Boolean(this.isTempleRun)],
+      ['scene-ready', Boolean(this.scene && this.player && this.player.position)],
+      ['three-lanes', Number.isFinite(this.laneWidth) && this.laneWidth > 0],
+      ['player-position', Boolean(this.player &&
+        Number.isFinite(this.player.position.x) &&
+        Number.isFinite(this.player.position.z))],
+      ['hazard-metadata', (this.runnerObstacles || []).filter(obstacle =>
+        obstacle && !obstacle.isHit
+      ).every(obstacle =>
+        obstacle.mesh && typeof obstacle.type === 'string' &&
+        typeof obstacle.requiredAction === 'string'
+      )],
+      ['route-bounds', Number.isFinite(this.distanceMeters) && this.distanceMeters >= 0]
+    ];
+    const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);
+    const result = {
+      status: failed.length ? 'failed' : 'passed',
+      checks: checks.length,
+      failed,
+      timestamp: new Date().toISOString()
+    };
+    this.recordGameOpsEvent('check.result', {
+      name: 'Runner live self-check',
+      status: result.status,
+      summary: failed.length ? `Failed: ${failed.join(', ')}` : `${checks.length} checks passed`
+    });
+    if (window.__DEV_TELEMETRY__) window.__DEV_TELEMETRY__.opsLastCheck = result;
+    this.ui?.showDevToast(
+      failed.length ? `Runner self-check failed: ${failed.join(', ')}` : `Runner self-check passed (${checks.length} checks).`
+    );
+    return result;
   }
 
   handleMasterModeCommand(data) {
@@ -4948,20 +6288,106 @@ class Game {
     switch (type) {
       case 'PING':
         const reply = { type: 'PONG', telemetry: window.__DEV_TELEMETRY__ };
-        if (this.masterChannel && window.__DEV_TELEMETRY__) {
+        if (this.masterChannel) {
           this.masterChannel.postMessage(reply);
+        } else if (window.__DEV_TELEMETRY__) {
+          try {
+            localStorage.setItem('karachi_mastermode_telemetry', JSON.stringify(reply));
+          } catch (error) {
+            console.error('[MASTER_MODE] Could not send fallback telemetry reply.', error);
+          }
         }
-        if (this.godChannel && window.__DEV_TELEMETRY__) {
-          this.godChannel.postMessage(reply);
+        break;
+
+      case 'RUNNER_SELF_CHECK':
+        if (data.sender !== 'MASTERMODE_DASHBOARD') break;
+        if (!this.isTempleRun || !this.isGameStarted || this.isPaused || this.isGameOver) {
+          this.ui?.showDevToast('Start an active Runner session before running a self-check.');
+          break;
+        }
+        this.runRunnerSelfCheck();
+        break;
+
+      case 'SPAWN_TEST_OBSTACLE':
+        if (data.sender !== 'MASTERMODE_DASHBOARD') break;
+        if (!this.isTempleRun || !this.isGameStarted || this.isPaused || this.isGameOver) {
+          this.ui?.showDevToast('Start an active Runner session before spawning a test obstacle.');
+          break;
+        }
+        try {
+          this.spawnRunnerTestObstacle(payload?.type, payload?.lane);
+          this.ui?.showDevToast(`Test ${String(payload?.type).replaceAll('_', ' ')} spawned.`);
+        } catch (error) {
+          console.error('[GAME_OPS] Could not spawn test obstacle.', error);
+          this.ui?.showDevToast('Could not spawn that test obstacle.');
+        }
+        break;
+
+      case 'CLEAR_TEST_OBSTACLES':
+        if (data.sender !== 'MASTERMODE_DASHBOARD') break;
+        this.clearRunnerTestObstacles();
+        this.ui?.showDevToast('Test obstacles cleared.');
+        break;
+
+      case 'SPAWN_JUNCTION':
+        if (data.sender !== 'MASTERMODE_DASHBOARD') break;
+        if (!this.isTempleRun || !this.isGameStarted || this.isPaused || this.isGameOver) {
+          this.ui?.showDevToast('Start an active Runner session first.');
+          break;
+        }
+        {
+          const kind = payload?.kind === 'fork' ? 'fork' : 'turn';
+          const dir = payload?.dir === 'right' ? 1 : -1;
+          if (this.spawnRunnerJunction(kind, dir, 90)) {
+            this.ui?.showDevToast(`${kind === 'fork' ? 'Fork' : `Turn ${dir === -1 ? 'left' : 'right'}`} junction spawned ahead.`);
+          } else {
+            this.ui?.showDevToast('A junction is already active.');
+          }
+        }
+        break;
+
+      case 'CLEAR_ALL_HAZARDS':
+      case 'COMPLETE_RUNNER_AREA':
+      case 'COMPLETE_RUNNER_ROUTE':
+      case 'RESTORE_RUNNER_HEARTS':
+        if (data.sender !== 'MASTERMODE_DASHBOARD') break;
+        if (!this.isTempleRun || !this.isGameStarted || this.isPaused || this.isGameOver) {
+          this.ui?.showDevToast('Start an active Runner session first.');
+          break;
+        }
+        if (type === 'CLEAR_ALL_HAZARDS') {
+          this.ui?.showDevToast(`Cleared ${this.clearAllRunnerHazards()} hazards and vehicles.`);
+        } else if (type === 'COMPLETE_RUNNER_AREA') {
+          this.completeRunnerArea();
+          this.ui?.showDevToast('Patrol area completed.');
+        } else if (type === 'COMPLETE_RUNNER_ROUTE') {
+          this.setRunnerDistance(RUNNER_CITY_LOOP_METERS);
+        } else {
+          this.hearts = this.maxHearts;
+          this.ui?.showDevToast('Hearts restored.');
         }
         break;
 
       case 'SET_VERSION':
       case 'SWITCH_VERSION':
-        const targetVer = payload.version || payload.versionId;
+        const targetVer = payload?.version || payload?.versionId;
         if (targetVer) {
-          this.setMajorGameVersion(targetVer, true);
+          this.setMajorGameVersion(targetVer, true, 'master-control');
         }
+        break;
+
+      case 'UNLOCK_ALL_RUNNER_CONTENT':
+        if (data.sender !== 'MASTERMODE_DASHBOARD') {
+          console.warn('[MASTER_MODE] Ignoring runner unlock command from an untrusted sender.');
+          break;
+        }
+        if (!saveManager.unlockAllContentForMasterMode()) {
+          console.error('[SAVE] Master Mode could not persist all runner unlocks.');
+          this.ui?.showAnnouncement('Master unlock failed. Check device storage.', '#ff5252');
+          break;
+        }
+        this.ui?.refreshProgressionContent();
+        this.ui?.showAnnouncement('🔓 All Karachi patrol areas and getups unlocked in Master Mode.', '#ffd700');
         break;
 
       case 'TRIGGER_SLINGSHOT':
@@ -4971,7 +6397,7 @@ class Game {
         if (this.player) this.player.addXP(500);
         audio.playSlingshotBoost();
         if (this.ui) {
-          this.ui.showAnnouncement('🏁 NASCAR SLINGSHOT OVERTAKE ENGAGED! +500 PTS!', '#ffd700');
+          this.ui.showAnnouncement('🏁 STREET SLINGSHOT OVERTAKE! +500 PTS!', '#ffd700');
           this.ui.showFloatingFeedback('🚀 SLINGSHOT BOOST!', this.player?.position, '#ffd700');
         }
         break;
@@ -4993,7 +6419,17 @@ class Game {
 
       case 'TOGGLE_NASCAR_SPEED':
         this.isNascarSuperSpeed = !this.isNascarSuperSpeed;
-        if (this.ui?.showDevToast) this.ui.showDevToast(this.isNascarSuperSpeed ? '🏁 NASCAR 200+ KM/H Speed Active!' : '🏎️ Standard Highway Speed');
+        if (this.ui?.showDevToast) this.ui.showDevToast(this.isNascarSuperSpeed ? '🏁 HIGH-SPEED MODE ACTIVE!' : '🏎️ STANDARD SPEED ACTIVE');
+        break;
+
+      case 'SET_RUNNER_RAIN':
+        if (this.isTempleRun) {
+          this.runnerRainOverride = payload?.enabled === true ? true : null;
+          this.runnerWeatherState = this.getRunnerWeatherState();
+          if (this.ui?.showDevToast) {
+            this.ui.showDevToast(this.runnerRainOverride ? '🌧️ Rain test enabled.' : '🌦️ Natural runner weather restored.');
+          }
+        }
         break;
 
       case 'FLEET_NITRO':
@@ -5040,7 +6476,9 @@ class Game {
         if (payload.speedMult) {
           this.masterSpeedMult = Math.max(0.2, Math.min(10.0, payload.speedMult));
           this.godSpeedMult = this.masterSpeedMult;
-          if (this.player) {
+          if (this.isTempleRun) {
+            this.runSpeed = 16.5 * this.masterSpeedMult;
+          } else if (this.player) {
             this.player.baseSpeed = 13.5 * this.masterSpeedMult;
             this.player.currentSpeed = this.player.baseSpeed;
           }
@@ -5110,7 +6548,11 @@ class Game {
         break;
 
       case 'TRIGGER_AUDIT':
-        this.recordDevNote('AI_MANUAL_AUDIT', 'Manual AI audit triggered from Master Mode Dashboard', payload.audit || {});
+        this.recordDevNote(
+          'QA_TELEMETRY_SNAPSHOT',
+          'A QA telemetry snapshot was requested from the Master/Developer console; no automated tests or APK checks were run.',
+          payload.audit || {}
+        );
         break;
 
       case 'NEW_DEV_NOTE':
@@ -5119,6 +6561,497 @@ class Game {
         }
         break;
     }
+  }
+
+  clearAllRunnerHazards() {
+    let cleared = 0;
+    (this.runnerObstacles || []).forEach(obstacle => {
+      if (obstacle?.mesh) this.scene.remove(obstacle.mesh);
+      cleared += 1;
+    });
+    this.runnerObstacles = [];
+    (this.runnerTraffic || []).forEach(vehicle => {
+      if (vehicle?.mesh) this.scene.remove(vehicle.mesh);
+      cleared += 1;
+    });
+    this.runnerTraffic = [];
+    this.isDrafting = false;
+    this.draftCharge = 0;
+    this.recordGameOpsEvent('master.hazards_cleared', { count: cleared });
+    return cleared;
+  }
+
+  completeRunnerArea() {
+    const areaLength = 6700;
+    const target = (Math.floor(this.distanceMeters / areaLength) + 1) * areaLength;
+    this.setRunnerDistance(target >= RUNNER_CITY_LOOP_METERS ? RUNNER_CITY_LOOP_METERS : target);
+  }
+
+  setRunnerDistance(distance) {
+    const next = Math.max(this.distanceMeters, Math.min(RUNNER_CITY_LOOP_METERS, distance));
+    this.distanceMeters = next;
+    // Silently mark skipped milestones so completing an area does not replay every celebration.
+    (this.milestones || []).forEach((milestone, index) => {
+      if (next >= milestone.dist) this.passedMilestoneIndices.add(index);
+    });
+    this.updateRunnerProgression();
+    this.recordGameOpsEvent('master.distance_set', { distanceMeters: Math.round(next) });
+  }
+
+  getRunnerThreatLane(item) {
+    const x = item.laneX ?? item.mesh?.position?.x ?? 0;
+    return THREE.MathUtils.clamp(Math.round(x / this.laneWidth), -1, 1);
+  }
+
+  spawnRunnerSectionExtras(z) {
+    const section = this.runnerSection;
+    if (!section) return;
+    if (section.type === 'flyover') {
+      const laneX = [-this.laneWidth, 0, this.laneWidth][Math.floor(Math.random() * 3)];
+      [-3, -1.5, 0, 1.5, 3].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(laneX, 0, z + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: laneX, z: z + zOff });
+      });
+    } else {
+      const beam = new THREE.Mesh(
+        new THREE.BoxGeometry(14, 0.7, 2.2),
+        new THREE.MeshBasicMaterial({ color: 0x2b2b30 })
+      );
+      beam.position.set(0, 6.2, z);
+      this.scene.add(beam);
+      this.runnerSectionDecor.push(beam);
+    }
+  }
+
+  resetRunnerNavigation() {
+    this.removeRunnerJunction();
+    (this.runnerSectionDecor || []).forEach(mesh => this.scene?.remove(mesh));
+    this.runnerSectionDecor = [];
+    this.runnerHeading = 0;
+    this.runnerTurn = null;
+    this.runnerSection = null;
+    this.runnerTurnsCompleted = 0;
+    this.runnerJunctionIndex = 0;
+    this.runnerCameraLift = 0;
+    this.nextJunctionAt = this.getRunnerNavProfile().firstAt;
+    if (this.scene?.fog) this.scene.fog.density = 0.0065;
+    this.ui?.updateRunnerNav?.(null);
+  }
+
+  removeRunnerJunction() {
+    if (this.runnerJunction?.group) {
+      this.scene?.remove(this.runnerJunction.group);
+      this.runnerJunction.group.traverse(o => {
+        if (o.isMesh) {
+          if (o.geometry !== RUNNER_POTHOLE_ARROW_GEOMETRY) o.geometry?.dispose();
+          if (o.material !== RUNNER_POTHOLE_ARROW_MATERIAL) o.material?.dispose();
+        }
+      });
+    }
+    if (this.runnerJunction?.turnGroup) {
+      this.scene?.remove(this.runnerJunction.turnGroup);
+      (this.runnerJunction.turnChunks || []).forEach(chunk => this.disposeCorridorChunk(chunk));
+    }
+    this.runnerJunction = null;
+    this.setCorridorZoneHidden(null);
+  }
+
+  getRunnerHeadingLabel() {
+    return ['N', 'W', 'S', 'E'][((this.runnerHeading || 0) % 4 + 4) % 4];
+  }
+
+  buildRunnerJunctionMesh(kind, dir) {
+    const group = new THREE.Group();
+    const mat = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, ...extra });
+    const addBoard = (x, color, arrowRotation) => {
+      const board = new THREE.Mesh(new THREE.BoxGeometry(kind === 'fork' ? 5.2 : 9, 3.4, 0.3), mat(color));
+      board.position.set(x, 5.6, -5.8);
+      group.add(board);
+      const arrow = new THREE.Mesh(RUNNER_POTHOLE_ARROW_GEOMETRY, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
+      arrow.scale.setScalar(kind === 'fork' ? 2.4 : 3.4);
+      arrow.rotation.z = arrowRotation;
+      arrow.position.set(x, 5.6, -5.62);
+      group.add(arrow);
+      [-1, 1].forEach(side => {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 5.6, 0.35), mat(0x37474f));
+        post.position.set(x + side * (kind === 'fork' ? 2.4 : 4.2), 2.8, -5.8);
+        group.add(post);
+      });
+    };
+
+    if (kind === 'turn') {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(13, 1.2, 0.6), mat(0xff6d00));
+      wall.position.set(0, 0.6, -6.7);
+      group.add(wall);
+      [-5.5, -1.8, 1.8, 5.5].forEach(x => {
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.64), mat(0xffffff));
+        stripe.position.set(x, 0.75, -6.7);
+        group.add(stripe);
+      });
+      addBoard(0, 0x1b5e20, dir === -1 ? Math.PI / 2 : -Math.PI / 2);
+    } else {
+      addBoard(-4, 0xf9a825, 0);
+      addBoard(4, 0x37474f, Math.PI);
+      [-1, 1].forEach(side => {
+        const lintel = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.5, 0.5), mat(side < 0 ? 0xffc400 : 0x263238));
+        lintel.position.set(side * 4, 4.4, 0);
+        group.add(lintel);
+      });
+    }
+    return group;
+  }
+
+  spawnRunnerJunction(kind = 'turn', dir = -1, aheadMeters = 170) {
+    if (!this.player || this.runnerJunction || this.runnerTurn) return false;
+    const z = this.player.position.z - aheadMeters;
+    const group = this.buildRunnerJunctionMesh(kind, dir);
+    group.position.z = z;
+    this.scene.add(group);
+    this.runnerJunction = { kind, dir, z, group, resolved: false };
+
+    if (kind === 'turn') {
+      // A real cross-road built from corridor chunks so the corner already looks like the street.
+      const turnGroup = new THREE.Group();
+      turnGroup.position.set(0, 0.012, z);
+      turnGroup.rotation.y = dir === -1 ? Math.PI / 2 : -Math.PI / 2;
+      const innerSide = dir === -1 ? 'left' : 'right';
+      const turnChunks = [];
+      for (let i = 0; i < 3; i++) {
+        const chunk = this.createCorridorChunk(z - i * 60);
+        chunk.position.set(0, 0, -i * 60);
+        if (i === 0) {
+          chunk.userData.slabs.forEach(slab => {
+            if (slab.userData.side === innerSide) slab.visible = false;
+          });
+        }
+        turnGroup.add(chunk);
+        turnChunks.push(chunk);
+      }
+      this.scene.add(turnGroup);
+      this.runnerJunction.turnGroup = turnGroup;
+      this.runnerJunction.turnChunks = turnChunks;
+      this.setCorridorZoneHidden(z - 26, z + 7);
+    }
+
+    const clearBeyond = list => {
+      for (let i = list.length - 1; i >= 0; i--) {
+        const item = list[i];
+        const itemZ = item.mesh?.position?.z ?? item.z;
+        if (itemZ !== undefined && itemZ < z + 20) {
+          if (item.mesh) this.scene.remove(item.mesh);
+          list.splice(i, 1);
+        }
+      }
+    };
+    clearBeyond(this.runnerObstacles || []);
+    clearBeyond(this.runnerCoins || []);
+    clearBeyond(this.runnerTraffic || []);
+    this.recordGameOpsEvent('runner.junction', { kind, dir, distanceMeters: Math.round(this.distanceMeters) });
+    return true;
+  }
+
+  /**
+   * Handle a lane input in the junction zone. Returns true when the input was consumed.
+   */
+  attemptRunnerTurn(dir) {
+    const junction = this.runnerJunction;
+    if (!junction || junction.resolved || this.runnerTurn || !this.player) return false;
+    const ahead = this.player.position.z - junction.z;
+    if (ahead > 16 || ahead < -1) return false;
+    junction.resolved = true;
+
+    if (junction.kind === 'fork') {
+      this.enterRunnerSection(dir < 0 ? 'flyover' : 'underpass');
+      return true;
+    }
+
+    if (dir === junction.dir) {
+      const perfect = ahead <= 7;
+      const bonus = perfect ? 500 : 300;
+      this.score += bonus;
+      this.awardRunnerXP(bonus);
+      audio.playPowerUp();
+      this.ui.showAnnouncement(perfect ? `🧭 PERFECT TURN! +${bonus}` : `🧭 CLEAN TURN +${bonus}`, '#76ff03');
+    } else {
+      this.beginRunnerTurn(junction, junction.dir);
+      this.handleRunnerHit({ type: 'wrong_turn', isHit: false, mesh: null }, 'WRONG WAY');
+      return true;
+    }
+    this.beginRunnerTurn(junction, junction.dir);
+    return true;
+  }
+
+  beginRunnerTurn(junction, dir) {
+    const z0 = this.player.position.z;
+    const radius = Math.max(3, z0 - junction.z);
+    this.runnerTurn = {
+      dir,
+      sign: dir === -1 ? 1 : -1,
+      t: 0,
+      startZ: z0,
+      startX: this.player.position.x,
+      pivotZ: junction.z,
+      radius,
+      duration: THREE.MathUtils.clamp(1.57 * radius / Math.max(12, this.getRunnerSpeed()), 0.55, 1.4)
+    };
+    this.isSliding = false;
+    this.slideTimer = 0;
+    this.ui.updateRunnerNav?.(null);
+    audio.playTireScreech();
+    this.particles.createSkidSmoke(this.player.position, 8);
+  }
+
+  // The runner follows a real quarter-circle onto the cross-road while the camera swings with it.
+  updateRunnerTurnAnimation(dt) {
+    const turn = this.runnerTurn;
+    const player = this.player;
+    turn.t = Math.min(1, turn.t + dt / turn.duration);
+    const p = turn.t;
+    const theta = p * Math.PI / 2;
+    const s = turn.sign;
+    const R = turn.radius;
+    const endZ = turn.startZ - R;
+    const x = s * R * (Math.cos(theta) - 1) + turn.startX * (1 - p);
+    const z = turn.startZ - R * Math.sin(theta) + (turn.pivotZ - endZ) * p;
+    const angle = s * theta;
+    const fx = -Math.sin(angle);
+    const fz = -Math.cos(angle);
+
+    player.position.set(x, 0, z);
+    player.group.position.set(x, 0, z);
+    player.group.rotation.y = Math.PI + angle;
+    player.facingAngle = Math.PI + angle;
+    player.targetRotationY = Math.PI + angle;
+
+    const lift = this.runnerCameraLift || 0;
+    const w = THREE.MathUtils.smoothstep(Math.min(1, p / 0.2), 0, 1);
+    const camX = THREE.MathUtils.lerp(x * 0.45, x - fx * 5.2, w);
+    const camZ = THREE.MathUtils.lerp(z + 5.2, z - fz * 5.2, w);
+    const lookX = THREE.MathUtils.lerp(x * 0.65, x + fx * 18, w);
+    const lookZ = THREE.MathUtils.lerp(z - 18, z + fz * 18, w);
+    this.camera.position.set(camX, 2.85 + lift, camZ);
+    this.camera.lookAt(lookX, 1.25, lookZ);
+
+    if (turn.t >= 1) this.finishRunnerTurn();
+  }
+
+  finishRunnerTurn() {
+    const turn = this.runnerTurn;
+    const junctionZ = turn.pivotZ;
+    const R = turn.radius;
+    const junction = this.runnerJunction;
+    this.runnerHeading = (this.runnerHeading + (turn.dir === -1 ? 1 : 3)) % 4;
+    this.runnerTurn = null;
+    this.runnerTurnsCompleted = (this.runnerTurnsCompleted || 0) + 1;
+
+    // Re-frame the world around the new heading: the cross-road chunks become the straight corridor.
+    const crossChunks = junction?.turnChunks || [];
+    if (crossChunks.length) {
+      crossChunks.forEach((chunk, i) => {
+        junction.turnGroup.remove(chunk);
+        chunk.position.set(0, 0, junctionZ + R - i * 60);
+        chunk.rotation.set(0, 0, 0);
+        chunk.userData.slabs.forEach(slab => { slab.visible = true; });
+        this.scene.add(chunk);
+      });
+      junction.turnChunks = [];
+      const oldChunks = this.corridorChunks || [];
+      const keep = oldChunks.slice(0, Math.max(0, 7 - crossChunks.length));
+      oldChunks.slice(keep.length).forEach(chunk => {
+        this.scene.remove(chunk);
+        this.disposeCorridorChunk(chunk);
+      });
+      keep.forEach((chunk, m) => {
+        chunk.position.set(0, 0, junctionZ + R - (crossChunks.length + m) * 60);
+        chunk.userData.slabs.forEach(slab => { slab.visible = true; });
+      });
+      this.corridorChunks = [...crossChunks, ...keep];
+    }
+    this.removeRunnerJunction();
+    if (!crossChunks.length) this.initCorridorTerrain();
+    this.clearRunnerObjects();
+    this.currentLane = 0;
+    this.targetLaneX = 0;
+    this.player.position.set(0, 0, junctionZ);
+    this.player.group.position.set(0, 0, junctionZ);
+    this.player.group.rotation.y = Math.PI;
+    this.player.facingAngle = Math.PI;
+    this.player.targetRotationY = Math.PI;
+    this.nextRunnerWaveZ = junctionZ - 45;
+    this.lastRunnerZ = junctionZ;
+    this.runnerInvulnerableTimer = Math.max(this.runnerInvulnerableTimer || 0, 1.0);
+    this.camera.position.set(0, 2.85 + (this.runnerCameraLift || 0), junctionZ + 5.2);
+    this.camera.lookAt(0, 1.25, junctionZ - 18);
+    this.ui.showAnnouncement(`🧭 NOW HEADING ${this.getRunnerHeadingLabel()}`, '#00e5ff');
+    const navProfile = this.getRunnerNavProfile();
+    this.nextJunctionAt = this.distanceMeters + (this.runnerJunctionIndex % 4 === 1 ? navProfile.chainGap : navProfile.gap);
+  }
+
+  enterRunnerSection(type) {
+    this.runnerSection = { type, endDist: this.distanceMeters + this.getRunnerNavProfile().sectionMeters };
+    const flyover = type === 'flyover';
+    if (this.scene?.fog) this.scene.fog.density = flyover ? 0.004 : 0.012;
+    audio.playPowerUp();
+    this.ui.showAnnouncement(
+      flyover ? '⬆ FLYOVER! Fast road, bonus coins!' : '⬇ UNDERPASS! Low wires - slide!',
+      flyover ? '#ffd700' : '#90a4ae'
+    );
+    this.nextJunctionAt = this.distanceMeters + this.getRunnerNavProfile().gap;
+    this.recordGameOpsEvent('runner.section', { type, distanceMeters: Math.round(this.distanceMeters) });
+  }
+
+  endRunnerSection() {
+    if (!this.runnerSection) return;
+    this.score += 400;
+    this.awardRunnerXP(400);
+    this.ui.showAnnouncement('✅ SECTION CLEARED! +400', '#76ff03');
+    this.runnerSection = null;
+    if (this.scene?.fog) this.scene.fog.density = 0.0065;
+  }
+
+  // Pace-specific route layout: Easy has no left/right turns (only forks), Hard chains turns more often.
+  getRunnerNavProfile() {
+    const profiles = {
+      easy: { turns: false, firstAt: 600, gap: 1200, chainGap: 1200, sectionMeters: 500, forkEvery: 1 },
+      standard: { turns: true, firstAt: 500, gap: 900, chainGap: 300, sectionMeters: 700, forkEvery: 3 },
+      hard: { turns: true, firstAt: 400, gap: 600, chainGap: 220, sectionMeters: 800, forkEvery: 3 }
+    };
+    return profiles[this.runnerDifficulty] || profiles.standard;
+  }
+
+  updateRunnerNavigation(dt) {
+    const profile = this.getRunnerNavProfile();
+    if (!this.runnerJunction && !this.runnerSection && this.distanceMeters >= this.nextJunctionAt - 170) {
+      const i = this.runnerJunctionIndex || 0;
+      const dir = [-1, 1, 1, -1, 1, -1][i % 6];
+      const isFork = !profile.turns || i % profile.forkEvery === profile.forkEvery - 1;
+      this.spawnRunnerJunction(isFork ? 'fork' : 'turn', dir, 170);
+      this.runnerJunctionIndex = i + 1;
+    }
+
+    const junction = this.runnerJunction;
+    if (junction) {
+      if (junction.kind === 'turn' && !junction.resolved) {
+        this.setCorridorZoneHidden(junction.z - 26, junction.z + 7);
+      }
+      const ahead = this.player.position.z - junction.z;
+      if (!junction.resolved && ahead <= -0.5) {
+        junction.resolved = true;
+        if (junction.kind === 'fork') {
+          this.enterRunnerSection('underpass');
+        } else {
+          this.beginRunnerTurn(junction, junction.dir);
+          this.handleRunnerHit({ type: 'missed_turn', isHit: false, mesh: null }, 'MISSED TURN');
+          if (this.isGameOver) return;
+        }
+      }
+      if (junction.kind === 'fork' && junction.resolved && ahead < -14) this.removeRunnerJunction();
+      this.runnerTraffic = (this.runnerTraffic || []).filter(vehicle => {
+        if (vehicle?.mesh && vehicle.mesh.position.z < junction.z + 8) {
+          this.scene.remove(vehicle.mesh);
+          return false;
+        }
+        return true;
+      });
+    }
+
+    const section = this.runnerSection;
+    if (section && this.distanceMeters >= section.endDist) this.endRunnerSection();
+    const targetLift = this.runnerSection?.type === 'flyover' ? 1.1 : this.runnerSection ? -0.7 : 0;
+    this.runnerCameraLift = THREE.MathUtils.lerp(this.runnerCameraLift || 0, targetLift, Math.min(1, dt * 3));
+
+    (this.runnerSectionDecor || []).forEach((mesh, index, list) => {
+      if (mesh.position.z > this.player.position.z + 20) {
+        this.scene.remove(mesh);
+        list[index] = null;
+      }
+    });
+    this.runnerSectionDecor = (this.runnerSectionDecor || []).filter(Boolean);
+
+    let nav = null;
+    const heading = this.getRunnerHeadingLabel();
+    if (this.runnerJunction && !this.runnerJunction.resolved) {
+      const meters = Math.max(0, Math.round(this.player.position.z - this.runnerJunction.z));
+      if (meters < 320) {
+        const j = this.runnerJunction;
+        nav = j.kind === 'fork'
+          ? { arrow: '⬆⬇', text: 'FORK: ⬅ FLYOVER · UNDERPASS ➡', meters, heading, urgent: meters < 45 }
+          : { arrow: j.dir === -1 ? '↰' : '↱', text: `TURN ${j.dir === -1 ? 'LEFT' : 'RIGHT'}`, meters, heading, urgent: meters < 45 };
+      }
+    }
+    if (!nav) {
+      nav = {
+        arrow: this.runnerSection ? (this.runnerSection.type === 'flyover' ? '⬆' : '⬇') : '⬆',
+        text: this.runnerSection ? this.runnerSection.type.toUpperCase() : 'KEEP STRAIGHT',
+        meters: null,
+        heading,
+        urgent: false
+      };
+    }
+    this.ui.updateRunnerNav?.(nav);
+  }
+
+  executeRunnerAutoPilot(dt) {
+    const junction = this.runnerJunction;
+    if (junction && !junction.resolved) {
+      const junctionAhead = this.player.position.z - junction.z;
+      if (junctionAhead <= 11 && junctionAhead >= 0 && this.attemptRunnerTurn(junction.dir)) return;
+    }
+    this.runnerAutoPilotCooldown = Math.max(0, (this.runnerAutoPilotCooldown || 0) - dt);
+    const pPos = this.player.position;
+    const speed = this.player.currentSpeed || this.getRunnerSpeed();
+    const threats = [];
+    (this.runnerObstacles || []).forEach(obstacle => {
+      if (!obstacle || obstacle.isHit || obstacle.z === undefined) return;
+      const ahead = pPos.z - obstacle.z;
+      if (ahead < -1 || ahead > 34) return;
+      const action = obstacle.requiredAction || 'dodge';
+      threats.push({ ahead, action, lane: this.getRunnerThreatLane(obstacle), fullWidth: action === 'slide' });
+    });
+    (this.runnerTraffic || []).forEach(vehicle => {
+      if (!vehicle?.mesh || vehicle.isHit) return;
+      const ahead = pPos.z - vehicle.mesh.position.z;
+      if (ahead < -2 || ahead > 34) return;
+      threats.push({ ahead, action: 'dodge', lane: this.getRunnerThreatLane(vehicle), fullWidth: false });
+    });
+
+    const dodgeClearance = lane => {
+      let clearance = 40;
+      threats.forEach(threat => {
+        const needsLane = threat.action === 'dodge' || threat.action === 'dodge_or_horn';
+        if (needsLane && threat.lane === lane) clearance = Math.min(clearance, threat.ahead);
+      });
+      return clearance;
+    };
+
+    if (this.runnerAutoPilotCooldown <= 0 && dodgeClearance(this.currentLane) < 26) {
+      const options = [-1, 0, 1]
+        .filter(lane => Math.abs(lane - this.currentLane) <= 1 && lane !== this.currentLane)
+        .map(lane => ({ lane, clearance: dodgeClearance(lane) }))
+        .sort((a, b) => b.clearance - a.clearance);
+      if (options[0] && options[0].clearance > dodgeClearance(this.currentLane) + 4) {
+        this._autoLaneChange = true;
+        this.changeLane(options[0].lane - this.currentLane);
+        this._autoLaneChange = false;
+        this.runnerAutoPilotCooldown = 0.25;
+      }
+    }
+
+    const jumpWindow = speed * 0.33 + 1.5;
+    const slideWindow = speed * 0.25 + 2.5;
+    threats.forEach(threat => {
+      if (threat.ahead < 0) return;
+      if (threat.fullWidth && threat.ahead < slideWindow && !this.isSliding) {
+        this.performSlide();
+      } else if (
+        (threat.action === 'jump' || threat.action === 'jump_or_dodge') &&
+        threat.lane === this.currentLane && threat.ahead < jumpWindow && this.player.isGrounded
+      ) {
+        this.performJump();
+      }
+    });
   }
 
   executeAutoPilotSteering(dt) {
@@ -5176,43 +7109,41 @@ class Game {
     }
   }
 
-  runPeriodicAIAudit() {
+  recordPeriodicRuntimeSnapshot() {
+    if (!this.isGameStarted || this.isPaused || this.isGameOver || !this.player) return;
     const now = performance.now();
-    if (!this.__lastAutonomousAudit) this.__lastAutonomousAudit = now;
-    if (now - this.__lastAutonomousAudit < 15000) return; // run every 15s
-    this.__lastAutonomousAudit = now;
+    if (!this.__lastRuntimeSnapshot) this.__lastRuntimeSnapshot = now;
+    if (now - this.__lastRuntimeSnapshot < 15000) return;
+    this.__lastRuntimeSnapshot = now;
 
-    const fps = this.currentFPS || 60;
-    const isFpsGood = fps >= 45;
-    const activeEvils = this.districtEvils ? this.districtEvils.filter(e => e && e.state !== 'swallowed').length : 0;
-    const munchieCount = this.clutterItems ? this.clutterItems.filter(i => i && i.state !== 'swallowed').length : 0;
-    const isPlayerInBounds = this.player ? (Math.abs(this.player.position.x) <= 95 && Math.abs(this.player.position.z) <= 95) : true;
+    const fps = this.currentFPS || 0;
+    const activeHazards = this.isTempleRun
+      ? (this.runnerObstacles || []).filter(obstacle => !obstacle.isHit).length +
+        (this.runnerTraffic || []).filter(vehicle => !vehicle.isHit).length
+      : (this.districtEvils || []).filter(evil => evil && evil.state !== 'swallowed').length;
+    const isPlayerInBounds = this.isTempleRun
+      ? Math.abs(this.player.position.x) <= this.laneWidth
+      : Math.abs(this.player.position.x) <= 95 && Math.abs(this.player.position.z) <= 95;
+    const runtimeHealthy = fps >= 30 && isPlayerInBounds;
 
     const auditEntry = {
-      id: `AUTO-${Date.now().toString().slice(-4)}`,
+      id: `RUNTIME-${Date.now().toString().slice(-6)}`,
       timestamp: new Date().toISOString(),
-      type: 'AUTONOMOUS_AI_AUDIT',
-      healthScore: (isFpsGood && isPlayerInBounds) ? 100 : 90,
-      summary: `Periodic Auto-Audit: FPS ${fps} | District ${this.currentDistrictLevel} | ${activeEvils} Threats Active`,
-      details: `Frame Rate: ${fps} FPS • Munchies: ${munchieCount} active • In-Bounds: ${isPlayerInBounds} • APK: 100% Aligned`,
-      status: 'VERIFIED_OPTIMAL'
+      type: 'RUNTIME_TELEMETRY',
+      summary: `${this.isTempleRun ? 'Runner' : 'Civic'} runtime snapshot · ${fps} FPS · ${activeHazards} active hazards`,
+      details: `Player in bounds: ${isPlayerInBounds}. ${this.isTempleRun ? `Distance: ${Math.round(this.distanceMeters)} m · Weather: ${this.getRunnerWeatherState()}.` : `Patrol area: ${this.currentDistrictLevel}.`} This is runtime telemetry, not a test-suite or APK validation result.`,
+      status: runtimeHealthy ? 'RUNTIME_HEALTHY' : 'RUNTIME_WARNING'
     };
 
-    let audits = [];
     try {
-      audits = JSON.parse(localStorage.getItem('karachi_ai_audit_log') || '[]');
-    } catch (e) {}
-    audits.unshift(auditEntry);
-    if (audits.length > 50) audits = audits.slice(0, 50);
-    try {
-      localStorage.setItem('karachi_ai_audit_log', JSON.stringify(audits));
-    } catch (e) {}
-
-    if (this.godChannel) {
-      this.godChannel.postMessage({
-        type: 'AUDIT_LOG_ADDED',
-        audit: auditEntry
-      });
+      const storedAudits = JSON.parse(localStorage.getItem('karachi_ai_audit_log') || '[]');
+      if (!Array.isArray(storedAudits)) throw new TypeError('Stored QA history is not a list.');
+      storedAudits.unshift(auditEntry);
+      if (storedAudits.length > 50) storedAudits.length = 50;
+      localStorage.setItem('karachi_ai_audit_log', JSON.stringify(storedAudits));
+    } catch (error) {
+      console.error('[MASTER_MODE] Could not persist runtime telemetry snapshot.', error);
+      return;
     }
   }
 
@@ -5284,6 +7215,14 @@ class Game {
       details
     };
     window.__DEV_NOTES__.push(note);
+    if (String(category).startsWith('USER_')) {
+      this.recordGameOpsEvent('developer.feedback', {
+        category,
+        message: String(message || '').slice(0, 2000),
+        distanceMeters: Math.round(this.distanceMeters || 0),
+        area: this.currentMilestone || `Area ${this.currentDistrictLevel || 1}`
+      });
+    }
     if (window.__DEV_NOTES__.length > 100) {
       window.__DEV_NOTES__.shift();
     }
@@ -5325,4 +7264,3 @@ if (document.readyState === 'loading') {
 } else {
   bootKarachiGame();
 }
-

@@ -12,6 +12,7 @@ export const DISTRICT_CONFIGS = [
     name: 'Karachi: Soldier Bazar to PECHS (Tariq Road)',
     urdu: 'کراچی: سولجر بازار تا طارق روڈ پی ای سی ایچ ایس',
     tagline: 'Survive Open Gutters, Escape 70cc Robbers & Complete Karachi Civic Run!',
+    runnerFocus: 'Old-city utility lanes · open gutters · low wires',
     heroTitle: 'Karachi Street Commuter',
     unlockedTitle: 'Highway Hero',
     timeBonus: 75,
@@ -34,7 +35,7 @@ export const DISTRICT_CONFIGS = [
         { name: 'PECHS Tariq Road Finish Gate', urdu: 'طارق روڈ گیٹ', pct: 100, z: -85 }
       ]
     },
-    description: 'Survive the historic Karachi commute from Soldier Bazar to PECHS Tariq Road: dodge open manhole gutters, outrun 70cc street robbers, collect Mario-style truck art power-ups, and deliver water to residential homes!',
+    description: 'Survive the historic Karachi commute from Soldier Bazar to PECHS Tariq Road: dodge open manhole gutters, outrun 70cc street robbers, collect truck-art power-ups, and deliver water to residential homes!',
     missions: [
       {
         id: 'm1_potholes',
@@ -75,6 +76,7 @@ export const DISTRICT_CONFIGS = [
     name: 'Karachi: Lyari Football & Culture',
     urdu: 'کراچی: لیاری فٹ بال اور کلچر',
     tagline: 'Bhatta Extortionists, Potholes & Street Peace',
+    runnerFocus: 'Lyari football streets · murals · stray match balls',
     heroTitle: 'District Cleanser',
     unlockedTitle: 'Lyari Aman Hero',
     timeBonus: 75,
@@ -132,6 +134,7 @@ export const DISTRICT_CONFIGS = [
     name: 'Karachi: Saddar & Burns Road',
     urdu: 'کراچی: صدر اور برنز روڈ',
     tagline: 'VIP Protocol Traffic Jams & Edhi Ambulance Escorts',
+    runnerFocus: 'Saddar heritage bazaar · handcarts · scaffold work',
     heroTitle: 'Bazaar Protector',
     unlockedTitle: 'Heritage Savior',
     timeBonus: 85,

@@ -1,6 +1,6 @@
-# Karachi Hole.io - Technical Architecture & Systems Design
+# KARACHI RUNNER - Technical Architecture & Systems Design
 
-This document details the software architecture, rendering pipeline, 3D mathematical models, physics simulation, and native mobile bridge powering **Karachi Hole.io: The City Savior**.
+This document describes the rendering pipeline, runner and civic-mode physics, procedural Karachi models, Master/Developer telemetry bridge, and native Android package.
 
 ---
 
@@ -12,7 +12,7 @@ graph TD
         Boot[src/main.js Entry Point] --> Core[HoleGame Engine src/hole.js]
         
         Core --> SceneGraph[Three.js WebGL Scene]
-        Core --> CameraSystem[GTA Street Chase Camera]
+        Core --> CameraSystem[Karachi Street Chase Camera]
         Core --> Physics[Collision & Boundary Sliding Engine]
         Core --> AI[AI Opponent Controller]
         Core --> Audio[Web Audio Synthesizer src/audio.js]
@@ -40,6 +40,10 @@ graph TD
 | Module | Location | Primary Responsibilities |
 | :--- | :--- | :--- |
 | **Main Bootstrap** | `src/main.js` | Initializes DOM listeners, splash screen, and instantiates `HoleGame`. |
+| **Runner Route & Difficulty** | `src/main.js`, `src/karachi-neighborhoods.js` | 20,000 m named-neighborhood city loop, Soldier Bazar → Lyari → Saddar area transitions, rising speed/hazard combinations, and the return-to-start finish. |
+| **Runner Weather & Hazards** | `src/main.js` | Distance-based monsoon cycle, rain effect, fair post-rain pothole spawning, and runner collision handling. |
+| **Master / Developer Console** | `runner-console.html`, `src/runnerConsole.js` | Shared browser-local Runner telemetry, active-run test controls, QA snapshots, and feedback; Master and Developer URLs redirect here. |
+| **Portable Game Ops Engine** | `src/game-ops-engine.js` | Dependency-free, namespaced operations ledger; bounded telemetry rules, review-only recommendations, explicit-consent aggregate transport, and portable report export. |
 | **Game Engine** | `src/hole.js` | WebGL scene graph, render loop, camera chase math, devour physics, leaderboard, HUD update cycle, auto-pause listeners. |
 | **District System** | `src/districts.js` | Karachi district progression (Saddar, Clifton, Korangi, Lyari, Malir), civic crisis definitions, before/after transformations. |
 | **Educational Engine** | `src/educationalChallenges.js` | Age-calibrated pictorial quiz dilemmas (Kids, Junior, Adult), reward payouts, non-skippable dialog state. |
@@ -47,13 +51,13 @@ graph TD
 | **City Generator** | `src/city.js` | Procedural Karachi road network, intersections, sidewalks, streetlights, billboards, and devourable urban props. |
 | **Skin System** | `src/skins.js` | Procedural canvas textures & ring shaders (Pakistani Truck Art, Sindhi Ajrak, Green Crescent, Gold Star). |
 | **Audio Synthesizer** | `src/audio.js` | Synthesizes swallowing pops, water splashes, police sirens, and fanfare using Web Audio API (0 external MP3 files). |
-| **Test Runner** | `scripts/test_runner.js` | Headless Chrome automated test suite executing 10 deterministic test cases with screenshot captures. |
+| **Test Runner** | `scripts/test_runner.js` | Headless Chrome automated regression suite covering runner, console, progression, responsive layout, and Android asset sync. |
 
 ---
 
 ## 3. 3D Camera & Visual Mechanics
 
-### Subway Surfers / GTA Third-Person Street Chase Math
+### Third-Person Street Chase Camera Math
 Rather than using a detached top-down isometric view, Karachi Hole.io employs an intimate street-level chase camera that places the player inside the bustling corridors of Karachi:
 
 ```
@@ -174,7 +178,17 @@ To create the illusion that the ground has an actual physical hole where buildin
 
 ---
 
-## 8. Automated Testing Pipeline
+## 8. Portable Game Ops, Automation & Data Boundaries
+
+`src/game-ops-engine.js` is a standalone ESM module with injectable storage, clock, namespace, and optional aggregate transport. It has no Three.js, DOM, or project-specific imports, and can be copied into another browser game. The Master Board stores bounded gameplay events and deterministic suggestions in the current browser profile. Repeated low-FPS episodes and repeated hazard losses can create review items; developer notes are categorized by fixed text rules. Suggestions are not code patches and require human review.
+
+The game may apply only explicit, bounded runtime recovery rules: the existing stuck-run watchdog restores a stalled runner, and sustained low frame rate can lower the renderer pixel ratio in two small steps. Both actions are recorded in the operations ledger. This module does not rewrite source files, install packages, or execute arbitrary developer feedback as code. Scheduled repository automation runs the production build and browser regression suite; reports are saved as GitHub Actions artifacts. It runs daily, on manual dispatch, and when an issue is tagged `game-ops`. A downloaded `test_results.json` can be imported into the Master Board; imported test cases, report summaries, failures, and resulting review suggestions are saved in the local ledger. Duplicate report timestamps and malformed results are rejected.
+
+Gameplay telemetry and feedback remain local by default. Cross-device install counts, trends, or user feedback are unavailable without a separately configured and consented analytics service. The module exposes an opt-in aggregate transport adapter but sends nothing unless both consent and an adapter are supplied. Routine QA logs are exportable from the Master Board.
+
+---
+
+## 9. Automated Testing Pipeline
 
 The automated test runner (`scripts/test_runner.js`) validates all architectural layers:
 - **Build Layer**: `vite build` compilation and tree shaking.

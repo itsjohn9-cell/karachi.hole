@@ -1,0 +1,53 @@
+name: Game Ops Build and Regression
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-regression:
+    if: >-
+      github.event_name != 'issues' ||
+      contains(github.event.issue.labels.*.name, 'game-ops')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install browser
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Build, unit, and browser regression suite
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+        run: npm test
+
+      - name: Retain test report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-ops-${{ github.run_id }}
+          path: |
+            test_reports/test_results.json
+            test_reports/*.png
+          if-no-files-found: warn
+          retention-days: 30

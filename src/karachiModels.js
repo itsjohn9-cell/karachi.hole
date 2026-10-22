@@ -2507,10 +2507,10 @@ export const KarachiModels = {
     return suv;
   },
 
-  // 32. K-Electric Sparking Kunda Transformer Pole - Civic Evil Tier 2 (14h Load Shedding!)
-  createKElectricTransformer() {
+  // 32. Sparking utility transformer pole - civic hazard
+  createSparkingTransformer() {
     const group = new THREE.Group();
-    group.name = "KE-Sparking-Kunda";
+    group.name = "Sparking-Utility-Transformer";
     group.isBadGuy = true;
 
     // Concrete Utility Pole
@@ -2604,7 +2604,7 @@ export const KarachiModels = {
       ctx.fillText(text, 220, 46);
       bTex.needsUpdate = true;
     };
-    drawBubble('⚡ K-Electric Kunda: 14h Load Shedding!');
+    drawBubble('⚡ Sparking Utility Wires!');
 
     const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent: true }));
     bubble.scale.set(4.4, 1.1, 1);
@@ -2612,13 +2612,13 @@ export const KarachiModels = {
     group.add(bubble);
 
     // Glowing Neon Target Decal & Billboard
-    const targetDecal = this.createEvilTargetDecal('ke', '⚡ K-ELECTRIC KUNDA • DEVOUR!');
+    const targetDecal = this.createEvilTargetDecal('ke', '⚡ EXPOSED WIRES • CLEAR!');
     group.add(targetDecal);
 
     group.userData = {
       isBadGuy: true,
       evilType: 'ke',
-      name: "K-Electric Sparking Kunda",
+      name: "Sparking Utility Transformer",
       sparkGroup,
       drawBubble,
       bubbleSprite: bubble
@@ -4328,10 +4328,10 @@ export const KarachiModels = {
     return group;
   },
 
-  // 7. K-Electric Pole with Tangled Wire Nest & 440V Danger Plate
-  createKElectricTransformerPole() {
+  // 7. Utility pole with tangled wires and a danger plate
+  createUtilityTransformerPole() {
     const group = new THREE.Group();
-    group.name = "K-Electric Transformer Pole (کے الیکٹرک)";
+    group.name = "Utility Transformer Pole";
 
     [-1.0, 1.0].forEach(px => {
       const pole = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9.5, 0.4), materials.towerConcrete);
@@ -5401,13 +5401,13 @@ export const KarachiModels = {
     return group;
   },
 
-  // 13. Low Hanging K-Electric Dangling Live Wires (Overhead Obstacle - Must Slide Under!)
-  createKElectricDanglingWires(width = 6.8) {
+  // 13. Low-hanging street wires (overhead obstacle - slide underneath)
+  createHangingWireHazard(width = 6.8) {
     const group = new THREE.Group();
-    group.name = "KElectric_Dangling_Wires";
-    group.userData = { isOverheadObstacle: true, obstacleType: 'ke_wire', requiredAction: 'slide' };
+    group.name = "Hanging_Street_Wires";
+    group.userData = { isOverheadObstacle: true, obstacleType: 'wire', requiredAction: 'slide' };
 
-    // Utility Pole Left & Right
+    // Street-side utility poles keep the road itself clear of supports.
     const poleGeo = new THREE.CylinderGeometry(0.2, 0.25, 6.0, 8);
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.8 });
     const poleL = new THREE.Mesh(poleGeo, poleMat);
@@ -5426,56 +5426,40 @@ export const KarachiModels = {
     crossBar.position.set(0, 5.5, 0);
     group.add(crossBar);
 
-    // Hanging tangled wires sagging down to head level (~1.85m off ground)
-    const wireMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-    const wireGeo1 = new THREE.CylinderGeometry(0.04, 0.04, width, 6);
-    wireGeo1.rotateZ(Math.PI / 2);
-    const wire1 = new THREE.Mesh(wireGeo1, wireMat);
-    wire1.position.set(0, 1.85, 0);
-    group.add(wire1);
+    // Realistic sag between street-side poles, with a second loose service cable.
+    const wireMat = new THREE.MeshStandardMaterial({ color: 0x17191b, roughness: 0.72, metalness: 0.3 });
+    const wireCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-width / 2, 2.45, 0),
+      new THREE.Vector3(-width / 4, 2.04, 0),
+      new THREE.Vector3(0, 1.82, 0),
+      new THREE.Vector3(width / 4, 2.04, 0),
+      new THREE.Vector3(width / 2, 2.45, 0)
+    ]);
+    group.add(new THREE.Mesh(new THREE.TubeGeometry(wireCurve, 24, 0.045, 6, false), wireMat));
 
-    const wire2 = new THREE.Mesh(wireGeo1, wireMat);
-    wire2.position.set(0, 2.05, 0.15);
-    group.add(wire2);
+    const looseCableCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-width / 2, 2.6, 0.22),
+      new THREE.Vector3(-width / 3, 1.95, 0.22),
+      new THREE.Vector3(-width / 6, 2.2, 0.22),
+      new THREE.Vector3(0, 1.98, 0.22),
+      new THREE.Vector3(width / 3, 2.18, 0.22),
+      new THREE.Vector3(width / 2, 2.55, 0.22)
+    ]);
+    group.add(new THREE.Mesh(new THREE.TubeGeometry(looseCableCurve, 28, 0.032, 6, false), wireMat));
 
-    // Warning Tagboard in Urdu/English: "⚡ کے الیکٹرک - لٹکتی تاریں (SLIDE UNDER!)"
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 128;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#b71c1c';
-    ctx.fillRect(0, 0, 512, 128);
-    ctx.strokeStyle = '#ffd700';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(6, 6, 500, 116);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 32px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('⚡ K-ELECTRIC LIVE WIRE ⚡', 256, 45);
-
-    ctx.fillStyle = '#ffd700';
-    ctx.font = 'bold 36px sans-serif';
-    ctx.fillText('لٹکتی تاریں - نیچے جھکیں [SLIDE]', 256, 95);
-
-    const signTex = new THREE.CanvasTexture(canvas);
-    const sign = new THREE.Mesh(
-      new THREE.PlaneGeometry(width * 0.7, 1.1),
-      new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide })
+    const cautionPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.7, 1.35),
+      new THREE.MeshStandardMaterial({ color: 0xb33a32, roughness: 0.82 })
     );
-    sign.position.set(0, 3.2, 0);
-    group.add(sign);
+    cautionPanel.position.set(-width / 2 + 0.5, 2.55, -0.2);
+    group.add(cautionPanel);
 
-    // Flashing electric spark nodes
-    const sparkGeo = new THREE.SphereGeometry(0.18, 8, 8);
-    const sparkMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
-    const spark1 = new THREE.Mesh(sparkGeo, sparkMat);
-    spark1.position.set(-1.2, 1.85, 0);
-    group.add(spark1);
-
-    const spark2 = new THREE.Mesh(sparkGeo, sparkMat);
-    spark2.position.set(1.5, 1.85, 0);
-    group.add(spark2);
+    const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffc247 });
+    [-1.1, 1.2].forEach(x => {
+      const spark = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), sparkMat);
+      spark.position.set(x, 1.9, 0.03);
+      group.add(spark);
+    });
 
     return group;
   },
@@ -5486,54 +5470,55 @@ export const KarachiModels = {
     group.name = "RoadDigging_Obstacle";
     group.userData = { isGroundObstacle: true, obstacleType: 'digging', requiredAction: 'jump' };
 
-    // Mound of excavated rubble / asphalt debris
-    const moundGeo = new THREE.DodecahedronGeometry(1.2, 1);
-    moundGeo.scale(1.4, 0.65, 1.0);
-    const moundMat = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.95 });
-    const mound = new THREE.Mesh(moundGeo, moundMat);
-    mound.position.set(0, 0.45, 0);
-    mound.castShadow = true;
-    group.add(mound);
+    const asphalt = new THREE.Mesh(
+      new THREE.BoxGeometry(width * 0.84, 0.08, 2.0),
+      new THREE.MeshStandardMaterial({ color: 0x161a1e, roughness: 0.98 })
+    );
+    asphalt.position.y = 0.03;
+    group.add(asphalt);
 
-    // Striped KMC barricade board
-    const boardGeo = new THREE.BoxGeometry(width, 0.9, 0.12);
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 128;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ff6f00';
-    ctx.fillRect(0, 0, 256, 128);
-    ctx.fillStyle = '#ffffff';
-    // Diagonal hazard stripes
-    for (let x = -128; x < 384; x += 32) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x + 16, 0);
-      ctx.lineTo(x - 16, 128);
-      ctx.lineTo(x - 32, 128);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('🚧 KMC WORK', 128, 70);
-
-    const boardMat = new THREE.MeshStandardMaterial({
-      map: new THREE.CanvasTexture(canvas),
-      roughness: 0.5
+    const rubbleMat = new THREE.MeshStandardMaterial({ color: 0x68645c, roughness: 0.98 });
+    [
+      [-0.78, 0.22, -0.68, 0.45],
+      [-0.28, 0.26, 0.24, 0.52],
+      [0.42, 0.2, -0.42, 0.38],
+      [0.84, 0.25, 0.58, 0.46],
+      [0.05, 0.16, 0.72, 0.32]
+    ].forEach(([x, y, z, scale]) => {
+      const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(scale, 0), rubbleMat);
+      rubble.position.set(x, y, z);
+      rubble.rotation.set(0.3, x, 0.2);
+      rubble.castShadow = true;
+      group.add(rubble);
     });
-    const board = new THREE.Mesh(boardGeo, boardMat);
-    board.position.set(0, 0.85, -0.2);
+
+    const boardMat = new THREE.MeshStandardMaterial({ color: 0xd3c8b3, roughness: 0.86 });
+    const board = new THREE.Mesh(new THREE.BoxGeometry(width, 0.58, 0.1), boardMat);
+    board.position.set(0, 1.08, -1.02);
     board.castShadow = true;
     group.add(board);
 
-    // Flashing orange beacon lamp on top
-    const beacon = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18, 0.22, 0.35, 12),
-      new THREE.MeshBasicMaterial({ color: 0xff3d00 })
-    );
-    beacon.position.set(width * 0.35, 1.45, -0.2);
-    group.add(beacon);
+    const stripeColors = [0xc74d35, 0xe6ddc8, 0xc74d35, 0xe6ddc8, 0xc74d35];
+    stripeColors.forEach((color, index) => {
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(width / stripeColors.length - 0.04, 0.42, 0.025),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.82 })
+      );
+      stripe.position.set(
+        -width / 2 + (index + 0.5) * (width / stripeColors.length),
+        1.08,
+        -0.96
+      );
+      group.add(stripe);
+    });
+
+    const supportMat = new THREE.MeshStandardMaterial({ color: 0x554a3e, roughness: 0.92 });
+    [-width * 0.38, width * 0.38].forEach(x => {
+      const support = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.12, 0.1), supportMat);
+      support.position.set(x, 0.58, -0.95);
+      support.rotation.z = x < 0 ? -0.12 : 0.12;
+      group.add(support);
+    });
 
     return group;
   },
@@ -5646,11 +5631,11 @@ export const KarachiModels = {
     const puddleGeo = new THREE.PlaneGeometry(width, 3.8, 8, 8);
     puddleGeo.rotateX(-Math.PI / 2);
     const puddleMat = new THREE.MeshStandardMaterial({
-      color: 0x33691e,
-      roughness: 0.1,
-      metalness: 0.35,
+      color: 0x51483b,
+      roughness: 0.42,
+      metalness: 0.08,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.72
     });
     const puddle = new THREE.Mesh(puddleGeo, puddleMat);
     puddle.position.y = 0.035;
@@ -5660,7 +5645,7 @@ export const KarachiModels = {
     // Caution sign at edge
     const cone = new THREE.Mesh(
       new THREE.ConeGeometry(0.25, 0.75, 8),
-      new THREE.MeshStandardMaterial({ color: 0xff3d00, roughness: 0.4 })
+      new THREE.MeshStandardMaterial({ color: 0xc65337, roughness: 0.78 })
     );
     cone.position.set(width * 0.42, 0.375, -1.2);
     group.add(cone);
@@ -5791,42 +5776,174 @@ export const KarachiModels = {
     return group;
   },
 
+  createLyariStreetFootball() {
+    const group = new THREE.Group();
+    group.name = 'Lyari-Street-Football';
+    group.userData = { isLaneBlocker: true, obstacleType: 'lyari_football', requiredAction: 'dodge' };
+
+    const ball = new THREE.Mesh(
+      new THREE.SphereGeometry(0.64, 20, 16),
+      new THREE.MeshStandardMaterial({ color: 0xe7dfc9, roughness: 0.76 })
+    );
+    ball.position.y = 0.68;
+    ball.castShadow = true;
+    group.add(ball);
+
+    const panelMaterial = new THREE.MeshStandardMaterial({ color: 0x252525, roughness: 0.82 });
+    [
+      [-0.28, 0.91, -0.48],
+      [0.34, 0.82, -0.48],
+      [0.02, 0.44, -0.55],
+      [-0.43, 0.6, -0.2],
+      [0.42, 0.57, -0.22]
+    ].forEach(([x, y, z]) => {
+      const patch = new THREE.Mesh(new THREE.SphereGeometry(0.19, 8, 6), panelMaterial);
+      patch.position.set(x, y, z);
+      patch.scale.set(1, 1, 0.25);
+      group.add(patch);
+    });
+    return group;
+  },
+
+  createSaddarMarketHandcart() {
+    const group = new THREE.Group();
+    group.name = 'Saddar-Market-Handcart';
+    group.userData = { isLaneBlocker: true, obstacleType: 'market_cart', requiredAction: 'dodge' };
+
+    const wood = new THREE.MeshStandardMaterial({ color: 0x795548, roughness: 0.88 });
+    const crate = new THREE.MeshStandardMaterial({ color: 0x9c6b3f, roughness: 0.9 });
+    const cartBed = new THREE.Mesh(new THREE.BoxGeometry(2.15, 0.16, 2.0), wood);
+    cartBed.position.y = 0.74;
+    cartBed.castShadow = true;
+    group.add(cartBed);
+
+    [-0.98, 0.98].forEach(x => {
+      const wheel = new THREE.Mesh(
+        new THREE.TorusGeometry(0.36, 0.09, 8, 16),
+        new THREE.MeshStandardMaterial({ color: 0x292929, roughness: 0.9 })
+      );
+      wheel.rotation.y = Math.PI / 2;
+      wheel.position.set(x, 0.4, 0.3);
+      wheel.castShadow = true;
+      group.add(wheel);
+    });
+
+    [-0.5, 0.5].forEach(x => {
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.6, 8), wood);
+      handle.rotation.x = Math.PI / 2;
+      handle.position.set(x, 0.82, 1.65);
+      group.add(handle);
+    });
+
+    [
+      [-0.52, 1.22, -0.35],
+      [0.52, 1.22, -0.35],
+      [0, 1.66, -0.35]
+    ].forEach(([x, y, z]) => {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.82, 0.84), crate);
+      box.position.set(x, y, z);
+      box.castShadow = true;
+      group.add(box);
+    });
+
+    const produceMaterials = [0xb33b2e, 0xe4ad22, 0x4f8d43, 0xe87832];
+    produceMaterials.forEach((color, index) => {
+      const fruit = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18, 8, 7),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.74 })
+      );
+      fruit.position.set(-0.54 + (index % 3) * 0.5, 1.82, -0.45 + Math.floor(index / 3) * 0.38);
+      group.add(fruit);
+    });
+    return group;
+  },
+
+  createSaddarHeritageScaffold(width = 7.5) {
+    const group = new THREE.Group();
+    group.name = 'Saddar-Heritage-Restoration-Scaffold';
+    group.userData = { isOverheadObstacle: true, obstacleType: 'heritage_scaffold', requiredAction: 'slide' };
+
+    const steel = new THREE.MeshStandardMaterial({ color: 0x53616a, metalness: 0.62, roughness: 0.58 });
+    const warning = new THREE.MeshStandardMaterial({ color: 0xc65337, roughness: 0.8 });
+    [-width / 2, width / 2].forEach(x => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 2.7, 8), steel);
+      post.position.set(x, 1.35, 0);
+      post.castShadow = true;
+      group.add(post);
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.12, 0.48), warning);
+      foot.position.set(x, 0.08, 0);
+      group.add(foot);
+    });
+
+    const topRail = new THREE.Mesh(new THREE.BoxGeometry(width + 0.2, 0.16, 0.16), steel);
+    topRail.position.y = 2.65;
+    group.add(topRail);
+
+    const lowRail = new THREE.Mesh(new THREE.BoxGeometry(width, 0.38, 0.14), warning);
+    lowRail.position.y = 1.62;
+    group.add(lowRail);
+
+    [-width / 3, width / 3].forEach(x => {
+      const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 2.15, 6), steel);
+      brace.position.set(x, 1.3, 0);
+      brace.rotation.z = x < 0 ? -0.55 : 0.55;
+      group.add(brace);
+    });
+
+    const sign = new THREE.Mesh(
+      new THREE.BoxGeometry(2.0, 0.48, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0xe5d5b3, roughness: 0.86 })
+    );
+    sign.position.set(0, 2.22, -0.1);
+    group.add(sign);
+    group.userData.patrolAreaLevel = 3;
+    return group;
+  },
+
   // 19. Open Unpaved Gutter Hazard (Deep Manhole / Gutter Void - Must Jump Over!)
   createOpenGutterHazard(width = 1.4) {
     const group = new THREE.Group();
     group.name = "Open_Gutter_Hazard";
     group.userData = { isGroundObstacle: true, obstacleType: 'gutter', requiredAction: 'jump' };
 
-    // Cracked Concrete Rim
-    const rimGeo = new THREE.RingGeometry(width * 0.45, width * 0.72, 16);
-    rimGeo.rotateX(-Math.PI / 2);
-    const rimMat = new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.9 });
-    const rim = new THREE.Mesh(rimGeo, rimMat);
-    rim.position.y = 0.038;
-    rim.receiveShadow = true;
-    group.add(rim);
+    const concrete = new THREE.MeshStandardMaterial({ color: 0x77746c, roughness: 0.96 });
+    const channel = new THREE.Mesh(
+      new THREE.BoxGeometry(width * 0.82, 0.08, 2.7),
+      new THREE.MeshStandardMaterial({ color: 0x171a19, roughness: 0.82 })
+    );
+    channel.position.y = 0.02;
+    group.add(channel);
 
-    // Deep Dark Void Inside Manhole
-    const voidGeo = new THREE.CircleGeometry(width * 0.44, 16);
-    voidGeo.rotateX(-Math.PI / 2);
-    const voidMat = new THREE.MeshBasicMaterial({ color: 0x050508 });
-    const voidMesh = new THREE.Mesh(voidGeo, voidMat);
-    voidMesh.position.y = 0.035;
-    group.add(voidMesh);
+    [-width * 0.48, width * 0.48].forEach(x => {
+      const curb = new THREE.Mesh(new THREE.BoxGeometry(width * 0.16, 0.2, 3.0), concrete);
+      curb.position.set(x, 0.1, 0);
+      curb.castShadow = true;
+      group.add(curb);
+    });
 
-    // Makeshift Warning Branch / Red Cloth stuck in hole (Authentic Karachi road warning!)
-    const stickGeo = new THREE.CylinderGeometry(0.04, 0.05, 1.2, 6);
-    const stickMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
-    const stick = new THREE.Mesh(stickGeo, stickMat);
-    stick.position.set(0.15, 0.55, 0);
-    stick.rotation.z = -0.25;
-    group.add(stick);
+    const displacedCover = new THREE.Mesh(
+      new THREE.CylinderGeometry(width * 0.42, width * 0.42, 0.1, 16),
+      new THREE.MeshStandardMaterial({ color: 0x4e5557, metalness: 0.58, roughness: 0.72 })
+    );
+    displacedCover.rotation.x = Math.PI / 2;
+    displacedCover.rotation.z = -0.18;
+    displacedCover.position.set(width * 0.78, 0.12, 0.85);
+    group.add(displacedCover);
 
-    const flagGeo = new THREE.BoxGeometry(0.32, 0.22, 0.04);
-    const flagMat = new THREE.MeshBasicMaterial({ color: 0xd50000 });
-    const flag = new THREE.Mesh(flagGeo, flagMat);
-    flag.position.set(0.3, 1.05, 0);
-    group.add(flag);
+    [-0.48, 0.48].forEach(x => {
+      const bollard = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.055, 0.075, 0.68, 8),
+        new THREE.MeshStandardMaterial({ color: 0xc74d35, roughness: 0.82 })
+      );
+      bollard.position.set(x, 0.34, -1.55);
+      group.add(bollard);
+      const reflectiveBand = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.058, 0.07, 0.12, 8),
+        new THREE.MeshStandardMaterial({ color: 0xe7dfc9, roughness: 0.48 })
+      );
+      reflectiveBand.position.set(x, 0.42, -1.55);
+      group.add(reflectiveBand);
+    });
 
     return group;
   },
@@ -5918,9 +6035,5 @@ export const KarachiModels = {
     return group;
   }
 };
-
-
-
-
 
 

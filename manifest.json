@@ -1,7 +1,7 @@
 {
-  "name": "Hole.io Karachi - City Devourer",
-  "short_name": "Hole Karachi",
-  "description": "Devour Karachi city! Grow your black hole from small rickshaws and chai dhabas to towering skyscrapers and Mazar-e-Quaid!",
+  "name": "KARACHI RUNNER",
+  "short_name": "Karachi Runner",
+  "description": "Run the streets of Karachi. Dodge traffic and neighborhood hazards, collect rupees and power-ups, and complete the city loop.",
   "start_url": "./index.html",
   "display": "fullscreen",
   "orientation": "any",
@@ -9,10 +9,16 @@
   "background_color": "#0d1117",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/icons/karachi-runner-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/karachi-runner-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

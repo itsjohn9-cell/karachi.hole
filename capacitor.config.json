@@ -1,13 +1,13 @@
 {
   "appId": "com.holeio.karachi",
-  "appName": "Hole.io Karachi - City Devourer",
+  "appName": "KARACHI RUNNER",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "android": {
     "backgroundColor": "#0d1117",
-    "allowMixedContent": true,
+    "allowMixedContent": false,
     "captureInput": true,
-    "webContentsDebuggingEnabled": true
+    "webContentsDebuggingEnabled": false
   },
   "server": {
     "androidScheme": "https"

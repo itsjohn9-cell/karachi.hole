@@ -7,7 +7,7 @@ All notable changes to the **Karachi Hole.io: The City Savior** project are docu
 ## [v2.2.1] - 2026-10-17
 
 ### 🚀 Highlights & Gameplay Bug Fixes
-- **Solid AABB Building & Corner Collision Physics**: Implemented circle-to-AABB bounding box collision resolution with tangential sliding and interior pushout for all rectangular buildings, colonial tenements, food stalls, K-Electric poles, and municipal signboards. Players and avatars can no longer pass through building walls or corners.
+- **Solid AABB Building & Corner Collision Physics**: Implemented circle-to-AABB bounding box collision resolution with tangential sliding and interior pushout for all rectangular buildings, colonial tenements, food stalls, utility poles, and municipal signboards. Players and avatars can no longer pass through building walls or corners.
 - **Camera-Relative Arrow Key Controls**: Transformed keyboard Arrow keys and virtual joystick inputs by the third-person camera angle (`camAngle`). ArrowUp now reliably drives the avatar forward down the corridor you are viewing, while ArrowLeft and ArrowRight turn and steer naturally.
 - **HUD Widget Overlap & Overhead Sprite De-Cluttering**: Converted `.active-crisis-card` from absolute to relative positioning within the mission checklist card to prevent overlapping. Added clean max-height and scrolling to `.hud-mission-card` to maintain a 40px buffer above the radar. Hid the player's overhead billboard nametag so third-person camera view is 100% unobstructed.
 - **Universal Civic Threat Capture Radius**: Removed strict tier blocks on district mission targets and expanded capture distance to `hole.radius + (obj.radius || 1.2)`, allowing water tankers, mobile snatchers, and gutka peddlers to be cleanly captured at Level 1.
@@ -19,9 +19,9 @@ All notable changes to the **Karachi Hole.io: The City Savior** project are docu
 
 ### 🚀 Highlights
 - **3D Karachi Hero Avatars (Hole View Removed)**: Replaced the dark void hole in the ground with 5 authentic 3D Karachi character avatars (Tariq in Shalwar Kameez, Dr. Ayesha in Ajrak Scarf, Inspector Farooq in Police Uniform, Bilal in Edhi Volunteer Vest, and Zain the Eco Cadet) with procedural limb walk/run cycle skeletal animations, floating name badges, and civic ground auras.
-- **GTA Street-Level Third-Person Perspective**: Camera follows dynamically behind the character avatar, tracking facing angle down avenues, boulevards, and side alleys with deep Karachi street visibility.
+- **Karachi Street-Level Third-Person Perspective**: Camera follows dynamically behind the character avatar, tracking facing angle down avenues, boulevards, and side alleys with deep Karachi street visibility.
 - **Real-Life Solid Obstacle Physics**: Characters cannot walk through solid buildings, colonial monuments, or food stalls; implemented smooth sliding obstacle collision physics.
-- **Zero-Overlap Quadrant HUD**: Eliminated all overlapping cards and banners across all screen sizes (mobile through desktop) using dedicated quadrants (Top bar, Left mission checklist, Right live scoreboard, Bottom-left circular GTA radar, Bottom-right sprint button).
+- **Zero-Overlap Quadrant HUD**: Eliminated all overlapping cards and banners across all screen sizes (mobile through desktop) using dedicated screen regions for the top bar, mission checklist, live scoreboard, Karachi mini-map and action controls.
 - **Multi-Mission District Checklists & Level 2 Fix**: Replaced single-evil quotas with structured multi-mission checklists (4–5 civic objectives per district). Fixed Level 2 inaction by making VIP Protocol convoys and water tankers immediately interactable at tier 1 with 3D rotating diamond waypoint beacons.
 - **Dynamic Competitor Bot AI & Scoring**: Fixed bot coordinate initialization bug (`[x, z]` vs `{x, z}`) so AI competitor bots actively roam the streets, collect debris, and accumulate score on the live leaderboard.
 - **Interactive Age-Calibrated Mini-Puzzles**: Expanded educational challenges with hands-on mini-puzzles (Kids Waste Sorter, Junior Water Pipe Connector, Teens Emergency Route Dispatch) that auto-resume upon correct solution.
@@ -55,7 +55,7 @@ All notable changes to the **Karachi Hole.io: The City Savior** project are docu
 ## [v2.0.0] - 2026-10-16
 
 ### 🚀 Highlights
-- **Subway Surfers / GTA Third-Person Street Chase Camera**: Completely transformed the perspective from a distant top-down view to an immersive, ground-level street-chase camera. The camera follows tightly behind the player hole ($Y \approx 2.65\text{m}$, $Z \approx 4.6\text{m}$), tilting up into Karachi's skyline with lateral steering banking.
+- **Karachi Street-Level Chase Camera**: Completely transformed the perspective from a distant top-down view to an immersive, ground-level street-chase camera. The camera follows tightly behind the player ($Y \approx 2.65\text{m}$, $Z \approx 4.6\text{m}$), tilting up into Karachi's skyline with lateral steering banking.
 - **Start Mission Onboarding & Age Tiers**: Added initial mission modal allowing players to enter their Hero Name and select their age bracket (**Kids 5–8**, **Junior 9–12**, or **Teens/Adults 13+**).
 - **Non-Skippable Pictorial Civic Quizzes**: Upgraded educational dilemmas into pictorial choice cards that pause gameplay, cannot be skipped, and auto-resume after 1.2s upon choosing the correct answer.
 - **Auto-Pause on Inactivity**: Implemented automatic game pausing when the player tabs away, minimizes the window, or switches apps, with a dedicated resume modal.

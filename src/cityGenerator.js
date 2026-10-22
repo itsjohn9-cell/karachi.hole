@@ -5,6 +5,7 @@ import { TextureGenerator } from './textures.js';
 export class CityGenerator {
   constructor(scene) {
     this.scene = scene;
+    this.worldObjects = new Set();
     this.edibleObjects = [];
     this.politicians = [];
     this.animals = [];
@@ -27,12 +28,14 @@ export class CityGenerator {
   }
 
   generateCity() {
+    const initialSceneObjects = new Set(this.scene.children);
     this.createGround();
     this.createRoadNetwork();
     this.createPerimeterBoundaries();
     this.createDistantCitySkyline();
     this.populateZones();
     this.spawnKeyCitizens();
+    this.trackWorldObjects(initialSceneObjects);
     return {
       edibleObjects: this.edibleObjects,
       politicians: this.politicians,
@@ -52,6 +55,18 @@ export class CityGenerator {
       obstacles: this.obstacles,
       currentDistrictEvils: this.currentDistrictEvils || []
     };
+  }
+
+  trackWorldObjects(existingObjects) {
+    this.scene.children.forEach(object => {
+      if (!existingObjects.has(object)) this.worldObjects.add(object);
+    });
+  }
+
+  setWorldVisible(isVisible) {
+    this.worldObjects.forEach(object => {
+      object.visible = isVisible;
+    });
   }
 
   createGround() {
@@ -828,6 +843,7 @@ export class CityGenerator {
 
   // Curated District Level Generator
   populateDistrict(districtLevel = 1) {
+    const existingSceneObjects = new Set(this.scene.children);
     // 1. Purge previous dynamic district evils from scene and tracking arrays
     if (this.currentDistrictEvils) {
       this.currentDistrictEvils.forEach(obj => {
@@ -1013,7 +1029,7 @@ export class CityGenerator {
       });
 
       [[-10.0, 10.0], [10.0, 10.0], [0, -45.0]].forEach(([kx, kz], idx) => {
-        const ke = KarachiModels.createKElectricTransformer();
+        const ke = KarachiModels.createSparkingTransformer();
         ke.position.set(kx, 0, kz);
         this.registerEdible(ke, 2, 850, `Sparking Transformer #${idx + 1}`, 2.5, { isBadGuy: true, evilType: 'ke', isDistrictEvil: true });
         this.addWaypointBeacon(ke, '⚡');
@@ -1021,6 +1037,7 @@ export class CityGenerator {
     }
 
     this.currentDistrictEvils = this.badGuys.filter(b => b.isDistrictEvil && b.state !== 'swallowed');
+    this.trackWorldObjects(existingSceneObjects);
     return {
       districtEvils: this.currentDistrictEvils,
       interactiveVictims: this.interactiveVictims,
@@ -1380,9 +1397,9 @@ export class CityGenerator {
       this.registerEdible(camel, 2, 85, `Sea View Beach Camel #${idx + 1}`, 1.8, { isPet: true, isBadGuy: false });
     });
 
-    // 17. K-Electric Poles with Wire Nests & 440V Danger Plates (on sidewalks)
+    // 17. Utility poles with wire nests and danger plates (on sidewalks)
     [[-8.5, -15], [8.5, -15], [-8.5, 35], [8.5, 35]].forEach(([kx, kz]) => {
-      const kePole = KarachiModels.createKElectricTransformerPole();
+      const kePole = KarachiModels.createUtilityTransformerPole();
       kePole.position.set(kx, 0, kz);
       this.scene.add(kePole);
       this.obstacles.push({ position: { x: kx, y: 0, z: kz }, radius: 1.2 });

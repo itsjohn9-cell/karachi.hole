@@ -594,7 +594,7 @@ export const EDUCATIONAL_CHALLENGES = [
     rewardXP: 650,
     rewardTime: 30,
     options: [
-      { id: 'opt_a', icon: '⚠️', picture: '🚧 Keep Away & Call 118', text: 'Stay far away and immediately report the hazard to K-Electric 118!', isCorrect: true },
+      { id: 'opt_a', icon: '⚠️', picture: '🚧 Keep Away & Call Emergency Services', text: 'Stay far away and report the fallen or sparking wire to local emergency services.', isCorrect: true },
       { id: 'opt_b', icon: '🖐️', picture: '⚡ Touch Wires', text: 'Try to pull the wet sparking wire yourself', isCorrect: false }
     ],
     feedback: 'Exact safety rule! Electrocution risk during monsoon is extreme; always keep distance and inform professionals!'

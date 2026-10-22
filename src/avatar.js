@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 /**
- * Karachi Hero 3D Avatars
+ * KARACHI RUNNER 3D Avatars
  * Procedural 3D humanoid character models representing authentic Karachi residents
  * with walking / running limb animations, street-level GTA third-person camera,
  * and solid obstacle collision physics.
@@ -12,7 +12,7 @@ export const AVATAR_PROFILES = [
     id: 'tariq',
     name: 'Tariq - Street Hero',
     tag: 'Neighborhood Vigilante',
-    icon: '🇵🇰',
+    icon: '👕',
     perk: '+10% Movement Speed',
     outfit: 'Green & White Shalwar Kameez with Karachi Waistcoat',
     colors: {

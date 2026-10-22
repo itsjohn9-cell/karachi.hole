@@ -525,7 +525,7 @@ class AudioManager {
     this.vibrate(35);
   }
 
-  // K-Electric Kunda Electric Spark / Zap Sound
+  // Exposed-wire spark / zap sound
   playKESpark() {
     if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
@@ -1668,6 +1668,99 @@ class AudioManager {
       localStorage.setItem('hole_karachi_haptics', this.hapticsEnabled);
     } catch (e) {}
     return this.hapticsEnabled;
+  }
+  // ---------------------------------------------------------------------------
+  // MISSING METHOD STUBS (called by main.js game logic)
+  // ---------------------------------------------------------------------------
+
+  playDevourMajor() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(120, t);
+    osc.frequency.exponentialRampToValueAtTime(60, t + 0.35);
+
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain || this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.42);
+    this.vibrate([50, 30, 70]);
+  }
+
+  playMagnetHum() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(220, t);
+    osc.frequency.linearRampToValueAtTime(260, t + 0.3);
+
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain || this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.36);
+  }
+
+  playScore() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, t);
+    osc.frequency.setValueAtTime(1100, t + 0.08);
+
+    gain.gain.setValueAtTime(0.2, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain || this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.2);
+  }
+
+  playShieldAbsorb() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(600, t);
+    osc.frequency.exponentialRampToValueAtTime(200, t + 0.25);
+
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain || this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.3);
+    this.vibrate(20);
   }
 }
 

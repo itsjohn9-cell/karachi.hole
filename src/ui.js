@@ -8,17 +8,112 @@ import {
   getChallengeByCategoryAndTier,
   getRandomChallenge
 } from './educationalChallenges.js';
-import { saveManager } from './saveManager.js';
+import { MAX_REVIVE_TOKENS, saveManager } from './saveManager.js';
 import { CITIZEN_DIALOGUES, dialogueSystem } from './dialogueSystem.js';
 
 if (typeof window !== 'undefined') {
   window.getChallengeByCategoryAndTier = getChallengeByCategoryAndTier;
 }
 
+const AVATAR_GETUPS = {
+  tariq: 'Green shalwar kameez · waistcoat',
+  ayesha: 'Turquoise kameez · Ajrak scarf',
+  farooq: 'White traffic-police uniform',
+  bilal: 'Edhi rescue vest · white shalwar kameez',
+  zain: 'Green school blazer · trousers'
+};
+
+const AVATAR_UNLOCK_HINTS = {
+  tariq: 'Available from the start',
+  ayesha: 'Reach career Level 2 or earn Clean Green',
+  farooq: 'Reach career Level 3 or earn Road Safety',
+  bilal: 'Reach career Level 2 or earn Lifesaver',
+  zain: 'Reach career Level 4 or earn Green Planter'
+};
+
+const DISTRICT_UNLOCK_HINTS = {
+  1: 'Available from the start',
+  2: 'Complete the Soldier Bazar route, reach career Level 2, or earn Road Safety / Clean Green',
+  3: 'Complete the Lyari route, reach career Level 3, or earn Lifesaver / 4 badges'
+};
+
+function getRunnerCrashAdvice(reason = '') {
+  const normalizedReason = reason.toLowerCase();
+  if (normalizedReason.includes('wire')) {
+    return {
+      icon: '⚡',
+      title: 'Hanging Wires',
+      hint: 'Avoid the wires by sliding: press [S] or swipe down.'
+    };
+  }
+
+  if (normalizedReason.includes('pothole')) {
+    return {
+      icon: '🕳️',
+      title: 'Rain-Softened Pothole',
+      hint: 'Jump over the puddled pothole or move to a clear lane.'
+    };
+  }
+
+  if (normalizedReason.includes('gutter') || normalizedReason.includes('manhole')) {
+    return {
+      icon: '🕳️',
+      title: 'Open Road Gutter',
+      hint: 'Jump over the gutter: press [W] / [Space] or swipe up.'
+    };
+  }
+  if (normalizedReason.includes('digging') || normalizedReason.includes('barricade') || normalizedReason.includes('hazard')) {
+    return {
+      icon: '🚧',
+      title: 'Unmarked Road Digging',
+      hint: 'Jump over the rubble or move to a clear lane.'
+    };
+  }
+  if (normalizedReason.includes('rickshaw') || normalizedReason.includes('qingqi')) {
+    return {
+      icon: '🛺',
+      title: 'Qingqi Rickshaw',
+      hint: 'Move one lane left or right before reaching the rickshaw.'
+    };
+  }
+  if (normalizedReason.includes('snatcher') || normalizedReason.includes('motorbike') || normalizedReason.includes('70cc')) {
+    return {
+      icon: '🏍️',
+      title: '70cc Snatcher Motorcycle',
+      hint: 'Change lanes early, or use the horn if available.'
+    };
+  }
+  if (normalizedReason.includes('truck') || normalizedReason.includes('bedford') || normalizedReason.includes('tanker')) {
+    return {
+      icon: '🚚',
+      title: 'Karachi Street Traffic',
+      hint: 'Switch lanes early; a close pass can also build a drafting boost.'
+    };
+  }
+  if (normalizedReason.includes('bus') || normalizedReason.includes('w11')) {
+    return {
+      icon: '🚐',
+      title: 'W11 Minibus',
+      hint: 'Move one lane left or right before reaching the minibus.'
+    };
+  }
+  if (normalizedReason.includes('sewage')) {
+    return {
+      icon: '🌊',
+      title: 'Sewage Overflow',
+      hint: 'Jump over the spill or move to a clear lane.'
+    };
+  }
+  return {
+    icon: '💥',
+    title: reason || 'Karachi Street Hazard',
+    hint: 'Watch the road ahead and switch lanes or use jump/slide when appropriate.'
+  };
+}
+
 export class UIManager {
   constructor({
     onStartGame,
-    onSelectSkin,
     onRestartGame,
     onSelectMode,
     onSelectDifficulty,
@@ -34,15 +129,13 @@ export class UIManager {
     onHorn,
     onInteractCitizen,
     onOpenMissionJournal,
-    onContinueCareer,
     onSelectDistrict,
     onReturnToMainMenu,
+    onResetCareer,
     onSelectVersion,
-    onQuickRevive,
-    onEmergencyUnstick
+    onQuickRevive
   } = {}) {
     this.onStartGame = onStartGame;
-    this.onSelectSkin = onSelectSkin;
     this.onRestartGame = onRestartGame;
     this.onSelectMode = onSelectMode;
     this.onSelectDifficulty = onSelectDifficulty;
@@ -58,33 +151,42 @@ export class UIManager {
     this.onHorn = onHorn;
     this.onInteractCitizen = onInteractCitizen;
     this.onOpenMissionJournal = onOpenMissionJournal;
-    this.onContinueCareer = onContinueCareer;
     this.onSelectDistrict = onSelectDistrict;
     this.onReturnToMainMenu = onReturnToMainMenu;
+    this.onResetCareer = onResetCareer;
     this.onSelectVersion = onSelectVersion;
     this.onQuickRevive = onQuickRevive;
-    this.onEmergencyUnstick = onEmergencyUnstick;
 
-    this.playerName = 'Karachi Hero';
-    this.currentSkin = 'gutter';
+    const savedPlayer = saveManager.get().player || {};
+    this.playerName = savedPlayer.name || 'Karachi Hero';
+    this.selectedAvatar = saveManager.isAvatarUnlocked(savedPlayer.avatarId) ? savedPlayer.avatarId : 'tariq';
+    this.runnerDifficulty = 'standard';
     this.gameMode = 'battleRoyale'; // 'battleRoyale' or 'sandbox'
     this.difficulty = 'kidsEasy'; // 'kidsEasy' or 'classic'
     this.currentAgeTier = 'kids'; // 'kids', 'junior', 'senior'
-    this.selectedDistrictLevel = 1; // Default: District 1 (DHA & Clifton)
+    this.selectedDistrictLevel = 1;
     this.unlockedBadges = new Set(['water_guardian']);
     this.completedQuizIds = new Set();
     this.activeQuizChallenge = null;
     this.isAutoPaused = false;
     this.activeDialogueCitizen = null;
-    this.civicQuizEnabled = (typeof localStorage !== 'undefined' && localStorage.getItem('hole_karachi_civic_quiz_enabled') === 'true');
+    this.civicQuizEnabled = false;
+    if (typeof localStorage !== 'undefined') {
+      try {
+        this.civicQuizEnabled = localStorage.getItem('hole_karachi_civic_quiz_enabled') === 'true';
+      } catch (error) {
+        console.error('[SAVE] Could not load civic quiz preference.', error);
+      }
+    }
 
-    this.selectedVersion = (typeof localStorage !== 'undefined' && localStorage.getItem('karachi_major_version')) || 'v3';
+    this.selectedVersion = 'v3';
     this.onSelectVersion = onSelectVersion;
 
     this.createStartMissionModal();
     this.createTapToStartPrompt();
     this.createVersionFeedbackModal();
     this.createHUD();
+    this.hud.style.display = 'none';
     this.createSkinModal();
     this.createGoodVsBadModal();
     this.createEducationalQuizModal();
@@ -94,8 +196,10 @@ export class UIManager {
     this.createDistrictClearedModal();
     this.createCitizenDialogueModal();
     this.createMissionJournalModal();
+    this.createRunnerHelpModal();
+    this.createRunnerProgressModal();
     this.createRunnerTutorialOverlay();
-    this.createDevModeUI();
+    this.createRunnerDeveloperUI();
     this.bindEvents();
   }
 
@@ -109,178 +213,302 @@ export class UIManager {
     this.startModal.innerHTML = `
       <div class="modal-card start-mission-card">
         <div class="start-hero-header">
-          <div class="city-crest">🇵🇰</div>
-          <h1 class="start-title">PAKISTAN STREET HERO</h1>
-          <p class="start-tagline">Authentic 3D Urban Action • Switch Between 3 Major Stable Game Modes!</p>
+          <h1 class="start-title">KARACHI RUNNER</h1>
         </div>
 
         <div class="start-form-section">
-          <!-- Major Game Version Selector -->
-          <div class="form-group start-version-group">
-            <div class="form-label-row">
-              <label class="form-label">🎮 SELECT GAME ENGINE / VERSION:</label>
-              <span class="version-tip-badge">3 MAJOR STABLE VERSIONS</span>
-            </div>
-            <div class="start-version-grid" id="start-version-grid">
-              <div class="version-select-card ui-interactive ${this.selectedVersion === 'v1' ? 'active' : ''}" data-version="v1" id="start-vcard-v1">
-                <div class="v-card-top">
-                  <span class="v-icon">🕳️</span>
-                  <span class="v-tag tag-stable">v1.0 STABLE</span>
-                </div>
-                <div class="v-title">Hole Devourer</div>
-                <div class="v-desc">Swallow street litter &amp; cars, grow black hole radius, top-down arcade view</div>
-              </div>
-
-              <div class="version-select-card ui-interactive ${this.selectedVersion === 'v2' ? 'active' : ''}" data-version="v2" id="start-vcard-v2">
-                <div class="v-card-top">
-                  <span class="v-icon">🦸</span>
-                  <span class="v-tag tag-openworld">v2.0 3D PATROL</span>
-                </div>
-                <div class="v-title">Civic Hero 3D</div>
-                <div class="v-desc">GTA-style open-world street patrol, Urdu citizen dialogues, snatcher arrests</div>
-              </div>
-
-              <div class="version-select-card ui-interactive ${this.selectedVersion === 'v3' ? 'active' : ''}" data-version="v3" id="start-vcard-v3">
-                <div class="v-card-top">
-                  <span class="v-icon">🏃</span>
-                  <span class="v-tag tag-runner">v3.0 RUNNER</span>
-                </div>
-                <div class="v-title">Karachi Runner</div>
-                <div class="v-desc">3-lane continuous reflex sprint, parkour jump, slide under live wires</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Player / Game Name Input -->
-          <div class="form-group start-name-group">
-            <label class="form-label" for="player-name-input">👤 PLAYER / HERO NAME:</label>
-            <div class="input-with-icon">
-              <span class="input-icon">👑</span>
-              <input type="text" id="player-name-input" class="text-input" value="Karachi Hero" maxlength="18" placeholder="Enter your player name..." />
-            </div>
-          </div>
-
-          <!-- District / Level Selection -->
+          <!-- Patrol District Selection -->
           <div class="form-group start-district-group">
-            <label class="form-label">📍 SELECT PATROL DISTRICT (LEVEL):</label>
+              <label class="form-label">📍 KARACHI LOOP · 200 NEIGHBORHOODS</label>
             <div class="district-selection-grid" id="start-district-grid">
               <div class="district-card active ui-interactive" data-level="1" id="start-dist-1">
                 <div class="d-header-row">
-                  <span class="d-badge">LV 1</span>
-                  <span class="d-status unlocked-tag">SELECTED</span>
+                  <span class="d-badge">SOLDIER BAZAR · PECHS</span>
+                  <span class="d-status unlocked-tag">START</span>
                 </div>
                 <span class="d-title">Soldier Bazar to PECHS (Tariq Road)</span>
-                <span class="d-sub">Commute: Gutters, 70cc Robbers &amp; NASCAR Crates</span>
+                <span class="d-sub">Old-city utility lanes · gutters &amp; low wires</span>
               </div>
               <div class="district-card ui-interactive" data-level="2" id="start-dist-2">
                 <div class="d-header-row">
-                  <span class="d-badge lv2-badge">LV 2</span>
-                  <span class="d-status unlocked-tag">AVAILABLE</span>
+                  <span class="d-badge lv2-badge">LYARI</span>
+                  <span class="d-status">LOCKED</span>
                 </div>
-                <span class="d-title">Lyari Football &amp; Culture</span>
-                <span class="d-sub">Bhatta Mafia, Racers &amp; Peace</span>
+                <span class="d-title">Lyari: Chakiwara &amp; Baghdadi</span>
+                <span class="d-sub">Football streets · murals &amp; stray match balls</span>
               </div>
               <div class="district-card ui-interactive" data-level="3" id="start-dist-3">
                 <div class="d-header-row">
-                  <span class="d-badge lv3-badge">LV 3</span>
-                  <span class="d-status unlocked-tag">AVAILABLE</span>
+                  <span class="d-badge lv3-badge">SADDAR</span>
+                  <span class="d-status">LOCKED</span>
                 </div>
-                <span class="d-title">Saddar &amp; Empress Market</span>
-                <span class="d-sub">Heritage, VIPs &amp; Encroachments</span>
+                <span class="d-title">Saddar, Burns Road &amp; Empress Market</span>
+                <span class="d-sub">Heritage bazaar · handcarts &amp; scaffold work</span>
               </div>
             </div>
           </div>
 
-          <!-- Age Group Selection -->
           <div class="form-group start-age-group">
-            <label class="form-label">👶 SELECT YOUR AGE GROUP:</label>
-            <div class="age-selection-grid" id="start-age-grid">
-              <div class="age-card active ui-interactive" data-age="kids">
-                <span class="age-card-icon">🐣</span>
-                <span class="age-card-title">Kids</span>
-                <span class="age-card-sub">Ages 5–8</span>
-                <span class="age-card-desc">Visual picture cues</span>
+            <label class="form-label" for="runner-difficulty-grid">🏃 CHOOSE YOUR PACE:</label>
+            <div class="age-selection-grid" id="runner-difficulty-grid" aria-label="Runner pace">
+              <div class="age-card ui-interactive" data-runner-difficulty="easy">
+                <span class="age-card-icon">🌱</span>
+                <span class="age-card-title">Easy</span>
+                <span class="age-card-sub">No turns · scenic forks</span>
               </div>
-              <div class="age-card ui-interactive" data-age="junior">
-                <span class="age-card-icon">🎒</span>
-                <span class="age-card-title">Junior</span>
-                <span class="age-card-sub">Ages 9–12</span>
-                <span class="age-card-desc">Street safety &amp; civic rules</span>
+              <div class="age-card active ui-interactive" data-runner-difficulty="standard">
+                <span class="age-card-icon">🏃</span>
+                <span class="age-card-title">Standard</span>
+                <span class="age-card-sub">Turns &amp; forks</span>
               </div>
-              <div class="age-card ui-interactive" data-age="senior">
-                <span class="age-card-icon">🏆</span>
-                <span class="age-card-title">Teens &amp; Adults</span>
-                <span class="age-card-sub">Ages 13+</span>
-                <span class="age-card-desc">City leadership &amp; ethics</span>
+              <div class="age-card ui-interactive" data-runner-difficulty="hard">
+                <span class="age-card-icon">🔥</span>
+                <span class="age-card-title">Hard</span>
+                <span class="age-card-sub">Frequent chained turns</span>
               </div>
             </div>
           </div>
 
-          <!-- 3D Karachi Avatar Selection -->
+          <!-- Karachi Getup Selection -->
           <div class="form-group start-avatar-group">
-            <label class="form-label">🦸 CHOOSE 3D KARACHI HERO AVATAR:</label>
-            <div class="avatar-selection-grid" id="start-avatar-grid">
+            <label class="form-label">👕 CHOOSE A GETUP:</label>
+            <div class="avatar-selection-grid" id="start-avatar-grid" aria-label="Avatar clothing">
               <div class="avatar-card active ui-interactive" data-avatar="tariq">
-                <span class="avatar-card-icon">🇵🇰</span>
-                <span class="avatar-card-title">Tariq</span>
-                <span class="avatar-card-sub">Shalwar Kameez</span>
+                <span class="avatar-card-outfit">Green shalwar kameez · waistcoat</span>
+                <span class="avatar-card-status" aria-hidden="true"></span>
               </div>
               <div class="avatar-card ui-interactive" data-avatar="ayesha">
-                <span class="avatar-card-icon">🌸</span>
-                <span class="avatar-card-title">Ayesha</span>
-                <span class="avatar-card-sub">Ajrak Scarf</span>
+                <span class="avatar-card-outfit">Turquoise kameez · Ajrak scarf</span>
+                <span class="avatar-card-status" aria-hidden="true"></span>
               </div>
               <div class="avatar-card ui-interactive" data-avatar="farooq">
-                <span class="avatar-card-icon">👮‍♂️</span>
-                <span class="avatar-card-title">Farooq</span>
-                <span class="avatar-card-sub">Traffic Police</span>
+                <span class="avatar-card-outfit">White traffic-police uniform</span>
+                <span class="avatar-card-status" aria-hidden="true"></span>
               </div>
               <div class="avatar-card ui-interactive" data-avatar="bilal">
-                <span class="avatar-card-icon">🚑</span>
-                <span class="avatar-card-title">Bilal</span>
-                <span class="avatar-card-sub">Rescue 1122</span>
+                <span class="avatar-card-outfit">Edhi rescue vest · white shalwar kameez</span>
+                <span class="avatar-card-status" aria-hidden="true"></span>
               </div>
               <div class="avatar-card ui-interactive" data-avatar="zain">
-                <span class="avatar-card-icon">🎒</span>
-                <span class="avatar-card-title">Zain</span>
-                <span class="avatar-card-sub">Eco Cadet</span>
+                <span class="avatar-card-outfit">Green school blazer · trousers</span>
+                <span class="avatar-card-status" aria-hidden="true"></span>
               </div>
             </div>
           </div>
 
-          <!-- Compact Mission Guidance -->
-          <div class="start-hint-strip">
-            <span>🛡️ Drive directly on top of road craters, water tankers &amp; robbers to restore Karachi!</span>
-          </div>
         </div>
 
         <div class="start-action-row" id="start-actions-container">
-          <button class="primary-btn ui-interactive start-mission-btn pulse-glow" id="btn-start-patrol">
-            🚀 START PATROL (LEVEL 1) ➔
+          <button class="secondary-btn ui-interactive start-utility-btn" id="btn-home-help" aria-label="Help and controls">
+            <span class="start-utility-icon" aria-hidden="true">?</span>
+            <span class="start-utility-label">HELP<small>Controls &amp; tips</small></span>
           </button>
-          <button class="secondary-btn ui-interactive continue-career-btn" id="btn-continue-career" style="display: none;">
-            💾 CONTINUE CAREER (Lv. <span id="continue-career-level">1</span>)
+          <button class="secondary-btn ui-interactive start-utility-btn" id="btn-home-progress" aria-label="My collections and achievements">
+            <span class="start-utility-icon" aria-hidden="true">🏆</span>
+            <span class="start-utility-label">PROGRESS<small>Records &amp; rewards</small></span>
+          </button>
+          <button class="primary-btn ui-interactive start-mission-btn pulse-glow" id="btn-start-patrol">
+            <span aria-hidden="true">🏃</span> START RUN
           </button>
         </div>
       </div>
     `;
 
-    // Check if previous career save exists and update continue button
-    try {
-      if (saveManager && saveManager.hasExistingProgress()) {
-        const savedData = saveManager.get();
-        const continueBtn = this.startModal.querySelector('#btn-continue-career');
-        const levelSpan = this.startModal.querySelector('#continue-career-level');
-        if (continueBtn) {
-          if (levelSpan) levelSpan.textContent = savedData.player.level || 1;
-          continueBtn.style.display = 'inline-block';
-        }
-      }
-    } catch (e) {
-      console.warn("Save manager check:", e);
+    document.body.appendChild(this.startModal);
+    this.refreshProgressionContent();
+  }
+
+  createRunnerHelpModal() {
+    this.runnerHelpModal = document.createElement('div');
+    this.runnerHelpModal.className = 'modal-backdrop runner-help-backdrop';
+    this.runnerHelpModal.id = 'modal-runner-help';
+    this.runnerHelpModal.style.display = 'none';
+    this.runnerHelpModal.innerHTML = `
+      <section class="modal-card runner-info-card" role="dialog" aria-modal="true" aria-labelledby="runner-help-title">
+        <header class="runner-info-header">
+          <div>
+            <h2 id="runner-help-title">KARACHI RUNNER · HOW TO PLAY</h2>
+            <p>Controls, hazards and power-ups</p>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-runner-help" aria-label="Close help">&times;</button>
+        </header>
+        <div class="runner-info-content">
+          <section class="runner-help-section">
+            <h3>🎮 CONTROLS</h3>
+            <p><strong>Change lane:</strong> ← / → or A / D, swipe left/right, or tap the lane arrows.</p>
+            <p><strong>Jump:</strong> ↑ / W / Space, swipe up, or tap JUMP.</p>
+            <p><strong>Slide:</strong> ↓ / S, swipe down, or tap SLIDE.</p>
+            <p><strong>Turns &amp; forks:</strong> follow the navigation banner. Press ← / → (or swipe) within 16 m of a junction to turn the right way: perfect turns near the corner pay more. Wrong or missed turns cost a heart. At a fork, ← takes the fast flyover and → takes the dark underpass full of low wires.</p>
+            <p><strong>Horn:</strong> H or tap HORN. <strong>Pause:</strong> Esc or ⏸.</p>
+          </section>
+          <section class="runner-help-section">
+            <h3>🚧 KARACHI STREET HAZARDS</h3>
+            <p>Jump over open gutters, rain-softened potholes and roadworks; slide under hanging wires; move to a clear lane to avoid rickshaws, bikes and traffic.</p>
+          </section>
+          <section class="runner-help-section">
+            <h3>🗺️ THE KARACHI LOOP</h3>
+            <p>Start in Soldier Bazar, pass named Karachi neighbourhoods, continue through Lyari and Saddar, and face faster, denser hazards as the run grows longer. Follow the city loop back to Soldier Bazar to finish.</p>
+          </section>
+          <section class="runner-help-section">
+            <h3>✨ PICKUPS &amp; SECOND CHANCES</h3>
+            <p>Collect rupees and route power-ups: CNG gives a speed shield, tanker shield absorbs a crash, chai restores a heart, biryani magnet attracts rupees, and jump springs boost jumps.</p>
+            <p>Rare golden Rescue Tokens are stored between runs (maximum 3). One token pays for one Quick Revive after a crash. Sprint is provided by route pickups, not a free button.</p>
+          </section>
+        </div>
+        <button class="primary-btn ui-interactive runner-info-close" id="btn-runner-help-done">GOT IT</button>
+      </section>
+    `;
+    document.body.appendChild(this.runnerHelpModal);
+  }
+
+  createRunnerProgressModal() {
+    this.runnerProgressModal = document.createElement('div');
+    this.runnerProgressModal.className = 'modal-backdrop runner-progress-backdrop';
+    this.runnerProgressModal.id = 'modal-runner-progress';
+    this.runnerProgressModal.style.display = 'none';
+    this.runnerProgressModal.innerHTML = `
+      <section class="modal-card runner-info-card" role="dialog" aria-modal="true" aria-labelledby="runner-progress-title">
+        <header class="runner-info-header">
+          <div>
+            <h2 id="runner-progress-title">MY KARACHI RUNNER PROGRESS</h2>
+            <p>Career records, collections and achievements</p>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-runner-progress" aria-label="Close progress">&times;</button>
+        </header>
+        <div class="runner-progress-stats" aria-label="Career records">
+          <div><span>CAREER LEVEL</span><strong id="runner-progress-level">1</strong></div>
+          <div><span>BEST SCORE</span><strong id="runner-progress-score">0</strong></div>
+          <div><span>BEST DISTANCE</span><strong id="runner-progress-distance">0 m</strong></div>
+          <div><span>RUPEES COLLECTED</span><strong id="runner-progress-rupees">0 Rs</strong></div>
+          <div><span>RESCUE TOKENS</span><strong id="runner-progress-tokens">0/3</strong></div>
+        </div>
+        <section class="runner-info-section">
+          <h3>🏅 ACHIEVEMENTS</h3>
+          <div class="runner-progress-grid" id="runner-progress-badges"></div>
+        </section>
+        <section class="runner-info-section">
+          <h3>🎒 COLLECTIONS · ROUTES &amp; GETUPS</h3>
+          <div class="runner-progress-grid" id="runner-progress-collections"></div>
+        </section>
+        <button class="primary-btn ui-interactive runner-info-close" id="btn-runner-progress-done">DONE</button>
+      </section>
+    `;
+    document.body.appendChild(this.runnerProgressModal);
+  }
+
+  refreshRunnerProgress() {
+    if (!this.runnerProgressModal) return;
+    const save = saveManager.get();
+    const stats = save.runnerStats || {};
+    const setText = (id, value) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    };
+    setText('runner-progress-level', String(saveManager.getCareerLevel()));
+    setText('runner-progress-score', (stats.bestScore || 0).toLocaleString());
+    setText('runner-progress-distance', `${(stats.bestDistance || 0).toLocaleString()} m`);
+    setText('runner-progress-rupees', `${(stats.totalRupees || 0).toLocaleString()} Rs`);
+    setText('runner-progress-tokens', `${saveManager.getReviveTokenCount()}/${MAX_REVIVE_TOKENS}`);
+
+    const earnedBadges = new Set(save.badges || []);
+    const badgeGrid = document.getElementById('runner-progress-badges');
+    if (badgeGrid) {
+      badgeGrid.replaceChildren();
+      CIVIC_BADGES.forEach(badge => {
+        const item = document.createElement('div');
+        item.className = `runner-progress-item ${earnedBadges.has(badge.id) ? 'is-unlocked' : 'is-locked'}`;
+        const icon = document.createElement('span');
+        icon.textContent = badge.icon;
+        const name = document.createElement('span');
+        name.textContent = badge.name;
+        const status = document.createElement('strong');
+        status.textContent = earnedBadges.has(badge.id) ? 'EARNED' : 'LOCKED';
+        item.append(icon, name, status);
+        badgeGrid.appendChild(item);
+      });
     }
 
-    document.body.appendChild(this.startModal);
+    const collectionGrid = document.getElementById('runner-progress-collections');
+    if (collectionGrid) {
+      collectionGrid.replaceChildren();
+      const collections = [
+        ...[
+          [1, 'Soldier Bazar · PECHS'],
+          [2, 'Lyari · Chakiwara'],
+          [3, 'Saddar · Burns Road']
+        ].map(([level, label]) => ({
+          label,
+          unlocked: saveManager.isDistrictUnlocked(level)
+        })),
+        ...Object.entries(AVATAR_GETUPS).map(([avatarId, label]) => ({
+          label,
+          unlocked: saveManager.isAvatarUnlocked(avatarId)
+        }))
+      ];
+      collections.forEach(collection => {
+        const item = document.createElement('div');
+        item.className = `runner-progress-item ${collection.unlocked ? 'is-unlocked' : 'is-locked'}`;
+        const name = document.createElement('span');
+        name.textContent = collection.label;
+        const status = document.createElement('strong');
+        status.textContent = collection.unlocked ? 'UNLOCKED' : 'LOCKED';
+        item.append(name, status);
+        collectionGrid.appendChild(item);
+      });
+    }
+  }
+
+  refreshProgressionContent() {
+    document.querySelectorAll('#start-district-grid .district-card').forEach(card => {
+      const level = Number(card.dataset.level);
+      const unlocked = saveManager.isDistrictUnlocked(level);
+      const status = card.querySelector('.d-status');
+      const hint = DISTRICT_UNLOCK_HINTS[level] || `Clear District ${level - 1}, reach career Level ${level}, or earn ${level + 1} badges`;
+      card.classList.toggle('active', level === 1);
+      card.classList.toggle('locked', !unlocked);
+      card.classList.toggle('unlocked', unlocked);
+      card.setAttribute('aria-disabled', 'true');
+      card.setAttribute('aria-current', level === 1 ? 'step' : 'false');
+      card.title = level === 1
+        ? 'Every run starts in Soldier Bazar.'
+        : unlocked ? 'Continue the Karachi loop to reach this area.' : `Locked until progression requirements are met. ${hint}.`;
+      if (status) {
+        status.textContent = !unlocked ? 'LOCKED' : level === 1 ? 'START' : level === 2 ? 'UP NEXT' : 'LATER';
+        status.classList.toggle('unlocked-tag', unlocked);
+      }
+    });
+
+    document.querySelectorAll('#start-avatar-grid .avatar-card, #menu-avatar-grid .avatar-card').forEach(card => {
+      const avatarId = card.dataset.avatar || 'tariq';
+      const unlocked = saveManager.isAvatarUnlocked(avatarId);
+      const hint = AVATAR_UNLOCK_HINTS[avatarId] || 'Locked';
+      const status = card.querySelector('.avatar-card-status');
+      card.classList.toggle('active', avatarId === this.selectedAvatar);
+      card.classList.toggle('locked', !unlocked);
+      card.setAttribute('aria-disabled', String(!unlocked));
+      card.setAttribute('aria-label', `${AVATAR_GETUPS[avatarId] || 'Karachi getup'}${unlocked ? '' : `. Locked: ${hint}`}`);
+      card.title = unlocked ? AVATAR_GETUPS[avatarId] || 'Karachi getup' : `Locked. ${hint}.`;
+      if (status) status.textContent = unlocked ? '' : '🔒';
+    });
+
+    [1, 2, 3].forEach(level => {
+      const button = document.getElementById(`btn-menu-level-${level}`);
+      if (!button) return;
+      const unlocked = saveManager.isDistrictUnlocked(level);
+      button.disabled = !unlocked;
+      button.title = unlocked
+        ? `Run in patrol area ${level}`
+        : `Locked. ${DISTRICT_UNLOCK_HINTS[level] || 'Earn more patrol achievements to unlock this area.'}.`;
+    });
+  }
+
+  openGetupPicker() {
+    this.avatarModalShouldResume = !!window.game?.isGameStarted;
+    if (this.avatarModalShouldResume && !window.game?.isPaused && this.onPauseGame) {
+      this.onPauseGame();
+    }
+    this.refreshProgressionContent();
+    if (this.skinModal) this.skinModal.style.display = 'flex';
   }
 
   // Tap-to-Start Floating Overlay (for instant reaction)
@@ -321,7 +549,7 @@ export class UIManager {
     this.runnerTutorialOverlay.innerHTML = `
       <div class="tut-header">
         <span class="tut-badge">🏃 RUNNER CONTROLS</span>
-        <span class="tut-title">Subway Sprint Karachi</span>
+        <span class="tut-title">KARACHI RUNNER</span>
       </div>
       <div class="tut-grid">
         <div class="tut-row">
@@ -354,27 +582,36 @@ export class UIManager {
         </div>
       </div>
       <div class="tut-footer">
-        <span>🪙 Follow Rupee coin paths &amp; collect Biryani Magnets!</span>
+        <span>🪙 Run through glowing pickups: CNG boost, shield, coin magnet, chai heart, or jump springs.</span>
+        <span class="tut-dismiss-hint">Tap or press a runner control to dismiss. Your run starts 1 second later.</span>
       </div>
     `;
+    this.runnerTutorialOverlay.addEventListener('click', () => this.hideRunnerTutorial());
     document.body.appendChild(this.runnerTutorialOverlay);
   }
 
-  showRunnerTutorial(durationMs = 4000) {
+  showRunnerTutorial(durationMs = 4000, onDismiss = null) {
     if (!this.runnerTutorialOverlay) return;
     this.runnerTutorialOverlay.style.display = 'flex';
     this.runnerTutorialOverlay.classList.remove('fade-out');
+    clearTimeout(this.__tutHideTimeout);
     clearTimeout(this.__tutTimeout);
+    this.__runnerTutorialOnDismiss = onDismiss;
     this.__tutTimeout = setTimeout(() => {
       this.hideRunnerTutorial();
     }, durationMs);
   }
 
   hideRunnerTutorial() {
-    if (!this.runnerTutorialOverlay) return;
+    if (!this.runnerTutorialOverlay || this.runnerTutorialOverlay.style.display === 'none' ||
+        this.runnerTutorialOverlay.classList.contains('fade-out')) return;
     this.runnerTutorialOverlay.classList.add('fade-out');
-    setTimeout(() => {
+    clearTimeout(this.__tutTimeout);
+    this.__tutHideTimeout = setTimeout(() => {
       if (this.runnerTutorialOverlay) this.runnerTutorialOverlay.style.display = 'none';
+      const onDismiss = this.__runnerTutorialOnDismiss;
+      this.__runnerTutorialOnDismiss = null;
+      if (onDismiss) onDismiss();
     }, 380);
   }
 
@@ -386,6 +623,23 @@ export class UIManager {
     } else {
       document.body.classList.remove('mode-runner');
       if (this.hud) this.hud.classList.remove('runner-mode');
+    }
+    this.updateReviveTokenCount(saveManager.getReviveTokenCount());
+    const routeSectionTitle = document.getElementById('menu-route-section-title');
+    if (routeSectionTitle) {
+      routeSectionTitle.textContent = this.isRunnerMode ? '📍 RUNNER ROUTE' : '📍 PATROL AREA';
+    }
+    const restartButton = document.getElementById('btn-menu-restart');
+    if (restartButton) {
+      restartButton.textContent = this.isRunnerMode ? '🔄 RESTART RUN' : '🔄 RESTART DISTRICT';
+    }
+    const pauseTitle = document.querySelector('#modal-auto-pause .pause-title');
+    const pauseDescription = document.querySelector('#modal-auto-pause .pause-desc');
+    if (pauseTitle) pauseTitle.textContent = this.isRunnerMode ? 'RUN PAUSED' : 'GAME PAUSED';
+    if (pauseDescription) {
+      pauseDescription.textContent = this.isRunnerMode
+        ? 'You switched away from KARACHI RUNNER. Your run is safely paused.'
+        : 'You switched tabs or moved away from the screen. Karachi patrol is safely on hold.';
     }
   }
 
@@ -400,8 +654,8 @@ export class UIManager {
       <div class="modal-card version-feedback-card">
         <div class="vfeed-header">
           <div class="vfeed-title-col">
-            <h2 class="vfeed-title">🎮 MAJOR VERSION HUB &amp; RESTORE FEEDBACK</h2>
-            <p class="vfeed-sub">Review stable versions, test features, or log feedback to restore in current or fork to separate project.</p>
+            <h2 class="vfeed-title">🎮 GAME VERSION INFO &amp; FEEDBACK</h2>
+            <p class="vfeed-sub">v3 is the public game. Legacy v1/v2 engines can only be launched from Master Mode.</p>
           </div>
           <button class="modal-close-icon ui-interactive" id="btn-close-version-feedback">&times;</button>
         </div>
@@ -411,7 +665,7 @@ export class UIManager {
             <div class="vfeed-item-header">
               <span class="vfeed-badge vfeed-tag-v1">v1.0 Classic</span>
               <span class="vfeed-name">Hole Devourer (City Muncher)</span>
-              <button class="vfeed-switch-btn ui-interactive" data-switch-ver="v1">▶ Switch to v1</button>
+              <span class="vfeed-switch-btn">Master Mode only</span>
             </div>
             <p class="vfeed-desc">Arcade black hole physics. Consumes road litter, cars, dumpsters, trees. Growing radius mechanics.</p>
             <div class="vfeed-comment-box">
@@ -423,7 +677,7 @@ export class UIManager {
             <div class="vfeed-item-header">
               <span class="vfeed-badge vfeed-tag-v2">v2.0 Open-World</span>
               <span class="vfeed-name">Karachi Civic Hero (3D Patrol)</span>
-              <button class="vfeed-switch-btn ui-interactive" data-switch-ver="v2">▶ Switch to v2</button>
+              <span class="vfeed-switch-btn">Master Mode only</span>
             </div>
             <p class="vfeed-desc">360-degree free roaming patrol, authentic Urdu citizen dialogues, civic hazard repair, snatcher pursuit.</p>
             <div class="vfeed-comment-box">
@@ -434,7 +688,7 @@ export class UIManager {
           <div class="vfeed-item" id="vfeed-card-v3">
             <div class="vfeed-item-header">
               <span class="vfeed-badge vfeed-tag-v3">v3.0 Reflex</span>
-              <span class="vfeed-name">Temple Run Karachi (3-Lane Runner)</span>
+              <span class="vfeed-name">KARACHI RUNNER</span>
               <button class="vfeed-switch-btn ui-interactive" data-switch-ver="v3">▶ Switch to v3</button>
             </div>
             <p class="vfeed-desc">High-speed 3-lane reflex sprint, parkour jumping over potholes, sliding under high-voltage wires, Biryani magnet.</p>
@@ -489,10 +743,6 @@ export class UIManager {
 
   syncActiveVersionUI(versionId) {
     this.selectedVersion = versionId;
-    // Update start modal cards
-    document.querySelectorAll('#start-version-grid .version-select-card').forEach(card => {
-      card.classList.toggle('active', card.dataset.version === versionId);
-    });
     // Update game menu buttons
     document.querySelectorAll('#menu-version-grid .menu-version-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.version === versionId);
@@ -507,6 +757,7 @@ export class UIManager {
     document.querySelectorAll('.vfeed-item').forEach(item => {
       item.classList.toggle('active-v', item.id === `vfeed-card-${versionId}`);
     });
+    this.refreshProgressionContent();
   }
 
   // 2. Non-Overlapping Game Tracking HUD & Scoreboard
@@ -518,10 +769,10 @@ export class UIManager {
       <div class="hud-top-bar">
         <div class="hud-left">
           <div class="karachi-badge">
-            <span class="game-logo-icon" id="hud-avatar-icon">🇵🇰</span>
+            <span class="game-logo-icon" id="hud-avatar-icon">🏃</span>
             <div class="player-title-col">
-              <span class="game-title" id="hud-player-name">KARACHI HERO</span>
-              <span class="hero-tag-sub" id="hud-level-title">Street Patrol Hero</span>
+              <span class="game-title" id="hud-player-name">KARACHI RUNNER</span>
+              <span class="hero-tag-sub" id="hud-level-title">Runner</span>
             </div>
           </div>
           <div class="level-indicator">
@@ -537,6 +788,9 @@ export class UIManager {
           <div class="hud-center-stats-row">
             <div class="runner-hearts-pill" id="hud-hearts-pill">
               <span class="hearts-display" id="hud-hearts-val">❤️❤️❤️</span>
+            </div>
+            <div class="runner-rescue-pill" id="hud-revive-tokens" title="Rescue Tokens for Quick Revive" aria-label="Rescue Tokens: 0" style="display: none;">
+              🛟 <span id="hud-revive-token-count">0</span>
             </div>
             <div class="timer-pill" id="hud-timer">04:00</div>
             <div class="runner-coins-pill" id="hud-coins-pill">
@@ -591,12 +845,21 @@ export class UIManager {
           <button class="menu-pill-btn ui-interactive" id="btn-open-game-menu" title="Open Game Menu & Settings [Esc]">☰ MENU</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
-          <button class="icon-btn ui-interactive" id="btn-open-skins" title="Select Hero Outfit">🎨</button>
+          <button class="icon-btn ui-interactive" id="btn-open-skins" title="Choose runner getup">👕</button>
           <button class="icon-btn ui-interactive" id="btn-open-guide" title="Civic Guide">❓</button>
           <button class="icon-btn ui-interactive" id="btn-top-journal" title="Civic Mission Journal & District Gauges [J]">📜</button>
           <button class="icon-btn ui-interactive" id="btn-open-quiz" title="Civic Academy Challenge">🎓</button>
           <button class="icon-btn ui-interactive" id="btn-manual-pause" title="Pause Game [Esc]">⏸️</button>
         </div>
+      </div>
+
+      <div id="hud-runner-hazard-alert" class="runner-hazard-alert" role="status" aria-live="off" hidden>
+        <span class="runner-hazard-alert-icon" aria-hidden="true">!</span>
+        <span class="runner-hazard-alert-copy">
+          <strong id="hud-runner-hazard-title">ROAD HAZARD AHEAD</strong>
+          <span id="hud-runner-hazard-action">Switch lanes or use the right move</span>
+        </span>
+        <span class="runner-hazard-alert-distance" id="hud-runner-hazard-distance"></span>
       </div>
 
       <!-- Left Panel: District Missions Checklist Card (Collapsible, top: 72px, left: 16px) -->
@@ -655,10 +918,10 @@ export class UIManager {
         </div>
       </div>
 
-      <!-- Bottom-Left: Circular GTA Radar Mini-Map (bottom: 18px, left: 18px) -->
+      <!-- Bottom-Left: Karachi patrol mini-map -->
       <div class="minimap-card gta-radar-card" id="hud-minimap-card">
         <div class="minimap-header">
-          <span class="minimap-title">🗺️ GTA RADAR</span>
+          <span class="minimap-title">🗺️ KARACHI MAP</span>
           <span class="minimap-badge" id="minimap-target-badge">PATROL</span>
         </div>
         <div class="minimap-canvas-wrapper">
@@ -666,13 +929,13 @@ export class UIManager {
         </div>
       </div>
 
-      <!-- Bottom-Left: Temple Run Lane Switch Buttons for Mobile / Touch -->
+      <!-- Bottom-Left: Runner lane controls for touch -->
       <div class="hud-runner-lanes">
-        <button class="lane-btn ui-interactive" id="btn-lane-left" title="Switch Lane Left [A / Left]">◀ LANE</button>
-        <button class="lane-btn ui-interactive" id="btn-lane-right" title="Switch Lane Right [D / Right]">LANE ▶</button>
+        <button class="lane-btn ui-interactive" id="btn-lane-left" title="Switch lane left [A / Left]" aria-label="Switch lane left">◀</button>
+        <button class="lane-btn ui-interactive" id="btn-lane-right" title="Switch lane right [D / Right]" aria-label="Switch lane right">▶</button>
       </div>
 
-      <!-- Bottom-Center: NASCAR Cockpit Racing Cluster & Drafting Bar -->
+      <!-- Bottom-Center: Speed and drafting display -->
       <div class="nascar-cockpit-cluster" id="hud-nascar-cluster" style="display: none;">
         <!-- Dynamic Slipstream / Drafting Meter -->
         <div class="nascar-drafting-pill" id="hud-drafting-pill" style="display: none;">
@@ -708,14 +971,13 @@ export class UIManager {
       <!-- Bottom-Right: Traversal, Horn & Runner Controls -->
       <div class="hud-controls-bottom-right">
         <div class="runner-btn-row secondary-actions">
-          <button class="horn-btn ui-interactive" id="btn-horn" title="King Pressure Horn [H] - Blast Robbers & Clear Road">📢 HORN [H]</button>
-          <button class="sprint-btn ui-interactive" id="btn-sprint" title="Sprint Boost [Shift]">⚡ SPRINT</button>
-          <button class="journal-btn ui-interactive" id="btn-journal" title="Mission Journal & District Gauges [J]">📜 JOURNAL</button>
+          <button class="horn-btn ui-interactive" id="btn-horn" title="Horn [H] - repel robbers and clear nearby road">📢 HORN</button>
+          <button class="sprint-btn runner-legacy-section ui-interactive" id="btn-sprint" title="Hold to boost speed">⚡ SPRINT</button>
+          <button class="journal-btn runner-legacy-section ui-interactive" id="btn-journal" title="Mission Journal & District Gauges [J]">📜 JOURNAL</button>
         </div>
         <div class="runner-btn-row primary-actions">
-          <button class="jump-btn ui-interactive" id="btn-jump" title="Parkour Jump Traversal [Space / W] - Leap Over Open Gutters & Rubble">🦘 JUMP</button>
-          <button class="slide-btn ui-interactive" id="btn-slide" title="Slide Duck [S / Down] - Slide Under Dangling K-Electric Wires">🏃 SLIDE [S]</button>
-          <button class="runner-unstick-btn ui-interactive" id="btn-runner-unstick" title="Emergency Unstick & Clear Road [R]">🔄 UNSTICK [R]</button>
+          <button class="jump-btn ui-interactive" id="btn-jump" title="Jump [Space / W] - leap over gutters and roadworks">🦘 JUMP</button>
+          <button class="slide-btn ui-interactive" id="btn-slide" title="Slide [S / Down] - duck under hanging wires">🏃 SLIDE</button>
         </div>
       </div>
 
@@ -768,7 +1030,7 @@ export class UIManager {
       </div>
 
       <!-- Floating Feedbacks Container -->
-      <div id="floating-feedbacks"></div>
+      <div id="floating-feedbacks" aria-live="polite"></div>
 
     `;
 
@@ -777,7 +1039,7 @@ export class UIManager {
   }
 
   // ---------------------------------------------------------------------------
-  // NASCAR Speed Lines Canvas Overlay
+  // Speed lines canvas overlay
   // ---------------------------------------------------------------------------
   initSpeedLinesCanvas() {
     this.speedCanvas = document.getElementById('speed-lines-canvas');
@@ -848,7 +1110,7 @@ export class UIManager {
         <p class="pause-desc">You switched tabs or moved away from the screen. Karachi patrol is safely on hold.</p>
         <div class="pause-actions-col">
           <button class="primary-btn ui-interactive resume-patrol-btn" id="btn-auto-resume">
-            ▶ RESUME PATROL
+            ▶ RESUME RUN
           </button>
           <button class="secondary-btn ui-interactive" id="btn-pause-open-menu">
             ☰ OPEN GAME MENU &amp; SETTINGS
@@ -877,15 +1139,15 @@ export class UIManager {
             <span class="menu-crest-icon">🎮</span>
             <div>
               <h2 class="menu-title">GAME MENU &amp; SETTINGS</h2>
-              <p class="menu-subtitle" id="menu-hero-summary">Karachi Street Hero • Civic Vice Hub</p>
+              <p class="menu-subtitle" id="menu-hero-summary">KARACHI RUNNER</p>
             </div>
           </div>
           <button class="close-btn ui-interactive" id="btn-close-game-menu">&times;</button>
         </div>
 
         <!-- Hero & Career Summary Strip -->
-        <div class="menu-hero-card">
-          <div class="menu-hero-badge" id="menu-avatar-icon">🇵🇰</div>
+        <div class="menu-hero-card runner-legacy-section">
+          <div class="menu-hero-badge" id="menu-avatar-icon">🏃</div>
           <div class="menu-hero-details">
             <div class="menu-hero-name-row">
               <span class="menu-hero-name" id="menu-player-name">Karachi Hero</span>
@@ -902,7 +1164,7 @@ export class UIManager {
         <!-- Primary Action Navigation -->
         <div class="menu-primary-actions">
           <button class="primary-btn ui-interactive menu-action-btn" id="btn-menu-resume">
-            ▶ RESUME PATROL
+            ▶ RESUME RUN
           </button>
           <button class="secondary-btn ui-interactive menu-action-btn" id="btn-menu-restart">
             🔄 RESTART DISTRICT
@@ -913,51 +1175,33 @@ export class UIManager {
         </div>
 
         <!-- Major Game Version Selector Hub -->
-        <div class="menu-section-header">
-          <span class="menu-section-title">🎮 MAJOR GAMEPLAY VERSION / ENGINE</span>
+        <div class="menu-section-header runner-legacy-section">
+          <span class="menu-section-title">🎮 CURRENT GAME MODE</span>
           <span class="menu-version-pill" id="menu-active-version-pill">v3.0 Runner Active</span>
         </div>
-        <div class="menu-version-grid" id="menu-version-grid">
-          <button class="menu-version-btn ui-interactive ${this.selectedVersion === 'v1' ? 'active' : ''}" data-version="v1" id="mver-btn-v1">
-            <span class="mver-icon">🕳️</span>
-            <div class="mver-info">
-              <span class="mver-title">v1.0 Classic Hole Devourer</span>
-              <span class="mver-desc">Swallow street objects &amp; cars • Expand black hole</span>
-            </div>
-            <span class="mver-tag">STABLE</span>
-          </button>
-
-          <button class="menu-version-btn ui-interactive ${this.selectedVersion === 'v2' ? 'active' : ''}" data-version="v2" id="mver-btn-v2">
-            <span class="mver-icon">🦸</span>
-            <div class="mver-info">
-              <span class="mver-title">v2.0 Karachi Civic Hero (3D)</span>
-              <span class="mver-desc">Open-world 360° GTA patrol • Urdu dialogues &amp; arrests</span>
-            </div>
-            <span class="mver-tag">OPEN WORLD</span>
-          </button>
-
-          <button class="menu-version-btn ui-interactive ${this.selectedVersion === 'v3' ? 'active' : ''}" data-version="v3" id="mver-btn-v3">
+        <div class="menu-version-grid runner-legacy-section" id="menu-version-grid">
+          <div class="menu-version-btn active" id="mver-btn-v3">
             <span class="mver-icon">🏃</span>
             <div class="mver-info">
-              <span class="mver-title">v3.0 Karachi Temple Run</span>
+              <span class="mver-title">KARACHI RUNNER</span>
               <span class="mver-desc">3-lane continuous reflex sprint • Jump &amp; slide</span>
             </div>
             <span class="mver-tag">RUNNER</span>
-          </button>
+          </div>
         </div>
 
-        <div class="menu-version-actions-row">
+        <div class="menu-version-actions-row runner-legacy-section">
           <button class="menu-btn-feedback ui-interactive" id="btn-open-version-feedback">
             💬 Version Feedback / Restore Comments ➔
           </button>
         </div>
 
         <!-- Hub to Access All Other Game Screens -->
-        <div class="menu-section-header">
+        <div class="menu-section-header runner-legacy-section">
           <span class="menu-section-title">🗺️ ALL GAME MENUS &amp; MODES</span>
         </div>
         <div class="menu-hub-grid">
-          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-journal">
+          <button class="hub-tile-btn ui-interactive runner-legacy-section" id="btn-menu-open-journal">
             <span class="hub-tile-icon">📜</span>
             <div class="hub-tile-info">
               <span class="hub-tile-name">Mission Journal</span>
@@ -969,13 +1213,31 @@ export class UIManager {
           <button class="hub-tile-btn ui-interactive" id="btn-menu-open-skins">
             <span class="hub-tile-icon">🎭</span>
             <div class="hub-tile-info">
-              <span class="hub-tile-name">Hero Avatars</span>
-              <span class="hub-tile-sub">Change 3D Karachi Character</span>
+              <span class="hub-tile-name">Choose Getup</span>
+              <span class="hub-tile-sub">Change runner clothing</span>
             </div>
             <span class="hub-tile-arrow">➔</span>
           </button>
 
-          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-quiz">
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-runner-progress">
+            <span class="hub-tile-icon">🏆</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">My Progress</span>
+              <span class="hub-tile-sub">Scores, rupees, routes and achievements</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-runner-help">
+            <span class="hub-tile-icon">❔</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">Runner Help</span>
+              <span class="hub-tile-sub">Controls, hazards and power-ups</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+
+          <button class="hub-tile-btn ui-interactive runner-legacy-section" id="btn-menu-open-quiz">
             <span class="hub-tile-icon">🎓</span>
             <div class="hub-tile-info">
               <span class="hub-tile-name">Civic Academy</span>
@@ -984,7 +1246,7 @@ export class UIManager {
             <span class="hub-tile-arrow">➔</span>
           </button>
 
-          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-guide">
+          <button class="hub-tile-btn ui-interactive runner-legacy-section" id="btn-menu-open-guide">
             <span class="hub-tile-icon">❓</span>
             <div class="hub-tile-info">
               <span class="hub-tile-name">How to Play</span>
@@ -996,20 +1258,20 @@ export class UIManager {
 
         <!-- Level / District Quick Select -->
         <div class="menu-section-header">
-          <span class="menu-section-title">📍 PATROL DISTRICT / LEVEL SELECT</span>
+          <span class="menu-section-title" id="menu-route-section-title">📍 PATROL AREA</span>
         </div>
         <div class="menu-level-select-row" id="menu-level-select-row">
           <button class="level-select-btn ui-interactive" data-level="1" id="btn-menu-level-1">
-            <span class="lvl-num">LV 1</span>
-            <span class="lvl-name">DHA &amp; Clifton</span>
+            <span class="lvl-num">AREA 1</span>
+            <span class="lvl-name">Soldier Bazar · PECHS</span>
           </button>
           <button class="level-select-btn ui-interactive" data-level="2" id="btn-menu-level-2">
-            <span class="lvl-num">LV 2</span>
-            <span class="lvl-name">Lyari Football</span>
+            <span class="lvl-num">AREA 2</span>
+            <span class="lvl-name">Lyari</span>
           </button>
           <button class="level-select-btn ui-interactive" data-level="3" id="btn-menu-level-3">
-            <span class="lvl-num">LV 3</span>
-            <span class="lvl-name">Saddar Empress</span>
+            <span class="lvl-num">AREA 3</span>
+            <span class="lvl-name">Saddar · Burns Road</span>
           </button>
         </div>
 
@@ -1038,7 +1300,7 @@ export class UIManager {
             </button>
           </div>
 
-          <div class="settings-row">
+          <div class="settings-row runner-legacy-section">
             <div class="settings-label-block">
               <span class="settings-name">Civic Moral Questions &amp; Dilemmas</span>
               <span class="settings-hint">Optional interactive quizzes after solving crises (Default: OFF)</span>
@@ -1048,7 +1310,7 @@ export class UIManager {
             </button>
           </div>
 
-          <div class="settings-row">
+          <div class="settings-row runner-legacy-section">
             <div class="settings-label-block">
               <span class="settings-name">Age Group &amp; Tier</span>
               <span class="settings-hint">Customizes quiz dilemmas and guidance speed</span>
@@ -1060,7 +1322,7 @@ export class UIManager {
             </div>
           </div>
 
-          <div class="settings-row">
+          <div class="settings-row runner-legacy-section">
             <div class="settings-label-block">
               <span class="settings-name">Camera Perspective</span>
               <span class="settings-hint">Toggle between Street Chase &amp; Elevated Wide view</span>
@@ -1070,11 +1332,18 @@ export class UIManager {
               <button class="tier-pill-btn ui-interactive" id="btn-cam-wide">Extra Wide Drone</button>
             </div>
           </div>
+          <div class="settings-row">
+            <div class="settings-label-block">
+              <span class="settings-name">Reset Career &amp; Unlocks</span>
+              <span class="settings-hint">Reset XP, achievements, districts, and getups.</span>
+            </div>
+            <button class="setting-pill-toggle ui-interactive" id="btn-reset-career">RESET</button>
+          </div>
         </div>
 
         <div class="menu-footer">
           <button class="primary-btn ui-interactive close-menu-footer-btn" id="btn-menu-footer-close">
-            CLOSE &amp; CONTINUE PATROL
+            CLOSE &amp; CONTINUE RUN
           </button>
         </div>
       </div>
@@ -1083,7 +1352,7 @@ export class UIManager {
     document.body.appendChild(this.gameMenuModal);
   }
 
-  // 4. Hole Skin Selection Modal
+  // 4. Runner Getup Selection Modal
   createSkinModal() {
     this.skinModal = document.createElement('div');
     this.skinModal.className = 'modal-backdrop';
@@ -1093,57 +1362,15 @@ export class UIManager {
     this.skinModal.innerHTML = `
       <div class="modal-card">
         <div class="modal-header">
-          <h2>Select Hero Outfit</h2>
+          <h2>Choose Getup</h2>
           <button class="close-btn ui-interactive" id="btn-close-skins">&times;</button>
         </div>
-        <div class="skin-grid">
-          <div class="skin-card ui-interactive active" data-skin="gutter">
-            <div class="skin-preview skin-gutter"></div>
-            <div class="skin-info">
-              <h3>KMC Open Gutter</h3>
-              <p>Authentic Karachi sewer manhole with iron cleats &amp; murky sludge</p>
-            </div>
-          </div>
-
-          <div class="skin-card ui-interactive" data-skin="truckArt">
-            <div class="skin-preview skin-truck-art"></div>
-            <div class="skin-info">
-              <h3>Truck Art Chamak</h3>
-              <p>Authentic Pakistani floral truck art with peacock motifs</p>
-            </div>
-          </div>
-
-          <div class="skin-card ui-interactive" data-skin="ajrak">
-            <div class="skin-preview skin-ajrak"></div>
-            <div class="skin-info">
-              <h3>Sindh Ajrak</h3>
-              <p>Royal indigo &amp; crimson traditional Sindhi star block print</p>
-            </div>
-          </div>
-
-          <div class="skin-card ui-interactive" data-skin="emerald">
-            <div class="skin-preview skin-emerald"></div>
-            <div class="skin-info">
-              <h3>Sea View Emerald</h3>
-              <p>Bioluminescent Arabian Sea coastal waves</p>
-            </div>
-          </div>
-
-          <div class="skin-card ui-interactive" data-skin="quaid">
-            <div class="skin-preview skin-quaid"></div>
-            <div class="skin-info">
-              <h3>Mazar White &amp; Gold</h3>
-              <p>Majestic white marble and golden calligraphy rim</p>
-            </div>
-          </div>
-
-          <div class="skin-card ui-interactive" data-skin="neon">
-            <div class="skin-preview skin-neon"></div>
-            <div class="skin-info">
-              <h3>Chundrigar Cyber Neon</h3>
-              <p>Electric cyberpunk pink &amp; cyan glow</p>
-            </div>
-          </div>
+        <div class="avatar-selection-grid" id="menu-avatar-grid" aria-label="Avatar clothing">
+          <div class="avatar-card ui-interactive" data-avatar="tariq"><span class="avatar-card-outfit">Green shalwar kameez · waistcoat</span><span class="avatar-card-status" aria-hidden="true"></span></div>
+          <div class="avatar-card ui-interactive" data-avatar="ayesha"><span class="avatar-card-outfit">Turquoise kameez · Ajrak scarf</span><span class="avatar-card-status" aria-hidden="true"></span></div>
+          <div class="avatar-card ui-interactive" data-avatar="farooq"><span class="avatar-card-outfit">White traffic-police uniform</span><span class="avatar-card-status" aria-hidden="true"></span></div>
+          <div class="avatar-card ui-interactive" data-avatar="bilal"><span class="avatar-card-outfit">Edhi rescue vest · white shalwar kameez</span><span class="avatar-card-status" aria-hidden="true"></span></div>
+          <div class="avatar-card ui-interactive" data-avatar="zain"><span class="avatar-card-outfit">Green school blazer · trousers</span><span class="avatar-card-status" aria-hidden="true"></span></div>
         </div>
       </div>
     `;
@@ -1530,22 +1757,15 @@ export class UIManager {
           </div>
 
           <div class="crash-actions-list">
-            <button class="btn-crash-revive ui-interactive" id="btn-crash-revive">
-              ☕ QUICK REVIVE WITH CHAI (Press C or Space)
+            <button class="btn-crash-revive ui-interactive" id="btn-crash-revive" title="Revive">
+              REVIVE
             </button>
-            <button class="btn-crash-retry ui-interactive" id="btn-crash-retry">
-              🔄 RETRY SPRINT FROM START (Press Enter)
+            <div class="crash-revive-status" id="crash-revive-status" role="alert" aria-live="polite" style="display: none;"></div>
+            <button class="btn-crash-retry ui-interactive" id="btn-crash-retry" title="Restart">
+              RESTART
             </button>
-            <div style="display: flex; gap: 8px; margin-top: 4px;">
-              <button class="ghost-btn ui-interactive" id="btn-crash-switch-v2" style="flex: 1; font-size: 0.78rem; padding: 10px 8px;">
-                🏙️ Play v2.0 Civic Savior
-              </button>
-              <button class="ghost-btn ui-interactive" id="btn-crash-switch-v1" style="flex: 1; font-size: 0.78rem; padding: 10px 8px;">
-                🕳️ Play v1.0 Classic Hole
-              </button>
-            </div>
-            <button class="ghost-btn ui-interactive" id="btn-crash-main-menu" style="font-size: 0.78rem; color: #94a3b8; padding: 6px; border: none; background: transparent; cursor: pointer;">
-              🏠 Return to Main Title Menu
+            <button class="ghost-btn ui-interactive" id="btn-crash-main-menu">
+              🏠 HOME
             </button>
           </div>
         </div>
@@ -1579,6 +1799,9 @@ export class UIManager {
           </button>
           <button class="secondary-btn ui-interactive" id="btn-play-again">
             🔄 REPLAY DISTRICT
+          </button>
+          <button class="ghost-btn ui-interactive" id="btn-results-home" style="display: none;">
+            🏠 HOME
           </button>
         </div>
       </div>
@@ -2222,18 +2445,34 @@ export class UIManager {
 
   // Bind All Event Listeners
   bindEvents() {
-    // 0. Major Game Version Selection on start modal
-    const startVersionCards = document.querySelectorAll('#start-version-grid .version-select-card');
-    startVersionCards.forEach(card => {
-      card.addEventListener('click', () => {
-        audio.playClick();
-        startVersionCards.forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        this.selectedVersion = card.dataset.version || 'v3';
-        if (this.onSelectVersion) {
-          this.onSelectVersion(this.selectedVersion);
-        }
-      });
+    const openHelp = () => {
+      audio.playClick();
+      if (this.runnerHelpModal) this.runnerHelpModal.style.display = 'flex';
+    };
+    const closeHelp = () => {
+      if (this.runnerHelpModal) this.runnerHelpModal.style.display = 'none';
+    };
+    const openProgress = () => {
+      audio.playClick();
+      this.refreshRunnerProgress();
+      if (this.runnerProgressModal) this.runnerProgressModal.style.display = 'flex';
+    };
+    const closeProgress = () => {
+      if (this.runnerProgressModal) this.runnerProgressModal.style.display = 'none';
+    };
+    document.getElementById('btn-home-help')?.addEventListener('click', openHelp);
+    document.getElementById('btn-menu-open-runner-help')?.addEventListener('click', openHelp);
+    document.getElementById('btn-close-runner-help')?.addEventListener('click', closeHelp);
+    document.getElementById('btn-runner-help-done')?.addEventListener('click', closeHelp);
+    document.getElementById('btn-home-progress')?.addEventListener('click', openProgress);
+    document.getElementById('btn-menu-open-runner-progress')?.addEventListener('click', openProgress);
+    document.getElementById('btn-close-runner-progress')?.addEventListener('click', closeProgress);
+    document.getElementById('btn-runner-progress-done')?.addEventListener('click', closeProgress);
+    this.runnerHelpModal?.addEventListener('click', event => {
+      if (event.target === this.runnerHelpModal) closeHelp();
+    });
+    this.runnerProgressModal?.addEventListener('click', event => {
+      if (event.target === this.runnerProgressModal) closeProgress();
     });
 
     // 1. Start Mission Button
@@ -2241,85 +2480,55 @@ export class UIManager {
     if (btnStartPatrol) {
       btnStartPatrol.addEventListener('click', () => {
         audio.playClick();
-        const input = document.getElementById('player-name-input');
-        if (input && input.value.trim()) {
-          this.playerName = input.value.trim().slice(0, 18);
-        }
         this.startModal.style.display = 'none';
         this.hideTapToStartPrompt();
         if (this.onStartGame) {
           this.onStartGame({
             playerName: this.playerName,
             ageTier: this.currentAgeTier,
+            runnerDifficulty: this.runnerDifficulty,
             avatarId: this.selectedAvatar || 'tariq',
             districtLevel: this.selectedDistrictLevel || 1,
-            versionId: this.selectedVersion || 'v3'
+            versionId: 'v3'
           });
         }
       });
     }
 
-    // Continue Career Button
-    const btnContinueCareer = document.getElementById('btn-continue-career');
-    if (btnContinueCareer) {
-      btnContinueCareer.addEventListener('click', () => {
-        audio.playClick();
-        this.startModal.style.display = 'none';
-        this.hideTapToStartPrompt();
-        if (this.onContinueCareer) {
-          this.onContinueCareer(saveManager.get());
-        } else if (this.onStartGame) {
-          this.onStartGame({
-            playerName: this.playerName,
-            ageTier: this.currentAgeTier,
-            avatarId: this.selectedAvatar || 'tariq',
-            districtLevel: this.selectedDistrictLevel || 1,
-            versionId: this.selectedVersion || 'v3'
-          });
-        }
-      });
-    }
-
-    // District / Level Cards selection on start modal
-    const startDistrictCards = document.querySelectorAll('#start-district-grid .district-card');
-    startDistrictCards.forEach(card => {
+    const runnerDifficultyCards = document.querySelectorAll('#runner-difficulty-grid .age-card');
+    runnerDifficultyCards.forEach(card => {
       card.addEventListener('click', () => {
         audio.playClick();
-        startDistrictCards.forEach(c => c.classList.remove('active'));
+        runnerDifficultyCards.forEach(c => c.classList.remove('active'));
         card.classList.add('active');
-        this.selectedDistrictLevel = parseInt(card.dataset.level) || 1;
-        if (btnStartPatrol) {
-          btnStartPatrol.textContent = `🚀 START PATROL (LEVEL ${this.selectedDistrictLevel}) ➔`;
-        }
+        this.runnerDifficulty = card.dataset.runnerDifficulty || 'standard';
       });
     });
 
-    // Age cards selection on start modal
-    const startAgeCards = document.querySelectorAll('#start-age-grid .age-card');
-    startAgeCards.forEach(card => {
+    // Outfit selection is shared by onboarding and the in-game getup picker.
+    const avatarCards = document.querySelectorAll('#start-avatar-grid .avatar-card, #menu-avatar-grid .avatar-card');
+    avatarCards.forEach(card => {
       card.addEventListener('click', () => {
         audio.playClick();
-        startAgeCards.forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        this.currentAgeTier = card.dataset.age;
-
-        // Sync tab on quiz modal
-        const quizTabs = document.querySelectorAll('.age-tab');
-        quizTabs.forEach(t => {
-          if (t.dataset.age === this.currentAgeTier) t.classList.add('active');
-          else t.classList.remove('active');
-        });
-      });
-    });
-
-    // 3D Avatar Selection Cards on start modal
-    const startAvatarCards = document.querySelectorAll('#start-avatar-grid .avatar-card');
-    startAvatarCards.forEach(card => {
-      card.addEventListener('click', () => {
-        audio.playClick();
-        startAvatarCards.forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        this.selectedAvatar = card.dataset.avatar;
+        const avatarId = card.dataset.avatar || 'tariq';
+        if (!saveManager.isAvatarUnlocked(avatarId)) {
+          this.showAnnouncement(`🔒 ${AVATAR_UNLOCK_HINTS[avatarId] || 'Earn more achievements to unlock this getup.'}`, '#ffd700');
+          return;
+        }
+        avatarCards.forEach(c => c.classList.toggle('active', c.dataset.avatar === avatarId));
+        this.selectedAvatar = avatarId;
+        if (window.game?.player?.setAvatar) {
+          window.game.player.setAvatar(this.selectedAvatar);
+        }
+        saveManager.get().player.avatarId = avatarId;
+        if (!saveManager.save()) {
+          console.error('[SAVE] Could not persist selected runner getup.');
+          this.showAnnouncement('Could not save this getup. Check device storage.', '#ff5252');
+        }
+        this.refreshProgressionContent();
+        if (this.skinModal) this.skinModal.style.display = 'none';
+        if (this.avatarModalShouldResume && this.onResumeGame) this.onResumeGame();
+        this.avatarModalShouldResume = false;
       });
     });
 
@@ -2328,8 +2537,10 @@ export class UIManager {
     if (btnSprint) {
       btnSprint.addEventListener('mousedown', () => { window.isBoostPressed = true; });
       btnSprint.addEventListener('mouseup', () => { window.isBoostPressed = false; });
+      btnSprint.addEventListener('mouseleave', () => { window.isBoostPressed = false; });
       btnSprint.addEventListener('touchstart', (e) => { e.preventDefault(); window.isBoostPressed = true; });
       btnSprint.addEventListener('touchend', (e) => { e.preventDefault(); window.isBoostPressed = false; });
+      btnSprint.addEventListener('touchcancel', () => { window.isBoostPressed = false; });
     }
 
     // Jump Button (Mobile Traversal)
@@ -2337,11 +2548,9 @@ export class UIManager {
     if (btnJump) {
       const doJump = (e) => {
         if (e && e.preventDefault) e.preventDefault();
-        audio.playJump();
         if (this.onJump) this.onJump();
       };
       btnJump.addEventListener('click', doJump);
-      btnJump.addEventListener('touchstart', doJump, { passive: false });
     }
 
     // King Pressure Horn Button (Clear Traffic & Stun Robbers)
@@ -2349,11 +2558,9 @@ export class UIManager {
     if (btnHorn) {
       const doHorn = (e) => {
         if (e && e.preventDefault) e.preventDefault();
-        audio.playKingPressureHorn();
         if (this.onHorn) this.onHorn();
       };
       btnHorn.addEventListener('click', doHorn);
-      btnHorn.addEventListener('touchstart', doHorn, { passive: false });
     }
 
     // Slide Button (Temple Run low slide duck under dangling wires)
@@ -2361,11 +2568,9 @@ export class UIManager {
     if (btnSlide) {
       const doSlide = (e) => {
         if (e && e.preventDefault) e.preventDefault();
-        audio.playSlide();
         if (this.onSlide) this.onSlide();
       };
       btnSlide.addEventListener('click', doSlide);
-      btnSlide.addEventListener('touchstart', doSlide, { passive: false });
     }
 
     // Lane Switch Buttons (Mobile Left / Right Lane Arrows)
@@ -2376,7 +2581,6 @@ export class UIManager {
         if (this.onLaneLeft) this.onLaneLeft();
       };
       btnLaneLeft.addEventListener('click', doLaneL);
-      btnLaneLeft.addEventListener('touchstart', doLaneL, { passive: false });
     }
 
     const btnLaneRight = document.getElementById('btn-lane-right');
@@ -2386,7 +2590,6 @@ export class UIManager {
         if (this.onLaneRight) this.onLaneRight();
       };
       btnLaneRight.addEventListener('click', doLaneR);
-      btnLaneRight.addEventListener('touchstart', doLaneR, { passive: false });
     }
 
     // Talk Button Prompt (Interactive Citizen Dialogues)
@@ -2434,6 +2637,7 @@ export class UIManager {
 
     // Mission Journal Buttons
     const openJournal = () => {
+      if (this.isRunnerMode) return;
       audio.playClick();
       if (this.onOpenMissionJournal) this.onOpenMissionJournal();
     };
@@ -2481,8 +2685,7 @@ export class UIManager {
     if (btnSkins) {
       btnSkins.addEventListener('click', () => {
         audio.playClick();
-        if (this.onPauseGame) this.onPauseGame();
-        if (this.skinModal) this.skinModal.style.display = 'flex';
+        this.openGetupPicker();
       });
     }
 
@@ -2491,7 +2694,8 @@ export class UIManager {
       btnCloseSkins.addEventListener('click', () => {
         audio.playClick();
         if (this.skinModal) this.skinModal.style.display = 'none';
-        if (this.onResumeGame) this.onResumeGame();
+        if (this.avatarModalShouldResume && this.onResumeGame) this.onResumeGame();
+        this.avatarModalShouldResume = false;
       });
     }
 
@@ -2544,25 +2748,6 @@ export class UIManager {
         this.renderQuizChallenge(newChallenge);
       });
     });
-
-    // Skin card selection
-    if (this.skinModal) {
-      const cards = this.skinModal.querySelectorAll('.skin-card');
-      cards.forEach(card => {
-        card.addEventListener('click', () => {
-          audio.playClick();
-          cards.forEach(c => c.classList.remove('active'));
-          card.classList.add('active');
-          const skinName = card.dataset.skin;
-          this.currentSkin = skinName;
-          if (this.onSelectSkin) this.onSelectSkin(skinName);
-          setTimeout(() => {
-            if (this.skinModal) this.skinModal.style.display = 'none';
-            if (this.onResumeGame) this.onResumeGame();
-          }, 150);
-        });
-      });
-    }
 
     // Difficulty Toggle (Kids / Easy by default)
     const btnDiff = document.getElementById('btn-diff-toggle');
@@ -2658,7 +2843,7 @@ export class UIManager {
     }
 
     // Major Game Version Selection inside Game Menu
-    const menuVersionBtns = document.querySelectorAll('#menu-version-grid .menu-version-btn');
+    const menuVersionBtns = document.querySelectorAll('#menu-version-grid .menu-version-btn[data-version]');
     menuVersionBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         audio.playClick();
@@ -2667,7 +2852,7 @@ export class UIManager {
         btn.classList.add('active');
         this.selectedVersion = ver;
         if (this.onSelectVersion) {
-          this.onSelectVersion(ver);
+          this.onSelectVersion(ver, 'main');
         }
         this.syncActiveVersionUI(ver);
       });
@@ -2767,8 +2952,9 @@ export class UIManager {
     const btnMenuSkins = document.getElementById('btn-menu-open-skins');
     if (btnMenuSkins) {
       btnMenuSkins.addEventListener('click', () => {
-        this.hideGameMenuModal();
-        if (this.skinModal) this.skinModal.style.display = 'flex';
+        audio.playClick();
+        if (this.gameMenuModal) this.gameMenuModal.style.display = 'none';
+        this.openGetupPicker();
       });
     }
 
@@ -2823,6 +3009,30 @@ export class UIManager {
       });
     }
 
+    const btnResetCareer = document.getElementById('btn-reset-career');
+    btnResetCareer?.addEventListener('click', () => {
+      if (!window.confirm('Reset all career XP, achievements, districts, and getup unlocks? This cannot be undone.')) return;
+      if (!saveManager.resetProgress()) {
+        console.error('[SAVE] Career reset could not be persisted.');
+        this.showAnnouncement('Career reset failed. Check device storage.', '#ff5252');
+        return;
+      }
+      this.selectedAvatar = 'tariq';
+      this.selectedDistrictLevel = 1;
+      this.runnerDifficulty = 'standard';
+      this.playerName = 'Karachi Hero';
+      this.currentAgeTier = 'kids';
+      this.civicQuizEnabled = false;
+      try {
+        localStorage.removeItem('hole_karachi_civic_quiz_enabled');
+      } catch (error) {
+        console.error('[SAVE] Career reset succeeded, but civic quiz preference could not be cleared.', error);
+        this.showAnnouncement('Career reset, but some settings could not be cleared.', '#ff9100');
+      }
+      this.refreshProgressionContent();
+      if (this.onResetCareer) this.onResetCareer();
+    });
+
     // Civic Moral Dilemmas / Quiz Toggle (Default: OFF per user instruction)
     const btnMenuToggleQuiz = document.getElementById('btn-menu-toggle-quiz');
     if (btnMenuToggleQuiz) {
@@ -2831,7 +3041,10 @@ export class UIManager {
         this.civicQuizEnabled = !this.civicQuizEnabled;
         try {
           localStorage.setItem('hole_karachi_civic_quiz_enabled', this.civicQuizEnabled ? 'true' : 'false');
-        } catch (e) {}
+        } catch (error) {
+          console.error('[SAVE] Could not persist civic quiz preference.', error);
+          this.showAnnouncement('Could not save the quiz setting. Check device storage.', '#ff5252');
+        }
         if (window.game) {
           window.game.civicQuizEnabled = this.civicQuizEnabled;
         }
@@ -2861,11 +3074,6 @@ export class UIManager {
           ageBadge.textContent = labels[this.currentAgeTier] || 'KIDS (5-8)';
         }
 
-        const startAgeCards = document.querySelectorAll('#start-age-grid .age-card');
-        startAgeCards.forEach(c => {
-          if (c.dataset.age === this.currentAgeTier) c.classList.add('active');
-          else c.classList.remove('active');
-        });
         const quizTabs = document.querySelectorAll('.age-tab');
         quizTabs.forEach(t => {
           if (t.dataset.age === this.currentAgeTier) t.classList.add('active');
@@ -2895,7 +3103,11 @@ export class UIManager {
     // Keyboard shortcut [Esc] for toggling Game Menu
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' || e.code === 'Escape') {
-        if (this.gameMenuModal && this.gameMenuModal.style.display !== 'none') {
+        if (this.runnerHelpModal && this.runnerHelpModal.style.display !== 'none') {
+          this.runnerHelpModal.style.display = 'none';
+        } else if (this.runnerProgressModal && this.runnerProgressModal.style.display !== 'none') {
+          this.runnerProgressModal.style.display = 'none';
+        } else if (this.gameMenuModal && this.gameMenuModal.style.display !== 'none') {
           this.hideGameMenuModal();
         } else if (this.autoPauseModal && this.autoPauseModal.style.display !== 'none') {
           this.hideAutoPauseModal();
@@ -2918,9 +3130,13 @@ export class UIManager {
       if (this.gameOverModal && this.gameOverModal.style.display !== 'none') {
         const crashCard = document.getElementById('runner-crash-card');
         if (crashCard && crashCard.style.display !== 'none') {
-          if (e.code === 'KeyC' || e.code === 'Space') {
+          if (e.code === 'KeyC') {
             e.preventDefault();
-            if (this.onQuickRevive) this.onQuickRevive();
+            if (this.onQuickRevive?.()) {
+              this.gameOverModal.style.display = 'none';
+            } else if (saveManager.getReviveTokenCount() < 1) {
+              this.showCrashReviveError('Collect a rare Rescue Token during a run to use Quick Revive.');
+            }
             return;
           } else if (e.code === 'Enter') {
             e.preventDefault();
@@ -2930,8 +3146,31 @@ export class UIManager {
         }
       }
 
-      // Temple Run Runner Keyboard Controls (Lane switch, Jump, Slide, Horn, Unstick)
-      if (window.game && window.game.isGameStarted && !this.isAutoPaused && !window.game.isPaused) {
+      const tutorialVisible = this.runnerTutorialOverlay?.style.display !== 'none';
+      const tutorialDismissKeys = [
+        'KeyS', 'ArrowDown', 'KeyA', 'ArrowLeft', 'KeyD', 'ArrowRight',
+        'KeyW', 'ArrowUp', 'Space', 'KeyH'
+      ];
+      if (tutorialVisible && window.game?.isTempleRun && window.game.isGameStarted &&
+          tutorialDismissKeys.includes(e.code)) {
+        e.preventDefault();
+        this.hideRunnerTutorial();
+        return;
+      }
+
+      // Runner keyboard controls (lane switch, jump, slide, horn)
+      if (window.game && window.game.isTempleRun && window.game.isGameStarted && !this.isAutoPaused && !window.game.isPaused) {
+        if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, [contenteditable="true"]')) {
+          return;
+        }
+        const runnerControlKeys = [
+          'KeyS', 'ArrowDown', 'KeyA', 'ArrowLeft', 'KeyD', 'ArrowRight',
+          'KeyW', 'ArrowUp', 'Space', 'KeyH'
+        ];
+        if (!runnerControlKeys.includes(e.code)) return;
+        e.preventDefault();
+        if (e.repeat) return;
+
         if (e.code === 'KeyS' || e.code === 'ArrowDown') {
           this.hideRunnerTutorial();
           if (this.onSlide) this.onSlide();
@@ -2947,9 +3186,6 @@ export class UIManager {
         } else if (e.code === 'KeyH') {
           this.hideRunnerTutorial();
           if (this.onHorn) this.onHorn();
-        } else if (e.code === 'KeyR') {
-          this.hideRunnerTutorial();
-          if (this.onEmergencyUnstick) this.onEmergencyUnstick();
         }
       }
     });
@@ -2957,15 +3193,29 @@ export class UIManager {
     // Touch Swipe Gestures for Mobile Temple Run
     let touchStartX = 0;
     let touchStartY = 0;
+    let touchStartTarget = null;
     window.addEventListener('touchstart', (e) => {
-      if (e.touches && e.touches[0]) {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
+      const touch = e.changedTouches?.[0];
+      if (touch) {
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchStartTarget = document.elementFromPoint(touch.clientX, touch.clientY);
       }
     }, { passive: true });
 
     window.addEventListener('touchend', (e) => {
       if (e.changedTouches && e.changedTouches[0]) {
+        const startTarget = touchStartTarget;
+        touchStartTarget = null;
+        if (this.runnerTutorialOverlay?.style.display !== 'none' &&
+            window.game?.isTempleRun && window.game.isGameStarted) {
+          this.hideRunnerTutorial();
+          return;
+        }
+        if (!window.game?.isTempleRun || !window.game.isGameStarted || window.game.isPaused ||
+            startTarget?.closest('.ui-interactive, button, .modal')) {
+          return;
+        }
         const dx = e.changedTouches[0].clientX - touchStartX;
         const dy = e.changedTouches[0].clientY - touchStartY;
         if (Math.abs(dx) > 35 || Math.abs(dy) > 35) {
@@ -2986,7 +3236,8 @@ export class UIManager {
     let mouseStartY = 0;
     let isMouseDown = false;
     window.addEventListener('mousedown', (e) => {
-      if (e.button === 0) {
+      if (e.button === 0 &&
+          !(e.target instanceof Element && e.target.closest('.ui-interactive, button, .modal'))) {
         mouseStartX = e.clientX;
         mouseStartY = e.clientY;
         isMouseDown = true;
@@ -2995,6 +3246,12 @@ export class UIManager {
     window.addEventListener('mouseup', (e) => {
       if (isMouseDown) {
         isMouseDown = false;
+        if (this.runnerTutorialOverlay?.style.display !== 'none' &&
+            window.game?.isTempleRun && window.game.isGameStarted) {
+          this.hideRunnerTutorial();
+          return;
+        }
+        if (!window.game?.isTempleRun || !window.game.isGameStarted || window.game.isPaused) return;
         const dx = e.clientX - mouseStartX;
         const dy = e.clientY - mouseStartY;
         if (Math.abs(dx) > 35 || Math.abs(dy) > 35) {
@@ -3035,6 +3292,12 @@ export class UIManager {
       });
     }
 
+    document.getElementById('btn-results-home')?.addEventListener('click', () => {
+      audio.playClick();
+      if (this.gameOverModal) this.gameOverModal.style.display = 'none';
+      if (this.onReturnToMainMenu) this.onReturnToMainMenu();
+    });
+
     // Next Level button on Game Over
     const btnResultsNext = document.getElementById('btn-results-next');
     if (btnResultsNext) {
@@ -3050,8 +3313,11 @@ export class UIManager {
     if (btnCrashRevive) {
       btnCrashRevive.addEventListener('click', () => {
         audio.playClick();
-        if (this.gameOverModal) this.gameOverModal.style.display = 'none';
-        if (this.onQuickRevive) this.onQuickRevive();
+        if (this.onQuickRevive?.()) {
+          if (this.gameOverModal) this.gameOverModal.style.display = 'none';
+        } else if (saveManager.getReviveTokenCount() < 1) {
+          this.showCrashReviveError('Collect a rare Rescue Token during a run to use Quick Revive.');
+        }
       });
     }
 
@@ -3064,39 +3330,12 @@ export class UIManager {
       });
     }
 
-    const btnCrashSwitchV2 = document.getElementById('btn-crash-switch-v2');
-    if (btnCrashSwitchV2) {
-      btnCrashSwitchV2.addEventListener('click', () => {
-        audio.playClick();
-        if (this.gameOverModal) this.gameOverModal.style.display = 'none';
-        if (this.onSelectVersion) this.onSelectVersion('v2');
-      });
-    }
-
-    const btnCrashSwitchV1 = document.getElementById('btn-crash-switch-v1');
-    if (btnCrashSwitchV1) {
-      btnCrashSwitchV1.addEventListener('click', () => {
-        audio.playClick();
-        if (this.gameOverModal) this.gameOverModal.style.display = 'none';
-        if (this.onSelectVersion) this.onSelectVersion('v1');
-      });
-    }
-
     const btnCrashMainMenu = document.getElementById('btn-crash-main-menu');
     if (btnCrashMainMenu) {
       btnCrashMainMenu.addEventListener('click', () => {
         audio.playClick();
         if (this.gameOverModal) this.gameOverModal.style.display = 'none';
         if (this.onReturnToMainMenu) this.onReturnToMainMenu();
-      });
-    }
-
-    // Emergency Unstick Button on HUD
-    const btnRunnerUnstick = document.getElementById('btn-runner-unstick');
-    if (btnRunnerUnstick) {
-      btnRunnerUnstick.addEventListener('click', () => {
-        audio.playClick();
-        if (this.onEmergencyUnstick) this.onEmergencyUnstick();
       });
     }
 
@@ -3140,11 +3379,12 @@ export class UIManager {
   }
 
   hideAutoPauseModal() {
+    const wasVisible = Boolean(this.autoPauseModal && this.autoPauseModal.style.display !== 'none');
     this.isAutoPaused = false;
     if (this.autoPauseModal) {
       this.autoPauseModal.style.display = 'none';
     }
-    if (this.onResumeGame) {
+    if (wasVisible && this.onResumeGame) {
       this.onResumeGame();
     }
   }
@@ -3153,13 +3393,15 @@ export class UIManager {
     if (!this.gameMenuModal) return;
     if (this.onPauseGame) this.onPauseGame();
     audio.pauseAudio();
+    this.refreshProgressionContent();
+    this.refreshRunnerProgress();
 
     // Sync current player stats
     if (window.game && window.game.player) {
       const p = window.game.player;
-      const avatarIcons = { tariq: '🇵🇰', ayesha: '🌸', farooq: '👮', bilal: '🚑', zain: '🎒' };
+      const avatarIcons = { tariq: '👕', ayesha: '🧣', farooq: '🚦', bilal: '🩺', zain: '🎒' };
       const iconEl = document.getElementById('menu-avatar-icon');
-      if (iconEl) iconEl.textContent = avatarIcons[p.avatarId] || '🇵🇰';
+      if (iconEl) iconEl.textContent = avatarIcons[p.avatarId] || '👕';
       const nameEl = document.getElementById('menu-player-name');
       if (nameEl) nameEl.textContent = p.name || 'Karachi Hero';
       const lvlEl = document.getElementById('menu-level-badge');
@@ -3232,23 +3474,11 @@ export class UIManager {
     if (this.quizModal) this.quizModal.style.display = 'none';
     if (this.journalModal) this.journalModal.style.display = 'none';
     if (this.citizenDialogueModal) this.citizenDialogueModal.style.display = 'none';
+    if (this.hud) this.hud.style.display = 'none';
 
     if (this.onPauseGame) this.onPauseGame();
     if (window.game) window.game.isGameStarted = false;
-
-    // Refresh Continue Career button on start modal
-    try {
-      if (typeof saveManager !== 'undefined' && saveManager.get) {
-        const save = saveManager.get();
-        const btnContinue = document.getElementById('btn-continue-career');
-        const continueLevel = document.getElementById('continue-career-level');
-        if (btnContinue && save && save.player) {
-          btnContinue.style.display = 'flex';
-          if (continueLevel) continueLevel.textContent = save.player.level || 1;
-        }
-      }
-    } catch (e) {}
-
+    this.refreshProgressionContent();
     if (this.startModal) {
       this.startModal.style.display = 'flex';
     }
@@ -3368,13 +3598,13 @@ export class UIManager {
     const avatarIconEl = document.getElementById('hud-avatar-icon');
     if (avatarIconEl && player) {
       const avatarIcons = {
-        tariq: '🦺',
-        ayesha: '👩‍⚕️',
-        farooq: '👮‍♂️',
-        bilal: '🏏',
-        zain: '🏍️'
+        tariq: '👕',
+        ayesha: '🧣',
+        farooq: '🚦',
+        bilal: '🩺',
+        zain: '🎒'
       };
-      avatarIconEl.textContent = avatarIcons[player.avatarId] || '🇵🇰';
+      avatarIconEl.textContent = avatarIcons[player.avatarId] || '👕';
     }
 
     // Top-Center Navigation Target Compass Pill
@@ -3447,7 +3677,11 @@ export class UIManager {
         const destEl = document.getElementById('hud-route-dest');
         if (fillEl) fillEl.style.width = `${routeProgress.routePct || 0}%`;
         if (pinEl) pinEl.style.left = `${Math.min(96, routeProgress.routePct || 0)}%`;
-        if (distEl) distEl.textContent = `${routeProgress.distLeft || 0}m to PECHS`;
+        if (distEl) {
+          distEl.textContent = routeProgress.neighborhoodName
+            ? `${routeProgress.neighborhoodName} · ${routeProgress.distLeft.toLocaleString()}m left`
+            : `${routeProgress.distLeft || 0}m to PECHS`;
+        }
         if (startEl && routeProgress.origin) startEl.textContent = `📍 ${routeProgress.origin}`;
         if (destEl && routeProgress.destination) destEl.textContent = `🏁 ${routeProgress.destination}`;
       } else {
@@ -3581,11 +3815,14 @@ export class UIManager {
     }
 
     // Level & XP Bar
-    const currentConfig = LEVEL_CONFIG[player.level - 1];
-    document.getElementById('hud-level-badge').textContent = `LV ${player.level}`;
+    const playerLevel = Number.isFinite(Number(player.level)) ? Math.floor(Number(player.level)) : 1;
+    const levelIndex = Math.min(LEVEL_CONFIG.length - 1, Math.max(0, playerLevel - 1));
+    const currentConfig = LEVEL_CONFIG[levelIndex];
+    const displayLevel = levelIndex + 1;
+    document.getElementById('hud-level-badge').textContent = `LV ${displayLevel}`;
     document.getElementById('hud-level-title').textContent = currentConfig.title;
 
-    const prevXP = player.level === 1 ? 0 : LEVEL_CONFIG[player.level - 2].maxXP;
+    const prevXP = levelIndex === 0 ? 0 : LEVEL_CONFIG[levelIndex - 1].maxXP;
     const nextXP = currentConfig.maxXP;
     const progress = Math.min(100, Math.max(0, ((player.xp - prevXP) / (nextXP - prevXP)) * 100));
     document.getElementById('hud-xp-fill').style.width = `${progress}%`;
@@ -4049,9 +4286,177 @@ export class UIManager {
     if (el) el.style.display = 'none';
   }
 
+  updateReviveTokenCount(tokenCount) {
+    const count = Number.isSafeInteger(tokenCount)
+      ? Math.max(0, Math.min(MAX_REVIVE_TOKENS, tokenCount))
+      : 0;
+    const hudPill = document.getElementById('hud-revive-tokens');
+    const hudCount = document.getElementById('hud-revive-token-count');
+    if (hudPill) {
+      hudPill.style.display = this.isRunnerMode && count > 0 ? 'inline-flex' : 'none';
+      hudPill.setAttribute('aria-label', `Rescue Tokens: ${count}`);
+      hudPill.title = `Rescue Tokens: ${count} of ${MAX_REVIVE_TOKENS}. One token revives a crashed run.`;
+    }
+    if (hudCount) hudCount.textContent = String(count);
+
+    const reviveButton = document.getElementById('btn-crash-revive');
+    if (reviveButton) {
+      reviveButton.disabled = count < 1;
+      reviveButton.textContent = 'REVIVE';
+      reviveButton.setAttribute('aria-label', count > 0 ? 'Revive run' : 'Revive unavailable');
+    }
+  }
+
+  showCrashReviveError(message) {
+    const status = document.getElementById('crash-revive-status');
+    if (!status) return;
+    status.textContent = message;
+    status.style.display = 'block';
+  }
+
+  // Measures the HUD once and stacks the transient popups in non-overlapping bands (see TC-46).
+  layoutRunnerPopups() {
+    const pill = document.querySelector('.hud-center-stats-row');
+    if (!pill) return;
+    if (!this._runnerLayoutBound) {
+      this._runnerLayoutBound = true;
+      window.addEventListener('resize', () => this.layoutRunnerPopups());
+      window.addEventListener('orientationchange', () => this.layoutRunnerPopups());
+      if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => this.layoutRunnerPopups()).observe(pill);
+      }
+    }
+    const rect = pill.getBoundingClientRect();
+    if (!rect.height) return;
+    const short = window.innerHeight <= 500;
+    const hazardTop = Math.ceil(rect.bottom + 40);
+    const hazardHeight = short ? 40 : 56;
+    const announceTop = hazardTop + hazardHeight + 4;
+    const navTop = Math.max(announceTop + 36, Math.round(window.innerHeight * 0.42));
+    const root = document.documentElement.style;
+    root.setProperty('--runner-band-hazard', `${hazardTop}px`);
+    root.setProperty('--runner-band-announce', `${announceTop}px`);
+    root.setProperty('--runner-band-nav', `${navTop}px`);
+    root.setProperty('--runner-band-feedback', `${navTop + 40}px`);
+  }
+
+  updateRunnerNav(info) {
+    let nav = document.getElementById('hud-runner-nav');
+    let compass = document.getElementById('hud-runner-compass');
+    if (!info) {
+      if (nav) nav.hidden = true;
+      if (compass) compass.hidden = true;
+      this._runnerNavKey = '';
+      return;
+    }
+    if (!compass) {
+      compass = document.createElement('div');
+      compass.id = 'hud-runner-compass';
+      compass.className = 'runner-compass';
+      document.body.appendChild(compass);
+    }
+    compass.hidden = false;
+    const pauseRect = document.getElementById('btn-manual-pause')?.getBoundingClientRect();
+    if (pauseRect && pauseRect.width) {
+      compass.style.top = `${Math.round(pauseRect.bottom + 6)}px`;
+      compass.style.left = `${Math.round(pauseRect.left + pauseRect.width / 2)}px`;
+    }
+    const compassText = `🧭 ${info.heading}`;
+    if (compass.textContent !== compassText) compass.textContent = compassText;
+    if (!nav) {
+      nav = document.createElement('div');
+      nav.id = 'hud-runner-nav';
+      nav.className = 'runner-nav';
+      nav.setAttribute('aria-live', 'polite');
+      document.body.appendChild(nav);
+    }
+    this.layoutRunnerPopups();
+    const key = `${info.arrow}|${info.text}|${info.meters}|${info.urgent}`;
+    if (key === this._runnerNavKey) return;
+    this._runnerNavKey = key;
+    nav.hidden = false;
+    nav.classList.toggle('urgent', !!info.urgent);
+    nav.replaceChildren();
+    const add = (cls, text) => {
+      const el = document.createElement('span');
+      el.className = cls;
+      el.textContent = text;
+      nav.appendChild(el);
+    };
+    add('runner-nav-arrow', info.arrow);
+    add('runner-nav-text', info.text);
+    if (info.meters !== null) add('runner-nav-dist', `${info.meters} m`);
+  }
+
+  flashRunnerTurn() {
+    let flash = document.getElementById('hud-runner-turn-flash');
+    if (!flash) {
+      flash = document.createElement('div');
+      flash.id = 'hud-runner-turn-flash';
+      flash.className = 'runner-turn-flash';
+      document.body.appendChild(flash);
+    }
+    flash.classList.remove('active');
+    void flash.offsetWidth;
+    flash.classList.add('active');
+  }
+
+  updateRunnerHazardWarning(obstacles = [], traffic = [], playerZ = 0) {
+    const alert = document.getElementById('hud-runner-hazard-alert');
+    if (!alert) return;
+
+    let upcoming = null;
+    const considerHazard = (item, type, z) => {
+      const distance = playerZ - z;
+      if (!Number.isFinite(distance) || distance <= 0.5 || distance > 44) return;
+      if (!upcoming || distance < upcoming.distance) upcoming = { type, distance };
+    };
+    obstacles.forEach(item => {
+      if (item && !item.isHit && item.mesh) considerHazard(item, item.type, item.z);
+    });
+    traffic.forEach(item => {
+      if (item && !item.isHit && item.mesh) {
+        considerHazard(item, item.type || 'traffic', item.z ?? item.mesh.position?.z);
+      }
+    });
+
+    if (!upcoming) {
+      alert.hidden = true;
+      alert.classList.remove('is-imminent');
+      return;
+    }
+
+    const hazardInfo = {
+      pothole: ['POTHOLE AHEAD', 'JUMP OR SWITCH LANES'],
+      gutter: ['OPEN GUTTER AHEAD', 'JUMP OR SWITCH LANES'],
+      digging: ['ROADWORK AHEAD', 'JUMP OR SWITCH LANES'],
+      sewage: ['FLOODED ROAD AHEAD', 'JUMP OR SWITCH LANES'],
+      wire: ['LOW HANGING WIRE', 'SLIDE UNDER'],
+      heritage_scaffold: ['LOW SCAFFOLD', 'SLIDE UNDER'],
+      rickshaw: ['RICKSHAW AHEAD', 'SWITCH LANES'],
+      water_tanker: ['WATER TANKER AHEAD', 'SWITCH LANES'],
+      snatcher: ['STREET HAZARD AHEAD', 'SWITCH LANES'],
+      football: ['BALL IN THE ROAD', 'SWITCH LANES'],
+      market_cart: ['MARKET CART AHEAD', 'SWITCH LANES'],
+      traffic: ['TRAFFIC AHEAD', 'SWITCH LANES']
+    };
+    const [title, action] = hazardInfo[upcoming.type] || ['ROAD HAZARD AHEAD', 'SWITCH LANES'];
+    const titleEl = document.getElementById('hud-runner-hazard-title');
+    const actionEl = document.getElementById('hud-runner-hazard-action');
+    const distanceEl = document.getElementById('hud-runner-hazard-distance');
+    if (titleEl) titleEl.textContent = title;
+    if (actionEl) actionEl.textContent = action;
+    if (distanceEl) distanceEl.textContent = `${Math.ceil(upcoming.distance)} m`;
+    if (alert.hidden) this.layoutRunnerPopups();
+    alert.hidden = false;
+    alert.classList.toggle('is-imminent', upcoming.distance <= 12);
+  }
+
   showAnnouncement(text, color = '#ffd700') {
     const el = document.getElementById('hud-announcement');
-    el.innerHTML = text;
+    if (!el) return;
+    this.layoutRunnerPopups();
+    el.textContent = text;
     el.style.color = color;
     el.style.opacity = '1';
     el.style.transform = 'translate(-50%, 0) scale(1.1)';
@@ -4063,21 +4468,75 @@ export class UIManager {
     }, 1800);
   }
 
-  showFloatingFeedback(text, x, y) {
+  showFloatingFeedback(text, position, colorOrY = '#ffd700', legacyColor) {
     const container = document.getElementById('floating-feedbacks');
+    if (!container) return;
+    while (container.children.length >= 3) {
+      container.firstElementChild?.remove();
+    }
+
     const el = document.createElement('div');
     el.className = 'floating-feedback';
     el.textContent = text;
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
+    const hasLegacyCoordinates = typeof position === 'number' && typeof colorOrY === 'number';
+    el.style.color = hasLegacyCoordinates
+      ? legacyColor || '#ffd700'
+      : typeof colorOrY === 'string' ? colorOrY : '#ffd700';
 
+    let left = window.innerWidth / 2;
+    let top = Math.max(window.innerHeight * 0.66,
+      parseFloat(document.documentElement.style.getPropertyValue('--runner-band-feedback')) || 0);
+    if (hasLegacyCoordinates) {
+      left = position;
+      top = colorOrY;
+    }
+    const camera = window.game?.camera;
+    if (!hasLegacyCoordinates && camera && position?.clone &&
+        typeof position.clone().project === 'function') {
+      const projected = position.clone().project(camera);
+      if (projected.z >= -1 && projected.z <= 1) {
+        left = (projected.x * 0.5 + 0.5) * window.innerWidth;
+        top = (-projected.y * 0.5 + 0.5) * window.innerHeight;
+      }
+    }
+    const controlTops = ['.hud-runner-lanes', '.hud-controls-bottom-right']
+      .map(sel => document.querySelector(sel)?.getBoundingClientRect())
+      .filter(r => r && r.height > 0)
+      .map(r => r.top);
+    const controlsHeight = controlTops.length ? window.innerHeight - Math.min(...controlTops) + 30 : 0;
+    const safeBottom = Math.max(this.isRunnerMode ? 155 : 24, controlsHeight);
+    const bandTop = parseFloat(document.documentElement.style.getPropertyValue('--runner-band-feedback')) || 185;
+    const safeTop = this.isRunnerMode ? bandTop : 80;
+    el.dataset.anchorLeft = String(Math.max(90, Math.min(window.innerWidth - 90, left)));
+    el.dataset.anchorTop = String(top);
     container.appendChild(el);
-    setTimeout(() => {
-      container.removeChild(el);
-    }, 1000);
+    const feedbacks = [...container.children];
+    const maxBaseTop = window.innerHeight - safeBottom - feedbacks.length * 42;
+    // Stay below the turn guide; only give way to it when the controls leave no room.
+    const floorTop = Math.min(safeTop, window.innerHeight - 12 - feedbacks.length * 42);
+    const baseTop = maxBaseTop >= floorTop
+      ? Math.max(floorTop, Math.min(maxBaseTop, top))
+      : floorTop;
+    feedbacks.forEach((feedback, index) => {
+      feedback.style.left = `${el.dataset.anchorLeft}px`;
+      feedback.style.top = `${baseTop + index * 42}px`;
+    });
+
+    setTimeout(() => el.remove(), 1000);
   }
 
-  showGameOver({ rankedHoles, player, canAdvanceNext = false, distanceMeters = 0, coins = 0, isCrash = false, crashReason = '' }) {
+  showGameOver({
+    rankedHoles,
+    player,
+    canAdvanceNext = false,
+    distanceMeters = 0,
+    coins = 0,
+    runScore = 0,
+    reviveTokens = saveManager.getReviveTokenCount(),
+    isCrash = false,
+    routeComplete = false,
+    crashReason = '',
+  }) {
     const modal = this.gameOverModal;
     const playerRank = (rankedHoles && rankedHoles.length > 0) ? (rankedHoles.findIndex(h => h.isPlayer) + 1) : 1;
 
@@ -4085,51 +4544,28 @@ export class UIManager {
     const podiumEl = document.getElementById('results-podium');
     const statsGrid = document.querySelector('.stats-grid');
     const defaultButtons = document.querySelector('.results-button-row');
+    const resultsHomeButton = document.getElementById('btn-results-home');
+    const playAgainButton = document.getElementById('btn-play-again');
+    const statLabels = document.querySelectorAll('.stats-grid .stat-label');
+    const defaultStatLabels = ['FINAL SCORE', 'MAX LEVEL', 'OBJECTS SWALLOWED', 'HOLE KILLS'];
 
     if (isCrash) {
+      if (this.hud) this.hud.style.display = 'none';
+      modal.classList.remove('runner-route-complete');
+      modal.classList.add('runner-crash-results');
       document.getElementById('results-headline').textContent = '💥 RUN CRASHED! (دوڑ ختم ہو گئی)';
-      document.getElementById('results-sub').textContent = 'Karachi streets are unforgiving, but heroes get right back up!';
+      document.getElementById('results-sub').textContent = reviveTokens > 0
+        ? `${reviveTokens} Rescue Token${reviveTokens === 1 ? '' : 's'} available · each revive costs one.`
+        : 'Rescue Tokens are rare route pickups. Collect one to revive after a crash.';
 
       if (crashCard) crashCard.style.display = 'block';
       if (podiumEl) podiumEl.style.display = 'none';
       if (statsGrid) statsGrid.style.display = 'none';
       if (defaultButtons) defaultButtons.style.display = 'none';
+      if (resultsHomeButton) resultsHomeButton.style.display = 'none';
+      if (playAgainButton) playAgainButton.textContent = 'RESTART';
 
-      // Parse and display actionable cause + guide
-      let icon = '💥';
-      let title = crashReason || 'Obstacle Impact';
-      let hint = '💡 TIP: Stay alert and react early to hazards ahead!';
-
-      const rLower = (crashReason || '').toLowerCase();
-      if (rLower.includes('wire') || rLower.includes('k-electric')) {
-        icon = '⚡';
-        title = '⚡ K-Electric Live Wires';
-        hint = '💡 HOW TO CLEAR: Press [S] or Swipe Down to SLIDE underneath!';
-      } else if (rLower.includes('gutter') || rLower.includes('manhole')) {
-        icon = '🕳️';
-        title = '🕳️ Open Road Gutter';
-        hint = '💡 HOW TO CLEAR: Press [W], [Space], or Swipe Up to JUMP over it!';
-      } else if (rLower.includes('digging') || rLower.includes('barricade') || rLower.includes('hazard')) {
-        icon = '🚧';
-        title = '🚧 Unmarked Road Digging';
-        hint = '💡 HOW TO CLEAR: Press [W], [Space], or Swipe Up to JUMP over it!';
-      } else if (rLower.includes('rickshaw') || rLower.includes('qingqi')) {
-        icon = '🛺';
-        title = '🛺 Stalled Qingqi Rickshaw';
-        hint = '💡 HOW TO CLEAR: Press [A] / [D] or Swipe Left/Right to SWITCH LANES!';
-      } else if (rLower.includes('truck') || rLower.includes('bedford')) {
-        icon = '🚚';
-        title = '🚚 Bedford Cargo Truck';
-        hint = '💡 HOW TO CLEAR: Switch lanes early or Draft behind it for a Slingshot Boost!';
-      } else if (rLower.includes('bus') || rLower.includes('w11')) {
-        icon = '🚐';
-        title = '🚐 W11 Minibus';
-        hint = '💡 HOW TO CLEAR: Switch lanes early with [A] or [D]!';
-      } else if (rLower.includes('sewage')) {
-        icon = '🌊';
-        title = '🌊 Gutter Overflow Sewage';
-        hint = '💡 HOW TO CLEAR: Leap high with [W] or [Space]!';
-      }
+      const { icon, title, hint } = getRunnerCrashAdvice(crashReason);
 
       const iconEl = document.getElementById('crash-hazard-icon');
       const titleEl = document.getElementById('crash-hazard-title');
@@ -4140,17 +4576,53 @@ export class UIManager {
 
       if (iconEl) iconEl.textContent = icon;
       if (titleEl) titleEl.textContent = title;
-      if (hintEl) hintEl.textContent = hint;
+      if (hintEl) hintEl.textContent = `💡 HOW TO AVOID: ${hint}`;
       if (distEl) distEl.textContent = `${Math.round(distanceMeters)}m`;
       if (coinsEl) coinsEl.textContent = `${(coins || 0).toLocaleString()} Rs`;
-      if (scoreEl) scoreEl.textContent = (player?.score || 0).toLocaleString();
+      if (scoreEl) scoreEl.textContent = (runScore || 0).toLocaleString();
+      this.updateReviveTokenCount(reviveTokens);
+      const reviveStatus = document.getElementById('crash-revive-status');
+      if (reviveStatus) {
+        reviveStatus.textContent = '';
+        reviveStatus.style.display = 'none';
+      }
 
+    } else if (routeComplete) {
+      if (this.hud) this.hud.style.display = 'none';
+      modal.classList.remove('runner-crash-results');
+      modal.classList.add('runner-route-complete');
+      document.getElementById('results-headline').textContent = '🏁 KARACHI LOOP COMPLETE!';
+      document.getElementById('results-sub').textContent = 'You completed the Karachi city loop and returned to Soldier Bazar.';
+      if (crashCard) crashCard.style.display = 'none';
+      if (podiumEl) podiumEl.style.display = 'none';
+      if (statsGrid) statsGrid.style.display = 'grid';
+      if (defaultButtons) defaultButtons.style.display = 'flex';
+      if (playAgainButton) playAgainButton.textContent = 'RUN THE LOOP AGAIN';
+      if (resultsHomeButton) resultsHomeButton.style.display = 'inline-flex';
+      if (statLabels.length === defaultStatLabels.length) {
+        ['FINAL SCORE', 'RETURN NEIGHBORHOOD', 'DISTANCE', 'AREAS REACHED'].forEach((label, index) => {
+          statLabels[index].textContent = label;
+        });
+      }
+      document.getElementById('stat-score').textContent = (runScore || 0).toLocaleString();
+      document.getElementById('stat-level').textContent = 'Soldier Bazar';
+      document.getElementById('stat-swallowed').textContent = `${Math.round(distanceMeters).toLocaleString()} m`;
+      document.getElementById('stat-kills').textContent = '3';
+      const nextButton = document.getElementById('btn-results-next');
+      if (nextButton) nextButton.style.display = 'none';
     } else {
-      // Standard Free-Roam Match Results (v1 / v2)
+      modal.classList.remove('runner-crash-results');
+      modal.classList.remove('runner-route-complete');
+      // Standard free-roam match results (v1 / v2)
       if (crashCard) crashCard.style.display = 'none';
       if (podiumEl) podiumEl.style.display = 'flex';
       if (statsGrid) statsGrid.style.display = 'grid';
       if (defaultButtons) defaultButtons.style.display = 'flex';
+      if (resultsHomeButton) resultsHomeButton.style.display = 'none';
+      if (playAgainButton) playAgainButton.textContent = '🔄 REPLAY DISTRICT';
+      if (statLabels.length === defaultStatLabels.length) {
+        statLabels.forEach((label, index) => { label.textContent = defaultStatLabels[index]; });
+      }
 
       let headline = playerRank === 1 ? '👑 1ST PLACE CHAMPION! 👑' :
                      playerRank === 2 ? '🥈 2ND PLACE! GREAT JOB!' :
@@ -4313,8 +4785,265 @@ export class UIManager {
   }
 
   // =========================================================================
-  // DEV MODE OBSERVER HUD & TELEMETRY CONTROLS
+  // Runner developer and master controls
   // =========================================================================
+  createRunnerDeveloperUI() {
+    if (typeof document === 'undefined') return;
+
+    this.devToggleBtn = document.createElement('button');
+    this.devToggleBtn.id = 'dev-mode-toggle-btn';
+    this.devToggleBtn.className = 'ui-interactive';
+    this.devToggleBtn.textContent = '🛠️ DEV HUD [F2]';
+    this.devToggleBtn.title = 'Toggle the live Runner diagnostics panel';
+    document.body.appendChild(this.devToggleBtn);
+
+    this.devCommentBtn = document.createElement('button');
+    this.devCommentBtn.id = 'dev-comment-btn';
+    this.devCommentBtn.className = 'ui-interactive';
+    this.devCommentBtn.textContent = '💬 FEEDBACK [F3]';
+    this.devCommentBtn.title = 'Record a Runner bug report or suggestion';
+    document.body.appendChild(this.devCommentBtn);
+
+    this.devPanel = document.createElement('section');
+    this.devPanel.id = 'dev-mode-panel';
+    this.devPanel.className = 'runner-dev-panel';
+    this.devPanel.style.display = 'none';
+    this.devPanel.innerHTML = `
+      <header class="dev-panel-header">
+        <div class="dev-header-title"><span>🛠️</span><span>RUNNER LIVE DIAGNOSTICS</span></div>
+        <div class="dev-header-actions">
+          <button class="dev-icon-btn" id="btn-dev-minimize" title="Minimize diagnostics">_</button>
+          <button class="dev-icon-btn" id="btn-dev-close" title="Close diagnostics">&times;</button>
+        </div>
+      </header>
+      <div class="dev-panel-body" id="dev-panel-body">
+        <div class="dev-metrics-grid runner-dev-metrics">
+          <div class="dev-metric-box"><span class="dev-metric-label">Run state</span><span class="dev-metric-val" id="dev-val-state">Waiting</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Area</span><span class="dev-metric-val" id="dev-val-area">—</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Route distance</span><span class="dev-metric-val" id="dev-val-distance">—</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Neighborhood</span><span class="dev-metric-val" id="dev-val-stage">—</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Challenge tier</span><span class="dev-metric-val" id="dev-val-tier">—</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Run score</span><span class="dev-metric-val" id="dev-val-score">—</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Hearts</span><span class="dev-metric-val" id="dev-val-hearts">—</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Lane · speed</span><span class="dev-metric-val" id="dev-val-lane-speed">—</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Weather</span><span class="dev-metric-val" id="dev-val-weather">—</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Hazards · traffic</span><span class="dev-metric-val" id="dev-val-hazards">—</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Active power-up</span><span class="dev-metric-val" id="dev-val-powerup">—</span></div>
+          <div class="dev-metric-box"><span class="dev-metric-label">Performance</span><span class="dev-metric-val" id="dev-val-fps">—</span></div>
+        </div>
+        <div class="dev-actions-grid runner-dev-actions">
+          <button class="dev-btn" id="btn-dev-copy-telemetry" type="button">Copy live telemetry</button>
+          <button class="dev-btn" id="btn-dev-pin-note" type="button">Pin a bug note [F4]</button>
+          <a class="dev-btn btn-dash-link" href="./runner-console.html" target="_blank" rel="noopener">Open Master &amp; Developer Console</a>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(this.devPanel);
+
+    this.masterModeBtn = document.createElement('button');
+    this.masterModeBtn.id = 'master-mode-toggle-btn';
+    this.masterModeBtn.className = 'ui-interactive master-mode-btn-trigger';
+    this.masterModeBtn.textContent = '🧰 MASTER TOOLS [M]';
+    this.masterModeBtn.title = 'Open Runner test controls and the full developer console';
+    document.body.appendChild(this.masterModeBtn);
+    this.godModeBtn = this.masterModeBtn;
+
+    this.masterModePanel = document.createElement('section');
+    this.masterModePanel.id = 'master-mode-panel';
+    this.masterModePanel.classList.add('runner-master-panel');
+    this.masterModePanel.style.display = 'none';
+    this.masterModePanel.innerHTML = `
+      <header class="god-inpanel-header">
+        <div class="god-inpanel-title"><span>🧰</span><span>RUNNER MASTER TOOLS</span></div>
+        <button class="dev-icon-btn" id="btn-close-master-mode" type="button" title="Close Master Tools">&times;</button>
+      </header>
+      <div class="god-inpanel-body">
+        <p class="runner-master-notice">Local test controls affect this game session. Use the full console for telemetry, snapshots and progression testing.</p>
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title"><span>Current run</span></div>
+          <div class="runner-master-state" id="master-run-summary">Waiting for Runner telemetry</div>
+        </div>
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title"><span>Runner test actions</span></div>
+          <div class="god-inpanel-btn-grid">
+            <button class="god-inpanel-btn" id="btn-master-force-rain" type="button">🌧️ Force monsoon</button>
+            <button class="god-inpanel-btn" id="btn-master-natural-weather" type="button">🌤️ Restore route weather</button>
+            <button class="god-inpanel-btn" id="btn-master-slingshot" type="button">🚀 Trigger slingshot</button>
+            <button class="god-inpanel-btn" id="btn-master-spawn-convoy" type="button">🚚 Spawn test convoy</button>
+            <button class="god-inpanel-btn" id="btn-master-self-check" type="button">🧪 Run live self-check</button>
+            <button class="god-inpanel-btn" id="btn-master-spawn-pothole" type="button">🕳️ Spawn test pothole</button>
+            <button class="god-inpanel-btn" id="btn-master-clear-test-obstacles" type="button">🧹 Clear test obstacles</button>
+          </div>
+          <p class="runner-master-hint" id="master-action-hint">Start an active Runner session to enable test actions.</p>
+        </div>
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title"><span>Master powers</span></div>
+          <div class="god-inpanel-btn-grid">
+            <button class="god-inpanel-btn" id="btn-master-autorun" type="button" aria-pressed="false">🤖 Auto-run bot: OFF</button>
+            <button class="god-inpanel-btn" id="btn-master-immortal" type="button" aria-pressed="false">🛡️ Invincible: OFF</button>
+            <button class="god-inpanel-btn" id="btn-master-clear-all" type="button">💥 Clear ALL obstacles &amp; traffic</button>
+            <button class="god-inpanel-btn" id="btn-master-complete-area" type="button">✅ Complete area</button>
+            <button class="god-inpanel-btn" id="btn-master-complete-route" type="button">🏁 Complete route</button>
+            <button class="god-inpanel-btn" id="btn-master-restore-hearts" type="button">❤️ Restore hearts</button>
+            <button class="god-inpanel-btn" id="btn-master-junction-left" type="button">⬅️ Spawn left turn</button>
+            <button class="god-inpanel-btn" id="btn-master-junction-right" type="button">➡️ Spawn right turn</button>
+            <button class="god-inpanel-btn" id="btn-master-junction-fork" type="button">🔀 Spawn fork</button>
+          </div>
+        </div>
+        <a class="god-inpanel-btn btn-dash-link" href="./runner-console.html" target="_blank" rel="noopener">Open full Master &amp; Developer Console ↗</a>
+      </div>
+    `;
+    document.body.appendChild(this.masterModePanel);
+    this.godModePanel = this.masterModePanel;
+
+    this.createDevFeedbackModal();
+    this.devToggleBtn.addEventListener('click', () => this.toggleDevMode());
+    document.getElementById('btn-dev-close')?.addEventListener('click', () => this.toggleDevMode(false));
+    document.getElementById('btn-dev-minimize')?.addEventListener('click', () => {
+      const body = document.getElementById('dev-panel-body');
+      if (body) body.hidden = !body.hidden;
+    });
+    this.masterModeBtn.addEventListener('click', () => this.toggleMasterMode());
+    document.getElementById('btn-close-master-mode')?.addEventListener('click', () => this.toggleMasterMode(false));
+
+    const masterActions = {
+      'btn-master-force-rain': ['SET_RUNNER_RAIN', { enabled: true }],
+      'btn-master-natural-weather': ['SET_RUNNER_RAIN', { enabled: null }],
+      'btn-master-slingshot': ['TRIGGER_SLINGSHOT', {}],
+      'btn-master-spawn-convoy': ['SPAWN_CONVOY', {}],
+      'btn-master-self-check': ['RUNNER_SELF_CHECK', {}],
+      'btn-master-spawn-pothole': ['SPAWN_TEST_OBSTACLE', { type: 'pothole', lane: 0 }],
+      'btn-master-clear-test-obstacles': ['CLEAR_TEST_OBSTACLES', {}],
+      'btn-master-clear-all': ['CLEAR_ALL_HAZARDS', {}],
+      'btn-master-complete-area': ['COMPLETE_RUNNER_AREA', {}],
+      'btn-master-complete-route': ['COMPLETE_RUNNER_ROUTE', {}],
+      'btn-master-restore-hearts': ['RESTORE_RUNNER_HEARTS', {}],
+      'btn-master-junction-left': ['SPAWN_JUNCTION', { kind: 'turn', dir: 'left' }],
+      'btn-master-junction-right': ['SPAWN_JUNCTION', { kind: 'turn', dir: 'right' }],
+      'btn-master-junction-fork': ['SPAWN_JUNCTION', { kind: 'fork' }]
+    };
+    [['btn-master-autorun', 'autoPilot', 'TOGGLE_AUTOPILOT', 'enabled'],
+      ['btn-master-immortal', 'immortal', 'TOGGLE_IMMORTAL', 'immortal']].forEach(([id, key, command, field]) => {
+      document.getElementById(id)?.addEventListener('click', () => {
+        const enabled = !window.__DEV_TELEMETRY__?.[key];
+        this.runRunnerDevCommand(command, { [field]: enabled });
+      });
+    });
+    Object.entries(masterActions).forEach(([id, [type, payload]]) => {
+      document.getElementById(id)?.addEventListener('click', () => this.runRunnerDevCommand(type, payload));
+    });
+
+    document.getElementById('btn-dev-copy-telemetry')?.addEventListener('click', () => {
+      const telemetry = window.__DEV_TELEMETRY__;
+      if (!telemetry) {
+        this.showDevToast('Runner telemetry is not available yet.');
+        return;
+      }
+      const json = JSON.stringify(telemetry, null, 2);
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(json)
+          .then(() => this.showDevToast('Runner telemetry copied.'))
+          .catch(error => {
+            console.error('[DEV_HUD] Clipboard copy failed.', error);
+            this.showDevToast('Could not copy telemetry; it was logged to the console.');
+            console.info('[RUNNER_TELEMETRY]', telemetry);
+          });
+      } else {
+        console.info('[RUNNER_TELEMETRY]', telemetry);
+        this.showDevToast('Clipboard unavailable; telemetry was logged to the console.');
+      }
+    });
+
+    const pinRunnerNote = () => {
+      const description = window.prompt('Describe the Runner issue you noticed:');
+      if (description === null) return;
+      const text = description.trim();
+      if (!text) {
+        this.showDevToast('Enter a short description to save a note.');
+        return;
+      }
+      window.game?.recordDevNote?.('USER_BUG_REPORT', text, { flaggedByUser: true });
+      this.showDevToast('Runner bug note saved.');
+    };
+    document.getElementById('btn-dev-pin-note')?.addEventListener('click', pinRunnerNote);
+    this.devCommentBtn.addEventListener('click', () => this.openDevFeedbackModal());
+    document.getElementById('btn-dev-open-feedback-modal')?.addEventListener('click', () => this.openDevFeedbackModal());
+    document.getElementById('btn-submit-dev-feedback')?.addEventListener('click', () => {
+      const textarea = document.getElementById('dev-feedback-comment');
+      const activePill = this.feedbackModal?.querySelector('.dev-cat-pill.active');
+      const category = activePill?.dataset.cat || 'Bug';
+      const attachSnapshot = document.getElementById('dev-fb-attach-snapshot')?.checked ?? true;
+      this.submitDevFeedback(textarea?.value || '', category, attachSnapshot);
+    });
+    document.getElementById('btn-close-dev-feedback')?.addEventListener('click', () => this.closeDevFeedbackModal());
+    document.getElementById('btn-cancel-dev-feedback')?.addEventListener('click', () => this.closeDevFeedbackModal());
+    this.feedbackModal?.querySelectorAll('.dev-cat-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        this.feedbackModal.querySelectorAll('.dev-cat-pill').forEach(item => item.classList.toggle('active', item === pill));
+      });
+    });
+    this.feedbackModal?.querySelectorAll('.dev-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const textarea = document.getElementById('dev-feedback-comment');
+        if (!textarea) return;
+        textarea.value = textarea.value.trim()
+          ? `${textarea.value.trim()} - ${chip.dataset.chip || chip.textContent}`
+          : chip.dataset.chip || chip.textContent;
+        textarea.focus();
+      });
+    });
+
+    const query = new URLSearchParams(window.location.search);
+    let storedDevMode = false;
+    try {
+      storedDevMode = localStorage.getItem('karachi_dev_mode') === 'true';
+    } catch (error) {
+      console.error('[DEV_HUD] Could not read developer-panel preference.', error);
+    }
+    this.isDevModeActive = query.get('dev') === 'true' || query.get('debug') === 'true' || storedDevMode;
+    if (this.isDevModeActive) this.devPanel.style.display = 'flex';
+    this.renderDevCommentsHistory();
+
+    window.addEventListener('keydown', event => {
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) {
+        if (event.key === 'Escape') this.closeDevFeedbackModal();
+        return;
+      }
+      if (event.key === 'F2' || event.key === '`') {
+        event.preventDefault();
+        this.toggleDevMode();
+      } else if (event.key === 'F3') {
+        event.preventDefault();
+        this.openDevFeedbackModal();
+      } else if (event.key === 'F4') {
+        event.preventDefault();
+        pinRunnerNote();
+      } else if (event.key.toLowerCase() === 'm') {
+        this.toggleMasterMode();
+      } else if (event.key === 'Escape') {
+        this.closeDevFeedbackModal();
+        this.toggleMasterMode(false);
+      }
+    });
+  }
+
+  runRunnerDevCommand(type, payload = {}) {
+    const game = window.game;
+    if (!game?.isTempleRun || !game.isGameStarted || game.isPaused || game.isGameOver) {
+      this.showDevToast('Start or resume an active Runner run before using test actions.');
+      return;
+    }
+    game.handleMasterModeCommand({
+      type,
+      payload,
+      sender: 'MASTERMODE_DASHBOARD'
+    });
+    this.showDevToast('Runner test action sent.');
+  }
+
+  // =========================================================================
+  // Legacy panel retained below for compatibility; no longer initialized.
   createDevModeUI() {
     if (typeof document === 'undefined') return;
 
@@ -4706,8 +5435,8 @@ export class UIManager {
           <div class="journal-title-row">
             <span class="journal-crest">💬</span>
             <div>
-              <h2 class="journal-main-title">LIVE DEV FEEDBACK &amp; ISSUE REPORTER</h2>
-              <span class="journal-sub-title" id="dev-feedback-telemetry-badge">District 1 • Time: 240s • Pos: (0.0, 0.0)</span>
+              <h2 class="journal-main-title">RUNNER FEEDBACK &amp; ISSUE REPORTER</h2>
+              <span class="journal-sub-title" id="dev-feedback-telemetry-badge">Karachi Runner · waiting for live telemetry</span>
             </div>
           </div>
           <button class="close-btn ui-interactive" id="btn-close-dev-feedback">&times;</button>
@@ -4715,45 +5444,46 @@ export class UIManager {
 
         <div class="dev-feedback-body">
           <div class="dev-fb-section">
-            <label class="dev-fb-label">🏷️ Select Feedback Category:</label>
+            <label class="dev-fb-label">🏷️ Select feedback category:</label>
             <div class="dev-category-pills" id="dev-category-pills">
-              <button type="button" class="dev-cat-pill active" data-cat="🐛 Bug / Glitch">🐛 Bug / Glitch</button>
-              <button type="button" class="dev-cat-pill" data-cat="🛣️ Road / Escape">🛣️ Road / Escape</button>
-              <button type="button" class="dev-cat-pill" data-cat="🕳️ Devour Suction">🕳️ Devour Suction</button>
-              <button type="button" class="dev-cat-pill" data-cat="⏱️ Timer / Missions">⏱️ Timer / Missions</button>
-              <button type="button" class="dev-cat-pill" data-cat="⚖️ Gameplay Balance">⚖️ Gameplay Balance</button>
-              <button type="button" class="dev-cat-pill" data-cat="💡 Suggestion">💡 Suggestion</button>
+              <button type="button" class="dev-cat-pill active" data-cat="Bug">🐛 Bug</button>
+              <button type="button" class="dev-cat-pill" data-cat="Controls">🎮 Controls</button>
+              <button type="button" class="dev-cat-pill" data-cat="Route or area">🗺️ Route / area</button>
+              <button type="button" class="dev-cat-pill" data-cat="Hazard or weather">🌧️ Hazard / weather</button>
+              <button type="button" class="dev-cat-pill" data-cat="Power-up">⚡ Power-up</button>
+              <button type="button" class="dev-cat-pill" data-cat="Gameplay balance">⚖️ Balance</button>
+              <button type="button" class="dev-cat-pill" data-cat="Suggestion">💡 Suggestion</button>
             </div>
           </div>
 
           <div class="dev-fb-section">
-            <label class="dev-fb-label">⚡ Quick Insert:</label>
+            <label class="dev-fb-label">⚡ Quick note:</label>
             <div class="dev-quick-chips" id="dev-quick-chips">
-              <button type="button" class="dev-chip" data-chip="Tanker went off the road">Tanker off-road</button>
-              <button type="button" class="dev-chip" data-chip="Devoured when not directly on top">Devour too far</button>
-              <button type="button" class="dev-chip" data-chip="Threat escaped through building">Escaped through building</button>
-              <button type="button" class="dev-chip" data-chip="Timer stopped or slowed down">Timer stalled</button>
-              <button type="button" class="dev-chip" data-chip="Points / achievement did not award">Points not awarded</button>
-              <button type="button" class="dev-chip" data-chip="Suction animation feels slow">Slow suction</button>
+              <button type="button" class="dev-chip" data-chip="Lane input did not register">Lane input missed</button>
+              <button type="button" class="dev-chip" data-chip="Collision felt unfair or unavoidable">Unfair collision</button>
+              <button type="button" class="dev-chip" data-chip="Power-up was not reachable">Unreachable power-up</button>
+              <button type="button" class="dev-chip" data-chip="Rain or pothole phase behaved unexpectedly">Weather issue</button>
+              <button type="button" class="dev-chip" data-chip="Area scenery did not match the route">Area scenery issue</button>
+              <button type="button" class="dev-chip" data-chip="Score or reward was not recorded">Reward not recorded</button>
             </div>
           </div>
 
           <div class="dev-fb-section">
-            <label class="dev-fb-label" for="dev-feedback-comment">📝 Real-Time Issue Description / Feedback:</label>
+            <label class="dev-fb-label" for="dev-feedback-comment">📝 Describe what happened:</label>
             <textarea id="dev-feedback-comment" class="dev-fb-textarea" rows="3" placeholder="Describe the issue or feedback you noticed in real time..."></textarea>
           </div>
 
           <div class="dev-fb-options">
             <label class="dev-fb-checkbox-label">
               <input type="checkbox" id="dev-fb-attach-snapshot" checked />
-              <span>📸 Capture instant canvas &amp; 3D coordinates snapshot</span>
+              <span>📸 Attach a gameplay screenshot when available</span>
             </label>
           </div>
         </div>
 
         <div class="modal-footer dev-fb-footer">
           <button class="dev-btn btn-accent" id="btn-cancel-dev-feedback">Cancel</button>
-          <button class="dev-btn btn-success" id="btn-submit-dev-feedback">🚀 Submit Feedback for AI</button>
+          <button class="dev-btn btn-success" id="btn-submit-dev-feedback">Save Runner feedback</button>
         </div>
       </div>
     `;
@@ -4765,8 +5495,8 @@ export class UIManager {
     const t = window.__DEV_TELEMETRY__ || {};
     const badge = document.getElementById('dev-feedback-telemetry-badge');
     if (badge) {
-      const p = t.player || { x: 0, z: 0 };
-      badge.textContent = `District ${t.level || 1} • Time: ${(t.timeLeft || 0).toFixed(1)}s • Pos: (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`;
+      const area = ({ 1: 'Soldier Bazar · PECHS', 2: 'Lyari', 3: 'Saddar' })[t.level] || 'Karachi route';
+      badge.textContent = `${area} · ${Math.round(t.distanceMeters || 0)} m · ${t.runnerNeighborhoodName || 'Soldier Bazar'}`;
     }
     this.feedbackModal.style.display = 'flex';
     const textarea = document.getElementById('dev-feedback-comment');
@@ -4892,6 +5622,7 @@ export class UIManager {
 
   toggleDevMode(forceState) {
     this.isDevModeActive = (forceState !== undefined) ? forceState : !this.isDevModeActive;
+    if (this.isDevModeActive && this.isMasterModeActive) this.toggleMasterMode(false);
     if (this.devPanel) {
       this.devPanel.style.display = this.isDevModeActive ? 'flex' : 'none';
       if (this.isDevModeActive) {
@@ -5027,7 +5758,7 @@ export class UIManager {
         const ver = chip.dataset.engineVer;
         if (ver && this.onSelectVersion) {
           audio.playClick();
-          this.onSelectVersion(ver);
+          this.onSelectVersion(ver, 'master-control');
           this.syncActiveVersionUI(ver);
           this.showDevToast(`Switched to ${ver.toUpperCase()} Engine`);
         }
@@ -5124,50 +5855,14 @@ export class UIManager {
   }
 
   toggleMasterMode(forceState) {
-    if (forceState === false) {
-      this.isMasterModeActive = false;
-      this.isGodModeActive = false;
-      if (this.masterModePanel) this.masterModePanel.style.display = 'none';
-      if (this.masterModeBtn) {
-        this.masterModeBtn.style.background = 'rgba(18, 12, 32, 0.92)';
-        this.masterModeBtn.style.color = '#ffd700';
-      }
-      return;
-    }
-
-    const isAuth = sessionStorage.getItem('karachi_mastermode_auth') === 'granted' ||
-                   sessionStorage.getItem('karachi_godmode_auth') === 'granted';
-    if (!isAuth && !this.isMasterModeActive && !this.isGodModeActive) {
-      const entered = prompt("🔒 Enter Master Mode Security Passcode (Default: karachi786):");
-      if (!entered) return;
-      const stored = localStorage.getItem('karachi_mastermode_passcode') ||
-                     localStorage.getItem('karachi_godmode_passcode') || 'karachi786';
-      const clean = entered.trim();
-      if (clean === stored || clean === 'karachi786' || clean === 'godmode2026' || clean === 'mastermode2026') {
-        sessionStorage.setItem('karachi_mastermode_auth', 'granted');
-        sessionStorage.setItem('karachi_godmode_auth', 'granted');
-        this.showDevToast('✔ Security Clearance Granted: Master Mode Active!');
-      } else {
-        this.showDevToast('⛔ ACCESS DENIED: Invalid Security Passcode!');
-        return;
-      }
-    }
-
-    this.isMasterModeActive = (forceState !== undefined) ? forceState : !this.isMasterModeActive;
+    if (forceState !== false && !this.isMasterModeActive && this.isDevModeActive) this.toggleDevMode(false);
+    this.isMasterModeActive = forceState !== undefined ? forceState : !this.isMasterModeActive;
     this.isGodModeActive = this.isMasterModeActive;
     if (this.masterModePanel) {
       this.masterModePanel.style.display = this.isMasterModeActive ? 'flex' : 'none';
     }
-    if (this.masterModeBtn) {
-      if (this.isMasterModeActive) {
-        this.masterModeBtn.style.background = '#ffd700';
-        this.masterModeBtn.style.color = '#050b14';
-      } else {
-        this.masterModeBtn.style.background = 'rgba(18, 12, 32, 0.92)';
-        this.masterModeBtn.style.color = '#ffd700';
-      }
-    }
-    this.showDevToast(this.isMasterModeActive ? '👑 MASTER MODE OPENED [M]' : '👑 Master Mode Closed');
+    this.masterModeBtn?.setAttribute('aria-expanded', String(this.isMasterModeActive));
+    if (this.isMasterModeActive) this.showDevToast('Runner Master Tools opened.');
   }
 
   // Backward-compatible alias
@@ -5199,34 +5894,52 @@ export class UIManager {
   }
 
   updateDevModeHUD(t) {
-    if (!this.isDevModeActive || !t) return;
+    if (!t?.isRunnerMode) return;
 
-    const fpsEl = document.getElementById('dev-val-fps');
-    if (fpsEl) fpsEl.textContent = `${t.fps || 60} FPS`;
+    const setText = (id, value) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    };
+    const areas = { 1: 'Soldier Bazar · PECHS', 2: 'Lyari', 3: 'Saddar' };
+    const distance = Math.max(0, Number(t.distanceMeters) || 0);
+    const running = Boolean(t.isGameStarted && !t.isPaused && !t.isGameOver);
+    const state = t.runnerRouteComplete ? 'Loop complete' :
+      t.isGameOver ? 'Run ended' : t.isPaused ? 'Paused' :
+      running ? 'Running' : 'Ready';
+    const speed = Number(t.nascar?.speedKmh);
+    const weather = ({ clear: 'Clear', rain: 'Rain', potholes: 'Potholes' })[t.runnerWeather] || '—';
 
-    const lvlEl = document.getElementById('dev-val-level');
-    if (lvlEl) lvlEl.textContent = `District ${t.level || 1}`;
+    setText('dev-val-state', state);
+    setText('dev-val-area', areas[t.level] || 'Karachi route');
+    setText('dev-val-distance', `${Math.min(distance, 20000).toLocaleString()} m`);
+    setText('dev-val-stage', t.runnerNeighborhoodName || 'Soldier Bazar');
+    setText('dev-val-tier', `Tier ${Number(t.runnerChallengeTier) || 0}`);
+    setText('dev-val-score', `${(Number(t.score) || 0).toLocaleString()} pts`);
+    setText('dev-val-hearts', `${Number(t.hearts) || 0} / 3`);
+    setText('dev-val-lane-speed', `Lane ${Math.min(3, Math.max(1, (Number(t.currentLane) || 0) + 2))} · ${Number.isFinite(speed) ? `${Math.round(speed)} km/h` : '—'}`);
+    setText('dev-val-weather', weather);
+    setText('dev-val-hazards', `${Number(t.runnerObstacleCount) || 0} · ${Number(t.runnerTrafficCount) || 0}`);
+    setText('dev-val-powerup', t.activePowerUp || 'None');
+    setText('dev-val-fps', Number(t.fps) > 0 ? `${Math.round(t.fps)} FPS` : '—');
 
-    const timerEl = document.getElementById('dev-val-timer');
-    if (timerEl) {
-      const isRunning = !t.isPaused && !t.isGameOver && t.timeLeft > 0;
-      timerEl.textContent = `${(t.timeLeft || 0).toFixed(1)}s [${isRunning ? 'RUNNING' : 'PAUSED'}]`;
-      timerEl.className = `dev-metric-val ${isRunning ? 'status-running' : 'status-paused'}`;
-    }
-
-    const posEl = document.getElementById('dev-val-pos');
-    if (posEl && t.player) {
-      posEl.textContent = `X: ${t.player.x.toFixed(1)}, Z: ${t.player.z.toFixed(1)}`;
-    }
-
-    const radEl = document.getElementById('dev-val-radius');
-    if (radEl && t.player) {
-      radEl.textContent = `${t.player.radius.toFixed(2)}m (Lv.${t.player.level || 1})`;
-    }
-
-    const threatsEl = document.getElementById('dev-val-threats');
-    if (threatsEl) {
-      threatsEl.textContent = `${t.threatsRemaining || 0} Left (${t.threatsTotal || 0} Total)`;
-    }
+    setText('master-run-summary', `${areas[t.level] || 'Karachi route'} · ${Math.min(distance, 20000).toLocaleString()} m / 20,000 m · ${state}`);
+    const actionHint = document.getElementById('master-action-hint');
+    if (actionHint) actionHint.textContent = running
+      ? 'Test actions are active for this local run.'
+      : 'Start or resume an active Runner run to enable test actions.';
+    const setToggle = (id, on, label) => {
+      const button = document.getElementById(id);
+      if (!button) return;
+      button.textContent = `${label}: ${on ? 'ON' : 'OFF'}`;
+      button.setAttribute('aria-pressed', String(on));
+      button.classList.toggle('active', on);
+    };
+    setToggle('btn-master-autorun', !!t.autoPilot, '🤖 Auto-run bot');
+    setToggle('btn-master-immortal', !!t.immortal, '🛡️ Invincible');
+    [...this.masterModePanel.querySelectorAll('.god-inpanel-btn[id^="btn-master-"]')].map(b => b.id)
+      .forEach(id => {
+        const button = document.getElementById(id);
+        if (button) button.disabled = !running;
+      });
   }
 }

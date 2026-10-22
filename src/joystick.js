@@ -159,6 +159,13 @@ export class VirtualJoystick {
   }
 
   handleKeyDown(e) {
+    if (window.game?.isTempleRun && [
+      'KeyW', 'KeyS', 'KeyA', 'KeyD',
+      'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'
+    ].includes(e.code)) {
+      return;
+    }
+
     if (this.keys.hasOwnProperty(e.code)) {
       this.keys[e.code] = true;
       if (e.code === 'Space' && this.onJump) {
@@ -177,6 +184,12 @@ export class VirtualJoystick {
   handleKeyUp(e) {
     if (this.keys.hasOwnProperty(e.code)) {
       this.keys[e.code] = false;
+      if (window.game?.isTempleRun && [
+        'KeyW', 'KeyS', 'KeyA', 'KeyD',
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'
+      ].includes(e.code)) {
+        return;
+      }
       this.updateKeyboardVector();
     }
   }
