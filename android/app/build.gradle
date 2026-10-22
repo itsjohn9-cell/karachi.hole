@@ -16,7 +16,7 @@ android {
     namespace "com.holeio.karachi"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.holeio.karachi"
+        applicationId "pk.karachi.runner"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode releaseVersionCode

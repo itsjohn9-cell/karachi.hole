@@ -157,7 +157,7 @@ The **Prepare and publish release** GitHub Actions workflow connects the regress
 
 ### Google Play publication checklist
 
-1. Create a Play Console developer account and a new app entry. Confirm `com.holeio.karachi` is the permanent application ID before creating the listing; Play does not let you change an app's application ID after publication.
+1. Create a Play Console developer account and a new app entry. Confirm `pk.karachi.runner` is the permanent application ID before creating the listing; Play does not let you change an app's application ID after publication.
 2. Complete the store listing with a 512 × 512 app icon, feature graphic, phone/tablet screenshots, title, short and full descriptions, and developer contact details.
 3. Publish a privacy policy on a public HTTPS URL and accurately complete Data safety, target audience, ads, content rating, app access, and other App content declarations. The game keeps progress and operations notes locally, and currently requests Google Fonts over HTTPS; account for those behaviors in disclosures.
 4. Upload the signed AAB to the internal testing track and test it on real Android devices. Review Play's pre-launch report and fix crashes, compatibility, and policy issues.

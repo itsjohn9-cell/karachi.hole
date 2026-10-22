@@ -1,5 +1,5 @@
 {
-  "appId": "com.holeio.karachi",
+  "appId": "pk.karachi.runner",
   "appName": "KARACHI RUNNER",
   "webDir": "dist",
   "bundledWebRuntime": false,
