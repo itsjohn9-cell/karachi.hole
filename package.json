@@ -13,6 +13,7 @@
     "test:ops": "node --test scripts/test_game_ops_engine.mjs",
     "test:5173": "node scripts/test_runner.js --port=5173",
     "release:check": "npm test && npm run build",
+    "release:check:ci": "npm run test:ops && node scripts/test_runner.js --only=TC-01,TC-02,TC-10,TC-18,TC-22,TC-26,TC-27,TC-28 && npm run build",
     "build:apk": "node scripts/sign_apk.mjs"
   },
   "devDependencies": {

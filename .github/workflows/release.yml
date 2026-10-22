@@ -84,7 +84,8 @@ jobs:
           CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
         run: |
           npm ci
-          npm run release:check
+          # Hosted runners lack GPU/WebGL, so scene tests only run locally via `npm run release:check`.
+          npm run release:check:ci
 
       - name: Set up Java
         if: inputs.target == 'android' || inputs.target == 'both'
