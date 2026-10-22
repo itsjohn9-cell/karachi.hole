@@ -25,5 +25,5 @@ Free to play. No ads, no accounts, no in-app purchases.
 - Target audience: choose ages 13+ unless you want the Families programme, which adds extra requirements.
 - Data safety: no data collected or shared by the app. Progress is stored locally; Google Fonts are fetched over HTTPS (encrypted in transit). Data deletion: clear app data or uninstall.
 
-## Assets still needed
-- 512×512 icon (`public/icons/` has launcher sources), 1024×500 feature graphic, 2–8 phone screenshots.
+## Assets
+- Generated in `store-assets/`: `icon-512.png`, `feature-graphic.png` (1024×500) and `screenshots/` (6 × 1080×1920; regenerate with `node scripts/capture_store_assets.mjs` while the dev server runs).
