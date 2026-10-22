@@ -225,6 +225,7 @@ async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800',
       chromeExecutable,
       [
         '--headless=new',
+        ...(process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
         '--no-first-run',
         '--no-default-browser-check',
         `--user-data-dir=${userDataDir}`,
