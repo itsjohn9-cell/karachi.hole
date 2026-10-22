@@ -117,6 +117,7 @@ export class UIManager {
     onRestartGame,
     onSelectMode,
     onSelectDifficulty,
+    onSelectRunnerDifficulty,
     onOpenEducationalQuiz,
     onResolveEducationalQuiz,
     onResumeGame,
@@ -139,6 +140,7 @@ export class UIManager {
     this.onRestartGame = onRestartGame;
     this.onSelectMode = onSelectMode;
     this.onSelectDifficulty = onSelectDifficulty;
+    this.onSelectRunnerDifficulty = onSelectRunnerDifficulty;
     this.onOpenEducationalQuiz = onOpenEducationalQuiz;
     this.onResolveEducationalQuiz = onResolveEducationalQuiz;
     this.onResumeGame = onResumeGame;
@@ -183,6 +185,7 @@ export class UIManager {
     this.onSelectVersion = onSelectVersion;
 
     this.createStartMissionModal();
+    this.createRunnerIntroModal();
     this.createTapToStartPrompt();
     this.createVersionFeedbackModal();
     this.createHUD();
@@ -251,20 +254,20 @@ export class UIManager {
           <div class="form-group start-age-group">
             <label class="form-label" for="runner-difficulty-grid">🏃 CHOOSE YOUR PACE:</label>
             <div class="age-selection-grid" id="runner-difficulty-grid" aria-label="Runner pace">
-              <div class="age-card ui-interactive" data-runner-difficulty="easy">
+              <div class="age-card ui-interactive" role="button" tabindex="0" aria-pressed="false" aria-label="Easy pace. Scenic route with no turns." data-runner-difficulty="easy">
                 <span class="age-card-icon">🌱</span>
                 <span class="age-card-title">Easy</span>
-                <span class="age-card-sub">No turns · scenic forks</span>
+                <span class="age-card-sub">Scenic · no turns</span>
               </div>
-              <div class="age-card active ui-interactive" data-runner-difficulty="standard">
+              <div class="age-card active ui-interactive" role="button" tabindex="0" aria-pressed="true" aria-label="Standard pace. Turns and forks." data-runner-difficulty="standard">
                 <span class="age-card-icon">🏃</span>
                 <span class="age-card-title">Standard</span>
                 <span class="age-card-sub">Turns &amp; forks</span>
               </div>
-              <div class="age-card ui-interactive" data-runner-difficulty="hard">
+              <div class="age-card ui-interactive" role="button" tabindex="0" aria-pressed="false" aria-label="Hard pace. Frequent turns." data-runner-difficulty="hard">
                 <span class="age-card-icon">🔥</span>
                 <span class="age-card-title">Hard</span>
-                <span class="age-card-sub">Frequent chained turns</span>
+                <span class="age-card-sub">Frequent turns</span>
               </div>
             </div>
           </div>
@@ -318,6 +321,84 @@ export class UIManager {
     this.refreshProgressionContent();
   }
 
+  createRunnerIntroModal() {
+    this.runnerIntroModal = document.createElement('div');
+    this.runnerIntroModal.className = 'modal-backdrop runner-intro-backdrop';
+    this.runnerIntroModal.id = 'modal-runner-intro';
+    this.runnerIntroModal.style.display = 'none';
+    this.runnerIntroModal.innerHTML = `
+      <section class="runner-intro-card" role="dialog" aria-modal="true" aria-labelledby="runner-intro-title">
+        <header class="runner-intro-topbar">
+          <span class="runner-intro-brand"><span aria-hidden="true">🏃</span> KARACHI RUNNER</span>
+          <span class="runner-intro-location">KARACHI · PAKISTAN</span>
+        </header>
+        <div class="runner-intro-hero">
+          <div class="runner-intro-copy">
+            <p class="runner-intro-eyebrow">A CITY-SCALE RUN STARTS HERE</p>
+            <h1 id="runner-intro-title">Own the streets.<br><span>Protect the city.</span></h1>
+            <p class="runner-intro-lede">Race through Karachi, dodge traffic, clear street hazards and follow every turn to bring your neighbourhoods together.</p>
+          </div>
+          <div class="runner-intro-scene" aria-hidden="true">
+            <span class="runner-intro-sun"></span>
+            <div class="runner-intro-skyline">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="runner-intro-road"><span>✦</span><span>✦</span><span>✦</span></div>
+            <span class="runner-intro-runner">🏃</span>
+            <span class="runner-intro-scene-label">SOLDIER BAZAR → TARIQ ROAD</span>
+          </div>
+        </div>
+        <div class="runner-intro-guide" aria-label="How to play">
+          <div><span aria-hidden="true">↔️</span><strong>SWIPE</strong><small>Switch lanes &amp; take turns</small></div>
+          <div><span aria-hidden="true">⬆️</span><strong>JUMP</strong><small>Clear gutters &amp; roadworks</small></div>
+          <div><span aria-hidden="true">⬇️</span><strong>SLIDE</strong><small>Dodge low hanging wires</small></div>
+        </div>
+        <footer class="runner-intro-footer">
+          <p>Your route, runner and pace are yours to choose. Standard is ready for your first run.</p>
+          <div class="runner-intro-actions">
+            <button class="secondary-btn ui-interactive" id="btn-intro-skip" type="button">SKIP INTRO</button>
+            <button class="primary-btn ui-interactive" id="btn-intro-continue" type="button">CHOOSE YOUR ROUTE <span aria-hidden="true">➜</span></button>
+          </div>
+        </footer>
+      </section>
+    `;
+    document.body.appendChild(this.runnerIntroModal);
+
+    const hasSeenIntro = (() => {
+      try {
+        return localStorage.getItem('karachi_runner_intro_seen_v1') === 'true';
+      } catch (error) {
+        console.warn('[RUNNER_INTRO] Could not read intro preference:', error);
+        return false;
+      }
+    })();
+    if (!hasSeenIntro) this.showRunnerIntro();
+
+    const dismissIntro = () => {
+      audio.playClick();
+      this.hideRunnerIntro();
+    };
+    document.getElementById('btn-intro-skip')?.addEventListener('click', dismissIntro);
+    document.getElementById('btn-intro-continue')?.addEventListener('click', dismissIntro);
+    this.runnerIntroModal.addEventListener('click', event => {
+      if (event.target === this.runnerIntroModal) this.hideRunnerIntro();
+    });
+  }
+
+  showRunnerIntro() {
+    if (this.runnerIntroModal) this.runnerIntroModal.style.display = 'flex';
+  }
+
+  hideRunnerIntro() {
+    if (!this.runnerIntroModal) return;
+    this.runnerIntroModal.style.display = 'none';
+    try {
+      localStorage.setItem('karachi_runner_intro_seen_v1', 'true');
+    } catch (error) {
+      console.warn('[RUNNER_INTRO] Could not save intro preference:', error);
+    }
+  }
+
   createRunnerHelpModal() {
     this.runnerHelpModal = document.createElement('div');
     this.runnerHelpModal.className = 'modal-backdrop runner-help-backdrop';
@@ -338,7 +419,7 @@ export class UIManager {
             <p><strong>Change lane:</strong> ← / → or A / D, swipe left/right, or tap the lane arrows.</p>
             <p><strong>Jump:</strong> ↑ / W / Space, swipe up, or tap JUMP.</p>
             <p><strong>Slide:</strong> ↓ / S, swipe down, or tap SLIDE.</p>
-            <p><strong>Turns &amp; forks:</strong> follow the navigation banner. Press ← / → (or swipe) within 16 m of a junction to turn the right way: perfect turns near the corner pay more. Wrong or missed turns cost a heart. At a fork, ← takes the fast flyover and → takes the dark underpass full of low wires.</p>
+            <p><strong>Turns &amp; forks:</strong> follow the navigation banner. Press ← / → (or swipe) within 45 m of a junction to turn the right way: perfect turns near the corner pay more. Wrong or missed turns cost a heart. At a fork, ← takes the fast flyover and → takes the dark underpass full of low wires.</p>
             <p><strong>Horn:</strong> H or tap HORN. <strong>Pause:</strong> Esc or ⏸.</p>
           </section>
           <section class="runner-help-section">
@@ -355,7 +436,10 @@ export class UIManager {
             <p>Rare golden Rescue Tokens are stored between runs (maximum 3). One token pays for one Quick Revive after a crash. Sprint is provided by route pickups, not a free button.</p>
           </section>
         </div>
-        <button class="primary-btn ui-interactive runner-info-close" id="btn-runner-help-done">GOT IT</button>
+        <div class="runner-info-actions">
+          <button class="secondary-btn ui-interactive" id="btn-replay-runner-intro" type="button">WATCH INTRO</button>
+          <button class="primary-btn ui-interactive runner-info-close" id="btn-runner-help-done" type="button">GOT IT</button>
+        </div>
       </section>
     `;
     document.body.appendChild(this.runnerHelpModal);
@@ -849,7 +933,10 @@ export class UIManager {
           <button class="icon-btn ui-interactive" id="btn-open-guide" title="Civic Guide">❓</button>
           <button class="icon-btn ui-interactive" id="btn-top-journal" title="Civic Mission Journal & District Gauges [J]">📜</button>
           <button class="icon-btn ui-interactive" id="btn-open-quiz" title="Civic Academy Challenge">🎓</button>
-          <button class="icon-btn ui-interactive" id="btn-manual-pause" title="Pause Game [Esc]">⏸️</button>
+          <button class="icon-btn ui-interactive" id="btn-manual-pause" type="button" title="Pause Game [Esc]" aria-label="Pause game">
+            <span aria-hidden="true">⏸</span>
+            <span class="pause-button-label">PAUSE</span>
+          </button>
         </div>
       </div>
 
@@ -1173,6 +1260,25 @@ export class UIManager {
             🏠 MAIN MENU
           </button>
         </div>
+
+        <section class="runner-pace-menu" aria-label="Runner pace">
+          <div class="runner-pace-menu-header">
+            <span>🏃 RUN PACE</span>
+            <span id="menu-runner-pace-summary">STANDARD · 68 KM/H</span>
+          </div>
+          <div class="runner-pace-options">
+            <button class="runner-pace-option ui-interactive" type="button" data-runner-pace="easy" aria-pressed="false">
+              <strong>EASY</strong><small>54 km/h · Scenic</small>
+            </button>
+            <button class="runner-pace-option active ui-interactive" type="button" data-runner-pace="standard" aria-pressed="true">
+              <strong>STANDARD</strong><small>68 km/h · Balanced</small>
+            </button>
+            <button class="runner-pace-option ui-interactive" type="button" data-runner-pace="hard" aria-pressed="false">
+              <strong>HARD</strong><small>79 km/h · Fast</small>
+            </button>
+          </div>
+          <p>Changes apply to this run immediately.</p>
+        </section>
 
         <!-- Major Game Version Selector Hub -->
         <div class="menu-section-header runner-legacy-section">
@@ -2444,6 +2550,22 @@ export class UIManager {
   }
 
   // Bind All Event Listeners
+  setRunnerDifficultySelection(difficulty) {
+    if (!['easy', 'standard', 'hard'].includes(difficulty)) return false;
+    this.runnerDifficulty = difficulty;
+    document.querySelectorAll('#runner-difficulty-grid .age-card, .runner-pace-option').forEach(option => {
+      const optionDifficulty = option.dataset.runnerDifficulty || option.dataset.runnerPace;
+      option.classList.toggle('active', optionDifficulty === difficulty);
+      if (option.matches('.age-card, .runner-pace-option')) {
+        option.setAttribute('aria-pressed', String(optionDifficulty === difficulty));
+      }
+    });
+    const paceNames = { easy: 'EASY · 54 KM/H', standard: 'STANDARD · 68 KM/H', hard: 'HARD · 79 KM/H' };
+    const summary = document.getElementById('menu-runner-pace-summary');
+    if (summary) summary.textContent = paceNames[difficulty];
+    return true;
+  }
+
   bindEvents() {
     const openHelp = () => {
       audio.playClick();
@@ -2464,6 +2586,10 @@ export class UIManager {
     document.getElementById('btn-menu-open-runner-help')?.addEventListener('click', openHelp);
     document.getElementById('btn-close-runner-help')?.addEventListener('click', closeHelp);
     document.getElementById('btn-runner-help-done')?.addEventListener('click', closeHelp);
+    document.getElementById('btn-replay-runner-intro')?.addEventListener('click', () => {
+      closeHelp();
+      this.showRunnerIntro();
+    });
     document.getElementById('btn-home-progress')?.addEventListener('click', openProgress);
     document.getElementById('btn-menu-open-runner-progress')?.addEventListener('click', openProgress);
     document.getElementById('btn-close-runner-progress')?.addEventListener('click', closeProgress);
@@ -2499,9 +2625,21 @@ export class UIManager {
     runnerDifficultyCards.forEach(card => {
       card.addEventListener('click', () => {
         audio.playClick();
-        runnerDifficultyCards.forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        this.runnerDifficulty = card.dataset.runnerDifficulty || 'standard';
+        this.setRunnerDifficultySelection(card.dataset.runnerDifficulty || 'standard');
+      });
+      card.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        card.click();
+      });
+    });
+
+    document.querySelectorAll('.runner-pace-option').forEach(button => {
+      button.addEventListener('click', () => {
+        audio.playClick();
+        const pace = button.dataset.runnerPace || 'standard';
+        this.setRunnerDifficultySelection(pace);
+        if (this.onSelectRunnerDifficulty) this.onSelectRunnerDifficulty(pace);
       });
     });
 
@@ -3395,6 +3533,7 @@ export class UIManager {
     audio.pauseAudio();
     this.refreshProgressionContent();
     this.refreshRunnerProgress();
+    this.setRunnerDifficultySelection(window.game?.runnerDifficulty || this.runnerDifficulty);
 
     // Sync current player stats
     if (window.game && window.game.player) {
@@ -4337,7 +4476,7 @@ export class UIManager {
     root.setProperty('--runner-band-hazard', `${hazardTop}px`);
     root.setProperty('--runner-band-announce', `${announceTop}px`);
     root.setProperty('--runner-band-nav', `${navTop}px`);
-    root.setProperty('--runner-band-feedback', `${navTop + 40}px`);
+    root.setProperty('--runner-band-feedback', `${navTop + 52}px`);
   }
 
   updateRunnerNav(info) {

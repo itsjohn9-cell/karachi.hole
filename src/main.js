@@ -47,6 +47,7 @@ const RUNNER_NEIGHBORHOOD_COUNT = 200;
 const RUNNER_METERS_PER_NEIGHBORHOOD = 100;
 const RUNNER_CITY_LOOP_METERS = RUNNER_NEIGHBORHOOD_COUNT * RUNNER_METERS_PER_NEIGHBORHOOD;
 const RUNNER_AREA_NAMES = ['Soldier Bazar · PECHS', 'Lyari · Chakiwara', 'Saddar · Burns Road'];
+const RUNNER_SPEEDS = { easy: 15, standard: 19, hard: 22 };
 
 function runnerSegmentDistanceSquared(x, z, start, end) {
   const dx = end.x - start.x;
@@ -157,7 +158,7 @@ class Game {
     this.runnerDifficulty = 'standard';
     this.isSliding = false;
     this.slideTimer = 0;
-    this.runSpeed = 16.5; // High-octane initial street pace
+    this.runSpeed = RUNNER_SPEEDS.standard;
     this.runnerObstacles = [];
     this.runnerCoins = [];
     this.runnerPowerups = [];
@@ -185,7 +186,7 @@ class Game {
     this.runnerTurnsCompleted = 0;
     this.runnerJunctionIndex = 0;
     this.runnerCameraLift = 0;
-    this.nextJunctionAt = 500;
+    this.nextJunctionAt = 150;
     this.currentMilestone = getKarachiNeighborhoodName(1);
     this.milestones = [
       { dist: 0, name: 'Soldier Bazar · Karachi Loop Start' },
@@ -425,9 +426,8 @@ class Game {
           this.ui.showAnnouncement('Could not save your profile. Check device storage.', '#ff5252');
         }
         this.difficulty = ageTier === 'kids' ? 'kidsEasy' : 'classic';
-        const runnerSpeeds = { easy: 12.5, standard: 16.5, hard: 20 };
-        this.runnerDifficulty = Object.hasOwn(runnerSpeeds, runnerDifficulty) ? runnerDifficulty : 'standard';
-        this.runSpeed = runnerSpeeds[this.runnerDifficulty];
+        this.runnerDifficulty = Object.hasOwn(RUNNER_SPEEDS, runnerDifficulty) ? runnerDifficulty : 'standard';
+        this.runSpeed = RUNNER_SPEEDS[this.runnerDifficulty];
         this.loadDistrictLevel(1, false);
         this.startGame();
         audio.startMusic();
@@ -474,6 +474,9 @@ class Game {
       onSelectDifficulty: (diff) => {
         this.difficulty = diff;
         this.restartGame();
+      },
+      onSelectRunnerDifficulty: (pace) => {
+        this.setRunnerDifficulty(pace);
       },
       onOpenEducationalQuiz: (category) => {
         this.pauseGame();
@@ -788,8 +791,9 @@ class Game {
       return;
     }
 
-    // If currently in invulnerability grace window, ignore hit
-    if ((this.runnerInvulnerableTimer || 0) > 0) return;
+    const isTurnMistake = obstacle.type === 'wrong_turn' || obstacle.type === 'missed_turn';
+    // Turn mistakes are always charged; grace only protects against repeat obstacle hits.
+    if ((this.runnerInvulnerableTimer || 0) > 0 && !isTurnMistake) return;
 
     // Check CNG Turbo Nitro (Invulnerability Smash)
     if (this.nitroTimer > 0) {
@@ -843,7 +847,12 @@ class Game {
       if (rLower.includes('wire')) hint = 'Slide [S]!';
       else if (rLower.includes('gutter') || rLower.includes('digging') || rLower.includes('sewage')) hint = 'Jump [W/Space]!';
 
-      this.ui.showAnnouncement(`⚠️ STUMBLED ON ${reason}! ${'❤️'.repeat(this.hearts)} left! (2s Grace)`, '#ff1744');
+      this.ui.showAnnouncement(
+        isTurnMistake
+          ? `❌ WRONG TURN — 1 HEART LOST · ${this.hearts} LEFT`
+          : `⚠️ STUMBLED ON ${reason}! ${'❤️'.repeat(this.hearts)} left! (2s Grace)`,
+        '#ff1744'
+      );
       this.ui.showFloatingFeedback(`-1 ❤️ | ${hint}`, this.player.position, '#ff1744');
 
       // Temporary slowdown
@@ -1571,6 +1580,22 @@ class Game {
   getRunnerSpeed(distance = this.distanceMeters) {
     const progress = THREE.MathUtils.clamp(distance / RUNNER_CITY_LOOP_METERS, 0, 1);
     return this.runSpeed * (1 + progress * 0.35);
+  }
+
+  setRunnerDifficulty(difficulty) {
+    if (!Object.hasOwn(RUNNER_SPEEDS, difficulty)) {
+      console.warn('[RUNNER] Ignoring invalid pace selection:', difficulty);
+      return false;
+    }
+    this.runnerDifficulty = difficulty;
+    this.runSpeed = RUNNER_SPEEDS[difficulty] * this.masterSpeedMult;
+
+    if (this.isTempleRun && this.isGameStarted && !this.isGameOver && !this.runnerJunction) {
+      const profile = this.getRunnerNavProfile();
+      const nextGap = this.distanceMeters > 0 ? profile.gap : profile.firstAt;
+      this.nextJunctionAt = this.distanceMeters + nextGap;
+    }
+    return true;
   }
 
   updateRunnerProgression() {
@@ -2864,7 +2889,7 @@ class Game {
       this.player.updateNameTag();
     }
     this.runnerDifficulty = 'standard';
-    this.runSpeed = 16.5;
+    this.runSpeed = RUNNER_SPEEDS.standard;
     this.currentDistrictLevel = 1;
     this.distanceMeters = 0;
     this.coins = 0;
@@ -6477,7 +6502,7 @@ class Game {
           this.masterSpeedMult = Math.max(0.2, Math.min(10.0, payload.speedMult));
           this.godSpeedMult = this.masterSpeedMult;
           if (this.isTempleRun) {
-            this.runSpeed = 16.5 * this.masterSpeedMult;
+            this.runSpeed = RUNNER_SPEEDS.standard * this.masterSpeedMult;
           } else if (this.player) {
             this.player.baseSpeed = 13.5 * this.masterSpeedMult;
             this.player.currentSpeed = this.player.baseSpeed;
@@ -6759,7 +6784,7 @@ class Game {
     const junction = this.runnerJunction;
     if (!junction || junction.resolved || this.runnerTurn || !this.player) return false;
     const ahead = this.player.position.z - junction.z;
-    if (ahead > 16 || ahead < -1) return false;
+    if (ahead > 45 || ahead < -1) return false;
     junction.resolved = true;
 
     if (junction.kind === 'fork') {
@@ -6785,7 +6810,9 @@ class Game {
 
   beginRunnerTurn(junction, dir) {
     const z0 = this.player.position.z;
-    const radius = Math.max(3, z0 - junction.z);
+    const distanceToJunction = Math.max(0, z0 - junction.z);
+    const radius = THREE.MathUtils.clamp(distanceToJunction, 3, 4.5);
+    const speed = Math.max(12, this.getRunnerSpeed());
     this.runnerTurn = {
       dir,
       sign: dir === -1 ? 1 : -1,
@@ -6794,7 +6821,11 @@ class Game {
       startX: this.player.position.x,
       pivotZ: junction.z,
       radius,
-      duration: THREE.MathUtils.clamp(1.57 * radius / Math.max(12, this.getRunnerSpeed()), 0.55, 1.4)
+      duration: THREE.MathUtils.clamp(
+        Math.max(1.57 * radius / speed, distanceToJunction / speed),
+        1,
+        1.5
+      )
     };
     this.isSliding = false;
     this.slideTimer = 0;
@@ -6803,18 +6834,18 @@ class Game {
     this.particles.createSkidSmoke(this.player.position, 8);
   }
 
-  // The runner follows a real quarter-circle onto the cross-road while the camera swings with it.
+  // Keep the turn arc bounded while the player and camera swing onto the cross-road.
   updateRunnerTurnAnimation(dt) {
     const turn = this.runnerTurn;
     const player = this.player;
     turn.t = Math.min(1, turn.t + dt / turn.duration);
     const p = turn.t;
     const theta = p * Math.PI / 2;
+    const progress = THREE.MathUtils.smoothstep(p, 0, 1);
     const s = turn.sign;
     const R = turn.radius;
-    const endZ = turn.startZ - R;
     const x = s * R * (Math.cos(theta) - 1) + turn.startX * (1 - p);
-    const z = turn.startZ - R * Math.sin(theta) + (turn.pivotZ - endZ) * p;
+    const z = THREE.MathUtils.lerp(turn.startZ, turn.pivotZ, progress);
     const angle = s * theta;
     const fx = -Math.sin(angle);
     const fz = -Math.cos(angle);
@@ -6914,9 +6945,9 @@ class Game {
   // Pace-specific route layout: Easy has no left/right turns (only forks), Hard chains turns more often.
   getRunnerNavProfile() {
     const profiles = {
-      easy: { turns: false, firstAt: 600, gap: 1200, chainGap: 1200, sectionMeters: 500, forkEvery: 1 },
-      standard: { turns: true, firstAt: 500, gap: 900, chainGap: 300, sectionMeters: 700, forkEvery: 3 },
-      hard: { turns: true, firstAt: 400, gap: 600, chainGap: 220, sectionMeters: 800, forkEvery: 3 }
+      easy: { turns: false, firstAt: 200, gap: 640, chainGap: 640, sectionMeters: 500, forkEvery: 1 },
+      standard: { turns: true, firstAt: 150, gap: 480, chainGap: 260, sectionMeters: 700, forkEvery: 3 },
+      hard: { turns: true, firstAt: 120, gap: 360, chainGap: 200, sectionMeters: 800, forkEvery: 3 }
     };
     return profiles[this.runnerDifficulty] || profiles.standard;
   }

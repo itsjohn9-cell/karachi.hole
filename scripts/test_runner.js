@@ -157,6 +157,9 @@ async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800',
   let userDataDir = null;
 
   try {
+    const effectiveBeforeAppScript = testId === 'TC-50'
+      ? beforeAppScript
+      : `localStorage.setItem('karachi_runner_intro_seen_v1', 'true');\n${beforeAppScript}`;
     const sanitizedScript = scriptInjection.replace(
       /^(\s*)window\.addEventListener\('DOMContentLoaded',\s*\(\)\s*=>\s*\{([\s\S]*)\}\);\s*$/,
       (_match, indent, body) => `${indent}(() => {${body}})();`
@@ -166,11 +169,11 @@ async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800',
       throw new Error(`${testId} uses an unsupported DOMContentLoaded test wrapper`);
     }
     let injectedHtml = ORIGINAL_INDEX_HTML;
-    if (beforeAppScript) {
+    if (effectiveBeforeAppScript) {
       const appScriptTag = '<script type="module" src="/src/main.js"></script>';
       const appScriptIndex = injectedHtml.indexOf(appScriptTag);
       if (appScriptIndex < 0) throw new Error('Could not locate the application module script for test setup');
-      injectedHtml = `${injectedHtml.slice(0, appScriptIndex)}<script>${beforeAppScript}</script>${injectedHtml.slice(appScriptIndex)}`;
+      injectedHtml = `${injectedHtml.slice(0, appScriptIndex)}<script>${effectiveBeforeAppScript}</script>${injectedHtml.slice(appScriptIndex)}`;
     }
     if (extraStyle) {
       injectedHtml = injectedHtml.replace('</head>', `<style>${extraStyle}</style></head>`);
@@ -3458,6 +3461,178 @@ async function runTestSuite() {
     `
   });
   recordTest('TC-49', 'Pace Route Layout (Easy has no turns)', res49.success ? 'PASSED' : 'FAILED', Date.now() - t49Start, res49.success ? 'Verified Easy gets forks only, Standard mixes turns and forks, Hard is denser, and Master can still force turns' : res49.error);
+
+  // -------------------------------------------------------------------------
+  // TC-50: First-launch intro and start/game menus remain reachable on small screens
+  // -------------------------------------------------------------------------
+  const menuLayoutSizes = ['320,568', '390,844', '568,320', '844,390'];
+  const menuLayoutScript = (width, height) => `
+    (() => {
+      if (window.parent === window) {
+        window.__testResult = { status: 'failed', error: 'Menu layout frame did not finish' };
+        const frame = document.createElement('iframe');
+        frame.src = location.href;
+        frame.style.cssText = 'position:fixed;left:0;top:0;border:0;z-index:2147483647;background:#000;width:${width}px;height:${height}px';
+        document.body.appendChild(frame);
+        const poll = setInterval(() => {
+          const inner = frame.contentWindow;
+          if (inner?.__hudLayoutDone) {
+            window.__testResult = { status: 'passed' };
+            clearInterval(poll);
+          } else if (inner?.__testResult?.status === 'failed') {
+            window.__testResult = inner.__testResult;
+            clearInterval(poll);
+          }
+        }, 50);
+        return;
+      }
+
+      const inside = (el, box) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.left >= box.left - 1 &&
+          r.top >= box.top - 1 && r.right <= box.right + 1 && r.bottom <= box.bottom + 1;
+      };
+      const intro = document.getElementById('modal-runner-intro');
+      const introCard = intro?.querySelector('.runner-intro-card');
+      if (!introCard || getComputedStyle(intro).display === 'none') throw new Error('First-launch intro is not visible');
+      if (!inside(introCard, { left: 0, top: 0, right: innerWidth, bottom: innerHeight })) throw new Error('Intro card leaves the viewport');
+      introCard.scrollTop = introCard.scrollHeight;
+      if (!inside(document.getElementById('btn-intro-continue'), introCard.getBoundingClientRect())) throw new Error('Intro action cannot be reached');
+      document.getElementById('btn-intro-continue').click();
+
+      const startCard = document.querySelector('#modal-start-mission .start-mission-card');
+      const startForm = document.querySelector('#modal-start-mission .start-form-section');
+      const startActions = document.getElementById('start-actions-container');
+      if (!inside(startCard, { left: 0, top: 0, right: innerWidth, bottom: innerHeight })) throw new Error('Start menu card leaves the viewport');
+      if (!inside(startActions, startCard.getBoundingClientRect())) throw new Error('Start menu actions are clipped');
+      if (startForm.scrollHeight > startForm.clientHeight + 1 && !['auto', 'scroll'].includes(getComputedStyle(startForm).overflowY)) {
+        throw new Error('Start menu options cannot scroll');
+      }
+      const clippedPaceCard = [...document.querySelectorAll('#runner-difficulty-grid .age-card')]
+        .find(card => card.scrollWidth > card.clientWidth + 1);
+      if (clippedPaceCard) throw new Error('Start-menu pace text is clipped: ' + clippedPaceCard.textContent.trim());
+      const startFormBounds = startForm.getBoundingClientRect();
+      const hiddenPaceCard = [...document.querySelectorAll('#runner-difficulty-grid .age-card')]
+        .find(card => {
+          const r = card.getBoundingClientRect();
+          return r.top < startFormBounds.top - 1 || r.bottom > startFormBounds.bottom + 1;
+        });
+      if (hiddenPaceCard) throw new Error('Start-menu pace choice is hidden: ' + hiddenPaceCard.textContent.trim());
+
+      const menu = document.getElementById('modal-game-menu');
+      menu.style.display = 'flex';
+      const menuCard = menu.querySelector('.game-menu-card');
+      if (!inside(menuCard, { left: 0, top: 0, right: innerWidth, bottom: innerHeight })) throw new Error('Game menu card leaves the viewport');
+      const clippedMenuPace = [...menu.querySelectorAll('.runner-pace-option')]
+        .find(option => option.scrollWidth > option.clientWidth + 1);
+      if (clippedMenuPace) throw new Error('In-game pace text is clipped: ' + clippedMenuPace.textContent.trim());
+      if (menuCard.scrollHeight > menuCard.clientHeight + 1 && !['auto', 'scroll'].includes(getComputedStyle(menuCard).overflowY)) {
+        throw new Error('Game menu items cannot scroll');
+      }
+      menuCard.scrollTop = menuCard.scrollHeight;
+      if (!inside(document.getElementById('btn-menu-footer-close'), menuCard.getBoundingClientRect())) throw new Error('Game menu footer action cannot be reached');
+      window.__hudLayoutDone = true;
+    })();
+  `;
+  for (const size of menuLayoutSizes) {
+    const [w, h] = size.split(',');
+    const tStart = Date.now();
+    const res = await runChromeTest({
+      testId: 'TC-50',
+      screenshotName: `tc50_menu_layout_${w}x${h}.png`,
+      windowSize: `${Math.max(Number(w), 500)},${Math.max(Number(h), 481)}`,
+      waitMs: 3500,
+      scriptInjection: menuLayoutScript(w, h)
+    });
+    recordTest(`TC-50 ${w}x${h}`, `Intro & Menu Fit ${w}x${h}`, res.skipped ? 'SKIPPED' : res.success ? 'PASSED' : 'FAILED', Date.now() - tStart, res.success ? 'Verified intro, start-menu actions, and the full game menu remain reachable' : res.error);
+  }
+
+  // -------------------------------------------------------------------------
+  // TC-51: Runner status, pause, lane and traversal controls stay on-screen
+  // -------------------------------------------------------------------------
+  const gameplayHudSizes = ['320,568', '390,844', '568,320', '844,390'];
+  const gameplayHudScript = (width, height) => `
+    (() => {
+      if (window.parent === window) {
+        window.__testResult = { status: 'failed', error: 'Gameplay HUD frame did not finish' };
+        const frame = document.createElement('iframe');
+        frame.src = location.href;
+        frame.style.cssText = 'position:fixed;left:0;top:0;border:0;z-index:2147483647;background:#000;width:${width}px;height:${height}px';
+        document.body.appendChild(frame);
+        const poll = setInterval(() => {
+          const inner = frame.contentWindow;
+          if (inner?.__hudLayoutDone) {
+            window.__testResult = { status: 'passed' };
+            clearInterval(poll);
+          } else if (inner?.__testResult?.status === 'failed') {
+            window.__testResult = inner.__testResult;
+            clearInterval(poll);
+          }
+        }, 50);
+        return;
+      }
+
+      localStorage.setItem('karachi_runner_intro_seen_v1', 'true');
+      localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true');
+      document.getElementById('modal-runner-intro').style.display = 'none';
+      document.getElementById('btn-start-patrol')?.click();
+      const game = window.game;
+      game.isTempleRun = true;
+      game.isGameStarted = true;
+      game.isPaused = false;
+      game.isGameOver = false;
+      game.runSpeed = 0;
+      game.ui.hideRunnerTutorial();
+      game.ui.hud.style.display = 'flex';
+
+      const visibleRect = el => {
+        if (!el) return null;
+        const style = getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) < 0.05) return null;
+        const r = el.getBoundingClientRect();
+        return r.width > 2 && r.height > 2 ? r : null;
+      };
+      const required = [
+        ['runner status', document.querySelector('.hud-center-stats-row')],
+        ['pause button', document.getElementById('btn-manual-pause')],
+        ['left lane button', document.getElementById('btn-lane-left')],
+        ['right lane button', document.getElementById('btn-lane-right')],
+        ['jump button', document.getElementById('btn-jump')],
+        ['slide button', document.getElementById('btn-slide')],
+        ['horn button', document.getElementById('btn-horn')]
+      ];
+      const rects = new Map();
+      for (const [name, el] of required) {
+        const rect = visibleRect(el);
+        if (!rect) throw new Error(name + ' is hidden');
+        if (rect.left < -1 || rect.top < -1 || rect.right > innerWidth + 1 || rect.bottom > innerHeight + 1) {
+          throw new Error(name + ' leaves the viewport');
+        }
+        rects.set(name, rect);
+      }
+      const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 &&
+        Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+      if (overlaps(rects.get('runner status'), rects.get('pause button'))) throw new Error('Runner status overlaps pause');
+      for (const lane of ['left lane button', 'right lane button']) {
+        for (const action of ['jump button', 'slide button', 'horn button']) {
+          if (overlaps(rects.get(lane), rects.get(action))) throw new Error(lane + ' overlaps ' + action);
+        }
+      }
+      window.__hudLayoutDone = true;
+    })();
+  `;
+  for (const size of gameplayHudSizes) {
+    const [w, h] = size.split(',');
+    const tStart = Date.now();
+    const res = await runChromeTest({
+      testId: 'TC-51',
+      screenshotName: `tc51_gameplay_hud_${w}x${h}.png`,
+      windowSize: `${Math.max(Number(w), 500)},${Math.max(Number(h), 481)}`,
+      waitMs: 3500,
+      scriptInjection: gameplayHudScript(w, h)
+    });
+    recordTest(`TC-51 ${w}x${h}`, `Gameplay HUD Fit ${w}x${h}`, res.skipped ? 'SKIPPED' : res.success ? 'PASSED' : 'FAILED', Date.now() - tStart, res.success ? 'Verified status, pause, lane, jump, slide, and horn controls are visible and non-overlapping' : res.error);
+  }
 
   // -------------------------------------------------------------------------
   // Summary Report Output
