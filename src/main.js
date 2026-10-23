@@ -48,6 +48,8 @@ const RUNNER_METERS_PER_NEIGHBORHOOD = 100;
 const RUNNER_CITY_LOOP_METERS = RUNNER_NEIGHBORHOOD_COUNT * RUNNER_METERS_PER_NEIGHBORHOOD;
 const RUNNER_AREA_NAMES = ['Soldier Bazar · PECHS', 'Lyari · Chakiwara', 'Saddar · Burns Road'];
 const RUNNER_SPEEDS = { easy: 15, standard: 19, hard: 22 };
+const RUNNER_TURN_INPUT_METERS = 45;
+const RUNNER_TURN_ENTRY_METERS = 12;
 
 function runnerSegmentDistanceSquared(x, z, start, end) {
   const dx = end.x - start.x;
@@ -2307,15 +2309,18 @@ class Game {
     // run out of frame as the endless corridor advances.
     if (this.camera) {
       const cameraFollow = Math.min(1.0, dt * 12.0);
+      const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
+      const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
+      const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
       this.camera.position.x = THREE.MathUtils.lerp(
         this.camera.position.x,
-        this.player.position.x * 0.45,
+        this.player.position.x * horizontalCameraFollow,
         Math.min(1.0, dt * 6.0)
       );
       this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, 2.85 + (this.runnerCameraLift || 0), cameraFollow);
       this.camera.position.z = this.player.position.z + 5.2;
       this.camera.lookAt(
-        this.player.position.x * 0.65,
+        this.player.position.x * horizontalLookAhead,
         1.25,
         this.player.position.z - 18.0
       );
@@ -3222,6 +3227,8 @@ class Game {
       this.ui.hideGameOverModal();
       this.ui.hideAutoPauseModal();
       this.ui.setRunnerMode(this.isTempleRun);
+      if (this.ui.hud) this.ui.hud.style.display = '';
+      if (this.ui.startModal) this.ui.startModal.style.display = 'none';
     }
   }
 
@@ -6690,32 +6697,48 @@ class Game {
   buildRunnerJunctionMesh(kind, dir) {
     const group = new THREE.Group();
     const mat = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, ...extra });
-    const addBoard = (x, color, arrowRotation) => {
-      const board = new THREE.Mesh(new THREE.BoxGeometry(kind === 'fork' ? 5.2 : 9, 3.4, 0.3), mat(color));
-      board.position.set(x, 5.6, -5.8);
+    const addBoard = (x, color, arrowRotation, turnSign = false) => {
+      const width = turnSign ? 4.6 : kind === 'fork' ? 5.2 : 9;
+      const height = turnSign ? 2.4 : 3.4;
+      const y = turnSign ? 4.2 : 5.6;
+      const board = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.3), mat(color));
+      board.position.set(x, y, -5.8);
+      if (turnSign) board.userData.runnerTurnSign = true;
       group.add(board);
       const arrow = new THREE.Mesh(RUNNER_POTHOLE_ARROW_GEOMETRY, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
-      arrow.scale.setScalar(kind === 'fork' ? 2.4 : 3.4);
+      arrow.scale.setScalar(turnSign ? 1.8 : kind === 'fork' ? 2.4 : 3.4);
       arrow.rotation.z = arrowRotation;
-      arrow.position.set(x, 5.6, -5.62);
+      arrow.position.set(x, y, -5.62);
       group.add(arrow);
-      [-1, 1].forEach(side => {
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 5.6, 0.35), mat(0x37474f));
-        post.position.set(x + side * (kind === 'fork' ? 2.4 : 4.2), 2.8, -5.8);
+      const postXs = turnSign ? [x] : [-1, 1].map(side => x + side * (kind === 'fork' ? 2.4 : 4.2));
+      postXs.forEach(postX => {
+        const postHeight = turnSign ? 3.8 : 5.6;
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, postHeight, 0.35), mat(0x37474f));
+        post.position.set(postX, postHeight / 2, -5.8);
         group.add(post);
       });
     };
 
     if (kind === 'turn') {
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(13, 1.2, 0.6), mat(0xff6d00));
-      wall.position.set(0, 0.6, -6.7);
-      group.add(wall);
-      [-5.5, -1.8, 1.8, 5.5].forEach(x => {
-        const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.64), mat(0xffffff));
-        stripe.position.set(x, 0.75, -6.7);
+      const roadColors = { 1: 0x181e26, 2: 0x302b28, 3: 0x242326 };
+      const road = new THREE.Mesh(
+        new THREE.PlaneGeometry(13, 13).rotateX(-Math.PI / 2),
+        mat(roadColors[this.currentDistrictLevel] || roadColors[1])
+      );
+      road.position.set(0, 0.03, 0);
+      group.add(road);
+
+      const barrierX = dir === -1 ? 3.4 : -3.4;
+      const barrier = new THREE.Mesh(new THREE.BoxGeometry(6.2, 1, 0.6), mat(0xff6d00));
+      barrier.position.set(barrierX, 0.5, -6.7);
+      barrier.userData.runnerTurnBarrier = true;
+      group.add(barrier);
+      [-2.3, -0.8, 0.8, 2.3].forEach(offset => {
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.45, 0.64), mat(0xffffff));
+        stripe.position.set(barrierX + offset, 0.72, -6.7);
         group.add(stripe);
       });
-      addBoard(0, 0x1b5e20, dir === -1 ? Math.PI / 2 : -Math.PI / 2);
+      addBoard(dir === -1 ? -7.5 : 7.5, 0x1b5e20, dir === -1 ? Math.PI / 2 : -Math.PI / 2, true);
     } else {
       addBoard(-4, 0xf9a825, 0);
       addBoard(4, 0x37474f, Math.PI);
@@ -6783,8 +6806,9 @@ class Game {
   attemptRunnerTurn(dir) {
     const junction = this.runnerJunction;
     if (!junction || junction.resolved || this.runnerTurn || !this.player) return false;
+    if (junction.turnQueued) return true;
     const ahead = this.player.position.z - junction.z;
-    if (ahead > 45 || ahead < -1) return false;
+    if (ahead > RUNNER_TURN_INPUT_METERS || ahead < -1) return false;
     junction.resolved = true;
 
     if (junction.kind === 'fork') {
@@ -6799,6 +6823,11 @@ class Game {
       this.awardRunnerXP(bonus);
       audio.playPowerUp();
       this.ui.showAnnouncement(perfect ? `🧭 PERFECT TURN! +${bonus}` : `🧭 CLEAN TURN +${bonus}`, '#76ff03');
+      if (ahead > RUNNER_TURN_ENTRY_METERS) {
+        junction.resolved = false;
+        junction.turnQueued = true;
+        return true;
+      }
     } else {
       this.beginRunnerTurn(junction, junction.dir);
       this.handleRunnerHit({ type: 'wrong_turn', isHit: false, mesh: null }, 'WRONG WAY');
@@ -6812,7 +6841,8 @@ class Game {
     const z0 = this.player.position.z;
     const distanceToJunction = Math.max(0, z0 - junction.z);
     const radius = THREE.MathUtils.clamp(distanceToJunction, 3, 4.5);
-    const speed = Math.max(12, this.getRunnerSpeed());
+    const speed = Math.max(12, this.player.currentSpeed || this.getRunnerSpeed());
+    const pathMeters = distanceToJunction + radius * (Math.PI / 2 - 1);
     this.runnerTurn = {
       dir,
       sign: dir === -1 ? 1 : -1,
@@ -6821,12 +6851,9 @@ class Game {
       startX: this.player.position.x,
       pivotZ: junction.z,
       radius,
-      duration: THREE.MathUtils.clamp(
-        Math.max(1.57 * radius / speed, distanceToJunction / speed),
-        1,
-        1.5
-      )
+      duration: THREE.MathUtils.clamp(pathMeters / speed, 0.42, 0.85)
     };
+    if (this.player.avatarMesh) this.player.avatarMesh.visible = true;
     this.isSliding = false;
     this.slideTimer = 0;
     this.ui.updateRunnerNav?.(null);
@@ -6840,18 +6867,19 @@ class Game {
     const player = this.player;
     turn.t = Math.min(1, turn.t + dt / turn.duration);
     const p = turn.t;
-    const theta = p * Math.PI / 2;
     const progress = THREE.MathUtils.smoothstep(p, 0, 1);
+    const theta = progress * Math.PI / 2;
     const s = turn.sign;
     const R = turn.radius;
-    const x = s * R * (Math.cos(theta) - 1) + turn.startX * (1 - p);
-    const z = THREE.MathUtils.lerp(turn.startZ, turn.pivotZ, progress);
+    const x = s * R * (Math.cos(theta) - 1) + turn.startX * (1 - progress);
+    const z = turn.startZ - R * Math.sin(theta) + (turn.pivotZ - (turn.startZ - R)) * progress;
     const angle = s * theta;
     const fx = -Math.sin(angle);
     const fz = -Math.cos(angle);
 
     player.position.set(x, 0, z);
     player.group.position.set(x, 0, z);
+    if (player.avatarMesh) player.avatarMesh.visible = true;
     player.group.rotation.y = Math.PI + angle;
     player.facingAngle = Math.PI + angle;
     player.targetRotationY = Math.PI + angle;
@@ -6968,6 +6996,11 @@ class Game {
         this.setCorridorZoneHidden(junction.z - 26, junction.z + 7);
       }
       const ahead = this.player.position.z - junction.z;
+      if (junction.kind === 'turn' && junction.turnQueued && ahead <= RUNNER_TURN_ENTRY_METERS && ahead > -3) {
+        junction.resolved = true;
+        this.beginRunnerTurn(junction, junction.dir);
+        return;
+      }
       if (!junction.resolved && ahead <= -0.5) {
         junction.resolved = true;
         if (junction.kind === 'fork') {

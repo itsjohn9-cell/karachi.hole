@@ -1514,9 +1514,24 @@ async function runTestSuite() {
           game.player.avatarMesh.scale.y = 0.42;
           const restartDistrict = game.currentDistrictLevel;
           game.cityGen.setWorldVisible(true);
+          game.ui.hud.style.display = 'none';
           game.restartGame();
           const restartCameraOffset = game.camera.position.z - game.player.position.z;
           const visibleCityObjects = [...game.cityGen.worldObjects].filter(object => object.visible);
+          const runnerHudControls = [
+            'btn-manual-pause',
+            'btn-lane-left',
+            'btn-lane-right',
+            'btn-jump',
+            'btn-slide',
+            'btn-horn'
+          ];
+          const hiddenRunnerControls = runnerHudControls.filter(id => {
+            const control = document.getElementById(id);
+            const rect = control?.getBoundingClientRect();
+            return !control || getComputedStyle(control).display === 'none' ||
+              !rect || rect.width < 2 || rect.height < 2;
+          });
           if (game.score !== 0 || game.magnetTimer || game.nitroTimer ||
               game.shieldTimer || game.superJumpTimer || game.activePowerUp ||
               Math.abs(restartCameraOffset - 5.2) > 0.1 || game.isPaused ||
@@ -1524,7 +1539,8 @@ async function runTestSuite() {
               game.isSliding || game.moveVector.x !== 0 || game.player.avatarMesh.scale.y !== 1 ||
               !game.isTempleRun || game.majorVersion !== 'v3' ||
               game.currentDistrictLevel !== restartDistrict || visibleCityObjects.length > 0 ||
-              !game.corridorChunks?.length || !game.corridorChunks.every(chunk => chunk.parent === game.scene)) {
+              !game.corridorChunks?.length || !game.corridorChunks.every(chunk => chunk.parent === game.scene) ||
+              game.ui.hud.style.display === 'none' || hiddenRunnerControls.length > 0) {
             throw new Error('Restart did not restore the KARACHI RUNNER scene, selected route, camera, movement, and clean run state');
           }
 
@@ -3090,12 +3106,21 @@ async function runTestSuite() {
         if (!game.spawnRunnerJunction('turn', -1, 90)) throw new Error('Corner junction did not spawn');
         const junction = game.runnerJunction;
         if (!junction.turnChunks || junction.turnChunks.length !== 3) throw new Error('Corner has no cross-road chunks');
+        const barrier = junction.group.children.find(child => child.userData.runnerTurnBarrier);
+        if (!barrier) throw new Error('Turn has no marked direction barrier');
+        if (barrier.geometry.parameters.width >= 13 || Math.abs(barrier.position.x) - barrier.geometry.parameters.width / 2 <= 0) {
+          throw new Error('Turn barrier blocks the route instead of leaving the turn lane open');
+        }
         const slabsOf = chunk => chunk.userData.slabs.length;
         if (!game.corridorChunks.every(chunk => slabsOf(chunk) > 0)) throw new Error('Corridor chunks were not merged into slabs');
         const step = dt => game.updateTempleRunCorridor(dt);
-        for (let i = 0; i < 800 && game.player.position.z - junction.z > 9; i++) step(0.016);
+        for (let i = 0; i < 800 && game.player.position.z - junction.z > 30; i++) step(0.016);
         game.changeLane(-1);
-        if (!game.runnerTurn) throw new Error('Turn did not start');
+        if (!junction.turnQueued || game.runnerTurn) throw new Error('Early turn input did not queue for the corner');
+        game.player.avatarMesh.visible = false;
+        for (let i = 0; i < 800 && game.player.position.z - junction.z > 12; i++) step(0.016);
+        if (!game.runnerTurn) throw new Error('Queued turn did not start near the corner');
+        if (!game.player.avatarMesh.visible) throw new Error('Runner stayed hidden when the turn began');
 
         const Vec3 = game.camera.position.constructor;
         const Mat4 = game.camera.matrix.constructor;
@@ -3118,6 +3143,7 @@ async function runTestSuite() {
         // Continue to just before the finish and compare the street frame across the re-frame.
         while (game.runnerTurn && game.runnerTurn.t < 0.99) {
           step(0.016);
+          if (!game.player.avatarMesh.visible) throw new Error('Runner disappeared during the turn animation');
           maxPlayerStep = Math.max(maxPlayerStep, game.player.position.distanceTo(prevPlayer));
           maxCamStep = Math.max(maxCamStep, game.camera.position.distanceTo(prevCam));
           prevPlayer.copy(game.player.position);
@@ -3618,6 +3644,74 @@ async function runTestSuite() {
           if (overlaps(rects.get(lane), rects.get(action))) throw new Error(lane + ' overlaps ' + action);
         }
       }
+
+      const assertRunnerFramed = label => {
+        game.camera.updateMatrixWorld(true);
+        const torso = game.player.position.clone();
+        torso.y = 1.5;
+        const projected = torso.project(game.camera);
+        const screenX = (projected.x + 1) * innerWidth / 2;
+        const screenY = (1 - projected.y) * innerHeight / 2;
+        if (!Number.isFinite(screenX) || screenX < innerWidth * 0.12 || screenX > innerWidth * 0.88) {
+          throw new Error(label + ' pushed the runner outside the safe camera frame: ' + Math.round(screenX) + 'px');
+        }
+        if (!Number.isFinite(screenY) || screenY < innerHeight * 0.06 || screenY > innerHeight * 0.94) {
+          throw new Error(label + ' pushed the runner outside the vertical camera frame: ' + Math.round(screenY) + 'px');
+        }
+      };
+      const assertHudAvailable = label => {
+        if (game.ui.hud.style.display === 'none') throw new Error(label + ' hid the runner HUD');
+        for (const [name, element] of required) {
+          if (!visibleRect(element)) throw new Error(label + ' hid ' + name);
+        }
+      };
+
+      game.isPaused = false;
+      game.isGameOver = false;
+      game.isGameStarted = true;
+      game.isTempleRun = true;
+      game.player.isAlive = true;
+      game.clearRunnerObjects();
+      game.distanceMeters = 0;
+      game.nextJunctionAt = 10000;
+      game.runnerJunction = null;
+      game.runnerTurn = null;
+      game.runnerSection = null;
+      game.currentLane = 0;
+      game.targetLaneX = 0;
+      game.player.position.set(0, 0, 60);
+      game.player.group.position.copy(game.player.position);
+      game.camera.position.set(0, 2.85, 65.2);
+      game.camera.lookAt(0, 1.25, 42);
+
+      for (const lane of [-1, 1]) {
+        game.currentLane = lane;
+        game.targetLaneX = lane * game.laneWidth;
+        for (let frame = 0; frame < 45; frame++) game.updateTempleRunCorridor(1 / 60);
+        assertRunnerFramed('Outer lane ' + lane);
+        assertHudAvailable('Outer lane ' + lane);
+      }
+
+      for (const dir of [-1, 1]) {
+        const junction = {
+          kind: 'turn',
+          dir,
+          z: game.player.position.z - 5,
+          resolved: true
+        };
+        game.runnerJunction = junction;
+        game.currentLane = 0;
+        game.targetLaneX = 0;
+        game.beginRunnerTurn(junction, dir);
+        let frames = 0;
+        while (game.runnerTurn && frames < 20) {
+          game.updateRunnerTurnAnimation(0.1);
+          assertRunnerFramed((dir < 0 ? 'Left' : 'Right') + ' turn');
+          frames++;
+        }
+        if (game.runnerTurn) throw new Error('Runner did not finish the ' + (dir < 0 ? 'left' : 'right') + ' turn');
+        assertHudAvailable((dir < 0 ? 'Left' : 'Right') + ' turn');
+      }
       window.__hudLayoutDone = true;
     })();
   `;
@@ -3631,7 +3725,7 @@ async function runTestSuite() {
       waitMs: 3500,
       scriptInjection: gameplayHudScript(w, h)
     });
-    recordTest(`TC-51 ${w}x${h}`, `Gameplay HUD Fit ${w}x${h}`, res.skipped ? 'SKIPPED' : res.success ? 'PASSED' : 'FAILED', Date.now() - tStart, res.success ? 'Verified status, pause, lane, jump, slide, and horn controls are visible and non-overlapping' : res.error);
+    recordTest(`TC-51 ${w}x${h}`, `Gameplay HUD & Turn Fit ${w}x${h}`, res.skipped ? 'SKIPPED' : res.success ? 'PASSED' : 'FAILED', Date.now() - tStart, res.success ? 'Verified HUD visibility, outer-lane camera framing, and both turn animations' : res.error);
   }
 
   // -------------------------------------------------------------------------
