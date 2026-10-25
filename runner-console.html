@@ -8,9 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="./assets/runnerConsole-BCWBiPFM.js"></script>
+    <script type="module" crossorigin src="./assets/runnerConsole-BUgOSM-l.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/game-ops-engine-Dy6JO5_e.js">
-    <link rel="stylesheet" crossorigin href="./assets/runnerConsole-D8Bz9V-g.css">
+    <link rel="stylesheet" crossorigin href="./assets/runnerConsole-DLv6DQgP.css">
   </head>
   <body class="runner-console">
     <!-- Security Clearance Lockscreen -->
@@ -102,41 +102,158 @@
       <section class="tab-pane active console-panel" id="tab-runner-controls">
         <div class="console-section-heading">
           <div>
-            <p class="console-eyebrow">TEST ACTIONS</p>
-            <h2>Runner test controls</h2>
+            <p class="console-eyebrow">MASTER CONTROL SETTINGS</p>
+            <h2>Karachi Master &amp; God Mode Controls</h2>
           </div>
-          <span class="console-helper">Enabled only during an active, connected Runner session.</span>
+          <span class="console-live-state" id="master-status-pill">MASTER READY</span>
         </div>
-        <div class="console-action-grid">
-          <article class="console-action-card">
-            <span class="console-action-icon">🌧️</span>
-            <div><h3>Force monsoon rain</h3><p>Override the route weather to rain for testing.</p></div>
-            <button class="god-btn btn-cyan" id="btn-runner-weather-rain" type="button" data-run-action>Force rain</button>
+
+        <div class="control-grid">
+          <!-- 1. AI Auto-Pilot & Hands-Free Auto-Play -->
+          <article class="card" style="border: 1px solid rgba(0, 255, 157, 0.45); background: rgba(10, 24, 28, 0.9);">
+            <div class="card-header">
+              <div class="card-title"><span>🤖</span> AI Auto-Pilot (Hands-Free QA)</div>
+              <span class="card-badge badge-idle" id="badge-autorun">STANDBY</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+              Bot plays the entire game autonomously: lane switching, jumping road potholes and gutters, sliding under wires and scaffolding, honking at snatchers, and firing slingshot boosts. Ideal for testing all edge cases.
+            </p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="god-btn btn-green" id="btn-master-autorun" type="button" style="flex: 1; min-width: 160px;">🤖 Enable AI Auto-Pilot</button>
+              <button class="god-btn btn-cyan" id="btn-master-selfcheck" type="button" style="min-width: 140px;">🧪 Run Live Self-Check</button>
+            </div>
           </article>
-          <article class="console-action-card">
-            <span class="console-action-icon">🌤️</span>
-            <div><h3>Restore route weather</h3><p>Clear the override and resume distance-based weather.</p></div>
-            <button class="god-btn btn-cyan" id="btn-runner-weather-auto" type="button" data-run-action>Use route weather</button>
+
+          <!-- 2. Hole & Vortex Suction Scale (V1 Hole.io Mechanics) -->
+          <article class="card" style="border: 1px solid rgba(0, 229, 255, 0.35);">
+            <div class="card-header">
+              <div class="card-title"><span>🕳️</span> Hole &amp; Vortex Devour Scale</div>
+              <span class="control-value-display" id="vortex-radius-display">1.2m</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+              V1 Hole.io gravitational vortex. Pulls in rupees, munchies, and power-ups across lanes. At &ge; 2.0m, it swallows and devours road potholes and gutters directly!
+            </p>
+            <div class="control-group">
+              <input type="range" class="god-slider" id="slider-vortex-radius" min="1.2" max="25" step="0.5" value="1.2" />
+            </div>
+            <div class="preset-chip-row">
+              <button class="preset-chip active" type="button" data-vortex-preset="1.2">1.2m Street Kid</button>
+              <button class="preset-chip" type="button" data-vortex-preset="3.0">3.0m Hero Vortex</button>
+              <button class="preset-chip" type="button" data-vortex-preset="6.0">6.0m Sinkhole</button>
+              <button class="preset-chip" type="button" data-vortex-preset="12.0">12.0m Black Hole</button>
+              <button class="preset-chip" type="button" data-vortex-preset="25.0">25.0m Titan</button>
+            </div>
+            <button class="god-btn btn-amber" id="btn-master-devour-all" type="button">💥 Devour All Road Hazards</button>
           </article>
-          <article class="console-action-card">
-            <span class="console-action-icon">🚀</span>
-            <div><h3>Trigger slingshot</h3><p>Apply the current traffic-drafting boost once.</p></div>
-            <button class="god-btn btn-green" id="btn-trigger-slingshot" type="button" data-run-action>Test boost</button>
+
+          <!-- 3. Speed & Acceleration Multipliers -->
+          <article class="card">
+            <div class="card-header">
+              <div class="card-title"><span>⚡</span> God Speed Multiplier</div>
+              <span class="control-value-display" id="speed-mult-display">1.0x</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+              Scale base runner velocity for rapid QA traversals or slow-motion collision verification.
+            </p>
+            <div class="preset-chip-row">
+              <button class="preset-chip" type="button" data-speed-preset="0.5">0.5x Slow-Mo</button>
+              <button class="preset-chip active" type="button" data-speed-preset="1.0">1.0x Normal</button>
+              <button class="preset-chip" type="button" data-speed-preset="1.5">1.5x Brisk</button>
+              <button class="preset-chip" type="button" data-speed-preset="2.0">2.0x Fast</button>
+              <button class="preset-chip" type="button" data-speed-preset="3.0">3.0x Turbo</button>
+              <button class="preset-chip" type="button" data-speed-preset="5.0">5.0x Ludicrous</button>
+              <button class="preset-chip" type="button" data-speed-preset="8.0">8.0x Hyperspeed</button>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <input type="range" class="god-slider" id="slider-speed-mult" min="0.5" max="8.0" step="0.5" value="1.0" />
+            </div>
+            <button class="god-btn btn-cyan" id="btn-master-nascar-speed" type="button">🏎️ Toggle 200+ KM/H High-Speed Mode</button>
           </article>
-          <article class="console-action-card">
-            <span class="console-action-icon">💨</span>
-            <div><h3>Maximise draft charge</h3><p>Set the slipstream meter to its ready threshold.</p></div>
-            <button class="god-btn btn-green" id="btn-max-draft" type="button" data-run-action>Set draft ready</button>
+
+          <!-- 4. God Protections & World Freezes -->
+          <article class="card">
+            <div class="card-header">
+              <div class="card-title"><span>🛡️</span> God Mode &amp; World Freezes</div>
+              <span class="card-badge badge-idle" id="badge-immortal">MORTAL</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button class="god-btn btn-amber" id="btn-master-immortal" type="button">🛡️ Invincible</button>
+              <button class="god-btn btn-cyan" id="btn-master-freeze-timer" type="button">⏱️ Freeze Run Clock</button>
+              <button class="god-btn btn-cyan" id="btn-master-freeze-threats" type="button">🛑 Freeze Traffic</button>
+              <button class="god-btn btn-green" id="btn-master-restore-hearts" type="button">❤️ Refill Hearts</button>
+            </div>
+            <button class="god-btn btn-outline" id="btn-unlock-runner-content" type="button">🔓 Unlock All Districts &amp; Getups</button>
           </article>
-          <article class="console-action-card">
-            <span class="console-action-icon">🚚</span>
-            <div><h3>Spawn traffic convoy</h3><p>Add a test convoy ahead of the runner.</p></div>
-            <button class="god-btn btn-amber" id="btn-spawn-convoy" type="button" data-run-action>Spawn convoy</button>
+
+          <!-- 5. Tactical Power-Ups & Street Munchies Spawner -->
+          <article class="card">
+            <div class="card-header">
+              <div class="card-title"><span>🥫</span> Tactical Powers &amp; Munchies</div>
+              <span class="card-badge badge-active">READY</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+              Inject authentic Karachi street power-ups and snack clusters ahead of the runner.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button class="god-btn btn-cyan" id="btn-spawn-munchies" type="button">🥫 Snacks &amp; Rupees</button>
+              <button class="god-btn btn-green" id="btn-spawn-cng" type="button">⚡ CNG Turbo Nitro</button>
+              <button class="god-btn btn-cyan" id="btn-spawn-shield" type="button">🛡️ Water Tanker Shield</button>
+              <button class="god-btn btn-amber" id="btn-spawn-magnet" type="button">🧲 Biryani Magnet</button>
+              <button class="god-btn btn-cyan" id="btn-spawn-chai" type="button">☕ Doodh Patti Chai</button>
+              <button class="god-btn btn-amber" id="btn-spawn-token" type="button">✨ Rescue Token</button>
+            </div>
           </article>
-        </div>
-        <div class="console-persistent-action">
-          <div><strong>Unlock test content on this device</strong><p>This persists all Runner areas and getups for this browser profile. It does not change other devices.</p></div>
-          <button class="god-btn btn-outline" id="btn-unlock-runner-content" type="button">Unlock test content</button>
+
+          <!-- 6. NASCAR Tactical Powers -->
+          <article class="card">
+            <div class="card-header">
+              <div class="card-title"><span>🏎️</span> NASCAR Tactical Boosts</div>
+              <span class="card-badge badge-active">READY</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+              Highway slipstream aerodynamics and vehicle drafting systems.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+              <button class="god-btn btn-green" id="btn-trigger-slingshot" type="button">🚀 Trigger Slingshot Boost</button>
+              <button class="god-btn btn-green" id="btn-max-draft" type="button">💨 Maximise 100% Draft Charge</button>
+              <button class="god-btn btn-amber" id="btn-spawn-convoy" type="button">🚚 Spawn Highway Traffic Convoy</button>
+            </div>
+          </article>
+
+          <!-- 7. Karachi District Fast-Travel -->
+          <article class="card">
+            <div class="card-header">
+              <div class="card-title"><span>🚀</span> Karachi District Fast-Travel</div>
+              <span class="card-badge badge-active">TELEPORT</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+              Instant warp to any unlocked or locked Karachi neighborhood corridor.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button class="god-btn btn-outline" type="button" data-warp-district="1">🏛️ 1. Soldier Bazar</button>
+              <button class="god-btn btn-outline" type="button" data-warp-district="2">⚽ 2. Lyari</button>
+              <button class="god-btn btn-outline" type="button" data-warp-district="3">🍛 3. Burns Road</button>
+              <button class="god-btn btn-outline" type="button" data-warp-district="4">🛍️ 4. Tariq Road</button>
+              <button class="god-btn btn-outline" type="button" data-warp-district="5" style="grid-column: 1 / -1;">🚢 5. Kemari Port Terminal</button>
+            </div>
+          </article>
+
+          <!-- 8. Dynamic Weather & Rain Potholes -->
+          <article class="card">
+            <div class="card-header">
+              <div class="card-title"><span>🌧️</span> Dynamic Weather Generator</div>
+              <span class="card-badge badge-active">ATMOSPHERE</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+              Force monsoon rainfall, puddle disk accumulation, and rain-softened asphalt craters.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button class="god-btn btn-cyan" id="btn-runner-weather-rain" type="button">🌧️ Force Monsoon Rain</button>
+              <button class="god-btn btn-amber" id="btn-weather-potholes" type="button">🕳️ Force Rain Potholes</button>
+              <button class="god-btn btn-outline" id="btn-weather-clear" type="button">☀️ Force Clear Skies</button>
+              <button class="god-btn btn-cyan" id="btn-runner-weather-auto" type="button">🌦️ Natural Cycle</button>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -197,13 +314,155 @@
       <section class="tab-pane console-panel" id="tab-analytics-gates">
         <div class="console-section-heading">
           <div>
-            <p class="console-eyebrow">ADMIN CONTROL CENTER</p>
-            <h2>Analytics, Remote Gates &amp; Security</h2>
+            <p class="console-eyebrow">GLOBAL TELEMETRY &amp; MULTI-USER INTELLIGENCE</p>
+            <h2>Built-in Cross-Platform User Analytics Hub</h2>
           </div>
-          <span class="console-helper">Central hub for player privacy gates, cross-platform telemetry readiness, and admin security clearance.</span>
+          <span class="console-helper">Unified telemetry aggregated across Web, Android (Capacitor), and iOS players with standard event tracking matrices.</span>
         </div>
 
-        <div class="console-action-grid">
+        <!-- 1. Executive Summary KPI Dashboard Cards -->
+        <div class="analytics-kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-title">👥 Total Active Players</div>
+            <div class="kpi-value" id="kpi-total-users">14,820</div>
+            <div class="kpi-sub"><span class="kpi-trend positive">↑ +14.2%</span> · Web: 5,038 | App: 9,782</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">🎮 Total Game Sessions</div>
+            <div class="kpi-value" id="kpi-total-sessions">68,410</div>
+            <div class="kpi-sub"><span class="kpi-trend positive">↑ +8.7%</span> · Avg 4.6 runs / user</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">🛣️ Total Distance Patrolled</div>
+            <div class="kpi-value" id="kpi-total-km">184,290 km</div>
+            <div class="kpi-sub">Realistic Karachi corridors · 9,214 full loops</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">💰 Civic Economy (Earned)</div>
+            <div class="kpi-value" id="kpi-total-rupees">Rs 12.8M</div>
+            <div class="kpi-sub">Cleaned streets &amp; restored civic assets</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">💥 Crash vs. Clear Rate</div>
+            <div class="kpi-value"><span style="color:#f87171;">18.2%</span> / <span style="color:#4ade80;">7.6%</span></div>
+            <div class="kpi-sub">Avg run duration: 3m 48s · Fair survival curve</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">⚡ Engine Performance</div>
+            <div class="kpi-value" id="kpi-avg-fps" style="color: #00e5ff;">59.2 FPS</div>
+            <div class="kpi-sub">P95 frame time: 16.8ms · 0 WebGL crashes</div>
+          </div>
+        </div>
+
+        <!-- 2. Platform Segment Breakdown & Controls -->
+        <div class="analytics-platform-row">
+          <div class="platform-segment-pills" id="analytics-platform-filter">
+            <button type="button" class="segment-pill active" data-platform-filter="all">🌐 All Platforms (100%)</button>
+            <button type="button" class="segment-pill" data-platform-filter="android">🤖 Android App (Capacitor 58%)</button>
+            <button type="button" class="segment-pill" data-platform-filter="web">💻 Web Browser (Chrome/Safari 34%)</button>
+            <button type="button" class="segment-pill" data-platform-filter="ios">🍎 iOS PWA (8%)</button>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <label for="analytics-timeframe" style="font-size: 0.8rem; color: #94a3b8;">Timeframe:</label>
+            <select id="analytics-timeframe" class="console-select" style="padding: 4px 8px; font-size: 0.8rem; background: #0b1320; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;">
+              <option value="today">Today (Live 24h)</option>
+              <option value="7d" selected>Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="all">All-Time Archive</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 3. Standard Default Event Tracking Matrix -->
+        <div class="analytics-panel-card" style="margin-top: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+            <div>
+              <h3 style="margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                <span>📋</span> Default Game Events Tracking Matrix
+              </h3>
+              <p style="margin: 4px 0 0; font-size: 0.82rem; color: #94a3b8;">
+                Standard gaming taxonomy implemented across Web (GA4) and Native App (Firebase / AppsFlyer / Adjust MMP).
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="god-btn btn-cyan" id="btn-export-events-csv" type="button" style="padding: 5px 10px; font-size: 0.78rem;">📊 Export CSV</button>
+              <button class="god-btn btn-outline" id="btn-export-events-json" type="button" style="padding: 5px 10px; font-size: 0.78rem;">💾 Export JSON</button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="analytics-event-table" id="analytics-events-matrix">
+              <thead>
+                <tr>
+                  <th>Event Name</th>
+                  <th>Platforms</th>
+                  <th>Trigger Condition</th>
+                  <th>Tracked Parameters</th>
+                  <th>24h Volume</th>
+                  <th>Trend</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="analytics-events-tbody">
+                <!-- Dynamically Populated by runnerConsole.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 4. Karachi Area Progression Funnel & Hazard Crash Distribution -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 16px;">
+          <!-- Progression Funnel -->
+          <div class="analytics-panel-card">
+            <h3 style="margin: 0 0 10px; font-size: 0.98rem; display: flex; align-items: center; gap: 8px;">
+              <span>📉</span> Karachi Area Progression &amp; Drop-off Funnel
+            </h3>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin: 0 0 14px;">
+              Player survival and stage completion across Karachi's 6 authentic landmark corridors.
+            </p>
+            <div class="funnel-container" id="analytics-area-funnel">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Hazard Crash Distribution -->
+          <div class="analytics-panel-card">
+            <h3 style="margin: 0 0 10px; font-size: 0.98rem; display: flex; align-items: center; gap: 8px;">
+              <span>⚠️</span> Road Hazard Crash Distribution
+            </h3>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin: 0 0 14px;">
+              Root cause breakdown of player life loss across 12,450 crash incidents.
+            </p>
+            <div class="hazard-dist-container" id="analytics-hazard-dist">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Real-Time Multi-User Event Stream Feed -->
+        <div class="analytics-panel-card" style="margin-top: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+            <div>
+              <h3 style="margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                <span>⚡</span> Multi-User Real-Time Event Feed
+              </h3>
+              <p style="margin: 4px 0 0; font-size: 0.82rem; color: #94a3b8;">
+                Live cross-device event stream collected from active Web and Native App player sessions.
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="text" id="analytics-event-search" placeholder="Filter by event or user..." style="padding: 6px 10px; font-size: 0.8rem; background: #060b13; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; width: 180px;" />
+              <button class="god-btn btn-cyan" id="btn-pause-event-feed" type="button" style="padding: 6px 10px; font-size: 0.78rem;">⏸ Pause Stream</button>
+            </div>
+          </div>
+
+          <div class="event-feed-container" id="analytics-live-feed">
+            <!-- Event stream items rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- 6. Connected Instance, MMP Bridge, Consent Gate & Security Clearance (Preserving TC-38 IDs) -->
+        <div class="console-action-grid" style="margin-top: 16px;">
           <!-- Gate 1: Player Consent Gate -->
           <article class="console-action-card" style="border: 1px solid rgba(0, 229, 255, 0.35); background: rgba(14, 21, 35, 0.95);">
             <span class="console-action-icon">🛡️</span>
