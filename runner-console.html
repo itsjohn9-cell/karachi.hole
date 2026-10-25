@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="./assets/runnerConsole-D2pPpcin.js"></script>
+    <script type="module" crossorigin src="./assets/runnerConsole-BCWBiPFM.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/game-ops-engine-Dy6JO5_e.js">
     <link rel="stylesheet" crossorigin href="./assets/runnerConsole-D8Bz9V-g.css">
   </head>
@@ -85,6 +85,7 @@
           <article class="console-stat"><span>Road</span><strong id="stat-weather">—</strong><small id="stat-hazards">Hazards —</small></article>
           <article class="console-stat"><span>Traffic</span><strong id="stat-traffic">—</strong><small id="stat-powerup">Power-up —</small></article>
           <article class="console-stat"><span>Performance</span><strong id="stat-fps">—</strong><small id="stat-run-status">Session —</small></article>
+          <article class="console-stat"><span>Device &amp; Client</span><strong id="stat-client-device">—</strong><small id="stat-client-details">Runtime —</small></article>
         </div>
       </section>
 
@@ -215,6 +216,28 @@
               </div>
             </div>
             <button class="god-btn btn-cyan" id="btn-tab-toggle-consent" type="button">Enable Gate</button>
+          </article>
+
+          <!-- Real-Time Connected Instance & MMP Payload Bridge -->
+          <article class="console-action-card" style="grid-column: 1 / -1; border: 1px solid rgba(0, 229, 255, 0.4); background: rgba(10, 16, 28, 0.95);">
+            <div style="width: 100%;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+                <div>
+                  <h3 style="display: flex; align-items: center; gap: 8px; font-size: 1.05rem; margin: 0;">
+                    <span>📡</span> Connected Instance &amp; MMP Telemetry Bridge
+                  </h3>
+                  <p style="margin: 4px 0 0; color: #94a3b8; font-size: 0.85rem;">
+                    Default non-PII device context (viewport, memory, network, OS, consent) formatted for AppsFlyer, Adjust, Singular, Firebase, and GA4 integration.
+                  </p>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                  <span id="mmp-instance-badge" style="font-size: 0.72rem; padding: 4px 10px; border-radius: 999px; background: rgba(0, 229, 255, 0.15); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3); font-weight: 700;">STANDBY</span>
+                  <button class="god-btn btn-cyan" id="btn-copy-mmp-json" type="button" style="padding: 6px 12px; font-size: 0.8rem;">📋 Copy MMP Payload</button>
+                  <button class="god-btn btn-outline" id="btn-ping-mmp-test" type="button" style="padding: 6px 12px; font-size: 0.8rem;">⚡ Send Test MMP Ping</button>
+                </div>
+              </div>
+              <pre id="mmp-payload-viewer" style="margin-top: 14px; background: #060b13; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; font-size: 0.76rem; color: #38bdf8; overflow-x: auto; max-height: 220px; line-height: 1.4; font-family: monospace;">Awaiting live telemetry packet from game instance...</pre>
+            </div>
           </article>
 
           <!-- Gate 2: Cross-Platform Provider Readiness -->
