@@ -8,11 +8,39 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="./assets/runnerConsole-d0ruKgTN.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/game-ops-engine-D1SQmJNN.js">
+    <script type="module" crossorigin src="./assets/runnerConsole-D2pPpcin.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/game-ops-engine-Dy6JO5_e.js">
     <link rel="stylesheet" crossorigin href="./assets/runnerConsole-D8Bz9V-g.css">
   </head>
   <body class="runner-console">
+    <!-- Security Clearance Lockscreen -->
+    <div class="god-lockscreen-overlay" id="god-lockscreen" style="display: flex;">
+      <div class="lockscreen-card">
+        <div class="lock-shield-badge">🛡️</div>
+        <div class="lock-header">
+          <span class="security-level-pill">LEVEL-4 CLEARANCE</span>
+          <h2>SECURITY CLEARANCE REQUIRED</h2>
+          <p>Access to Karachi Runner Master &amp; Developer Console is restricted to authorized personnel.</p>
+        </div>
+        <form class="lock-form" id="god-lock-form" onsubmit="return false;">
+          <div class="lock-input-wrap">
+            <span class="lock-input-icon">🔑</span>
+            <input type="password" id="god-passcode-input" class="lock-input" placeholder="ENTER PASSCODE" autocomplete="current-password" autofocus />
+            <button type="button" class="btn-toggle-eye" id="btn-toggle-pass-visibility" aria-label="Toggle password visibility">👁️</button>
+          </div>
+          <div class="lock-hint-row">
+            <span class="lock-hint">Default: <code class="pass-code-hint">karachi786</code></span>
+            <span class="lock-error-msg" id="lock-error-msg"></span>
+          </div>
+          <button type="submit" class="btn-unlock" id="btn-unlock-console">AUTHENTICATE &amp; ENTER ➔</button>
+        </form>
+        <div class="lock-footer">
+          <span>Protected by Karachi Runner Ops Security · Session Clearance</span>
+          <a href="./" class="lock-return-link">← Return to Public Game</a>
+        </div>
+      </div>
+    </div>
+
     <header class="god-header">
       <div class="god-header-inner">
         <div class="god-brand">
@@ -27,6 +55,7 @@
             <span class="pulse-dot"></span>
             <span id="connection-label">GAME TAB NOT CONNECTED</span>
           </div>
+          <button class="header-btn" id="btn-lock-console" type="button" style="background: rgba(255, 51, 102, 0.15); border: 1px solid rgba(255, 51, 102, 0.4); color: #ff3366; cursor: pointer;">🔒 Lock</button>
           <a href="./" class="header-btn btn-play" id="btn-open-game">🎮 Open Game</a>
         </div>
       </div>
@@ -61,6 +90,7 @@
 
       <nav class="console-tabs" aria-label="Developer console sections">
         <button class="god-tab-btn active" type="button" data-tab="runner-controls" aria-selected="true">Runner controls</button>
+        <button class="god-tab-btn" type="button" data-tab="analytics-gates" aria-selected="false">📊 Analytics &amp; Gates</button>
         <button class="god-tab-btn" type="button" data-tab="auto-run" aria-selected="false">Auto-run QA</button>
         <button class="god-tab-btn" type="button" data-tab="obstacle-master" aria-selected="false">Obstacle master</button>
         <button class="god-tab-btn" type="button" data-tab="qa-tools" aria-selected="false">QA &amp; snapshots</button>
@@ -163,6 +193,77 @@
         <p class="console-helper">Scheduled CI runs the production build and browser regression suite daily, on manual dispatch, and when an issue is tagged <code>game-ops</code>. Reports are retained as workflow artifacts; import a downloaded <code>test_results.json</code> into the Master Board to keep it with local operations history.</p>
       </section>
 
+      <section class="tab-pane console-panel" id="tab-analytics-gates">
+        <div class="console-section-heading">
+          <div>
+            <p class="console-eyebrow">ADMIN CONTROL CENTER</p>
+            <h2>Analytics, Remote Gates &amp; Security</h2>
+          </div>
+          <span class="console-helper">Central hub for player privacy gates, cross-platform telemetry readiness, and admin security clearance.</span>
+        </div>
+
+        <div class="console-action-grid">
+          <!-- Gate 1: Player Consent Gate -->
+          <article class="console-action-card" style="border: 1px solid rgba(0, 229, 255, 0.35); background: rgba(14, 21, 35, 0.95);">
+            <span class="console-action-icon">🛡️</span>
+            <div>
+              <h3>In-Game Player Consent Gate</h3>
+              <p>Controls whether players see the anonymous performance diagnostics prompt on launch. If disabled (default), analytics is 100% offline.</p>
+              <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span id="tab-gate-status-badge" style="font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">DISABLED (OFFLINE)</span>
+                <span style="font-size: 0.78rem; color: #94a3b8;" id="tab-gate-player-choice-summary">Player Choice: Unset</span>
+              </div>
+            </div>
+            <button class="god-btn btn-cyan" id="btn-tab-toggle-consent" type="button">Enable Gate</button>
+          </article>
+
+          <!-- Gate 2: Cross-Platform Provider Readiness -->
+          <article class="console-action-card">
+            <span class="console-action-icon">🌐</span>
+            <div>
+              <h3>Web Analytics Stream (GA4)</h3>
+              <p>Browser telemetry facade. Gated behind explicit player consent. Zero PII, zero advertising ID, zero location.</p>
+              <div style="margin-top: 8px; font-size: 0.75rem; color: #00ff9d; font-weight: 600;">✔ Event Contract Specified (v1)</div>
+            </div>
+            <button class="god-btn btn-outline" id="btn-view-web-spec" type="button">Copy Event List</button>
+          </article>
+
+          <!-- Gate 3: Android Stream Readiness -->
+          <article class="console-action-card">
+            <span class="console-action-icon">📱</span>
+            <div>
+              <h3>Android Native Stream</h3>
+              <p>Capacitor bridge for <code>pk.karachi.runner</code>. Advertising ID (GAID) disabled; single provider rule active.</p>
+              <div style="margin-top: 8px; font-size: 0.75rem; color: #ffd700; font-weight: 600;">⚠ Gated on Play Data Safety Update</div>
+            </div>
+            <button class="god-btn btn-outline" id="btn-view-android-spec" type="button">View Android Rule</button>
+          </article>
+
+          <!-- Gate 4: Security & Passcode Clearance -->
+          <article class="console-action-card" style="border: 1px solid rgba(255, 215, 0, 0.35);">
+            <span class="console-action-icon">🔑</span>
+            <div>
+              <h3>Console Admin Passcode</h3>
+              <p>Update or reset the administrative security clearance code for this operations console.</p>
+              <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <input type="password" id="input-new-passcode" placeholder="New Passcode" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 0.85rem; width: 140px;" />
+                <button class="god-btn btn-green" id="btn-save-passcode" type="button" style="padding: 7px 12px; font-size: 0.82rem;">Save Code</button>
+                <button class="god-btn btn-outline" id="btn-reset-passcode" type="button" style="padding: 7px 10px; font-size: 0.82rem;">Reset Default</button>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div style="margin-top: 24px;">
+          <h3 style="font-size: 1.05rem; color: #fff; margin-bottom: 12px;">📊 Telemetry Ledger &amp; Export Center</h3>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="god-btn btn-cyan" id="btn-export-spec-md" type="button">📄 Export Analytics Spec (.md)</button>
+            <button class="god-btn btn-outline" id="btn-export-full-ledger-json" type="button">💾 Export Ops Ledger (.json)</button>
+            <button class="god-btn btn-outline" id="btn-clear-local-ledger" type="button" style="color: #ff3366; border-color: rgba(255,51,102,0.4);">🗑️ Clear Local Ledger</button>
+          </div>
+        </div>
+      </section>
+
       <section class="tab-pane console-panel" id="tab-obstacle-master">
         <div class="console-section-heading">
           <div>
@@ -255,6 +356,21 @@
           <label class="god-btn btn-outline" for="ops-ci-report-file">Choose CI test_results.json</label>
           <input id="ops-ci-report-file" type="file" accept=".json,application/json" hidden>
           <button class="god-btn btn-cyan" id="btn-import-ci-report" type="button">Import CI report</button>
+        </div>
+        <div class="console-action-card" style="margin: 1.25rem 0; border: 1px solid rgba(0, 242, 254, 0.25); background: rgba(7, 17, 27, 0.75); border-radius: 8px; padding: 1.1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <span class="console-eyebrow" style="color: #00f2fe; letter-spacing: 0.08em; font-size: 0.75rem;">ADMIN FEATURE GATE</span>
+              <h3 style="margin: 0.2rem 0 0.35rem; font-size: 1.05rem; color: #fff;">In-Game Player Consent Prompt</h3>
+              <p style="margin: 0; font-size: 0.85rem; color: #94a3b8; max-width: 540px; line-height: 1.4;">
+                Controls whether players are prompted on first run to share anonymous diagnostics. When disabled (default), the consent modal is hidden and analytics remains 100% offline.
+              </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span id="admin-consent-status-badge" style="font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: 999px; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">DISABLED (HIDDEN)</span>
+              <button class="god-btn btn-cyan" id="btn-toggle-admin-consent" type="button">Enable for Players</button>
+            </div>
+          </div>
         </div>
         <div class="console-ops-board">
           <section>
