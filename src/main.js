@@ -29,13 +29,22 @@ const RUNNER_POTHOLE_WATER_MATERIAL = new THREE.MeshBasicMaterial({
   side: THREE.DoubleSide
 });
 const RUNNER_POTHOLE_ARROW_GEOMETRY = (() => {
+  // Caution Hazard Cross ('X') - unmistakable danger warning so players never confuse it with an acceleration boost pad
   const shape = new THREE.Shape();
-  shape.moveTo(-0.52, -0.18);
-  shape.lineTo(0, 0.46);
-  shape.lineTo(0.52, -0.18);
-  shape.lineTo(0.2, -0.18);
-  shape.lineTo(0, 0.1);
-  shape.lineTo(-0.2, -0.18);
+  const arm = 0.44;
+  const thick = 0.13;
+  shape.moveTo(-arm, -arm + thick);
+  shape.lineTo(-arm + thick, -arm);
+  shape.lineTo(0, -thick * 0.72);
+  shape.lineTo(arm - thick, -arm);
+  shape.lineTo(arm, -arm + thick);
+  shape.lineTo(thick * 0.72, 0);
+  shape.lineTo(arm, arm - thick);
+  shape.lineTo(arm - thick, arm);
+  shape.lineTo(0, thick * 0.72);
+  shape.lineTo(-arm + thick, arm);
+  shape.lineTo(-arm, arm - thick);
+  shape.lineTo(-thick * 0.72, 0);
   shape.closePath();
   return new THREE.ShapeGeometry(shape);
 })();
@@ -46,9 +55,17 @@ const RUNNER_POTHOLE_ARROW_MATERIAL = new THREE.MeshBasicMaterial({
 const RUNNER_NEIGHBORHOOD_COUNT = 200;
 const RUNNER_METERS_PER_NEIGHBORHOOD = 100;
 const RUNNER_CITY_LOOP_METERS = RUNNER_NEIGHBORHOOD_COUNT * RUNNER_METERS_PER_NEIGHBORHOOD;
-const RUNNER_AREA_NAMES = ['Soldier Bazar · PECHS', 'Lyari · Chakiwara', 'Saddar · Burns Road'];
+const RUNNER_AREA_NAMES = [
+  'Soldier Bazar · Garden Heritage',
+  'Mazar-e-Quaid · Quaid Mausoleum',
+  'Saddar · Empress Market Heritage',
+  'I.I. Chundrigar · Financial Corridor',
+  'Clifton · Sea View Coastline',
+  'Lyari · Chakiwara Cultural District'
+];
+const RUNNER_AREA_THRESHOLDS = [3300, 6700, 10000, 13400, 16700, 20000];
 const RUNNER_SPEEDS = { easy: 15, standard: 19, hard: 22 };
-const RUNNER_TURN_INPUT_METERS = 45;
+const RUNNER_TURN_INPUT_METERS = 32;
 const RUNNER_TURN_ENTRY_METERS = 12;
 
 function runnerSegmentDistanceSquared(x, z, start, end) {
@@ -767,10 +784,13 @@ class Game {
   }
 
   awardRunnerXP(amount) {
-    if (!this.player || !Number.isFinite(amount) || amount <= 0) return;
+    const validAmount = typeof amount === 'number' && Number.isFinite(amount)
+      ? amount
+      : (Number(amount?.points ?? amount?.score ?? amount?.xp ?? 0) || 0);
+    if (!this.player || validAmount <= 0) return;
     const previousLevel = saveManager.getCareerLevel();
-    this.player.addXP(amount);
-    saveManager.addPlayerXP(amount);
+    this.player.addXP(validAmount);
+    saveManager.addPlayerXP(validAmount);
     if (saveManager.getCareerLevel() > previousLevel) {
       this.ui?.refreshProgressionContent();
     }
@@ -1393,7 +1413,9 @@ class Game {
       scaffold.userData.patrolAreaLevel = 3;
     }
 
-    if (this.getRunnerWeatherState() === 'potholes' &&
+    const runnerWeather = this.getRunnerWeatherState();
+    const isPotholeWeather = runnerWeather === 'potholes' || runnerWeather === 'rain' || this.runnerRainOverride === true;
+    if (isPotholeWeather &&
         !this.runnerObstacles.slice(obstacleStartIndex).some(obstacle =>
           obstacle.type === 'wire' || obstacle.type === 'heritage_scaffold'
         )) {
@@ -1407,7 +1429,9 @@ class Game {
           Number.isFinite(blockedLaneX) && Math.abs(blockedLaneX - laneX) < 0.1
         )
       );
-      const potholeCount = this.runnerWaveCount % 3 === 2 ? 2 : 1;
+      const potholeCount = (runnerWeather === 'rain' || this.runnerRainOverride === true)
+        ? (this.runnerWaveCount % 2 === 0 ? 2 : 1)
+        : (this.runnerWaveCount % 3 === 2 ? 2 : 1);
       for (let index = 0; index < Math.min(potholeCount, openLanes.length - 1); index++) {
         const laneX = openLanes[(this.runnerWaveCount + index) % openLanes.length];
         const pothole = this.createRunnerPotholeMesh();
@@ -1518,6 +1542,15 @@ class Game {
     const group = new THREE.Group();
     group.name = 'Rain-Softened Road Pothole';
 
+    // 1. Excavated Asphalt Crater Bed
+    const craterGeo = new THREE.CylinderGeometry(0.92, 0.74, 0.12, 16, 1, false);
+    const craterMat = new THREE.MeshLambertMaterial({ color: 0x14181f });
+    const crater = new THREE.Mesh(craterGeo, craterMat);
+    crater.position.y = 0.02;
+    crater.receiveShadow = true;
+    group.add(crater);
+
+    // 2. High-contrast Rim and Warning Ring
     const rim = new THREE.Mesh(RUNNER_POTHOLE_RIM_GEOMETRY, RUNNER_POTHOLE_RIM_MATERIAL);
     rim.rotation.x = -Math.PI / 2;
     rim.position.y = 0.035;
@@ -1531,11 +1564,59 @@ class Game {
     warningRing.position.y = 0.05;
     group.add(warningRing);
 
+    // 3. Murky Deep Rainwater Puddle Disk
     const water = new THREE.Mesh(RUNNER_POTHOLE_WATER_GEOMETRY, RUNNER_POTHOLE_WATER_MATERIAL);
     water.rotation.x = -Math.PI / 2;
     water.position.y = 0.06;
     group.add(water);
 
+    // 4. Animated Concentric Ripple Waves in the Water
+    const rippleGeo = new THREE.RingGeometry(0.22, 0.38, 20);
+    rippleGeo.rotateX(-Math.PI / 2);
+    const rippleMat = new THREE.MeshBasicMaterial({
+      color: 0x5ce1e6,
+      transparent: true,
+      opacity: 0.65,
+      side: THREE.DoubleSide
+    });
+    const ripple = new THREE.Mesh(rippleGeo, rippleMat);
+    ripple.position.y = 0.062;
+    ripple.userData.isPotholeRipple = true;
+    group.add(ripple);
+
+    // 5. Jagged Cracked Asphalt Rubble Pieces around the Perimeter (each is a Mesh with geometry)
+    const rubbleMat = new THREE.MeshLambertMaterial({ color: 0x222a33 });
+    const pieceCount = 8;
+    for (let i = 0; i < pieceCount; i++) {
+      const angle = (i / pieceCount) * Math.PI * 2 + (Math.sin(i * 3) * 0.15);
+      const rad = 0.88 + (Math.cos(i * 5) * 0.10);
+      const w = 0.20 + (Math.sin(i * 2) * 0.06);
+      const h = 0.06 + (Math.cos(i) * 0.03);
+      const d = 0.25 + (Math.sin(i * 4) * 0.06);
+      const rubbleGeo = new THREE.BoxGeometry(w, h, d);
+      const rubble = new THREE.Mesh(rubbleGeo, rubbleMat);
+      rubble.position.set(Math.cos(angle) * rad, 0.05, Math.sin(angle) * rad);
+      rubble.rotation.set(Math.sin(i) * 0.2, angle + Math.cos(i) * 0.3, Math.cos(i * 2) * 0.2);
+      rubble.castShadow = true;
+      group.add(rubble);
+    }
+
+    // 6. Authentic Karachi Warning Hazard Stick & Red Caution Flag
+    const stickGeo = new THREE.CylinderGeometry(0.035, 0.045, 1.25, 8);
+    const stickMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
+    const stick = new THREE.Mesh(stickGeo, stickMat);
+    stick.position.set(0.55, 0.64, 0.2);
+    stick.rotation.set(0.12, 0.45, -0.32);
+    group.add(stick);
+
+    const flagGeo = new THREE.BoxGeometry(0.28, 0.16, 0.03);
+    const flagMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
+    const flag = new THREE.Mesh(flagGeo, flagMat);
+    flag.position.set(0.78, 1.15, 0.2);
+    flag.rotation.set(0.12, 0.45, -0.32);
+    group.add(flag);
+
+    // 7. Approach Warning Arrows painted on the asphalt ahead
     [2.2, 4.0].forEach(distance => {
       const approachArrow = new THREE.Mesh(
         RUNNER_POTHOLE_ARROW_GEOMETRY,
@@ -1613,7 +1694,10 @@ class Game {
       this.currentMilestone = getKarachiNeighborhoodName(neighborhoodIndex);
     }
 
-    const areaIndex = Math.min(2, Math.floor(this.distanceMeters / 6700));
+    let areaIndex = 0;
+    while (areaIndex < RUNNER_AREA_THRESHOLDS.length - 1 && this.distanceMeters >= RUNNER_AREA_THRESHOLDS[areaIndex]) {
+      areaIndex++;
+    }
     if (areaIndex !== this.runnerAreaIndex) {
       this.runnerAreaIndex = areaIndex;
       this.currentDistrictLevel = areaIndex + 1;
@@ -1623,6 +1707,20 @@ class Game {
         this.ui?.refreshProgressionContent();
       }
       this.corridorDistrictLevel = this.currentDistrictLevel;
+      if (this.corridorChunks && this.corridorChunks.length > 0) {
+        const baseZ = this.player?.position.z ?? 60.0;
+        this.corridorChunks.forEach(chunk => {
+          this.scene.remove(chunk);
+          this.disposeCorridorChunk(chunk);
+        });
+        this.corridorChunks = [];
+        for (let i = 0; i < 7; i++) {
+          const chunkZ = baseZ - (i * 60.0);
+          const chunk = this.createCorridorChunk(chunkZ);
+          this.scene.add(chunk);
+          this.corridorChunks.push(chunk);
+        }
+      }
       this.ui?.showAnnouncement(
         `🏁 KARACHI ROUTE: ${RUNNER_AREA_NAMES[areaIndex].toUpperCase()} · NEW STREET CHALLENGES`,
         '#00e5ff'
@@ -1699,6 +1797,25 @@ class Game {
     const rain = this.runnerRainEffect;
     rain.mesh.visible = weather === 'rain';
     rain.mesh.position.set(this.player.position.x, 0, this.player.position.z);
+
+    // Animate concentric water ripple waves inside all active road potholes
+    const rippleTime = performance.now() * 0.0035;
+    if (this.runnerObstacles) {
+      for (let i = 0; i < this.runnerObstacles.length; i++) {
+        const obs = this.runnerObstacles[i];
+        if (obs && obs.type === 'pothole' && obs.mesh) {
+          const ripple = obs.mesh.children.find(child => child.userData?.isPotholeRipple);
+          if (ripple) {
+            const scale = 1.0 + 0.38 * Math.sin(rippleTime + i * 1.5);
+            ripple.scale.set(scale, scale, scale);
+            if (ripple.material) {
+              ripple.material.opacity = (weather === 'rain' ? 0.82 : 0.45) * (0.55 + 0.45 * Math.cos(rippleTime * 1.8 + i));
+            }
+          }
+        }
+      }
+    }
+
     if (weather !== 'rain') return;
 
     for (let offset = 0; offset < rain.positions.length; offset += 6) {
@@ -1772,9 +1889,12 @@ class Game {
    */
   addCorridorLandmarks(chunkGroup) {
     const lists = {
-      1: ['createBurnsRoadColonialBuilding', 'createBahadurabadCharminar', 'createTariqRoadFashionPlaza', 'createSaddarClockTower', 'createKMCBuilding', 'createCommercialPlaza', 'createResidentialBungalow'],
-      2: ['createDryResidentialHome', 'createDoDaryaPavilion', 'createCliftonLighthouse', 'createTeenTalwarChowrangi', 'createResidentialBungalow', 'createCommercialPlaza', 'createKMCBuilding'],
-      3: ['createEmpressMarket', 'createFrereHall', 'createMohattaPalace', 'createSaddarClockTower', 'createBurnsRoadColonialBuilding', 'createMazarEQuaid', 'createKMCBuilding']
+      1: ['createKMCBuilding', 'createBurnsRoadColonialBuilding', 'createBahadurabadCharminar', 'createTariqRoadFashionPlaza', 'createResidentialBungalow', 'createCommercialPlaza'],
+      2: ['createMazarEQuaid', 'createOverheadPedestrianBridge', 'createFrereHall', 'createKMCBuilding', 'createCommercialPlaza'],
+      3: ['createEmpressMarket', 'createSaddarClockTower', 'createCommercialPlaza', 'createBurnsRoadBiryaniStall', 'createBurnsRoadColonialBuilding'],
+      4: ['createHabibBankPlaza', 'createMCBTower', 'createChundrigarSkyscraper', 'createCommercialPlaza'],
+      5: ['createTeenTalwarChowrangi', 'createMohattaPalace', 'createCliftonLighthouse', 'createDoDaryaPavilion', 'createCliftonDecoratedCamel'],
+      6: ['createLyariStreetFootball', 'createChaiDhaba', 'createCommercialPlaza', 'createBurnsRoadColonialBuilding', 'createKMCBuilding']
     };
     const list = lists[this.currentDistrictLevel] || lists[1];
     const serial = this.corridorChunkSerial = (this.corridorChunkSerial || 0) + 1;
@@ -1826,11 +1946,11 @@ class Game {
     chunkGroup.position.z = chunkZ;
     const districtStyles = {
       1: {
-        name: 'SOLDIER BAZAR · PECHS',
+        name: 'SOLDIER BAZAR · GARDEN HERITAGE',
         streets: [
           { avenue: 'SOLDIER BAZAR', avenueUrdu: 'سولجر بازار', cross: 'NISHTAR ROAD', crossUrdu: 'نشتر روڈ' },
-          { avenue: 'NISHTAR ROAD', avenueUrdu: 'نشتر روڈ', cross: 'SHAHRAH-E-QUAIDEEN', crossUrdu: 'شاہراہ قائدین' },
-          { avenue: 'TARIQ ROAD', avenueUrdu: 'طارق روڈ', cross: 'PECHS', crossUrdu: 'پی ای سی ایچ ایس' },
+          { avenue: 'GARDEN EAST', avenueUrdu: 'گارڈن ایسٹ', cross: 'BRITTO ROAD', crossUrdu: 'برٹو روڈ' },
+          { avenue: 'NISHTAR ROAD', avenueUrdu: 'نشتر روڈ', cross: 'TARIQ ROAD', crossUrdu: 'طارق روڈ' },
           { avenue: 'PECHS', avenueUrdu: 'پی ای سی ایچ ایس', cross: 'BAHADURABAD', crossUrdu: 'بہادرآباد' }
         ],
         buildingColors: [0xb0bec5, 0xcfd8dc, 0xffcc80, 0x80deea, 0xa5d6a7],
@@ -1839,30 +1959,69 @@ class Game {
         laneMarking: 0xffffff
       },
       2: {
-        name: 'LYARI · CHAKIWARA · BAGHDADI',
+        name: 'MAZAR-E-QUAID · QUAID MAUSOLEUM',
         streets: [
-          { avenue: 'LYARI', avenueUrdu: 'لیاری', cross: 'CHAKIWARA', crossUrdu: 'چاکیواڑہ' },
-          { avenue: 'CHAKIWARA', avenueUrdu: 'چاکیواڑہ', cross: 'BAGHDADI', crossUrdu: 'بغدادی' },
-          { avenue: 'BAGHDADI', avenueUrdu: 'بغدادی', cross: 'KALAKOT', crossUrdu: 'کلاکوٹ' },
-          { avenue: 'LYARI FOOTBALL GROUND', avenueUrdu: 'لیاری فٹ بال گراؤنڈ', cross: 'MAURIPUR ROAD', crossUrdu: 'ماری پور روڈ' }
+          { avenue: 'SHAHRAH-E-QUAIDEEN', avenueUrdu: 'شاہراہ قائدین', cross: 'MAZAR-E-QUAID', crossUrdu: 'مزارِ قائد' },
+          { avenue: 'M.A. JINNAH ROAD', avenueUrdu: 'ایم اے جناح روڈ', cross: 'QUAID MEMORIAL', crossUrdu: 'یادگارِ قائد' },
+          { avenue: 'NEW M.A. JINNAH ROAD', avenueUrdu: 'نیو ایم اے جناح روڈ', cross: 'GURUMANDIR', crossUrdu: 'گرو مندر' },
+          { avenue: 'KASHMIR ROAD', avenueUrdu: 'کشمیر روڈ', cross: 'SHAHRAH-E-QUAIDEEN', crossUrdu: 'شاہراہ قائدین' }
         ],
-        buildingColors: [0xef9a9a, 0xffcc80, 0xfff176, 0xa5d6a7, 0x80deea],
-        sidewalkColor: 0x8d6e63,
-        roadColor: 0x302b28,
-        laneMarking: 0xf5d6a0
+        buildingColors: [0xffffff, 0xe0e0e0, 0xb2dfdb, 0x80cbc4, 0xc8e6c9],
+        sidewalkColor: 0x4db6ac,
+        roadColor: 0x11161d,
+        laneMarking: 0x00e676
       },
       3: {
-        name: 'SADDAR · BURNS ROAD · EMPRESS MARKET',
+        name: 'SADDAR · EMPRESS MARKET HERITAGE',
         streets: [
-          { avenue: 'SADDAR', avenueUrdu: 'صدر', cross: 'EMPRESS MARKET', crossUrdu: 'ایمپریس مارکیٹ' },
           { avenue: 'EMPRESS MARKET', avenueUrdu: 'ایمپریس مارکیٹ', cross: 'PREEDY STREET', crossUrdu: 'پریڈی اسٹریٹ' },
-          { avenue: 'BURNS ROAD', avenueUrdu: 'برنس روڈ', cross: 'BOHRI BAZAAR', crossUrdu: 'بوہری بازار' },
-          { avenue: 'M.A. JINNAH ROAD', avenueUrdu: 'ایم اے جناح روڈ', cross: 'BURNS ROAD', crossUrdu: 'برنس روڈ' }
+          { avenue: 'SADDAR BAZAAR', avenueUrdu: 'صدر بازار', cross: 'ABDULLAH HAROON ROAD', crossUrdu: 'عبداللہ ہارون روڈ' },
+          { avenue: 'BURNS ROAD FOOD STREET', avenueUrdu: 'برنس روڈ فوڈ اسٹریٹ', cross: 'BOHRI BAZAAR', crossUrdu: 'بوہری بازار' },
+          { avenue: 'ZAIBUNNISA STREET', avenueUrdu: 'زیب النساء اسٹریٹ', cross: 'REGAL CHOWK', crossUrdu: 'ریگل چوک' }
         ],
         buildingColors: [0x8d6e63, 0xa1887f, 0xd7ccc8, 0xffcc80, 0xb0bec5],
         sidewalkColor: 0x795548,
         roadColor: 0x242326,
         laneMarking: 0xe6d7b8
+      },
+      4: {
+        name: 'I.I. CHUNDRIGAR · FINANCIAL CORRIDOR',
+        streets: [
+          { avenue: 'I.I. CHUNDRIGAR ROAD', avenueUrdu: 'آئی آئی چندریگر روڈ', cross: 'MCB TOWER', crossUrdu: 'ایم سی بی ٹاور' },
+          { avenue: 'MCLEOD ROAD', avenueUrdu: 'میکلوڈ روڈ', cross: 'HABIB BANK PLAZA', crossUrdu: 'حبیب بینک پلازہ' },
+          { avenue: 'STOCK EXCHANGE ROAD', avenueUrdu: 'اسٹاک ایکسچینج روڈ', cross: 'WALL STREET', crossUrdu: 'وال اسٹریٹ' },
+          { avenue: 'MEREWETHER TOWER', avenueUrdu: 'میرے ویتھر ٹاور', cross: 'TALPUR ROAD', crossUrdu: 'تالپور روڈ' }
+        ],
+        buildingColors: [0x37474f, 0x455a64, 0x607d8b, 0x90a4ae, 0x0277bd],
+        sidewalkColor: 0x374151,
+        roadColor: 0x0f172a,
+        laneMarking: 0x38bdf8
+      },
+      5: {
+        name: 'CLIFTON · SEA VIEW COASTLINE',
+        streets: [
+          { avenue: 'CLIFTON BEACH', avenueUrdu: 'کلفٹن بیچ', cross: 'TEEN TALWAR', crossUrdu: 'تین تلوار' },
+          { avenue: 'SEA VIEW PROMENADE', avenueUrdu: 'سی ویو پرومیناڈ', cross: 'KHAYABAN-E-SHAMSHEER', crossUrdu: 'خیابانِ شمشیر' },
+          { avenue: 'DO DARYA COASTAL ROAD', avenueUrdu: 'دو دریا کوسٹل روڈ', cross: 'MANORA LIGHTHOUSE', crossUrdu: 'منوڑا لائٹ ہاؤس' },
+          { avenue: 'HATIM ALVI ROAD', avenueUrdu: 'حاتم علوی روڈ', cross: 'MOHATTA PALACE', crossUrdu: 'مہٹہ پیلس' }
+        ],
+        buildingColors: [0xffab91, 0xffccbc, 0x80deea, 0xb2ebf2, 0xffe082],
+        sidewalkColor: 0x00897b,
+        roadColor: 0x1e293b,
+        laneMarking: 0xffd54f
+      },
+      6: {
+        name: 'LYARI · CHAKIWARA CULTURAL DISTRICT',
+        streets: [
+          { avenue: 'LYARI AMAN AVENUE', avenueUrdu: 'لیاری امن ایونیو', cross: 'CHAKIWARA', crossUrdu: 'چاکیواڑہ' },
+          { avenue: 'BAGHDADI CHOWK', avenueUrdu: 'بغدادی چوک', cross: 'KALAKOT', crossUrdu: 'کلاکوٹ' },
+          { avenue: 'PEOPLES FOOTBALL STADIUM', avenueUrdu: 'پیپلز فٹ بال اسٹیڈیم', cross: 'CHEEL CHOWK', crossUrdu: 'چیل چوک' },
+          { avenue: 'MAURIPUR HIGHWAY', avenueUrdu: 'ماری پور ہائی وے', cross: 'GUL MUHAMMAD LANE', crossUrdu: 'گل محمد لین' }
+        ],
+        buildingColors: [0xef5350, 0xffa726, 0xffee58, 0x66bb6a, 0x42a5f5],
+        sidewalkColor: 0x8d6e63,
+        roadColor: 0x261e1b,
+        laneMarking: 0xffeb3b
       }
     };
     const districtStyle = districtStyles[this.currentDistrictLevel] || districtStyles[1];
@@ -1871,7 +2030,7 @@ class Game {
     chunkGroup.userData.karachiDistrict = route.avenue;
     chunkGroup.userData.patrolArea = districtStyle.name;
     chunkGroup.userData.patrolAreaLevel = this.currentDistrictLevel;
-    chunkGroup.userData.runnerIdentity = getDistrictConfig(this.currentDistrictLevel).runnerFocus;
+    chunkGroup.userData.runnerIdentity = getDistrictConfig(this.currentDistrictLevel)?.runnerFocus || 'Karachi urban arterial corridor · high-speed traffic';
 
     // 1. Smooth Dark Asphalt Road Surface (13m wide, 60m long)
     const roadGeo = new THREE.PlaneGeometry(13.0, 60.0);
@@ -2286,9 +2445,7 @@ class Game {
     // touch buttons, and swipe gestures without joystick-based duplicate turns.
     if (this.isAutoPilotActive) this.executeRunnerAutoPilot(dt);
     this.targetLaneX = this.currentLane * this.laneWidth;
-    if (!this.turnCameraBlend?.active) {
-      this.player.position.x = THREE.MathUtils.lerp(this.player.position.x, this.targetLaneX, Math.min(1.0, dt * 16.0));
-    }
+    this.player.position.x = THREE.MathUtils.lerp(this.player.position.x, this.targetLaneX, Math.min(1.0, dt * 16.0));
 
     // Update Runner Invulnerability Grace Timer & Blinking Mesh
     if ((this.runnerInvulnerableTimer || 0) > 0) {
@@ -2313,11 +2470,9 @@ class Game {
     // Sync 3D group position & orientation
     this.player.group.position.x = this.player.position.x;
     this.player.group.position.z = this.player.position.z;
-    if (!this.turnCameraBlend?.active) {
-      this.player.facingAngle = Math.PI;
-      this.player.targetRotationY = Math.PI;
-      this.player.group.rotation.y = Math.PI;
-    }
+    this.player.facingAngle = Math.PI;
+    this.player.targetRotationY = Math.PI;
+    this.player.group.rotation.y = Math.PI;
 
     // Keep the chase camera attached to the runner instead of letting the player
     // run out of frame as the endless corridor advances.
@@ -2326,55 +2481,18 @@ class Game {
       const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
       const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
       const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
-
-      if (this.turnCameraBlend?.active) {
-        this.turnCameraBlend.t = Math.min(1.0, this.turnCameraBlend.t + dt / this.turnCameraBlend.duration);
-        const factor = THREE.MathUtils.smoothstep(this.turnCameraBlend.t, 0, 1);
-        const targetCamX = this.player.position.x * horizontalCameraFollow;
-        const targetCamY = 2.85 + (this.runnerCameraLift || 0);
-        const targetCamZ = this.player.position.z + 5.2;
-        const targetLookX = this.player.position.x * horizontalLookAhead;
-        const targetLookY = 1.25;
-        const targetLookZ = this.player.position.z - 18.0;
-
-        // Smoothly blend player position and rotation into straight forward alignment
-        if (this.turnCameraBlend.startPlayerX !== undefined) {
-          const blendedX = THREE.MathUtils.lerp(this.turnCameraBlend.startPlayerX, this.targetLaneX, factor);
-          this.player.position.x = blendedX;
-          this.player.group.position.x = blendedX;
-        }
-        if (this.turnCameraBlend.startPlayerRotY !== undefined) {
-          const blendedRotY = THREE.MathUtils.lerp(this.turnCameraBlend.startPlayerRotY, Math.PI, factor);
-          this.player.group.rotation.y = blendedRotY;
-          this.player.facingAngle = blendedRotY;
-          this.player.targetRotationY = blendedRotY;
-        }
-
-        this.camera.position.set(
-          THREE.MathUtils.lerp(this.turnCameraBlend.startCamX, targetCamX, factor),
-          THREE.MathUtils.lerp(this.turnCameraBlend.startCamY, targetCamY, factor),
-          THREE.MathUtils.lerp(this.turnCameraBlend.startCamZ, targetCamZ, factor)
-        );
-        this.camera.lookAt(
-          THREE.MathUtils.lerp(this.turnCameraBlend.startLookX, targetLookX, factor),
-          1.25,
-          THREE.MathUtils.lerp(this.turnCameraBlend.startLookZ, targetLookZ, factor)
-        );
-        if (this.turnCameraBlend.t >= 1) this.turnCameraBlend.active = false;
-      } else {
-        this.camera.position.x = THREE.MathUtils.lerp(
-          this.camera.position.x,
-          this.player.position.x * horizontalCameraFollow,
-          Math.min(1.0, dt * 6.0)
-        );
-        this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, 2.85 + (this.runnerCameraLift || 0), cameraFollow);
-        this.camera.position.z = this.player.position.z + 5.2;
-        this.camera.lookAt(
-          this.player.position.x * horizontalLookAhead,
-          1.25,
-          this.player.position.z - 18.0
-        );
-      }
+      this.camera.position.x = THREE.MathUtils.lerp(
+        this.camera.position.x,
+        this.player.position.x * horizontalCameraFollow,
+        Math.min(1.0, dt * 6.0)
+      );
+      this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, 2.85 + (this.runnerCameraLift || 0), cameraFollow);
+      this.camera.position.z = this.player.position.z + 5.2;
+      this.camera.lookAt(
+        this.player.position.x * horizontalLookAhead,
+        1.25,
+        this.player.position.z - 18.0
+      );
     }
 
     // 4. Update Vertical Traversal (Jumps)
@@ -2897,9 +3015,10 @@ class Game {
       if (saveData.player.avatarId) {
         this.player.setAvatar(saveData.player.avatarId);
       }
-      this.player.level = Math.max(1, saveData.player.level || 1);
-      this.player.xp = saveData.player.careerXP || 0;
-      this.player.score = saveData.player.careerXP || 0;
+      this.player.level = Math.max(1, Number(saveData.player.level) || 1);
+      this.player.xp = Number(saveData.player.careerXP) || 0;
+      this.player.score = Number(saveData.player.careerXP) || 0;
+      this.score = Number(this.score) || 0;
       const targetRadius = (LEVEL_CONFIG[Math.min(this.player.level - 1, LEVEL_CONFIG.length - 1)] || LEVEL_CONFIG[0]).radius;
       this.player.radius = targetRadius;
       this.player.targetRadius = targetRadius;
@@ -2925,9 +3044,10 @@ class Game {
     this.player.setAvatar(
       saveManager.isAvatarUnlocked(savedPlayer.avatarId) ? savedPlayer.avatarId : 'tariq'
     );
-    this.player.level = Math.max(1, savedPlayer.level || 1);
-    this.player.xp = savedPlayer.careerXP || 0;
-    this.player.score = savedPlayer.careerXP || 0;
+    this.player.level = Math.max(1, Number(savedPlayer.level) || 1);
+    this.player.xp = Number(savedPlayer.careerXP) || 0;
+    this.player.score = Number(savedPlayer.careerXP) || 0;
+    this.score = Number(this.score) || 0;
     this.player.radius = 1.45;
     this.player.targetRadius = 1.45;
     this.player.updateNameTag();
@@ -6641,15 +6761,20 @@ class Game {
         break;
 
       case 'SET_RADIUS':
-        if (this.player && payload.radius) {
+        if (payload.radius) {
           const r = Math.max(1.0, Math.min(30.0, payload.radius));
-          this.player.radius = r;
-          this.player.targetRadius = r;
-          this.player.updateScale(0.016);
-          if (this.camera) {
-            this.camera.position.set(0, 6.2 + r * 1.15, 6.8 + r * 1.15);
+          this.masterRadius = r;
+          this.vortexRadius = r;
+          this.vortexTimer = 35.0;
+          if (this.player) {
+            this.player.radius = r;
+            this.player.targetRadius = r;
+            if (typeof this.player.updateScale === 'function') this.player.updateScale(0.016);
+            if (!this.isTempleRun && this.camera) {
+              this.camera.position.set(0, 6.2 + r * 1.15, 6.8 + r * 1.15);
+            }
           }
-          if (this.ui?.showDevToast) this.ui.showDevToast(`👑 Master Radius: ${r.toFixed(1)}m`);
+          if (this.ui?.showDevToast) this.ui.showDevToast(`👑 Master Vortex Radius: ${r.toFixed(1)}m`);
         }
         break;
 
@@ -6680,16 +6805,38 @@ class Game {
 
       case 'TOGGLE_AUTOPILOT':
         this.isAutoPilotActive = !!payload.enabled;
+        if (this.isAutoPilotActive) {
+          if (!this.isGameStarted) {
+            this.startGame();
+          } else if (this.isPaused) {
+            this.resumeGame();
+          }
+          if (this.isGameOver) {
+            if (typeof this.reviveRunner === 'function' && saveManager.getReviveTokenCount() > 0) {
+              this.reviveRunner();
+            } else if (typeof this.restartGame === 'function') {
+              this.restartGame();
+            }
+          }
+        }
         if (this.ui?.showDevToast) this.ui.showDevToast(this.isAutoPilotActive ? '🤖 AI Auto-Pilot ENGAGED!' : '🤖 AI Auto-Pilot Disengaged');
         break;
 
       case 'FREEZE_THREATS':
         window.__DEV_FREEZE_THREATS__ = !!payload.frozen;
-        if (this.ui?.showDevToast) this.ui.showDevToast(window.__DEV_FREEZE_THREATS__ ? '🛑 Threat Movement FROZEN' : '🏃 Threats Resumed Fleeing');
+        this.isTrafficFrozen = window.__DEV_FREEZE_THREATS__;
+        if (this.ui?.showDevToast) this.ui.showDevToast(window.__DEV_FREEZE_THREATS__ ? '🛑 Threats & Traffic FROZEN' : '🏃 Threats Resumed Fleeing');
         break;
 
       case 'DEVOUR_ALL':
-        if (this.districtEvils && this.player) {
+        if (this.isTempleRun) {
+          this.clearAllRunnerHazards();
+          this.score += 1500;
+          this.awardRunnerXP(1000);
+          if (this.player) this.particles?.createDevourSparkles?.(this.player.position, 24, 0x00e5ff);
+          audio.playCoin?.();
+          if (this.ui?.showDevToast) this.ui.showDevToast('🕳️ HOLE DEVOUR! All Road Hazards Swallowed!');
+        } else if (this.districtEvils && this.player) {
           const active = this.districtEvils.filter(e => e && e.state !== 'swallowed');
           active.forEach(evil => {
             this.resolveDistrictThreat(evil, this.player);
@@ -6704,9 +6851,39 @@ class Game {
         break;
 
       case 'SPAWN_MUNCHIES':
-        if (typeof this.populateBoulevardClutter === 'function') {
+        if (this.isTempleRun) {
+          const baseZ = this.player ? this.player.position.z - 20.0 : -30.0;
+          const lanes = [-this.laneWidth, 0, this.laneWidth];
+          const count = payload.count || 21;
+          for (let i = 0; i < count; i++) {
+            const laneX = lanes[i % lanes.length];
+            const z = baseZ - (Math.floor(i / lanes.length) * 4.0);
+            const coin = KarachiModels.createRupeeCoin(0.44);
+            coin.position.set(laneX, 0.75 + (Math.sin(i) * 0.2), z);
+            this.scene.add(coin);
+            this.runnerCoins.push({ mesh: coin, value: 50, x: laneX, z });
+          }
+          if (this.ui?.showDevToast) this.ui.showDevToast(`🥫 Spawned ${count} Street Munchies & Rupees!`);
+        } else if (typeof this.populateBoulevardClutter === 'function') {
           this.populateBoulevardClutter(payload.count || 25);
           if (this.ui?.showDevToast) this.ui.showDevToast(`🥫 Spawned ${payload.count || 25} Street Munchies!`);
+        }
+        break;
+
+      case 'SPAWN_POWERUP':
+        if (this.isTempleRun) {
+          const type = payload.type || 'cng';
+          const laneX = this.currentLane * this.laneWidth;
+          const pz = (this.player ? this.player.position.z : 0) - 18.0;
+          const pMesh = this.createRunnerPowerupMesh(type);
+          pMesh.position.set(laneX, 0.9, pz);
+          this.scene.add(pMesh);
+          if (type === 'revive_token') {
+            this.runnerReviveTokens.push({ mesh: pMesh, laneX, z: pz });
+          } else {
+            this.runnerPowerups.push({ type, mesh: pMesh, x: laneX, z: pz });
+          }
+          if (this.ui?.showDevToast) this.ui.showDevToast(`⚡ Spawned [${type.toUpperCase()}] Power-Up Ahead!`);
         }
         break;
 
@@ -6721,10 +6898,18 @@ class Game {
         break;
 
       case 'WARP_DISTRICT':
-        if (payload.district && DISTRICT_CONFIGS[payload.district]) {
-          this.currentDistrictLevel = payload.district - 1;
-          this.advanceToNextDistrict();
-          if (this.ui?.showDevToast) this.ui.showDevToast(`🚀 Warped to District ${payload.district}!`);
+        if (payload.district && DISTRICT_CONFIGS[payload.district - 1]) {
+          const dLevel = Number(payload.district);
+          saveManager.unlockDistrict(dLevel);
+          this.currentDistrictLevel = dLevel;
+          if (this.isTempleRun) {
+            this.corridorDistrictLevel = dLevel;
+            this.initCorridorTerrain();
+            this.distanceMeters = (dLevel - 1) * RUNNER_METERS_PER_NEIGHBORHOOD;
+          } else {
+            this.loadDistrictLevel(dLevel, this.isGameStarted);
+          }
+          if (this.ui?.showDevToast) this.ui.showDevToast(`🚀 Warped to District ${dLevel}: ${DISTRICT_CONFIGS[dLevel - 1].name}!`);
         }
         break;
 
@@ -6763,8 +6948,13 @@ class Game {
   }
 
   completeRunnerArea() {
-    const areaLength = 6700;
-    const target = (Math.floor(this.distanceMeters / areaLength) + 1) * areaLength;
+    let target = RUNNER_CITY_LOOP_METERS;
+    for (let i = 0; i < RUNNER_AREA_THRESHOLDS.length; i++) {
+      if (RUNNER_AREA_THRESHOLDS[i] > this.distanceMeters + 10) {
+        target = RUNNER_AREA_THRESHOLDS[i];
+        break;
+      }
+    }
     this.setRunnerDistance(target >= RUNNER_CITY_LOOP_METERS ? RUNNER_CITY_LOOP_METERS : target);
   }
 
@@ -6955,52 +7145,69 @@ class Game {
   attemptRunnerTurn(dir) {
     const junction = this.runnerJunction;
     if (!junction || junction.resolved || this.runnerTurn || !this.player) return false;
-    if (junction.turnQueued) return true;
     const ahead = this.player.position.z - junction.z;
     if (ahead > RUNNER_TURN_INPUT_METERS || ahead < -1) return false;
-    junction.resolved = true;
 
     if (junction.kind === 'fork') {
+      junction.resolved = true;
       this.enterRunnerSection(dir < 0 ? 'flyover' : 'underpass');
       return true;
     }
 
+    // In the approach queue zone (ahead > RUNNER_TURN_ENTRY_METERS, ~12m):
+    if (ahead > RUNNER_TURN_ENTRY_METERS) {
+      if (dir === junction.dir) {
+        if (!junction.turnQueued) {
+          junction.turnQueued = true;
+          const perfect = ahead <= 7;
+          const bonus = perfect ? 500 : 300;
+          this.score = (Number(this.score) || 0) + bonus;
+          this.awardRunnerXP(bonus);
+          audio.playPowerUp();
+          this.ui.showAnnouncement(perfect ? `🧭 PERFECT TURN! +${bonus}` : `🧭 CLEAN TURN +${bonus}`, '#76ff03');
+        }
+        return true;
+      } else {
+        // Player pressed opposite direction while still far ahead:
+        // They want to dodge obstacles or switch lanes!
+        // Cancel any queued turn so they are not trapped into an automatic turn.
+        junction.turnQueued = false;
+        return false;
+      }
+    }
+
+    // In the immediate turn zone (ahead <= RUNNER_TURN_ENTRY_METERS):
+    junction.resolved = true;
     if (dir === junction.dir) {
       const perfect = ahead <= 7;
       const bonus = perfect ? 500 : 300;
-      this.score += bonus;
+      this.score = (Number(this.score) || 0) + bonus;
       this.awardRunnerXP(bonus);
       audio.playPowerUp();
       this.ui.showAnnouncement(perfect ? `🧭 PERFECT TURN! +${bonus}` : `🧭 CLEAN TURN +${bonus}`, '#76ff03');
-      if (ahead > RUNNER_TURN_ENTRY_METERS) {
-        junction.resolved = false;
-        junction.turnQueued = true;
-        return true;
-      }
+      this.beginRunnerTurn(junction, junction.dir);
+      return true;
     } else {
       this.beginRunnerTurn(junction, junction.dir);
       this.handleRunnerHit({ type: 'wrong_turn', isHit: false, mesh: null }, 'WRONG WAY');
       return true;
     }
-    this.beginRunnerTurn(junction, junction.dir);
-    return true;
   }
 
   beginRunnerTurn(junction, dir) {
     const z0 = this.player.position.z;
-    const distanceToJunction = Math.max(0, z0 - junction.z);
-    const radius = THREE.MathUtils.clamp(distanceToJunction, 3, 4.5);
-    const speed = Math.max(12, this.player.currentSpeed || this.getRunnerSpeed());
-    const pathMeters = distanceToJunction + radius * (Math.PI / 2 - 1);
+    const radius = Math.max(3, z0 - junction.z);
+    const incomingLane = Math.max(-1, Math.min(1, this.currentLane ?? 0));
     this.runnerTurn = {
       dir,
       sign: dir === -1 ? 1 : -1,
       t: 0,
       startZ: z0,
       startX: this.player.position.x,
+      incomingLane,
       pivotZ: junction.z,
       radius,
-      duration: THREE.MathUtils.clamp(pathMeters / speed, 0.42, 0.85)
+      duration: THREE.MathUtils.clamp(1.57 * radius / Math.max(12, this.getRunnerSpeed()), 1.05, 1.5)
     };
     if (this.player.avatarMesh) this.player.avatarMesh.visible = true;
     this.isSliding = false;
@@ -7010,18 +7217,18 @@ class Game {
     this.particles.createSkidSmoke(this.player.position, 8);
   }
 
-  // Keep the turn arc bounded while the player and camera swing onto the cross-road.
+  // The runner follows a real quarter-circle onto the cross-road while the camera swings with it.
   updateRunnerTurnAnimation(dt) {
     const turn = this.runnerTurn;
     const player = this.player;
     turn.t = Math.min(1, turn.t + dt / turn.duration);
     const p = turn.t;
-    const progress = THREE.MathUtils.smoothstep(p, 0, 1);
-    const theta = progress * Math.PI / 2;
+    const theta = p * Math.PI / 2;
     const s = turn.sign;
     const R = turn.radius;
-    const x = s * R * (Math.cos(theta) - 1) + turn.startX * (1 - progress);
-    const z = turn.startZ - R * Math.sin(theta) + (turn.pivotZ - (turn.startZ - R)) * progress;
+    const endZ = turn.startZ - R;
+    const x = s * R * (Math.cos(theta) - 1) + turn.startX * (1 - p);
+    const z = turn.startZ - R * Math.sin(theta) + (turn.pivotZ - endZ) * p;
     const angle = s * theta;
     const fx = -Math.sin(angle);
     const fz = -Math.cos(angle);
@@ -7080,29 +7287,19 @@ class Game {
     this.removeRunnerJunction();
     if (!crossChunks.length) this.initCorridorTerrain();
     this.clearRunnerObjects();
-    this.currentLane = 0;
-    this.targetLaneX = 0;
-    const startPlayerX = this.player.position.x;
-    const startPlayerRotY = this.player.group.rotation.y;
-    this.player.position.z = junctionZ;
-    this.player.group.position.z = junctionZ;
+    const preservedLane = Math.max(-1, Math.min(1, turn?.incomingLane ?? this.currentLane ?? 0));
+    this.currentLane = preservedLane;
+    this.targetLaneX = preservedLane * this.laneWidth;
+    this.player.position.set(this.targetLaneX, 0, junctionZ);
+    this.player.group.position.set(this.targetLaneX, 0, junctionZ);
+    this.player.group.rotation.y = Math.PI;
+    this.player.facingAngle = Math.PI;
+    this.player.targetRotationY = Math.PI;
     this.nextRunnerWaveZ = junctionZ - 45;
     this.lastRunnerZ = junctionZ;
     this.runnerInvulnerableTimer = Math.max(this.runnerInvulnerableTimer || 0, 1.0);
-    const curDir = this.camera ? this.camera.getWorldDirection(new THREE.Vector3()) : new THREE.Vector3(0, 0, -1);
-    this.turnCameraBlend = {
-      active: true,
-      t: 0,
-      duration: 0.28,
-      startPlayerX,
-      startPlayerRotY,
-      startCamX: this.camera.position.x,
-      startCamY: this.camera.position.y,
-      startCamZ: this.camera.position.z,
-      startLookX: this.camera.position.x + curDir.x * 20,
-      startLookY: 1.25,
-      startLookZ: this.camera.position.z + curDir.z * 20
-    };
+    this.camera.position.set(this.targetLaneX, 2.85 + (this.runnerCameraLift || 0), junctionZ + 5.2);
+    this.camera.lookAt(this.targetLaneX, 1.25, junctionZ - 18);
     this.ui.showAnnouncement(`🧭 NOW HEADING ${this.getRunnerHeadingLabel()}`, '#00e5ff');
     const navProfile = this.getRunnerNavProfile();
     this.nextJunctionAt = this.distanceMeters + (this.runnerJunctionIndex % 4 === 1 ? navProfile.chainGap : navProfile.gap);
@@ -7123,7 +7320,7 @@ class Game {
 
   endRunnerSection() {
     if (!this.runnerSection) return;
-    this.score += 400;
+    this.score = (Number(this.score) || 0) + 400;
     this.awardRunnerXP(400);
     this.ui.showAnnouncement('✅ SECTION CLEARED! +400', '#76ff03');
     this.runnerSection = null;
@@ -7276,6 +7473,19 @@ class Game {
         this.performJump();
       }
     });
+
+    // Auto-Pilot Tactical Powers: Slingshot release & Horn for Snatchers
+    if ((this.slingshotCharge || 0) >= 100 && typeof this.triggerRunnerSlingshot === 'function') {
+      this.triggerRunnerSlingshot();
+    }
+    const snatcherInLane = (this.runnerObstacles || []).find(obs =>
+      !obs.isHit && (obs.type === 'snatcher' || obs.type === 'robber') &&
+      obs.z && (pPos.z - obs.z > 0 && pPos.z - obs.z < 28) &&
+      Math.abs(obs.laneX - this.player.position.x) < 1.5
+    );
+    if (snatcherInLane && typeof this.triggerRunnerHorn === 'function') {
+      this.triggerRunnerHorn();
+    }
   }
 
   executeAutoPilotSteering(dt) {

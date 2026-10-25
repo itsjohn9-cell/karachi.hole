@@ -2478,17 +2478,17 @@ async function runTestSuite() {
             throw new Error('Speed, hazard spacing or challenge tier did not increase over the loop');
           }
 
-          game.distanceMeters = 6699;
+          game.distanceMeters = 3299;
           game.updateRunnerProgression();
-          if (game.currentDistrictLevel !== 1) throw new Error('Lyari began before the Soldier Bazar route leg ended');
-          game.distanceMeters = 6700;
+          if (game.currentDistrictLevel !== 1) throw new Error('Mazar-e-Quaid began before the Soldier Bazar route leg ended');
+          game.distanceMeters = 3300;
           game.updateRunnerProgression();
           if (game.currentDistrictLevel !== 2 ||
               !game.corridorChunks.every(chunk => chunk.userData.patrolAreaLevel === 2) ||
               !JSON.parse(localStorage.getItem('karachi_hero_save_v2')).districts[2]) {
-            throw new Error('The Lyari leg did not change scenery and unlock area progression');
+            throw new Error('The Mazar-e-Quaid leg did not change scenery and unlock area progression');
           }
-          game.distanceMeters = 13400;
+          game.distanceMeters = 6700;
           game.updateRunnerProgression();
           if (game.currentDistrictLevel !== 3 ||
               !game.corridorChunks.every(chunk => chunk.userData.patrolAreaLevel === 3)) {
@@ -2931,7 +2931,7 @@ async function runTestSuite() {
 
         game.distanceMeters = 100;
         send('COMPLETE_RUNNER_AREA');
-        if (game.runnerAreaIndex !== 1 || game.distanceMeters < 6700) {
+        if (game.runnerAreaIndex !== 1 || game.distanceMeters < 3300) {
           throw new Error('Complete area did not advance to the next patrol area');
         }
         game.hearts = 1;

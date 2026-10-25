@@ -226,8 +226,11 @@ export class Hole {
   }
 
   addXP(amount, onLevelUp) {
-    this.score += amount;
-    this.xp += amount;
+    const validAmount = typeof amount === 'number' && Number.isFinite(amount)
+      ? amount
+      : (Number(amount?.points ?? amount?.score ?? amount?.xp ?? amount?.rewardXP ?? 0) || 0);
+    this.score = (Number(this.score) || 0) + validAmount;
+    this.xp = (Number(this.xp) || 0) + validAmount;
     this.swallowedCount++;
 
     this.comboCount++;

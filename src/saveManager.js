@@ -200,9 +200,10 @@ class SaveManager {
   }
 
   addPlayerXP(xp = 0) {
-    this.data.player.careerXP = (this.data.player.careerXP || 0) + xp;
+    const validXP = Number(xp) || 0;
+    this.data.player.careerXP = (Number(this.data.player.careerXP) || 0) + validXP;
     const nextLevel = 1 + Math.floor(this.data.player.careerXP / 3500);
-    this.data.player.level = Math.max(this.data.player.level || 1, nextLevel);
+    this.data.player.level = Math.max(Number(this.data.player.level) || 1, nextLevel);
     this.save();
   }
 

@@ -3430,53 +3430,19 @@ export class UIManager {
     let touchStartX = 0;
     let touchStartY = 0;
     let touchStartTarget = null;
-    let swipeTriggered = false;
-
     window.addEventListener('touchstart', (e) => {
       const touch = e.changedTouches?.[0];
       if (touch) {
         touchStartX = touch.clientX;
         touchStartY = touch.clientY;
         touchStartTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-        swipeTriggered = false;
-      }
-    }, { passive: true });
-
-    window.addEventListener('touchmove', (e) => {
-      if (swipeTriggered || !e.changedTouches?.[0]) return;
-      if (this.runnerTutorialOverlay?.style.display !== 'none' &&
-          window.game?.isTempleRun && window.game.isGameStarted) {
-        this.hideRunnerTutorial();
-        swipeTriggered = true;
-        return;
-      }
-      if (!window.game?.isTempleRun || !window.game.isGameStarted || window.game.isPaused ||
-          touchStartTarget?.closest('.ui-interactive, button, .modal')) {
-        return;
-      }
-
-      const dx = e.changedTouches[0].clientX - touchStartX;
-      const dy = e.changedTouches[0].clientY - touchStartY;
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
-
-      // Trigger instantly at 28px displacement during the flick
-      if (absDx > 28 || absDy > 28) {
-        swipeTriggered = true;
-        this.hideRunnerTutorial();
-        if (absDx > absDy) {
-          if (dx < 0 && this.onLaneLeft) this.onLaneLeft();
-          else if (dx > 0 && this.onLaneRight) this.onLaneRight();
-        } else {
-          if (dy < 0 && this.onJump) this.onJump();
-          else if (dy > 0 && this.onSlide) this.onSlide();
-        }
       }
     }, { passive: true });
 
     window.addEventListener('touchend', (e) => {
-      if (!swipeTriggered && e.changedTouches && e.changedTouches[0]) {
+      if (e.changedTouches && e.changedTouches[0]) {
         const startTarget = touchStartTarget;
+        touchStartTarget = null;
         if (this.runnerTutorialOverlay?.style.display !== 'none' &&
             window.game?.isTempleRun && window.game.isGameStarted) {
           this.hideRunnerTutorial();
@@ -3488,7 +3454,7 @@ export class UIManager {
         }
         const dx = e.changedTouches[0].clientX - touchStartX;
         const dy = e.changedTouches[0].clientY - touchStartY;
-        if (Math.abs(dx) > 28 || Math.abs(dy) > 28) {
+        if (Math.abs(dx) > 35 || Math.abs(dy) > 35) {
           this.hideRunnerTutorial();
           if (Math.abs(dx) > Math.abs(dy)) {
             if (dx < 0 && this.onLaneLeft) this.onLaneLeft();
@@ -3499,8 +3465,6 @@ export class UIManager {
           }
         }
       }
-      touchStartTarget = null;
-      swipeTriggered = false;
     }, { passive: true });
 
     // Mouse Drag Swipe for Desktop Web
@@ -3847,7 +3811,8 @@ export class UIManager {
     // Karachi Temple Run HUD Metrics (Distance, Coins, Hearts)
     const distValEl = document.getElementById('hud-distance-val');
     if (distValEl) {
-      distValEl.textContent = `${Math.round(distanceMeters || 0)} m`;
+      const d = Math.round(distanceMeters || 0);
+      distValEl.textContent = d >= 1000 ? `${d.toLocaleString()} m (${(d / 1000).toFixed(1)} km)` : `${d} m`;
     }
     const milestoneEl = document.getElementById('hud-milestone-tag');
     if (milestoneEl && currentMilestone) {
@@ -4068,7 +4033,11 @@ export class UIManager {
     }
 
     // Score & Level
-    document.getElementById('hud-score').textContent = player.score.toLocaleString();
+    const rawScore = Number(player?.score ?? this.game?.score ?? 0);
+    const scoreValEl = document.getElementById('hud-score');
+    if (scoreValEl) {
+      scoreValEl.textContent = (Number.isFinite(rawScore) ? rawScore : 0).toLocaleString();
+    }
 
     // Civic Cleanser Meter
     const civicPctEl = document.getElementById('hud-civic-pct');
@@ -4603,7 +4572,9 @@ export class UIManager {
     if (!rect.height) return;
     const short = window.innerHeight <= 500;
     const hazardTop = Math.ceil(rect.bottom + 40);
-    const hazardHeight = short ? 40 : 56;
+    const hazardEl = document.getElementById('hud-runner-hazard-alert');
+    const measuredHazard = hazardEl && !hazardEl.hidden ? hazardEl.getBoundingClientRect().height : 0;
+    const hazardHeight = Math.max(measuredHazard, short ? 40 : 56);
     const announceTop = hazardTop + hazardHeight + 4;
     const navTop = Math.max(announceTop + 36, Math.round(window.innerHeight * 0.42));
     const root = document.documentElement.style;
