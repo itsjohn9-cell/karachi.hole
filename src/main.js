@@ -1622,7 +1622,7 @@ class Game {
         saveManager.unlockDistrict(this.currentDistrictLevel);
         this.ui?.refreshProgressionContent();
       }
-      this.initCorridorTerrain();
+      this.corridorDistrictLevel = this.currentDistrictLevel;
       this.ui?.showAnnouncement(
         `🏁 KARACHI ROUTE: ${RUNNER_AREA_NAMES[areaIndex].toUpperCase()} · NEW STREET CHALLENGES`,
         '#00e5ff'
@@ -2239,8 +2239,18 @@ class Game {
       for (let i = 0; i < this.corridorChunks.length; i++) {
         const chunk = this.corridorChunks[i];
         if (chunk.position.z > this.player.position.z + 45.0) {
-          chunk.position.z = minZ - 60.0;
-          minZ = chunk.position.z;
+          const newZ = minZ - 60.0;
+          if (chunk.userData.patrolAreaLevel !== undefined &&
+              chunk.userData.patrolAreaLevel !== this.currentDistrictLevel) {
+            this.scene.remove(chunk);
+            this.disposeCorridorChunk(chunk);
+            const newChunk = this.createCorridorChunk(newZ);
+            this.scene.add(newChunk);
+            this.corridorChunks[i] = newChunk;
+          } else {
+            chunk.position.z = newZ;
+          }
+          minZ = newZ;
         }
       }
     }
@@ -2276,7 +2286,9 @@ class Game {
     // touch buttons, and swipe gestures without joystick-based duplicate turns.
     if (this.isAutoPilotActive) this.executeRunnerAutoPilot(dt);
     this.targetLaneX = this.currentLane * this.laneWidth;
-    this.player.position.x = THREE.MathUtils.lerp(this.player.position.x, this.targetLaneX, Math.min(1.0, dt * 16.0));
+    if (!this.turnCameraBlend?.active) {
+      this.player.position.x = THREE.MathUtils.lerp(this.player.position.x, this.targetLaneX, Math.min(1.0, dt * 16.0));
+    }
 
     // Update Runner Invulnerability Grace Timer & Blinking Mesh
     if ((this.runnerInvulnerableTimer || 0) > 0) {
@@ -2301,9 +2313,11 @@ class Game {
     // Sync 3D group position & orientation
     this.player.group.position.x = this.player.position.x;
     this.player.group.position.z = this.player.position.z;
-    this.player.facingAngle = Math.PI;
-    this.player.targetRotationY = Math.PI;
-    this.player.group.rotation.y = Math.PI;
+    if (!this.turnCameraBlend?.active) {
+      this.player.facingAngle = Math.PI;
+      this.player.targetRotationY = Math.PI;
+      this.player.group.rotation.y = Math.PI;
+    }
 
     // Keep the chase camera attached to the runner instead of letting the player
     // run out of frame as the endless corridor advances.
@@ -2312,18 +2326,55 @@ class Game {
       const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
       const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
       const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
-      this.camera.position.x = THREE.MathUtils.lerp(
-        this.camera.position.x,
-        this.player.position.x * horizontalCameraFollow,
-        Math.min(1.0, dt * 6.0)
-      );
-      this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, 2.85 + (this.runnerCameraLift || 0), cameraFollow);
-      this.camera.position.z = this.player.position.z + 5.2;
-      this.camera.lookAt(
-        this.player.position.x * horizontalLookAhead,
-        1.25,
-        this.player.position.z - 18.0
-      );
+
+      if (this.turnCameraBlend?.active) {
+        this.turnCameraBlend.t = Math.min(1.0, this.turnCameraBlend.t + dt / this.turnCameraBlend.duration);
+        const factor = THREE.MathUtils.smoothstep(this.turnCameraBlend.t, 0, 1);
+        const targetCamX = this.player.position.x * horizontalCameraFollow;
+        const targetCamY = 2.85 + (this.runnerCameraLift || 0);
+        const targetCamZ = this.player.position.z + 5.2;
+        const targetLookX = this.player.position.x * horizontalLookAhead;
+        const targetLookY = 1.25;
+        const targetLookZ = this.player.position.z - 18.0;
+
+        // Smoothly blend player position and rotation into straight forward alignment
+        if (this.turnCameraBlend.startPlayerX !== undefined) {
+          const blendedX = THREE.MathUtils.lerp(this.turnCameraBlend.startPlayerX, this.targetLaneX, factor);
+          this.player.position.x = blendedX;
+          this.player.group.position.x = blendedX;
+        }
+        if (this.turnCameraBlend.startPlayerRotY !== undefined) {
+          const blendedRotY = THREE.MathUtils.lerp(this.turnCameraBlend.startPlayerRotY, Math.PI, factor);
+          this.player.group.rotation.y = blendedRotY;
+          this.player.facingAngle = blendedRotY;
+          this.player.targetRotationY = blendedRotY;
+        }
+
+        this.camera.position.set(
+          THREE.MathUtils.lerp(this.turnCameraBlend.startCamX, targetCamX, factor),
+          THREE.MathUtils.lerp(this.turnCameraBlend.startCamY, targetCamY, factor),
+          THREE.MathUtils.lerp(this.turnCameraBlend.startCamZ, targetCamZ, factor)
+        );
+        this.camera.lookAt(
+          THREE.MathUtils.lerp(this.turnCameraBlend.startLookX, targetLookX, factor),
+          1.25,
+          THREE.MathUtils.lerp(this.turnCameraBlend.startLookZ, targetLookZ, factor)
+        );
+        if (this.turnCameraBlend.t >= 1) this.turnCameraBlend.active = false;
+      } else {
+        this.camera.position.x = THREE.MathUtils.lerp(
+          this.camera.position.x,
+          this.player.position.x * horizontalCameraFollow,
+          Math.min(1.0, dt * 6.0)
+        );
+        this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, 2.85 + (this.runnerCameraLift || 0), cameraFollow);
+        this.camera.position.z = this.player.position.z + 5.2;
+        this.camera.lookAt(
+          this.player.position.x * horizontalLookAhead,
+          1.25,
+          this.player.position.z - 18.0
+        );
+      }
     }
 
     // 4. Update Vertical Traversal (Jumps)
@@ -6013,10 +6064,105 @@ class Game {
             state: e.state
           }));
 
+        const getClientInfo = () => {
+          const ua = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+          const isAndroid = /Android/i.test(ua);
+          const isIOS = /iPhone|iPad|iPod/i.test(ua);
+          const isCapacitor = Boolean(window.Capacitor?.isNativePlatform?.());
+          const w = window.innerWidth || 0;
+          const h = window.innerHeight || 0;
+          const dpr = Number((window.devicePixelRatio || 1).toFixed(2));
+          const touch = Boolean(typeof navigator !== 'undefined' && navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+          const deviceCategory = (w < 600 || (touch && Math.max(w, h) < 950)) ? 'mobile' :
+            (w <= 1024 && touch) ? 'tablet' : 'desktop';
+
+          let consentChoice = 'unset';
+          try {
+            consentChoice = localStorage.getItem('kr_analytics_consent') || 'unset';
+          } catch {}
+
+          let persistentId = '';
+          try {
+            persistentId = localStorage.getItem('kr_client_instance_id');
+            if (!persistentId) {
+              persistentId = 'kr_inst_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+              localStorage.setItem('kr_client_instance_id', persistentId);
+            }
+          } catch {
+            persistentId = 'kr_inst_ephemeral';
+          }
+
+          return {
+            instanceId: persistentId,
+            runtime: isCapacitor ? 'capacitor-android' : 'web-browser',
+            platform: isAndroid ? 'Android' : isIOS ? 'iOS' : (navigator.userAgentData?.platform || navigator.platform || 'Web'),
+            deviceCategory,
+            viewport: `${w}x${h}`,
+            pixelRatio: dpr,
+            screen: typeof screen !== 'undefined' ? `${screen.width}x${screen.height}` : `${w}x${h}`,
+            language: typeof navigator !== 'undefined' ? (navigator.language || 'en-US') : 'en-US',
+            online: typeof navigator !== 'undefined' ? (navigator.onLine !== false) : true,
+            connectionType: (typeof navigator !== 'undefined' && navigator.connection?.effectiveType) || 'standard',
+            deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
+            hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
+            consentStatus: consentChoice,
+            appVersion: '2.1.0',
+            appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
+          };
+        };
+
+        const clientInfo = this.__cachedClientInfo || (this.__cachedClientInfo = getClientInfo());
+        clientInfo.online = typeof navigator !== 'undefined' ? (navigator.onLine !== false) : true;
+        try {
+          clientInfo.consentStatus = localStorage.getItem('kr_analytics_consent') || 'unset';
+        } catch {}
+
+        const mmpPayload = {
+          schema_version: '1.0.0-mmp',
+          provider_targets: ['AppsFlyer', 'Adjust', 'Singular', 'Firebase', 'GA4'],
+          app_id: clientInfo.appBundleId,
+          instance_id: clientInfo.instanceId,
+          runtime_environment: clientInfo.runtime,
+          platform: clientInfo.platform,
+          device: {
+            category: clientInfo.deviceCategory,
+            viewport: clientInfo.viewport,
+            screen_res: clientInfo.screen,
+            dpr: clientInfo.pixelRatio,
+            language: clientInfo.language,
+            memory_gb: clientInfo.deviceMemoryGb,
+            cores: clientInfo.hardwareConcurrency,
+            connection: clientInfo.connectionType,
+            online: clientInfo.online
+          },
+          privacy: {
+            consent_status: clientInfo.consentStatus,
+            ad_id_collected: false,
+            gps_location_collected: false,
+            pii_collected: false
+          },
+          session: {
+            game_mode: this.gameMode || 'runner',
+            status: this.isGameOver ? 'game_over' : this.isPaused ? 'paused' : this.isGameStarted ? 'running' : 'idle',
+            district_level: this.currentDistrictLevel || 1,
+            neighborhood: getKarachiNeighborhoodName(this.runnerNeighborhoodIndex),
+            distance_meters: Math.round(this.distanceMeters || 0),
+            score: this.score || 0,
+            coins: this.coins || 0,
+            hearts: this.hearts || 0,
+            speed_kmh: this.currentKmh || 60,
+            fps: this.currentFPS || 60,
+            heading: this.getRunnerHeadingLabel?.() || 'N',
+            weather: this.isTempleRun ? this.getRunnerWeatherState() : 'clear'
+          }
+        };
+
         window.__DEV_TELEMETRY__ = {
           timestamp: new Date().toISOString(),
           fps: this.currentFPS || 0,
           level: this.currentDistrictLevel,
+          clientInfo,
+          mmpPayload,
           isPaused: this.isPaused,
           isGameOver: this.isGameOver,
           isGameStarted: this.isGameStarted,
@@ -6166,9 +6312,9 @@ class Game {
           this.ui.updateDevModeHUD(window.__DEV_TELEMETRY__);
         }
 
-        // Broadcast telemetry through the unified Master/Developer channel.
+        // Broadcast telemetry through the unified Master/Developer channel and localStorage so all tabs/windows/WebViews sync
         const nowMs = performance.now();
-        const telemetryInterval = this.masterChannel ? 100 : 500;
+        const telemetryInterval = this.masterChannel ? 120 : 350;
         if (!this.__lastMasterTelemetryBroadcast ||
             nowMs - this.__lastMasterTelemetryBroadcast > telemetryInterval) {
           this.__lastMasterTelemetryBroadcast = nowMs;
@@ -6177,13 +6323,16 @@ class Game {
             telemetry: window.__DEV_TELEMETRY__
           };
           if (this.masterChannel) {
-            this.masterChannel.postMessage(teleMsg);
-          } else {
             try {
-              localStorage.setItem('karachi_mastermode_telemetry', JSON.stringify(teleMsg));
-            } catch (error) {
-              console.error('[MASTER_MODE] Could not persist fallback telemetry.', error);
+              this.masterChannel.postMessage(teleMsg);
+            } catch (err) {
+              console.warn('[MASTER_MODE] BroadcastChannel post failed.', err);
             }
+          }
+          try {
+            localStorage.setItem('karachi_mastermode_telemetry', JSON.stringify(teleMsg));
+          } catch (error) {
+            // Quota or sandboxed storage
           }
         }
 
@@ -6933,16 +7082,27 @@ class Game {
     this.clearRunnerObjects();
     this.currentLane = 0;
     this.targetLaneX = 0;
-    this.player.position.set(0, 0, junctionZ);
-    this.player.group.position.set(0, 0, junctionZ);
-    this.player.group.rotation.y = Math.PI;
-    this.player.facingAngle = Math.PI;
-    this.player.targetRotationY = Math.PI;
+    const startPlayerX = this.player.position.x;
+    const startPlayerRotY = this.player.group.rotation.y;
+    this.player.position.z = junctionZ;
+    this.player.group.position.z = junctionZ;
     this.nextRunnerWaveZ = junctionZ - 45;
     this.lastRunnerZ = junctionZ;
     this.runnerInvulnerableTimer = Math.max(this.runnerInvulnerableTimer || 0, 1.0);
-    this.camera.position.set(0, 2.85 + (this.runnerCameraLift || 0), junctionZ + 5.2);
-    this.camera.lookAt(0, 1.25, junctionZ - 18);
+    const curDir = this.camera ? this.camera.getWorldDirection(new THREE.Vector3()) : new THREE.Vector3(0, 0, -1);
+    this.turnCameraBlend = {
+      active: true,
+      t: 0,
+      duration: 0.28,
+      startPlayerX,
+      startPlayerRotY,
+      startCamX: this.camera.position.x,
+      startCamY: this.camera.position.y,
+      startCamZ: this.camera.position.z,
+      startLookX: this.camera.position.x + curDir.x * 20,
+      startLookY: 1.25,
+      startLookZ: this.camera.position.z + curDir.z * 20
+    };
     this.ui.showAnnouncement(`🧭 NOW HEADING ${this.getRunnerHeadingLabel()}`, '#00e5ff');
     const navProfile = this.getRunnerNavProfile();
     this.nextJunctionAt = this.distanceMeters + (this.runnerJunctionIndex % 4 === 1 ? navProfile.chainGap : navProfile.gap);

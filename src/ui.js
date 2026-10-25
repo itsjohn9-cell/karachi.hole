@@ -2775,53 +2775,57 @@ export class UIManager {
       btnSprint.addEventListener('touchcancel', () => { window.isBoostPressed = false; });
     }
 
+    const attachInstantTouch = (btn, action) => {
+      if (!btn) return;
+      let lastTouchTime = 0;
+      const trigger = (e) => {
+        if (e && e.cancelable && e.type === 'touchstart') e.preventDefault();
+        const now = performance.now();
+        if (now - lastTouchTime < 160) return;
+        lastTouchTime = now;
+        action(e);
+      };
+      btn.addEventListener('touchstart', trigger, { passive: false });
+      btn.addEventListener('click', trigger);
+    };
+
     // Jump Button (Mobile Traversal)
     const btnJump = document.getElementById('btn-jump');
     if (btnJump) {
-      const doJump = (e) => {
-        if (e && e.preventDefault) e.preventDefault();
+      attachInstantTouch(btnJump, () => {
         if (this.onJump) this.onJump();
-      };
-      btnJump.addEventListener('click', doJump);
+      });
     }
 
     // King Pressure Horn Button (Clear Traffic & Stun Robbers)
     const btnHorn = document.getElementById('btn-horn');
     if (btnHorn) {
-      const doHorn = (e) => {
-        if (e && e.preventDefault) e.preventDefault();
+      attachInstantTouch(btnHorn, () => {
         if (this.onHorn) this.onHorn();
-      };
-      btnHorn.addEventListener('click', doHorn);
+      });
     }
 
     // Slide Button (Temple Run low slide duck under dangling wires)
     const btnSlide = document.getElementById('btn-slide');
     if (btnSlide) {
-      const doSlide = (e) => {
-        if (e && e.preventDefault) e.preventDefault();
+      attachInstantTouch(btnSlide, () => {
         if (this.onSlide) this.onSlide();
-      };
-      btnSlide.addEventListener('click', doSlide);
+      });
     }
 
     // Lane Switch Buttons (Mobile Left / Right Lane Arrows)
     const btnLaneLeft = document.getElementById('btn-lane-left');
     if (btnLaneLeft) {
-      const doLaneL = (e) => {
-        if (e && e.preventDefault) e.preventDefault();
+      attachInstantTouch(btnLaneLeft, () => {
         if (this.onLaneLeft) this.onLaneLeft();
-      };
-      btnLaneLeft.addEventListener('click', doLaneL);
+      });
     }
 
     const btnLaneRight = document.getElementById('btn-lane-right');
     if (btnLaneRight) {
-      const doLaneR = (e) => {
-        if (e && e.preventDefault) e.preventDefault();
+      attachInstantTouch(btnLaneRight, () => {
         if (this.onLaneRight) this.onLaneRight();
-      };
-      btnLaneRight.addEventListener('click', doLaneR);
+      });
     }
 
     // Talk Button Prompt (Interactive Citizen Dialogues)
@@ -3422,23 +3426,57 @@ export class UIManager {
       }
     });
 
-    // Touch Swipe Gestures for Mobile Temple Run
+    // Touch Swipe Gestures for Mobile Temple Run (Instantaneous touchmove flick detection)
     let touchStartX = 0;
     let touchStartY = 0;
     let touchStartTarget = null;
+    let swipeTriggered = false;
+
     window.addEventListener('touchstart', (e) => {
       const touch = e.changedTouches?.[0];
       if (touch) {
         touchStartX = touch.clientX;
         touchStartY = touch.clientY;
         touchStartTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+        swipeTriggered = false;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (swipeTriggered || !e.changedTouches?.[0]) return;
+      if (this.runnerTutorialOverlay?.style.display !== 'none' &&
+          window.game?.isTempleRun && window.game.isGameStarted) {
+        this.hideRunnerTutorial();
+        swipeTriggered = true;
+        return;
+      }
+      if (!window.game?.isTempleRun || !window.game.isGameStarted || window.game.isPaused ||
+          touchStartTarget?.closest('.ui-interactive, button, .modal')) {
+        return;
+      }
+
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      // Trigger instantly at 28px displacement during the flick
+      if (absDx > 28 || absDy > 28) {
+        swipeTriggered = true;
+        this.hideRunnerTutorial();
+        if (absDx > absDy) {
+          if (dx < 0 && this.onLaneLeft) this.onLaneLeft();
+          else if (dx > 0 && this.onLaneRight) this.onLaneRight();
+        } else {
+          if (dy < 0 && this.onJump) this.onJump();
+          else if (dy > 0 && this.onSlide) this.onSlide();
+        }
       }
     }, { passive: true });
 
     window.addEventListener('touchend', (e) => {
-      if (e.changedTouches && e.changedTouches[0]) {
+      if (!swipeTriggered && e.changedTouches && e.changedTouches[0]) {
         const startTarget = touchStartTarget;
-        touchStartTarget = null;
         if (this.runnerTutorialOverlay?.style.display !== 'none' &&
             window.game?.isTempleRun && window.game.isGameStarted) {
           this.hideRunnerTutorial();
@@ -3450,7 +3488,7 @@ export class UIManager {
         }
         const dx = e.changedTouches[0].clientX - touchStartX;
         const dy = e.changedTouches[0].clientY - touchStartY;
-        if (Math.abs(dx) > 35 || Math.abs(dy) > 35) {
+        if (Math.abs(dx) > 28 || Math.abs(dy) > 28) {
           this.hideRunnerTutorial();
           if (Math.abs(dx) > Math.abs(dy)) {
             if (dx < 0 && this.onLaneLeft) this.onLaneLeft();
@@ -3461,6 +3499,8 @@ export class UIManager {
           }
         }
       }
+      touchStartTarget = null;
+      swipeTriggered = false;
     }, { passive: true });
 
     // Mouse Drag Swipe for Desktop Web

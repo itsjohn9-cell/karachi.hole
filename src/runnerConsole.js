@@ -195,6 +195,32 @@ class RunnerOpsConsole {
       this.exportReport('json');
     });
 
+    document.getElementById('btn-copy-mmp-json')?.addEventListener('click', () => {
+      const payload = this.lastTelemetry?.mmpPayload || (this.lastTelemetry ? {
+        warning: 'Legacy telemetry packet without MMP envelope',
+        telemetry: this.lastTelemetry
+      } : { error: 'No live game instance connected' });
+      const str = JSON.stringify(payload, null, 2);
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(str).then(() => {
+          this.showToast('📋 MMP JSON payload copied to clipboard');
+        }).catch(() => {
+          this.showToast('Could not access clipboard');
+        });
+      } else {
+        this.showToast('Clipboard access not supported');
+      }
+    });
+
+    document.getElementById('btn-ping-mmp-test')?.addEventListener('click', () => {
+      this.recordOpsEvent('mmp.ping', {
+        instanceId: this.lastTelemetry?.clientInfo?.instanceId || 'unknown',
+        platform: this.lastTelemetry?.clientInfo?.platform || 'web',
+        targets: ['AppsFlyer', 'Adjust', 'Singular', 'Firebase', 'GA4']
+      });
+      this.showToast('⚡ Test MMP event registered and logged to ledger');
+    });
+
     document.getElementById('btn-clear-local-ledger')?.addEventListener('click', () => {
       if (!window.confirm('Clear all local operations ledger history in this browser?')) return;
       try {
@@ -217,6 +243,17 @@ class RunnerOpsConsole {
       this.channel.addEventListener('message', event => this.handleMessage(event.data));
     } catch (error) {
       console.warn('[RUNNER_CONSOLE] BroadcastChannel unavailable; using same-origin storage events.', error);
+    }
+
+    // Immediately load last known telemetry from local storage if available
+    try {
+      const stored = localStorage.getItem(TELEMETRY_KEY);
+      if (stored) {
+        const message = JSON.parse(stored);
+        this.handleMessage(message);
+      }
+    } catch (err) {
+      console.warn('[RUNNER_CONSOLE] Could not load initial telemetry from storage.', err);
     }
 
     window.addEventListener('storage', event => {
@@ -465,10 +502,37 @@ class RunnerOpsConsole {
         'stat-area', 'stat-neighborhood', 'stat-distance', 'stat-stage',
         'stat-difficulty', 'stat-score', 'stat-coins', 'stat-hearts',
         'stat-speed', 'stat-lane', 'stat-weather', 'stat-hazards',
-        'stat-traffic', 'stat-powerup', 'stat-fps'
+        'stat-traffic', 'stat-powerup', 'stat-fps', 'stat-client-device'
       ].forEach(id => setText(id, '—'));
+      setText('stat-client-details', 'Runtime —');
       setText('stat-run-status', runState);
       return;
+    }
+
+    const client = telemetry.clientInfo;
+    const mmp = telemetry.mmpPayload;
+    if (client) {
+      setText('stat-client-device', `${client.deviceCategory.toUpperCase()} · ${client.platform}`);
+      setText('stat-client-details', `${client.viewport} (${client.runtime}) · ${client.online ? '🟢 Online' : '🔴 Offline'}`);
+    } else {
+      setText('stat-client-device', 'WEB · Detected');
+      setText('stat-client-details', 'Standard Viewport');
+    }
+
+    const badge = document.getElementById('mmp-instance-badge');
+    if (badge) {
+      if (client?.instanceId) {
+        badge.textContent = `${client.instanceId.slice(0, 14)}… · ${client.consentStatus.toUpperCase()}`;
+        badge.style.color = client.consentStatus === 'granted' ? '#4ade80' : '#00e5ff';
+      } else {
+        badge.textContent = 'STANDBY';
+        badge.style.color = '#94a3b8';
+      }
+    }
+
+    const mmpViewer = document.getElementById('mmp-payload-viewer');
+    if (mmpViewer && mmp) {
+      mmpViewer.textContent = JSON.stringify(mmp, null, 2);
     }
 
     const distance = Math.max(0, Number(telemetry.distanceMeters) || 0);
