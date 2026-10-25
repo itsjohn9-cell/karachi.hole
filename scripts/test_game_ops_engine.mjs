@@ -177,3 +177,13 @@ test('rejects malformed CI reports before writing partial records', () => {
   }), /supported status/);
   assert.equal(engine.state.events.length, 0);
 });
+
+test('toggles and persists admin consent prompt gate status', () => {
+  const { engine } = createEngine();
+  assert.equal(engine.isConsentPromptEnabled(), false);
+  assert.equal(engine.setConsentPromptEnabled(true), true);
+  assert.equal(engine.isConsentPromptEnabled(), true);
+  assert.ok(engine.state.events.some(event => event.type === 'admin.consent_gate_updated'));
+  assert.equal(engine.setConsentPromptEnabled(false), false);
+  assert.equal(engine.isConsentPromptEnabled(), false);
+});

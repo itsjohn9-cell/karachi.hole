@@ -254,6 +254,21 @@
           <input id="ops-ci-report-file" type="file" accept=".json,application/json" hidden>
           <button class="god-btn btn-cyan" id="btn-import-ci-report" type="button">Import CI report</button>
         </div>
+        <div class="console-action-card" style="margin: 1.25rem 0; border: 1px solid rgba(0, 242, 254, 0.25); background: rgba(7, 17, 27, 0.75); border-radius: 8px; padding: 1.1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <span class="console-eyebrow" style="color: #00f2fe; letter-spacing: 0.08em; font-size: 0.75rem;">ADMIN FEATURE GATE</span>
+              <h3 style="margin: 0.2rem 0 0.35rem; font-size: 1.05rem; color: #fff;">In-Game Player Consent Prompt</h3>
+              <p style="margin: 0; font-size: 0.85rem; color: #94a3b8; max-width: 540px; line-height: 1.4;">
+                Controls whether players are prompted on first run to share anonymous diagnostics. When disabled (default), the consent modal is hidden and analytics remains 100% offline.
+              </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span id="admin-consent-status-badge" style="font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: 999px; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">DISABLED (HIDDEN)</span>
+              <button class="god-btn btn-cyan" id="btn-toggle-admin-consent" type="button">Enable for Players</button>
+            </div>
+          </div>
+        </div>
         <div class="console-ops-board">
           <section>
             <h3>Improvement suggestions</h3>

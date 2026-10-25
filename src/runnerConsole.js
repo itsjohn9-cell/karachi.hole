@@ -188,6 +188,13 @@ class RunnerOpsConsole {
     document.getElementById('btn-export-audit-md')?.addEventListener('click', () => this.exportReport('md'));
     document.getElementById('btn-submit-dash-feedback')?.addEventListener('click', () => this.saveFeedback());
     document.getElementById('btn-import-ci-report')?.addEventListener('click', () => this.importCIReport());
+    document.getElementById('btn-toggle-admin-consent')?.addEventListener('click', () => {
+      if (!this.opsEngine) return;
+      const current = this.opsEngine.isConsentPromptEnabled();
+      this.opsEngine.setConsentPromptEnabled(!current);
+      this.renderAdminConsentStatus();
+      this.showToast(!current ? 'Consent prompt activated for game players.' : 'Consent prompt disabled and hidden.');
+    });
     this.renderOpsBoard();
   }
 
@@ -514,6 +521,31 @@ class RunnerOpsConsole {
         return item;
       }
     );
+    this.renderAdminConsentStatus();
+  }
+
+  renderAdminConsentStatus() {
+    const btn = document.getElementById('btn-toggle-admin-consent');
+    const badge = document.getElementById('admin-consent-status-badge');
+    if (!btn || !badge) return;
+    const enabled = this.opsEngine?.isConsentPromptEnabled() || false;
+    if (enabled) {
+      badge.textContent = 'ENABLED (ACTIVE)';
+      badge.style.background = 'rgba(34, 197, 94, 0.2)';
+      badge.style.color = '#4ade80';
+      badge.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+      btn.textContent = 'Disable for Players';
+      btn.classList.remove('btn-cyan');
+      btn.classList.add('btn-amber');
+    } else {
+      badge.textContent = 'DISABLED (HIDDEN)';
+      badge.style.background = 'rgba(239, 68, 68, 0.2)';
+      badge.style.color = '#f87171';
+      badge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+      btn.textContent = 'Enable for Players';
+      btn.classList.remove('btn-amber');
+      btn.classList.add('btn-cyan');
+    }
   }
 
   async importCIReport() {

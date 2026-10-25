@@ -132,3 +132,17 @@ Here is the architectural context:
 
 Please analyze this setup and suggest [YOUR NEXT FEATURE OR QUESTION HERE].
 ```
+
+## 7. Analytics Context
+
+For analytics work, read [docs/ANALYTICS_SPECIFICATION.md](./ANALYTICS_SPECIFICATION.md) first. It defines the cross-platform event contract, privacy requirements, consent and release gates, and implementation boundaries.
+
+Current status: analytics is proposed, not implemented or enabled. Do not initialize an analytics provider or change privacy/store disclosures without first addressing the consent, privacy, and release requirements in the specification. Keep this handoff and the specification updated with decisions made in future analytics discussions.
+
+## 8. Ongoing Session Handoff
+
+For every new project request, update this document with a concise record of the request, outcome, decisions, and any relevant current status or follow-up. Keep durable project context here rather than copying full chat transcripts; update the more specific source document as well when a request changes its requirements. Do not record secrets or personal data.
+
+Latest continuity decision: the user asked to keep this handoff updated with every new project request. This policy was added for future sessions.
+
+Latest analytics discussion: the user asked how best to add multiple tracking codes. Recommendation: use one app-level analytics facade with validated shared events and provider adapters; gate all collection on consent, and initialize providers only once per platform. The analytics specification currently calls for Firebase as the single active provider per runtime, so supporting additional vendors requires an explicit privacy/schema review and a specification update first. No providers or tracking codes have been selected or implemented.

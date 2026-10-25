@@ -69,7 +69,7 @@ export class PortableGameOpsEngine {
 
   readState() {
     const stored = this.storage.getItem(this.key);
-    if (!stored) return { schemaVersion: 1, events: [], suggestions: [], lastSampleAt: 0 };
+    if (!stored) return { schemaVersion: 1, events: [], suggestions: [], lastSampleAt: 0, consentPromptEnabled: false };
     const state = JSON.parse(stored);
     if (!state || state.schemaVersion !== 1 ||
         !Array.isArray(state.events) || !Array.isArray(state.suggestions)) {
@@ -79,7 +79,8 @@ export class PortableGameOpsEngine {
       schemaVersion: 1,
       events: state.events.slice(-this.maxEvents),
       suggestions: state.suggestions.slice(-this.maxSuggestions),
-      lastSampleAt: Number(state.lastSampleAt) || 0
+      lastSampleAt: Number(state.lastSampleAt) || 0,
+      consentPromptEnabled: Boolean(state.consentPromptEnabled)
     };
   }
 
@@ -93,6 +94,20 @@ export class PortableGameOpsEngine {
     this.state.events = latest.events;
     this.state.suggestions = latest.suggestions;
     this.state.lastSampleAt = Math.max(lastSampleAt, latest.lastSampleAt);
+    this.state.consentPromptEnabled = Boolean(latest.consentPromptEnabled);
+  }
+
+  setConsentPromptEnabled(enabled) {
+    this.refreshState();
+    this.state.consentPromptEnabled = Boolean(enabled);
+    this.persist();
+    this.record('admin.consent_gate_updated', { enabled: this.state.consentPromptEnabled });
+    return this.state.consentPromptEnabled;
+  }
+
+  isConsentPromptEnabled() {
+    this.refreshState();
+    return Boolean(this.state.consentPromptEnabled);
   }
 
   record(type, detail = {}) {

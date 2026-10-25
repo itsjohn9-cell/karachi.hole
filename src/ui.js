@@ -203,6 +203,7 @@ export class UIManager {
     this.createRunnerProgressModal();
     this.createRunnerTutorialOverlay();
     this.createRunnerDeveloperUI();
+    this.createAnalyticsConsentModal();
     this.bindEvents();
   }
 
@@ -435,6 +436,10 @@ export class UIManager {
             <p>Collect rupees and route power-ups: CNG gives a speed shield, tanker shield absorbs a crash, chai restores a heart, biryani magnet attracts rupees, and jump springs boost jumps.</p>
             <p>Rare golden Rescue Tokens are stored between runs (maximum 3). One token pays for one Quick Revive after a crash. Sprint is provided by route pickups, not a free button.</p>
           </section>
+          <section class="runner-help-section" id="runner-help-privacy-section">
+            <h3>🔒 PRIVACY &amp; DIAGNOSTICS</h3>
+            <p>Karachi Runner respects player privacy. No personal data, advertising IDs, or GPS locations are collected. <span id="runner-help-consent-status">Diagnostics are completely offline.</span></p>
+          </section>
         </div>
         <div class="runner-info-actions">
           <button class="secondary-btn ui-interactive" id="btn-replay-runner-intro" type="button">WATCH INTRO</button>
@@ -443,6 +448,35 @@ export class UIManager {
       </section>
     `;
     document.body.appendChild(this.runnerHelpModal);
+  }
+
+  createAnalyticsConsentModal() {
+    this.analyticsConsentModal = document.createElement('div');
+    this.analyticsConsentModal.className = 'modal-backdrop analytics-consent-backdrop';
+    this.analyticsConsentModal.id = 'modal-analytics-consent';
+    this.analyticsConsentModal.style.display = 'none';
+    this.analyticsConsentModal.innerHTML = `
+      <section class="modal-card runner-info-card analytics-consent-card" role="dialog" aria-modal="true" aria-labelledby="analytics-consent-title" style="max-width: 480px; text-align: center;">
+        <header class="runner-info-header" style="justify-content: center; text-align: center;">
+          <div>
+            <div style="font-size: 2.2rem; margin-bottom: 0.25rem;">📊</div>
+            <h2 id="analytics-consent-title">ANONYMOUS GAME DIAGNOSTICS</h2>
+            <p>Help improve Karachi Runner</p>
+          </div>
+        </header>
+        <div class="runner-info-content" style="font-size: 0.95rem; line-height: 1.5; color: #cbd5e1; padding: 1rem 0;">
+          <p>Would you like to share anonymous gameplay metrics (such as completed runs, device frame rates, and crash reports) to help us optimize game performance?</p>
+          <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.75rem;">
+            🛡️ <strong>100% Private:</strong> No personal details, names, locations, or advertising identifiers are ever collected. You can change your choice anytime in Settings.
+          </p>
+        </div>
+        <div class="runner-info-actions" style="display: flex; gap: 0.75rem; justify-content: center;">
+          <button class="secondary-btn ui-interactive" id="btn-consent-decline" type="button" style="flex: 1;">NOT NOW</button>
+          <button class="primary-btn ui-interactive" id="btn-consent-allow" type="button" style="flex: 1;">ALLOW</button>
+        </div>
+      </section>
+    `;
+    document.body.appendChild(this.analyticsConsentModal);
   }
 
   createRunnerProgressModal() {
@@ -2566,9 +2600,54 @@ export class UIManager {
     return true;
   }
 
+  checkAndShowConsentPrompt() {
+    try {
+      const storedOps = localStorage.getItem('portable-game-ops:v1');
+      if (!storedOps) return false;
+      const parsed = JSON.parse(storedOps);
+      // Strictly gated behind admin toggle:
+      if (!parsed || !parsed.consentPromptEnabled) return false;
+
+      const existingChoice = localStorage.getItem('kr_analytics_consent');
+      if (existingChoice === 'granted' || existingChoice === 'denied') return false;
+
+      if (this.analyticsConsentModal) {
+        this.analyticsConsentModal.style.display = 'flex';
+        return true;
+      }
+    } catch {
+      // Safely ignore storage errors
+    }
+    return false;
+  }
+
+  updateConsentPrivacyStatus() {
+    const el = document.getElementById('runner-help-consent-status');
+    if (!el) return;
+    try {
+      const storedOps = localStorage.getItem('portable-game-ops:v1');
+      const parsed = storedOps ? JSON.parse(storedOps) : null;
+      if (!parsed || !parsed.consentPromptEnabled) {
+        el.textContent = 'Diagnostics are completely offline (Admin Gate: Disabled).';
+        return;
+      }
+      const choice = localStorage.getItem('kr_analytics_consent');
+      if (choice === 'granted') {
+        el.textContent = 'Diagnostics: Active (Anonymous telemetry enabled).';
+      } else if (choice === 'denied') {
+        el.textContent = 'Diagnostics: Declined (Collection disabled).';
+      } else {
+        el.textContent = 'Diagnostics: Unset (Awaiting player choice).';
+      }
+    } catch {
+      el.textContent = 'Diagnostics are completely offline.';
+    }
+  }
+
   bindEvents() {
     const openHelp = () => {
       audio.playClick();
+      this.updateConsentPrivacyStatus();
       if (this.runnerHelpModal) this.runnerHelpModal.style.display = 'flex';
     };
     const closeHelp = () => {
@@ -2601,6 +2680,20 @@ export class UIManager {
       if (event.target === this.runnerProgressModal) closeProgress();
     });
 
+    document.getElementById('btn-consent-decline')?.addEventListener('click', () => {
+      audio.playClick();
+      try { localStorage.setItem('kr_analytics_consent', 'denied'); } catch {}
+      if (this.analyticsConsentModal) this.analyticsConsentModal.style.display = 'none';
+      this.updateConsentPrivacyStatus();
+    });
+
+    document.getElementById('btn-consent-allow')?.addEventListener('click', () => {
+      audio.playClick();
+      try { localStorage.setItem('kr_analytics_consent', 'granted'); } catch {}
+      if (this.analyticsConsentModal) this.analyticsConsentModal.style.display = 'none';
+      this.updateConsentPrivacyStatus();
+    });
+
     // 1. Start Mission Button
     const btnStartPatrol = document.getElementById('btn-start-patrol');
     if (btnStartPatrol) {
@@ -2608,6 +2701,7 @@ export class UIManager {
         audio.playClick();
         this.startModal.style.display = 'none';
         this.hideTapToStartPrompt();
+        this.checkAndShowConsentPrompt();
         if (this.onStartGame) {
           this.onStartGame({
             playerName: this.playerName,

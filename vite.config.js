@@ -25,6 +25,13 @@ export default defineConfig({
         mastermode: resolve(process.cwd(), 'mastermode.html'),
         godmode: resolve(process.cwd(), 'godmode.html'),
         runnerConsole: resolve(process.cwd(), 'runner-console.html')
+      },
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/three')) {
+            return 'vendor-three';
+          }
+        }
       }
     }
   },

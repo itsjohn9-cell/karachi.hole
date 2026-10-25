@@ -186,6 +186,8 @@ The game may apply only explicit, bounded runtime recovery rules: the existing s
 
 Gameplay telemetry and feedback remain local by default. Cross-device install counts, trends, or user feedback are unavailable without a separately configured and consented analytics service. The module exposes an opt-in aggregate transport adapter but sends nothing unless both consent and an adapter are supplied. Routine QA logs are exportable from the Master Board.
 
+Firebase Analytics is not currently configured. The cross-platform event contract, consent gate, privacy constraints, and implementation acceptance criteria are documented in [ANALYTICS_SPECIFICATION.md](./ANALYTICS_SPECIFICATION.md). Do not enable collection until the privacy policy and Google Play Data safety declarations are updated.
+
 ---
 
 ## 9. Automated Testing Pipeline

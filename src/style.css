@@ -7630,7 +7630,8 @@ body.mode-runner .powerup-slot-pill {
 }
 
 .runner-help-backdrop,
-.runner-progress-backdrop {
+.runner-progress-backdrop,
+.analytics-consent-backdrop {
   position: fixed;
   inset: 0;
   z-index: 1300;
