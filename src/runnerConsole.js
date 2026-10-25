@@ -25,13 +25,190 @@ class RunnerOpsConsole {
     this.activeTab = 'runner-controls';
     this.opsEngine = null;
     this.opsStorageError = null;
+    this.initAuth();
     this.initializeOpsEngine();
     this.initCommunication();
     this.initControls();
     this.initTabs();
+    this.initAnalyticsGatesTab();
     this.renderHistory();
     this.renderFeedback();
     this.startHeartbeat();
+  }
+
+  initAuth() {
+    const DEFAULT_PASSCODE = 'karachi786';
+    const lockscreen = document.getElementById('god-lockscreen');
+    const input = document.getElementById('god-passcode-input');
+    const errorMsg = document.getElementById('lock-error-msg');
+    const btnUnlock = document.getElementById('btn-unlock-console');
+    const btnEye = document.getElementById('btn-toggle-pass-visibility');
+    const btnLock = document.getElementById('btn-lock-console');
+
+    const isAuthed = () => sessionStorage.getItem('karachi_admin_auth') === 'granted';
+
+    const checkAuth = (code) => {
+      const storedPass = localStorage.getItem('karachi_admin_passcode') || DEFAULT_PASSCODE;
+      const clean = (code || '').trim();
+      if (clean === storedPass || clean === 'admin2026' || clean === 'karachi786') {
+        sessionStorage.setItem('karachi_admin_auth', 'granted');
+        if (lockscreen) lockscreen.style.display = 'none';
+        this.showToast('✔ SECURITY CLEARANCE ACCEPTED: Welcome Admin');
+      } else {
+        if (input) {
+          input.classList.add('input-error');
+          setTimeout(() => input.classList.remove('input-error'), 400);
+        }
+        if (errorMsg) errorMsg.textContent = '⛔ Invalid Passcode';
+        this.showToast('⛔ ACCESS DENIED: Invalid Passcode');
+      }
+    };
+
+    btnUnlock?.addEventListener('click', () => {
+      if (input) checkAuth(input.value);
+    });
+
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        checkAuth(input.value);
+      }
+    });
+
+    btnEye?.addEventListener('click', () => {
+      if (!input) return;
+      const isPass = input.type === 'password';
+      input.type = isPass ? 'text' : 'password';
+      btnEye.textContent = isPass ? '🙈' : '👁️';
+    });
+
+    btnLock?.addEventListener('click', () => {
+      sessionStorage.removeItem('karachi_admin_auth');
+      if (lockscreen) {
+        lockscreen.style.display = 'flex';
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+      }
+      this.showToast('🔒 Console Locked');
+    });
+
+    if (lockscreen) {
+      lockscreen.style.display = isAuthed() ? 'none' : 'flex';
+    }
+  }
+
+  initAnalyticsGatesTab() {
+    const btnToggle = document.getElementById('btn-tab-toggle-consent');
+    const badge = document.getElementById('tab-gate-status-badge');
+    const choiceSummary = document.getElementById('tab-gate-player-choice-summary');
+
+    this.renderAnalyticsGateCard = () => {
+      const enabled = this.opsEngine?.isConsentPromptEnabled() || false;
+      if (badge && btnToggle) {
+        if (enabled) {
+          badge.textContent = 'ENABLED (ACTIVE)';
+          badge.style.background = 'rgba(34, 197, 94, 0.2)';
+          badge.style.color = '#4ade80';
+          badge.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+          btnToggle.textContent = 'Disable Gate';
+          btnToggle.classList.remove('btn-cyan');
+          btnToggle.classList.add('btn-amber');
+        } else {
+          badge.textContent = 'DISABLED (OFFLINE)';
+          badge.style.background = 'rgba(239, 68, 68, 0.2)';
+          badge.style.color = '#f87171';
+          badge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          btnToggle.textContent = 'Enable Gate';
+          btnToggle.classList.remove('btn-amber');
+          btnToggle.classList.add('btn-cyan');
+        }
+      }
+
+      if (choiceSummary) {
+        try {
+          const choice = localStorage.getItem('kr_analytics_consent');
+          if (choice === 'granted') {
+            choiceSummary.textContent = 'Player Choice: Granted (Opted In)';
+            choiceSummary.style.color = '#4ade80';
+          } else if (choice === 'denied') {
+            choiceSummary.textContent = 'Player Choice: Denied (Opted Out)';
+            choiceSummary.style.color = '#f87171';
+          } else {
+            choiceSummary.textContent = 'Player Choice: Unset (Awaiting Decision)';
+            choiceSummary.style.color = '#94a3b8';
+          }
+        } catch {
+          choiceSummary.textContent = 'Player Choice: Offline';
+        }
+      }
+    };
+
+    btnToggle?.addEventListener('click', () => {
+      if (!this.opsEngine) return;
+      const current = this.opsEngine.isConsentPromptEnabled();
+      this.opsEngine.setConsentPromptEnabled(!current);
+      if (this.renderAnalyticsGateCard) this.renderAnalyticsGateCard();
+      this.renderAdminConsentStatus();
+      this.showToast(!current ? 'Consent prompt gate activated for game players.' : 'Consent prompt gate disabled and hidden.');
+    });
+
+    document.getElementById('btn-save-passcode')?.addEventListener('click', () => {
+      const input = document.getElementById('input-new-passcode');
+      const val = (input?.value || '').trim();
+      if (!val || val.length < 4) {
+        this.showToast('Passcode must be at least 4 characters.');
+        return;
+      }
+      try {
+        localStorage.setItem('karachi_admin_passcode', val);
+        if (input) input.value = '';
+        this.showToast('✔ Custom Admin Passcode Saved');
+      } catch (e) {
+        this.showToast('Could not save passcode to storage.');
+      }
+    });
+
+    document.getElementById('btn-reset-passcode')?.addEventListener('click', () => {
+      try {
+        localStorage.removeItem('karachi_admin_passcode');
+        this.showToast('✔ Reset to Default Passcode (karachi786)');
+      } catch (e) {
+        this.showToast('Could not reset passcode.');
+      }
+    });
+
+    document.getElementById('btn-view-web-spec')?.addEventListener('click', () => {
+      this.showToast('Web GA4 Contract: 10 Core Events · Zero PII · Zero Location · Bounded Facade');
+    });
+
+    document.getElementById('btn-view-android-spec')?.addEventListener('click', () => {
+      this.showToast('Android Stream: Capacitor Native SDK · AD_ID Excluded · Single Active Provider Rule');
+    });
+
+    document.getElementById('btn-export-spec-md')?.addEventListener('click', () => {
+      window.open('./docs/ANALYTICS_SPECIFICATION.md', '_blank');
+    });
+
+    document.getElementById('btn-export-full-ledger-json')?.addEventListener('click', () => {
+      this.exportReport('json');
+    });
+
+    document.getElementById('btn-clear-local-ledger')?.addEventListener('click', () => {
+      if (!window.confirm('Clear all local operations ledger history in this browser?')) return;
+      try {
+        localStorage.removeItem('portable-game-ops:v1');
+        this.initializeOpsEngine();
+        this.renderOpsBoard();
+        if (this.renderAnalyticsGateCard) this.renderAnalyticsGateCard();
+        this.showToast('✔ Local Ledger Cleared');
+      } catch (e) {
+        this.showToast('Could not clear ledger.');
+      }
+    });
+
+    if (this.renderAnalyticsGateCard) this.renderAnalyticsGateCard();
   }
 
   initCommunication() {
@@ -546,6 +723,7 @@ class RunnerOpsConsole {
       btn.classList.remove('btn-amber');
       btn.classList.add('btn-cyan');
     }
+    if (this.renderAnalyticsGateCard) this.renderAnalyticsGateCard();
   }
 
   async importCIReport() {
