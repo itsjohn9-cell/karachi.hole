@@ -14,7 +14,9 @@ if (!fs.existsSync(distDir)) {
 // Ensure .nojekyll exists
 fs.writeFileSync(path.join(distDir, '.nojekyll'), '');
 
-console.log('📦 [DEPLOY] Syncing dist to gh-pages branch...');
+console.log('📦 [DEPLOY] Fetching and syncing dist to origin/gh-pages...');
+execSync('git fetch origin gh-pages', { stdio: 'inherit' });
+
 const tempDir = path.resolve('.gh-pages-temp');
 try {
   if (fs.existsSync(tempDir)) {
@@ -23,7 +25,7 @@ try {
 } catch {}
 
 try {
-  execSync(`git worktree add --detach "${tempDir}" gh-pages`, { stdio: 'inherit' });
+  execSync(`git worktree add --detach "${tempDir}" origin/gh-pages`, { stdio: 'inherit' });
 
   // Clean old files in worktree except .git
   const entries = fs.readdirSync(tempDir);
