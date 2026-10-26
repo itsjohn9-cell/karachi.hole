@@ -3558,13 +3558,11 @@ export class Game {
       const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
       const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
       const targetCamX = this.player.position.x * horizontalCameraFollow;
-      // Push camera higher when player is elevated (e.g. on minibus) to look down and avoid mesh clipping; ensure safe floor to prevent sinking underground
-      const elevationBonus = Math.max(0, this.player.position.y) * 0.8;
-      const targetCamY = Math.max(groundY + 2.85, this.player.position.y + 2.85 + elevationBonus + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0));
+      const targetCamY = (this.player.position.y || 0) + 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0);
       const targetCamZ = this.player.position.z + 5.2;
       
       const targetLookX = this.player.position.x * horizontalLookAhead;
-      const targetLookY = Math.max(groundY + 1.25, this.player.position.y + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0));
+      const targetLookY = (this.player.position.y || 0) + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0);
       const targetLookZ = this.player.position.z - 18.0;
 
       if (Number.isNaN(targetLookX) || Number.isNaN(targetLookY) || Number.isNaN(targetLookZ)) {
@@ -8796,15 +8794,13 @@ export class Game {
     player.targetRotationY = Math.PI + angle;
 
     const lift = this.runnerCameraLift || 0;
-    // Dynamically pull camera in from 5.2m to 3.0m at the apex of the turn
-    const camDist = 5.2 - (Math.sin(Math.PI * p) * 2.2); 
+    const apex = Math.sin(Math.PI * p);
+    const camDist = 5.2 - (apex * 1.6); // Pull in dynamically at apex to avoid corner building intersections
     const camX = x - (fx * camDist);
     const camZ = z - (fz * camDist);
-    const lookX = x + (fx * 15.0);
-    const lookZ = z + (fz * 15.0);
-    
-    // Elevate camera slightly during turns for better visibility
-    this.camera.position.set(camX, (this.player.position.y || 0) + 3.5 + lift, camZ);
+    const lookX = x + (fx * 16.0);
+    const lookZ = z + (fz * 16.0);
+    this.camera.position.set(camX, (this.player.position.y || 0) + 2.85 + lift, camZ);
     this.camera.lookAt(lookX, (this.player.position.y || 0) + 1.25, lookZ);
 
     if (this.chaserEntity && this.isChaserClose) {
