@@ -291,18 +291,6 @@ export class UIManager {
                 <span class="avatar-card-outfit">Green shalwar kameez · waistcoat</span>
                 <span class="avatar-card-status" aria-hidden="true"></span>
               </div>
-              <div class="avatar-card ui-interactive" data-avatar="biryani_rider">
-                <span class="avatar-card-outfit">🛵 Chacha Biryani · helmet & delivery pack</span>
-                <span class="avatar-card-status" aria-hidden="true"></span>
-              </div>
-              <div class="avatar-card ui-interactive" data-avatar="captain_karachi">
-                <span class="avatar-card-outfit">⚡ Captain Karachi · super suit & cape</span>
-                <span class="avatar-card-status" aria-hidden="true"></span>
-              </div>
-              <div class="avatar-card ui-interactive" data-avatar="chai_wala">
-                <span class="avatar-card-outfit">🫖 Ustad Chai Wala · apron & kettle</span>
-                <span class="avatar-card-status" aria-hidden="true"></span>
-              </div>
               <div class="avatar-card ui-interactive" data-avatar="ayesha">
                 <span class="avatar-card-outfit">Turquoise kameez · Ajrak scarf</span>
                 <span class="avatar-card-status" aria-hidden="true"></span>

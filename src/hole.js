@@ -283,6 +283,14 @@ export class Hole {
   move(dx, dz, dt, mapBound = 94.0, obstacles = []) {
     if (!this.isAlive) return;
 
+    // Strict NaN Poisoning Guard
+    if (Number.isNaN(this.position.x) || Number.isNaN(this.position.y) || Number.isNaN(this.position.z) || Number.isNaN(this.currentSpeed) || Number.isNaN(this.velocityY)) {
+      console.warn("NaN detected in player physics. Applying failsafe reset.");
+      this.position.set(0, 0, this.position.z || 0);
+      this.currentSpeed = this.baseSpeed;
+      this.velocityY = 0;
+    }
+
     const isMoving = Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01;
     const speed = this.isBoosting ? this.currentSpeed * 1.55 : this.currentSpeed;
     const maxCoord = Math.max(14.0, mapBound - 0.8);

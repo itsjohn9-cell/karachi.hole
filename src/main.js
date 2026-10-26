@@ -867,21 +867,6 @@ export class Game {
     // Turn mistakes are always charged; grace only protects against repeat obstacle hits.
     if ((this.runnerInvulnerableTimer || 0) > 0 && !isTurnMistake) return;
 
-    // Capture Check: If player crashes while Chaser is already visible and close!
-    if (this.isChaserClose && this.chaserDistance <= 5.5 && !isTurnMistake) {
-      if (this.chaserEntity) {
-        this.chaserEntity.position.z = this.player.position.z + 1.2;
-      }
-      this.recordCrash({
-        reason: '🚨 Captured by Sindh Police Mobile!',
-        obstacleType: 'chaser_capture',
-        distanceMeters: this.distanceMeters,
-        currentSpeed: this.player?.currentSpeed || 0,
-        area: this.currentMilestone || ''
-      });
-      this.triggerTempleRunGameOver('🚨 Captured by Sindh Police Mobile!', { type: 'chaser_capture' });
-      return;
-    }
 
     // Sky Flight Jetpack (Flies safely above ground obstacles)
     if (this.jetpackTimer > 0 && !isTurnMistake) {
@@ -1677,12 +1662,8 @@ export class Game {
       return;
     }
 
-    // Safety approach & junction zone: Never spawn any obstacles within 110m before or 70m after a junction!
-    const upcomingJunctionDist = (this.nextJunctionAt || 0) - (this.distanceMeters || 0);
-    const targetJunctionZ = this.runnerJunction?.z ??
-      (upcomingJunctionDist > 0 && this.player ? this.player.position.z - upcomingJunctionDist : null);
-
-    if (targetJunctionZ !== null && waveZ <= targetJunctionZ + 110.0) {
+    // Safety approach & junction zone: Never spawn any obstacles immediately around an active junction!
+    if (this.runnerJunction && waveZ <= this.runnerJunction.z + 35.0 && waveZ >= this.runnerJunction.z - 25.0) {
       // Clean asphalt runway with smooth central coins - 100% hurdle-free approach and turn!
       [-3.0, 0, 3.0].forEach(zOff => {
         const coin = KarachiModels.createRupeeCoin(50);
@@ -1976,7 +1957,7 @@ export class Game {
         hazardType: 'LOW_HAZARD',
         laneX,
         z: waveZ,
-        requiredAction: 'jump',
+        requiredAction: 'dodge',
         mesh: football,
         isHit: false
       });
@@ -2056,7 +2037,7 @@ export class Game {
           hazardType: 'LOW_HAZARD',
           laneX,
           z: waveZ - (index * 3.0),
-          requiredAction: 'jump',
+          requiredAction: 'jump_or_dodge',
           mesh: pothole,
           isHit: false
         });
@@ -2131,7 +2112,7 @@ export class Game {
 
     this.runnerWaveCount += 1;
     if (this.runnerWaveCount % 3 === 0) {
-      const pTypes = ['chingchi', 'jetpack', 'mystery_box', 'cng', 'shield', 'magnet', 'chai', 'jump'];
+      const pTypes = ['cng', 'shield', 'magnet', 'chai', 'jump'];
       const chosenType = pTypes[this.runnerPowerupDropCount % pTypes.length];
       const blockedLanes = [
         ...this.runnerObstacles.slice(obstacleStartIndex)
@@ -2614,6 +2595,11 @@ export class Game {
         this.ui?.refreshProgressionContent();
       }
       this.corridorDistrictLevel = this.currentDistrictLevel;
+      if (this.corridorChunks && this.corridorChunks.length > 0) {
+        this.corridorChunks.forEach(chunk => {
+          chunk.userData.patrolAreaLevel = this.currentDistrictLevel;
+        });
+      }
       // Seamless progression: do NOT destroy ground underneath player;
       // spawn a grand ceremonial welcome arch ahead and let upcoming chunks cycle naturally.
       const archZ = (this.player?.position?.z || 0) - 35.0;
@@ -2986,7 +2972,7 @@ export class Game {
         laneMarking: 0xffffff
       },
       2: {
-        name: 'MAZAR-E-QUAID · QUAID MAUSOLEUM',
+        name: 'LYARI · MAZAR-E-QUAID & CHAKIWARA',
         streets: [
           { avenue: 'SHAHRAH-E-QUAIDEEN', avenueUrdu: 'شاہراہ قائدین', cross: 'MAZAR-E-QUAID', crossUrdu: 'مزارِ قائد' },
           { avenue: 'M.A. JINNAH ROAD', avenueUrdu: 'ایم اے جناح روڈ', cross: 'QUAID MEMORIAL', crossUrdu: 'یادگارِ قائد' },
@@ -3567,15 +3553,18 @@ export class Game {
     // following player.position.x * 0.45 smoothly for dynamic lane switches
     if (this.camera) {
       const baseGroundY = this.getCorridorGroundHeight(this.player.position.z, this.player.position.x);
+      const groundY = baseGroundY + (this.isBusSurfing ? 3.15 : 0);
       const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
       const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
       const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
       const targetCamX = this.player.position.x * horizontalCameraFollow;
-      const targetCamY = this.player.position.y + 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0);
+      // Push camera higher when player is elevated (e.g. on minibus) to look down and avoid mesh clipping; ensure safe floor to prevent sinking underground
+      const elevationBonus = Math.max(0, this.player.position.y) * 0.8;
+      const targetCamY = Math.max(groundY + 2.85, this.player.position.y + 2.85 + elevationBonus + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0));
       const targetCamZ = this.player.position.z + 5.2;
       
       const targetLookX = this.player.position.x * horizontalLookAhead;
-      const targetLookY = this.player.position.y + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0);
+      const targetLookY = Math.max(groundY + 1.25, this.player.position.y + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0));
       const targetLookZ = this.player.position.z - 18.0;
 
       if (Number.isNaN(targetLookX) || Number.isNaN(targetLookY) || Number.isNaN(targetLookZ)) {
@@ -7357,7 +7346,7 @@ export class Game {
 
     // Camera orbit position placed behind smoothed cameraPivot with spring-arm lag sway
     const targetCamX = this.cameraPivot.x - Math.sin(this.camAngle) * camDist;
-    const targetCamY = Math.max(1.85, this.cameraPivot.y + camHeight);
+    const targetCamY = Math.max(1.85, this.cameraPivot.y + camHeight + ((this.player?.position?.y || 0) * 0.8));
     const targetCamZ = this.cameraPivot.z - Math.cos(this.camAngle) * camDist;
     this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, Math.min(1.0, dt * 6.0));
     this.camera.position.y = targetCamY;
@@ -8807,12 +8796,15 @@ export class Game {
     player.targetRotationY = Math.PI + angle;
 
     const lift = this.runnerCameraLift || 0;
-    const camX = x - (fx * 4.2) + (turn.sign * 1.5 * Math.sin(Math.PI * p));
-    const camZ = z - (fz * 4.2) + (turn.sign * 1.5 * Math.sin(Math.PI * p));
-    const lookX = x + fx * 18.0;
-    const lookZ = z + fz * 18.0;
+    // Dynamically pull camera in from 5.2m to 3.0m at the apex of the turn
+    const camDist = 5.2 - (Math.sin(Math.PI * p) * 2.2); 
+    const camX = x - (fx * camDist);
+    const camZ = z - (fz * camDist);
+    const lookX = x + (fx * 15.0);
+    const lookZ = z + (fz * 15.0);
     
-    this.camera.position.set(camX, (this.player.position.y || 0) + 2.85 + lift, camZ);
+    // Elevate camera slightly during turns for better visibility
+    this.camera.position.set(camX, (this.player.position.y || 0) + 3.5 + lift, camZ);
     this.camera.lookAt(lookX, (this.player.position.y || 0) + 1.25, lookZ);
 
     if (this.chaserEntity && this.isChaserClose) {
@@ -8897,7 +8889,9 @@ export class Game {
       const postLookZ = junctionZ - 18.0;
       this.camera.position.set(postCamX, 2.85 + (this.runnerCameraLift || 0), postCamZ);
       this.camera.lookAt(postLookX, 1.25, postLookZ);
-      this.cameraSmoothTimer = 0;
+      this.cameraSmoothPos = this.camera.position.clone();
+      this.cameraSmoothLookAt = new THREE.Vector3(postLookX, 1.25, postLookZ);
+      this.cameraSmoothTimer = 0.25;
     }
 
     this.ui.showAnnouncement(`🧭 NOW HEADING ${this.getRunnerHeadingLabel()}`, '#00e5ff');

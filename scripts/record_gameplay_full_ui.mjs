@@ -586,14 +586,14 @@ async function startRecordingSession() {
     process.exit(1);
   });
 
-  // Wait up to 50s for video completion
+  // Wait up to 70s for video completion
   const timeout = setTimeout(() => {
     console.error('⚠️ [RECORDER] Timed out waiting for full UI video completion.');
     try { chromeProcess.kill(); } catch {}
     restoreIndex();
     server.close();
     process.exit(1);
-  }, 50000);
+  }, 70000);
 
   const result = await videoDonePromise;
   clearTimeout(timeout);

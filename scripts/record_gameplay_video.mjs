@@ -53,7 +53,7 @@ const server = http.createServer((req, res) => {
     const elapsed = urlObj.searchParams.get('elapsed');
     const dist = urlObj.searchParams.get('dist');
     const score = urlObj.searchParams.get('score');
-    console.log(`⏱️ [GAMEPLAY 1-MIN] Elapsed: ${elapsed}s / 60s | Distance: ${dist}m | Score: ${score}`);
+    console.log(`⏱️ [GAMEPLAY 2-MIN] Elapsed: ${elapsed}s / 120s | Distance: ${dist}m | Score: ${score}`);
     res.writeHead(200);
     res.end('ok');
     return;
@@ -69,14 +69,14 @@ const server = http.createServer((req, res) => {
       const buffer = Buffer.concat(chunks);
       receivedVideoBytes = buffer.length;
 
-      const reportVideoPath1m = path.join(reportDir, 'gameplay_1min.webm');
-      fs.writeFileSync(reportVideoPath1m, buffer);
-      console.log(`✅ [RECORDER] Saved video to ${reportVideoPath1m} (${receivedVideoBytes} bytes)`);
+      const reportVideoPath2m = path.join(reportDir, 'gameplay_2min.webm');
+      fs.writeFileSync(reportVideoPath2m, buffer);
+      console.log(`✅ [RECORDER] Saved video to ${reportVideoPath2m} (${receivedVideoBytes} bytes)`);
 
       if (fs.existsSync(artifactDir)) {
-        const artifactVideoPath1m = path.join(artifactDir, 'gameplay_1min.webm');
-        fs.writeFileSync(artifactVideoPath1m, buffer);
-        console.log(`✅ [RECORDER] Saved artifact video to ${artifactVideoPath1m}`);
+        const artifactVideoPath2m = path.join(artifactDir, 'gameplay_2min.webm');
+        fs.writeFileSync(artifactVideoPath2m, buffer);
+        console.log(`✅ [RECORDER] Saved artifact video to ${artifactVideoPath2m}`);
       }
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -128,6 +128,11 @@ async function startRecordingSession() {
             window.game.handleMasterModeCommand({
               type: 'TOGGLE_AUTOPILOT',
               payload: { enabled: true },
+              sender: 'MASTERMODE_DASHBOARD'
+            });
+            window.game.handleMasterModeCommand({
+              type: 'TOGGLE_IMMORTAL',
+              payload: { immortal: true },
               sender: 'MASTERMODE_DASHBOARD'
             });
             window.game.hearts = 5;
@@ -186,7 +191,7 @@ async function startRecordingSession() {
 
             fetch('http://127.0.0.1:5176/progress?elapsed=' + elapsed + '&dist=' + dist + '&score=' + score, { method: 'POST' }).catch(() => {});
 
-            if (elapsed >= 60) {
+            if (elapsed >= 120) {
               clearInterval(timer);
               recorder.stop();
             }
@@ -203,7 +208,7 @@ async function startRecordingSession() {
   const modifiedHtml = ORIGINAL_INDEX_HTML.replace('</body>', `${injectionScript}</body>`);
   fs.writeFileSync(indexPath, modifiedHtml, 'utf8');
 
-  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'karachi-record-1m-'));
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'karachi-record-2m-'));
   const chromeArgs = [
     '--headless=new',
     '--no-first-run',
@@ -214,7 +219,7 @@ async function startRecordingSession() {
     'http://127.0.0.1:5173/'
   ];
 
-  console.log('🎬 [RECORDER] Launching Chrome to record full 1-minute (60s) gameplay...');
+  console.log('🎬 [RECORDER] Launching Chrome to record full 2-minute (120s) gameplay...');
   const chromeProcess = spawn(chromeExecutable, chromeArgs, { stdio: 'inherit' });
 
   chromeProcess.on('error', err => {
@@ -223,14 +228,14 @@ async function startRecordingSession() {
     process.exit(1);
   });
 
-  // Wait up to 80s for the recording to complete
+  // Wait up to 150s for the recording to complete
   const timeout = setTimeout(() => {
     console.error('⚠️ [RECORDER] Timed out waiting for video completion.');
     try { chromeProcess.kill(); } catch {}
     restoreIndex();
     server.close();
     process.exit(1);
-  }, 80000);
+  }, 150000);
 
   const result = await videoDonePromise;
   clearTimeout(timeout);
