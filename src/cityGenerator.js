@@ -1602,29 +1602,68 @@ export class CityGenerator {
   }
 
   /**
-   * Modular 60-unit road chunk builder for runner corridor mode.
-   * Generates asphalt roadway, painted dividers, curbs, and sidewalks.
+   * Modular 60-unit road chunk builder for runner corridor mode with verticality.
+   * Supports three elevation profiles: FLAT, RAMP_UP (+5m), RAMP_DOWN (-5m).
+   * Generates subdivided asphalt roadway, painted dividers, curbs, and sidewalks.
    */
   static createModularRoadSegment(length = 60.0, width = 13.0, options = {}) {
     const group = new THREE.Group();
     const roadColor = options.roadColor || 0x181e26;
     const laneMarkingColor = options.laneMarking || 0xffffff;
     const sidewalkColor = options.sidewalkColor || 0x64748b;
+    const slopeState = options.slopeState || 'FLAT'; // 'FLAT', 'RAMP_UP', 'RAMP_DOWN'
+    const startElevation = Number.isFinite(options.startElevation) ? options.startElevation : 0.0;
+    const elevationDelta = Number.isFinite(options.elevationDelta)
+      ? options.elevationDelta
+      : (slopeState === 'RAMP_UP' ? 5.0 : slopeState === 'RAMP_DOWN' ? -5.0 : 0.0);
+    const endElevation = startElevation + elevationDelta;
 
-    // 1. Asphalt Surface
-    const roadGeo = new THREE.PlaneGeometry(width, length);
+    group.userData.slopeState = slopeState;
+    group.userData.startElevation = startElevation;
+    group.userData.endElevation = endElevation;
+    group.userData.elevationDelta = elevationDelta;
+    group.userData.length = length;
+    group.userData.width = width;
+
+    // Helper for elevation at local Z: progress goes from length/2 (+30) to -length/2 (-30)
+    const getLocalY = (vz) => {
+      const t = THREE.MathUtils.clamp((length * 0.5 - vz) / length, 0, 1);
+      const s = t * t * (3 - 2 * t);
+      return startElevation + s * elevationDelta;
+    };
+
+    // 1. Subdivided Asphalt Surface with manipulated Y-vertices (+5m RAMP_UP / -5m RAMP_DOWN)
+    const zSegments = Math.max(12, Math.round(length / 2.5)); // 24 segments for 60m
+    const roadGeo = new THREE.PlaneGeometry(width, length, 1, zSegments);
     roadGeo.rotateX(-Math.PI / 2);
+
+    const posAttr = roadGeo.attributes.position;
+    for (let i = 0; i < posAttr.count; i++) {
+      const vz = posAttr.getZ(i);
+      posAttr.setY(i, posAttr.getY(i) + getLocalY(vz));
+    }
+    roadGeo.computeVertexNormals();
+
     const roadMat = new THREE.MeshLambertMaterial({ color: roadColor });
     const roadMesh = new THREE.Mesh(roadGeo, roadMat);
     roadMesh.position.y = 0.02;
     roadMesh.receiveShadow = true;
+    roadMesh.userData.isRoadSurface = true;
+    roadMesh.userData.keepSeparate = true;
     group.add(roadMesh);
 
     // 2. Dashed White Lane Dividers
     [-1.6, 1.6].forEach(divX => {
       for (let dz = -25; dz <= 25; dz += 10) {
-        const dashGeo = new THREE.PlaneGeometry(0.18, 5.0);
+        const dashGeo = new THREE.PlaneGeometry(0.18, 5.0, 1, 4);
         dashGeo.rotateX(-Math.PI / 2);
+        const dPos = dashGeo.attributes.position;
+        for (let i = 0; i < dPos.count; i++) {
+          const vz = dz + dPos.getZ(i);
+          dPos.setY(i, dPos.getY(i) + getLocalY(vz));
+        }
+        dashGeo.computeVertexNormals();
+
         const dashMat = new THREE.MeshBasicMaterial({ color: laneMarkingColor });
         const dash = new THREE.Mesh(dashGeo, dashMat);
         dash.position.set(divX, 0.026, dz);
@@ -1634,8 +1673,15 @@ export class CityGenerator {
 
     // 3. Yellow Outer Curb Lines
     [-5.8, 5.8].forEach(borderX => {
-      const bGeo = new THREE.PlaneGeometry(0.24, length);
+      const bGeo = new THREE.PlaneGeometry(0.24, length, 1, zSegments);
       bGeo.rotateX(-Math.PI / 2);
+      const bPos = bGeo.attributes.position;
+      for (let i = 0; i < bPos.count; i++) {
+        const vz = bPos.getZ(i);
+        bPos.setY(i, bPos.getY(i) + getLocalY(vz));
+      }
+      bGeo.computeVertexNormals();
+
       const bMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
       const bLine = new THREE.Mesh(bGeo, bMat);
       bLine.position.set(borderX, 0.026, 0);
@@ -1646,13 +1692,34 @@ export class CityGenerator {
     [-8.0, 8.0].forEach(sideX => {
       const walkMat = new THREE.MeshLambertMaterial({ color: sidewalkColor });
       for (let seg = 0; seg < 6; seg++) {
+        const segZ = -25 + seg * 10;
+        const segY = getLocalY(segZ);
         const walk = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.28, 10.0), walkMat);
-        walk.position.set(sideX, 0.14, -25 + seg * 10);
+        walk.position.set(sideX, segY + 0.14, segZ);
+        if (Math.abs(elevationDelta) > 0.01) {
+          const t = (length * 0.5 - segZ) / length;
+          const slopeDeriv = elevationDelta * 6 * t * (1 - t) / length;
+          walk.rotation.x = Math.atan(slopeDeriv);
+        }
         walk.receiveShadow = true;
         group.add(walk);
       }
     });
 
     return group;
+  }
+
+  /**
+   * Helper to compute elevation on a modular road segment at any local Z
+   */
+  static getSegmentElevation(options = {}, localZ = 0, length = 60.0) {
+    const slopeState = options.slopeState || 'FLAT';
+    const startElevation = Number.isFinite(options.startElevation) ? options.startElevation : 0.0;
+    const elevationDelta = Number.isFinite(options.elevationDelta)
+      ? options.elevationDelta
+      : (slopeState === 'RAMP_UP' ? 5.0 : slopeState === 'RAMP_DOWN' ? -5.0 : 0.0);
+    const t = THREE.MathUtils.clamp((length * 0.5 - localZ) / length, 0, 1);
+    const s = t * t * (3 - 2 * t);
+    return startElevation + s * elevationDelta;
   }
 }

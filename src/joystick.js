@@ -105,10 +105,7 @@ export class VirtualJoystick {
   }
 
   handleTouchMove(e) {
-    if (window.game?.isTempleRun) {
-      if (this.active) this.endJoystick();
-      return;
-    }
+    if (window.game?.isTempleRun) return;
     if (!this.active) return;
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
@@ -121,10 +118,7 @@ export class VirtualJoystick {
   }
 
   handleTouchEnd(e) {
-    if (window.game?.isTempleRun) {
-      if (this.active) this.endJoystick();
-      return;
-    }
+    if (window.game?.isTempleRun) return;
     if (!this.active) return;
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];

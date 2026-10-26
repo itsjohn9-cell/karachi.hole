@@ -47,6 +47,7 @@ export class PortableGameOpsEngine {
     maxEvents = DEFAULT_MAX_EVENTS,
     maxSuggestions = DEFAULT_MAX_SUGGESTIONS,
     aggregateTransport = null,
+    trackingSDKHandler = null,
     analyticsConsent = false
   } = {}) {
     if (!storage || typeof storage.getItem !== 'function' ||
@@ -62,6 +63,7 @@ export class PortableGameOpsEngine {
     this.maxEvents = Math.max(10, Math.floor(maxEvents));
     this.maxSuggestions = Math.max(10, Math.floor(maxSuggestions));
     this.aggregateTransport = aggregateTransport;
+    this.trackingSDKHandler = trackingSDKHandler;
     this.analyticsConsent = Boolean(analyticsConsent);
     this.state = this.readState();
     this.lowFpsSamples = 0;
@@ -69,7 +71,7 @@ export class PortableGameOpsEngine {
 
   readState() {
     const stored = this.storage.getItem(this.key);
-    if (!stored) return { schemaVersion: 1, events: [], suggestions: [], lastSampleAt: 0, consentPromptEnabled: false };
+    if (!stored) return { schemaVersion: 1, events: [], suggestions: [], offlineQueue: [], lastSampleAt: 0, consentPromptEnabled: false };
     const state = JSON.parse(stored);
     if (!state || state.schemaVersion !== 1 ||
         !Array.isArray(state.events) || !Array.isArray(state.suggestions)) {
@@ -79,6 +81,7 @@ export class PortableGameOpsEngine {
       schemaVersion: 1,
       events: state.events.slice(-this.maxEvents),
       suggestions: state.suggestions.slice(-this.maxSuggestions),
+      offlineQueue: Array.isArray(state.offlineQueue) ? state.offlineQueue.slice(-200) : [],
       lastSampleAt: Number(state.lastSampleAt) || 0,
       consentPromptEnabled: Boolean(state.consentPromptEnabled)
     };
@@ -93,6 +96,7 @@ export class PortableGameOpsEngine {
     const latest = this.readState();
     this.state.events = latest.events;
     this.state.suggestions = latest.suggestions;
+    this.state.offlineQueue = latest.offlineQueue;
     this.state.lastSampleAt = Math.max(lastSampleAt, latest.lastSampleAt);
     this.state.consentPromptEnabled = Boolean(latest.consentPromptEnabled);
   }
@@ -259,13 +263,177 @@ export class PortableGameOpsEngine {
     return this.analyze();
   }
 
-  recordCrash({ reason, obstacleType, distanceMeters, area } = {}) {
-    return this.record('runner.crash', {
-      reason: String(reason || 'Unknown hazard').slice(0, 120),
-      obstacleType: obstacleType ? String(obstacleType).slice(0, 80) : null,
-      distanceMeters: Number.isFinite(Number(distanceMeters)) ? Number(distanceMeters) : null,
+  pushToActiveTrackingSDKs(eventName, eventPayload) {
+    const payload = JSON.parse(JSON.stringify(eventPayload || {}));
+
+    // 1. Google Analytics 4 (gtag.js)
+    if (typeof globalThis.gtag === 'function') {
+      try { globalThis.gtag('event', eventName, payload); } catch {}
+    }
+
+    // 2. Google Tag Manager (dataLayer)
+    if (Array.isArray(globalThis.dataLayer)) {
+      try { globalThis.dataLayer.push({ event: eventName, ...payload }); } catch {}
+    }
+
+    // 3. Amplitude Analytics
+    if (typeof globalThis.amplitude?.track === 'function') {
+      try { globalThis.amplitude.track(eventName, payload); } catch {}
+    }
+
+    // 4. Mixpanel
+    if (typeof globalThis.mixpanel?.track === 'function') {
+      try { globalThis.mixpanel.track(eventName, payload); } catch {}
+    }
+
+    // 5. Facebook Pixel
+    if (typeof globalThis.fbq === 'function') {
+      try { globalThis.fbq('trackCustom', eventName, payload); } catch {}
+    }
+
+    // 6. GameAnalytics SDK
+    const ga = globalThis.gameAnalytics || globalThis.GameAnalytics;
+    if (typeof ga?.addDesignEvent === 'function') {
+      try { ga.addDesignEvent(eventName, payload); } catch {}
+    }
+
+    // 7. Capacitor Native Plugins (Android/iOS)
+    if (globalThis.Capacitor?.Plugins?.FirebaseAnalytics?.logEvent) {
+      try { globalThis.Capacitor.Plugins.FirebaseAnalytics.logEvent({ name: eventName, params: payload }); } catch {}
+    }
+
+    // 8. Custom tracking adapter or aggregate transport
+    if (typeof this.trackingSDKHandler === 'function') {
+      try { this.trackingSDKHandler(eventName, payload); } catch {}
+    }
+    if (this.analyticsConsent && typeof this.aggregateTransport === 'function') {
+      try {
+        this.aggregateTransport({
+          type: 'analytics_event',
+          eventName,
+          payload,
+          timestamp: new Date(this.now()).toISOString()
+        });
+      } catch {}
+    }
+
+    // 9. Dispatch custom event on window for local listeners / analytics test harnesses
+    if (typeof globalThis.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+      try {
+        globalThis.dispatchEvent(new CustomEvent('karachi_analytics_event', {
+          detail: { eventName, payload }
+        }));
+      } catch {}
+    }
+  }
+
+  isOnline() {
+    if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
+      return navigator.onLine;
+    }
+    return true;
+  }
+
+  hasOfflineQueue() {
+    return Array.isArray(this.state.offlineQueue) && this.state.offlineQueue.length > 0;
+  }
+
+  dispatchAnalyticsEvent(eventName, payload = {}) {
+    const online = this.isOnline();
+    if (!online) {
+      this.refreshState();
+      this.state.offlineQueue ||= [];
+      const queuedItem = {
+        id: `${this.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        eventName,
+        payload: JSON.parse(JSON.stringify(payload)),
+        queuedAt: new Date(this.now()).toISOString()
+      };
+      this.state.offlineQueue.push(queuedItem);
+      if (this.state.offlineQueue.length > 200) {
+        this.state.offlineQueue = this.state.offlineQueue.slice(-200);
+      }
+      this.persist();
+      return { batched: true, online: false, event: queuedItem };
+    }
+
+    if (this.hasOfflineQueue()) {
+      this.syncOfflineQueue();
+    }
+
+    this.pushToActiveTrackingSDKs(eventName, payload);
+    return { dispatched: true, online: true };
+  }
+
+  syncOfflineQueue() {
+    if (!this.isOnline()) return 0;
+    this.refreshState();
+    if (!this.state.offlineQueue || this.state.offlineQueue.length === 0) return 0;
+    const queued = [...this.state.offlineQueue];
+    this.state.offlineQueue = [];
+    this.persist();
+
+    queued.forEach(item => {
+      const syncedPayload = {
+        ...item.payload,
+        offlineBatched: true,
+        originalTimestamp: item.queuedAt
+      };
+      this.pushToActiveTrackingSDKs(item.eventName, syncedPayload);
+    });
+
+    this.record('telemetry.offline_synced', {
+      syncedCount: queued.length,
+      syncedAt: new Date(this.now()).toISOString()
+    });
+
+    return queued.length;
+  }
+
+  recordCrash({ reason, obstacleType, distanceMeters, area, currentSpeed } = {}) {
+    const dist = Number.isFinite(Number(distanceMeters)) ? Number(distanceMeters) : null;
+    const speed = Number.isFinite(Number(currentSpeed)) ? Number(currentSpeed) : null;
+    const obsType = obstacleType ? String(obstacleType).slice(0, 80) : null;
+    const locReason = String(reason || 'Unknown hazard').slice(0, 120);
+
+    const event = this.record('runner.crash', {
+      reason: locReason,
+      obstacleType: obsType,
+      distanceMeters: dist,
+      currentSpeed: speed,
       area: area ?? null
     });
+
+    this.dispatchAnalyticsEvent('runner_crash', {
+      distanceMeters: dist,
+      obstacleType: obsType || 'unknown',
+      currentSpeed: speed,
+      reason: locReason,
+      area: area ?? null
+    });
+
+    return event;
+  }
+
+  recordProgression({ distanceMeters, milestone, currentSpeed, hearts, area, score } = {}) {
+    const dist = Number.isFinite(Number(distanceMeters)) ? Number(distanceMeters) : 0;
+    const speed = Number.isFinite(Number(currentSpeed)) ? Number(currentSpeed) : 0;
+    const milestoneLabel = milestone ? String(milestone).slice(0, 80) : `${dist}m`;
+
+    const detail = {
+      distanceMeters: dist,
+      milestone: milestoneLabel,
+      currentSpeed: speed,
+      hearts: Number.isFinite(Number(hearts)) ? Number(hearts) : null,
+      area: area ?? null,
+      score: Number.isFinite(Number(score)) ? Number(score) : null
+    };
+
+    const event = this.record('runner.progression', detail);
+
+    this.dispatchAnalyticsEvent('runner_progression', detail);
+
+    return event;
   }
 
   recordCheckResult({ name, status, summary } = {}) {

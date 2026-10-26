@@ -187,3 +187,103 @@ test('toggles and persists admin consent prompt gate status', () => {
   assert.equal(engine.setConsentPromptEnabled(false), false);
   assert.equal(engine.isConsentPromptEnabled(), false);
 });
+
+test('recordCrash pushes custom event to active tracking SDKs with distanceMeters, obstacleType, and currentSpeed', () => {
+  const dispatched = [];
+  const { engine } = createEngine({
+    trackingSDKHandler: (name, payload) => {
+      dispatched.push({ name, payload });
+    }
+  });
+
+  engine.recordCrash({
+    reason: 'Water Tanker Impact',
+    obstacleType: 'water_tanker',
+    distanceMeters: 1450.5,
+    currentSpeed: 18.2,
+    area: 'Lyari'
+  });
+
+  assert.equal(dispatched.length, 1);
+  assert.equal(dispatched[0].name, 'runner_crash');
+  assert.equal(dispatched[0].payload.distanceMeters, 1450.5);
+  assert.equal(dispatched[0].payload.obstacleType, 'water_tanker');
+  assert.equal(dispatched[0].payload.currentSpeed, 18.2);
+  assert.equal(dispatched[0].payload.reason, 'Water Tanker Impact');
+});
+
+test('recordProgression fires funnel progression events for retention curve analysis', () => {
+  const dispatched = [];
+  const { engine } = createEngine({
+    trackingSDKHandler: (name, payload) => {
+      dispatched.push({ name, payload });
+    }
+  });
+
+  [500, 1000, 1500].forEach(dist => {
+    engine.recordProgression({
+      distanceMeters: dist,
+      milestone: `${dist}m`,
+      currentSpeed: 15.0,
+      hearts: 3,
+      area: 'Soldier Bazar'
+    });
+  });
+
+  assert.equal(dispatched.length, 3);
+  assert.deepEqual(dispatched.map(item => item.name), ['runner_progression', 'runner_progression', 'runner_progression']);
+  assert.deepEqual(dispatched.map(item => item.payload.distanceMeters), [500, 1000, 1500]);
+});
+
+test('batches telemetry payloads locally when offline and syncs them when connection is restored', () => {
+  const dispatched = [];
+  const { engine } = createEngine({
+    trackingSDKHandler: (name, payload) => {
+      dispatched.push({ name, payload });
+    }
+  });
+
+  // Simulate dropping connection during run
+  const originalNavigator = globalThis.navigator;
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { onLine: false },
+    configurable: true,
+    writable: true
+  });
+
+  engine.recordCrash({
+    reason: 'Open gutter',
+    obstacleType: 'gutter',
+    distanceMeters: 620,
+    currentSpeed: 14.0
+  });
+
+  engine.recordProgression({
+    distanceMeters: 500,
+    currentSpeed: 14.0
+  });
+
+  // Offline: events must be batched locally, not pushed immediately
+  assert.equal(dispatched.length, 0);
+  assert.equal(engine.hasOfflineQueue(), true);
+  assert.equal(engine.state.offlineQueue.length, 2);
+
+  // Simulate connection restored
+  globalThis.navigator.onLine = true;
+  const syncedCount = engine.syncOfflineQueue();
+
+  assert.equal(syncedCount, 2);
+  assert.equal(engine.hasOfflineQueue(), false);
+  assert.equal(dispatched.length, 2);
+  assert.equal(dispatched[0].name, 'runner_crash');
+  assert.equal(dispatched[0].payload.offlineBatched, true);
+  assert.equal(dispatched[1].name, 'runner_progression');
+  assert.equal(dispatched[1].payload.offlineBatched, true);
+
+  // Restore navigator
+  Object.defineProperty(globalThis, 'navigator', {
+    value: originalNavigator,
+    configurable: true,
+    writable: true
+  });
+});

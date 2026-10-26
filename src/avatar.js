@@ -408,11 +408,36 @@ export class AvatarBuilder {
   }
 
   /**
+   * Trigger athletic stumble animation on character mesh
+   */
+  static triggerStumble(group, duration = 1.5) {
+    if (!group || !group.userData) return;
+    group.userData.stumbleTimer = duration;
+  }
+
+  /**
    * Update character walk/run and idle animations every frame
    */
   static updateAnimation(group, isMoving, dt, speedMult = 1.0, isJumping = false) {
     if (!group || !group.userData) return;
     const ud = group.userData;
+
+    if ((ud.stumbleTimer || 0) > 0) {
+      ud.stumbleTimer = Math.max(0, ud.stumbleTimer - dt);
+      const stumbleProgress = ud.stumbleTimer / 1.5;
+      const wobble = Math.sin(Date.now() * 0.025) * 0.28 * stumbleProgress;
+      const pitchForward = 0.38 * Math.sin(Math.PI * stumbleProgress);
+
+      ud.torso.rotation.x = THREE.MathUtils.lerp(ud.torso.rotation.x, pitchForward, dt * 12.0);
+      ud.torso.rotation.z = THREE.MathUtils.lerp(ud.torso.rotation.z, wobble, dt * 14.0);
+      ud.armLGroup.rotation.x = THREE.MathUtils.lerp(ud.armLGroup.rotation.x, -1.0 + wobble, dt * 12.0);
+      ud.armRGroup.rotation.x = THREE.MathUtils.lerp(ud.armRGroup.rotation.x, -0.8 - wobble, dt * 12.0);
+      ud.armLGroup.rotation.z = THREE.MathUtils.lerp(ud.armLGroup.rotation.z, -0.45, dt * 10.0);
+      ud.armRGroup.rotation.z = THREE.MathUtils.lerp(ud.armRGroup.rotation.z, 0.45, dt * 10.0);
+      ud.legLGroup.rotation.x = Math.sin(Date.now() * 0.03) * 0.55;
+      ud.legRGroup.rotation.x = -Math.sin(Date.now() * 0.03) * 0.55;
+      return;
+    }
 
     if (isJumping) {
       // Parkour Jump Traversal Pose: tuck legs up, arms spread for balance

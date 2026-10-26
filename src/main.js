@@ -168,6 +168,7 @@ class Game {
     this.laneWidth = 3.2;
     this.targetLaneX = 0;
     this.distanceMeters = 0;
+    this.lastFunnelMeters = 0;
     this.coins = 0;
     this.hearts = 3;
     this.maxHearts = 3;
@@ -238,6 +239,14 @@ class Game {
     this.initAudioTriggers();
     this.initMasterModeComms();
     this.initGodModeComms = this.initMasterModeComms; // Alias
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
+        if (this.opsEngine && typeof this.opsEngine.syncOfflineQueue === 'function') {
+          this.opsEngine.syncOfflineQueue();
+        }
+      });
+    }
     this.loadDistrictLevel(this.currentDistrictLevel, false);
     this.restoreSavedCareerProgress();
 
@@ -693,7 +702,8 @@ class Game {
     
     // If airborne, immediately dive down to slide under incoming wires
     if (!this.player.isGrounded) {
-      this.player.position.y = 0;
+      const groundY = this.isTempleRun ? this.getCorridorGroundHeight(this.player.position.z, this.player.position.x) : 0;
+      this.player.position.y = groundY;
       this.player.velocityY = 0;
       this.player.isGrounded = true;
     }
@@ -785,6 +795,17 @@ class Game {
     }
     this.isDrafting = false;
     this.draftCharge = 0;
+    this.isChaserClose = false;
+    this.chaserRecoveryTimer = 0;
+    this.runnerStumbleTimer = 0;
+    this.chaserDistance = 15.0;
+    this.targetChaserDistance = 15.0;
+    this.chaserOpacity = 0.0;
+    this.targetChaserOpacity = 0.0;
+    if (this.chaserEntity) {
+      this.chaserEntity.visible = false;
+      this.setMeshOpacity(this.chaserEntity, 0.0);
+    }
   }
 
   awardRunnerXP(amount) {
@@ -820,6 +841,22 @@ class Game {
     const isTurnMistake = obstacle.type === 'wrong_turn' || obstacle.type === 'missed_turn';
     // Turn mistakes are always charged; grace only protects against repeat obstacle hits.
     if ((this.runnerInvulnerableTimer || 0) > 0 && !isTurnMistake) return;
+
+    // Capture Check: If player crashes while Chaser is already visible and close!
+    if (this.isChaserClose && this.chaserDistance <= 5.5 && !isTurnMistake) {
+      if (this.chaserEntity) {
+        this.chaserEntity.position.z = this.player.position.z + 1.2;
+      }
+      this.recordCrash({
+        reason: '🚨 Captured by Sindh Police Mobile!',
+        obstacleType: 'chaser_capture',
+        distanceMeters: this.distanceMeters,
+        currentSpeed: this.player?.currentSpeed || 0,
+        area: this.currentMilestone || ''
+      });
+      this.triggerTempleRunGameOver('🚨 Captured by Sindh Police Mobile!');
+      return;
+    }
 
     // Sky Flight Jetpack (Flies safely above ground obstacles)
     if (this.jetpackTimer > 0 && !isTurnMistake) {
@@ -869,10 +906,11 @@ class Game {
     }
 
     // Deduct 1 Heart
-    this.recordGameOpsEvent('runner.crash', {
+    this.recordCrash({
       reason,
       obstacleType: obstacle.type || 'unknown',
-      distanceMeters: Math.round(this.distanceMeters),
+      distanceMeters: this.distanceMeters,
+      currentSpeed: this.player?.currentSpeed || 0,
       area: this.currentMilestone || ''
     });
     obstacle.isHit = true;
@@ -886,6 +924,18 @@ class Game {
     if (obstacle.mesh) this.scene.remove(obstacle.mesh);
 
     if (this.hearts > 0) {
+      // Alert and bring Chaser close
+      this.isChaserClose = true;
+      this.chaserRecoveryTimer = 5.0;
+      this.targetChaserDistance = 3.0;
+      this.targetChaserOpacity = 1.0;
+      this.chaserDistance = THREE.MathUtils.lerp(this.chaserDistance || 15.0, 3.5, 0.75);
+      this.chaserOpacity = Math.max(this.chaserOpacity || 0, 0.9);
+      if (this.chaserEntity) {
+        this.chaserEntity.visible = true;
+        this.setMeshOpacity(this.chaserEntity, this.chaserOpacity);
+      }
+
       // Grant 2.0s invulnerability grace window so player has time to orient themselves
       this.runnerInvulnerableTimer = 2.0;
 
@@ -912,6 +962,46 @@ class Game {
       }, 1000);
     } else {
       this.triggerTempleRunGameOver(reason);
+    }
+  }
+
+  recordCrash({ reason, obstacleType, distanceMeters, area, currentSpeed } = {}) {
+    const dist = Number.isFinite(Number(distanceMeters)) ? Number(distanceMeters) : (this.distanceMeters || 0);
+    const speed = Number.isFinite(Number(currentSpeed)) ? Number(currentSpeed) : (this.player?.currentSpeed || 0);
+    const obsType = obstacleType || 'unknown';
+    const locArea = area || this.currentMilestone || '';
+
+    try {
+      this.opsEngine ||= new PortableGameOpsEngine();
+      return this.opsEngine.recordCrash({
+        reason,
+        obstacleType: obsType,
+        distanceMeters: dist,
+        currentSpeed: speed,
+        area: locArea
+      });
+    } catch (error) {
+      console.error('[GAME_OPS] Could not record crash telemetry.', error);
+    }
+  }
+
+  recordProgressionFunnel(distanceMeters) {
+    const dist = Number.isFinite(Number(distanceMeters)) ? Number(distanceMeters) : (this.distanceMeters || 0);
+    const speed = this.player?.currentSpeed || 0;
+    const milestoneName = this.currentMilestone || `${dist}m`;
+
+    try {
+      this.opsEngine ||= new PortableGameOpsEngine();
+      return this.opsEngine.recordProgression({
+        distanceMeters: dist,
+        milestone: milestoneName,
+        currentSpeed: speed,
+        hearts: this.hearts,
+        area: this.currentMilestone || '',
+        score: this.score || 0
+      });
+    } catch (error) {
+      console.error('[GAME_OPS] Could not record funnel progression.', error);
     }
   }
 
@@ -1019,6 +1109,19 @@ class Game {
           this.runnerTraffic.splice(i, 1);
         }
       }
+    }
+
+    this.isChaserClose = false;
+    this.chaserRecoveryTimer = 0;
+    this.runnerStumbleTimer = 0;
+    this.chaserDistance = 15.0;
+    this.targetChaserDistance = 15.0;
+    this.chaserOpacity = 0.0;
+    this.targetChaserOpacity = 0.0;
+    if (this.chaserEntity) {
+      this.chaserEntity.position.set(0, 0, pZ + 15.0);
+      this.chaserEntity.visible = false;
+      this.setMeshOpacity(this.chaserEntity, 0.0);
     }
 
     this.particles.createCelebrationConfetti(this.player.position, 35);
@@ -1230,6 +1333,54 @@ class Game {
     const obstacleStartIndex = this.runnerObstacles.length;
     const trafficStartIndex = this.runnerTraffic.length;
     const boostPadStartIndex = this.runnerBoostPads.length;
+    const coinStartIndex = this.runnerCoins.length;
+    const powerupStartIndex = this.runnerPowerups.length;
+    const tokenStartIndex = this.runnerReviveTokens.length;
+
+    const alignWaveGroundY = () => {
+      for (let i = obstacleStartIndex; i < this.runnerObstacles.length; i++) {
+        const obs = this.runnerObstacles[i];
+        if (obs && obs.mesh) {
+          const gy = this.getCorridorGroundHeight(obs.z ?? obs.mesh.position.z, obs.laneX || 0);
+          obs.mesh.position.y += gy;
+        }
+      }
+      for (let i = trafficStartIndex; i < this.runnerTraffic.length; i++) {
+        const v = this.runnerTraffic[i];
+        if (v && v.mesh) {
+          const gy = this.getCorridorGroundHeight(v.mesh.position.z, v.laneX || 0);
+          v.mesh.position.y += gy;
+        }
+      }
+      for (let i = boostPadStartIndex; i < this.runnerBoostPads.length; i++) {
+        const pad = this.runnerBoostPads[i];
+        if (pad && pad.mesh) {
+          const gy = this.getCorridorGroundHeight(pad.z ?? pad.mesh.position.z, pad.laneX || 0);
+          pad.mesh.position.y += gy;
+        }
+      }
+      for (let i = coinStartIndex; i < this.runnerCoins.length; i++) {
+        const c = this.runnerCoins[i];
+        if (c && c.mesh) {
+          const gy = this.getCorridorGroundHeight(c.z ?? c.mesh.position.z, c.x || 0);
+          c.mesh.position.y += gy;
+        }
+      }
+      for (let i = powerupStartIndex; i < this.runnerPowerups.length; i++) {
+        const pu = this.runnerPowerups[i];
+        if (pu && pu.mesh) {
+          const gy = this.getCorridorGroundHeight(pu.z ?? pu.mesh.position.z, pu.x || 0);
+          pu.mesh.position.y += gy;
+        }
+      }
+      for (let i = tokenStartIndex; i < this.runnerReviveTokens.length; i++) {
+        const tok = this.runnerReviveTokens[i];
+        if (tok && tok.mesh) {
+          const gy = this.getCorridorGroundHeight(tok.z ?? tok.mesh.position.z, tok.laneX || 0);
+          tok.mesh.position.y += gy;
+        }
+      }
+    };
 
     // 0. Safe Onboarding Warmup Zone (First 50 meters): Spawn ONLY pleasant golden coin paths!
     if (this.distanceMeters < 50) {
@@ -1240,6 +1391,7 @@ class Game {
         this.scene.add(coin);
         this.runnerCoins.push({ mesh: coin, value: 50, x: laneX, z: waveZ + zOff });
       });
+      alignWaveGroundY();
       return;
     }
 
@@ -1256,6 +1408,7 @@ class Game {
         this.scene.add(coin);
         this.runnerCoins.push({ mesh: coin, value: 50, x: 0, z: waveZ + zOff });
       });
+      alignWaveGroundY();
       return;
     }
 
@@ -1737,6 +1890,178 @@ class Game {
         z: waveZ - 16.0
       });
     }
+
+    alignWaveGroundY();
+  }
+
+  createChaserPoliceMobile() {
+    const group = new THREE.Group();
+    group.name = 'Chaser-Police-Mobile';
+
+    // 1. Sindh Police Mobile Chassis (White & Navy Livery)
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0xf4f6f8,
+      roughness: 0.25,
+      metalness: 0.35,
+      transparent: true,
+      opacity: 0
+    });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1.25, 4.6), bodyMat);
+    body.position.y = 0.95;
+    group.add(body);
+
+    // Navy blue side markings
+    const stripeMat = new THREE.MeshBasicMaterial({ color: 0x0d2b5c, transparent: true, opacity: 0 });
+    const stripeL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.32, 4.2), stripeMat);
+    stripeL.position.set(-1.16, 0.95, 0);
+    group.add(stripeL);
+    const stripeR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.32, 4.2), stripeMat);
+    stripeR.position.set(1.16, 0.95, 0);
+    group.add(stripeR);
+
+    // 2. Cabin & Windshield
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x1a2634,
+      roughness: 0.1,
+      metalness: 0.9,
+      transparent: true,
+      opacity: 0
+    });
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.95, 2.6), glassMat);
+    cab.position.set(0, 1.85, -0.15);
+    group.add(cab);
+
+    // 3. Emergency Police Light Bar on Roof
+    const flasherBar = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 0.18, 0.32),
+      new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, transparent: true, opacity: 0 })
+    );
+    flasherBar.position.set(0, 2.4, -0.15);
+    group.add(flasherBar);
+
+    const redLightMat = new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: 0 });
+    const redLight = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.28), redLightMat);
+    redLight.position.set(-0.52, 2.42, -0.15);
+    group.add(redLight);
+
+    const blueLightMat = new THREE.MeshBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0 });
+    const blueLight = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.28), blueLightMat);
+    blueLight.position.set(0.52, 2.42, -0.15);
+    group.add(blueLight);
+
+    // 4. Chrome Bull-Bar Grille
+    const grilleMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0 });
+    const grille = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.65, 0.25), grilleMat);
+    grille.position.set(0, 0.72, -2.35);
+    group.add(grille);
+
+    // 5. Headlights Beaming Forward
+    const headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffee, transparent: true, opacity: 0 });
+    const hLeft = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.25, 0.1), headlightMat);
+    hLeft.position.set(-0.85, 0.85, -2.32);
+    group.add(hLeft);
+    const hRight = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.25, 0.1), headlightMat);
+    hRight.position.set(0.85, 0.85, -2.32);
+    group.add(hRight);
+
+    // 6. 4 Wheels
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1f2421, roughness: 0.9, transparent: true, opacity: 0 });
+    const wheelGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.36, 12);
+    wheelGeo.rotateZ(Math.PI / 2);
+    [[-1.18, 0.48, 1.3], [1.18, 0.48, 1.3], [-1.18, 0.48, -1.3], [1.18, 0.48, -1.3]].forEach(p => {
+      const w = new THREE.Mesh(wheelGeo, wheelMat);
+      w.position.set(...p);
+      group.add(w);
+    });
+
+    group.userData = { redLight, blueLight };
+    group.visible = false;
+    return group;
+  }
+
+  setMeshOpacity(obj, opacity) {
+    if (!obj) return;
+    obj.traverse(child => {
+      if (child.isMesh && child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach(m => {
+            m.transparent = true;
+            m.opacity = opacity;
+          });
+        } else {
+          child.material.transparent = true;
+          child.material.opacity = opacity;
+        }
+      }
+    });
+  }
+
+  initRunnerChaser() {
+    if (this.chaserEntity) {
+      this.scene.remove(this.chaserEntity);
+      this.chaserEntity = null;
+    }
+    this.chaserEntity = this.createChaserPoliceMobile();
+    this.chaserDistance = 15.0;
+    this.targetChaserDistance = 15.0;
+    this.chaserOpacity = 0.0;
+    this.targetChaserOpacity = 0.0;
+    this.isChaserClose = false;
+    this.chaserRecoveryTimer = 0.0;
+    this.runnerStumbleTimer = 0.0;
+
+    const pZ = this.player?.position.z ?? 60.0;
+    const pX = this.player?.position.x ?? 0.0;
+    this.chaserEntity.position.set(pX, 0, pZ + 15.0);
+    this.chaserEntity.visible = false;
+    this.setMeshOpacity(this.chaserEntity, 0.0);
+    this.scene.add(this.chaserEntity);
+  }
+
+  triggerRunnerStumble(obstacle, label) {
+    if (!this.player || this.isGameOver) return;
+
+    if (this.isMasterImmortal || this.isGodImmortal) {
+      this.ui.showFloatingFeedback('👑 IMMORTAL MASTER MODE!', this.player.position, '#ffd700');
+      return;
+    }
+
+    if (this.jetpackTimer > 0 || this.chingchiTimer > 0 || this.nitroTimer > 0) return;
+
+    // Capture Check: If player stumbles again while Chaser is visible and close!
+    if (this.isChaserClose && this.chaserDistance <= 5.5) {
+      if (this.chaserEntity) {
+        this.chaserEntity.position.z = this.player.position.z + 1.2;
+      }
+      this.triggerTempleRunGameOver('🚨 Captured by Sindh Police Mobile!');
+      return;
+    }
+
+    // Trigger Stumble:
+    this.isChaserClose = true;
+    this.chaserRecoveryTimer = 5.0; // 5 seconds of clean running to shake off chaser
+    this.runnerStumbleTimer = 1.5;  // 1.5s 25% speed reduction
+
+    if (typeof AvatarBuilder !== 'undefined' && AvatarBuilder.triggerStumble && this.player?.avatarMesh) {
+      AvatarBuilder.triggerStumble(this.player.avatarMesh, 1.5);
+    }
+
+    // Bring Chaser visible and right behind player (3 units)
+    this.targetChaserDistance = 3.0;
+    this.targetChaserOpacity = 1.0;
+    this.chaserDistance = 3.0;
+    this.chaserOpacity = 1.0;
+    if (this.chaserEntity) {
+      this.chaserEntity.visible = true;
+      this.chaserEntity.position.set(this.player.position.x, 0, this.player.position.z + 3.0);
+      this.setMeshOpacity(this.chaserEntity, 1.0);
+    }
+
+    audio.playTireScreech();
+    this.cameraShakeTimer = 0.25;
+    this.particles.createSkidSmoke(this.player.position, 10);
+    this.ui.showAnnouncement(`⚠️ STUMBLED ON ${label}! POLICE CLOSING IN!`, '#ff9100');
+    this.ui.showFloatingFeedback('⚠️ STUMBLED! -25% SPEED', this.player.position, '#ff9100');
   }
 
   createRunnerPotholeMesh() {
@@ -2049,6 +2374,7 @@ class Game {
    * Initialize Infinite Procedural 3-Lane Corridor for Karachi Subway Run
    */
   initCorridorTerrain() {
+    if (!this.chaserEntity) this.initRunnerChaser();
     const baseZ = this.player?.position.z ?? 60.0;
     if (this.corridorChunks && this.corridorChunks.length > 0 &&
         this.corridorDistrictLevel === this.currentDistrictLevel) {
@@ -2063,11 +2389,16 @@ class Game {
     }
     this.corridorChunks = [];
     this.corridorChunkSerial = 0;
+    this.corridorElevation = 0.0;
+    this.lastFunnelMeters = 0;
 
-    // Keep the active area scenery centered on the runner as the route advances.
+    // Rolling verticality profile for the initial endless corridor:
+    // Flat launch runway -> sloped flyover ramp up (+5m) -> elevated corridor -> ramp down (-5m) -> ground
+    const initialSlopes = ['FLAT', 'FLAT', 'RAMP_UP', 'FLAT', 'RAMP_DOWN', 'FLAT', 'FLAT'];
     for (let i = 0; i < 7; i++) {
       const chunkZ = baseZ - (i * 60.0);
-      const chunk = this.createCorridorChunk(chunkZ);
+      const forcedSlope = initialSlopes[i] || null;
+      const chunk = this.createCorridorChunk(chunkZ, forcedSlope);
       this.scene.add(chunk);
       this.corridorChunks.push(chunk);
     }
@@ -2102,7 +2433,10 @@ class Game {
       const fit = Math.min(1, 26 / Math.max(footprint.x, footprint.z));
       model.scale.setScalar(fit);
       model.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
-      model.position.set(side * (12.5 + (footprint.x * fit) / 2), 0, 0);
+      const landmarkY = chunkGroup.userData?.startElevation !== undefined
+        ? CityGenerator.getSegmentElevation(chunkGroup.userData, 0, 60.0)
+        : 0;
+      model.position.set(side * (12.5 + (footprint.x * fit) / 2), landmarkY, 0);
       chunkGroup.add(model);
       occupied.add(side);
       names.push(name);
@@ -2113,7 +2447,11 @@ class Game {
     const tower = KarachiModels[towerName]?.();
     if (tower) {
       const side = serial % 2 === 0 ? -1 : 1;
-      tower.position.set(side * 50, 0, (serial % 3 - 1) * 12);
+      const tz = (serial % 3 - 1) * 12;
+      const towerY = chunkGroup.userData?.startElevation !== undefined
+        ? CityGenerator.getSegmentElevation(chunkGroup.userData, tz, 60.0)
+        : 0;
+      tower.position.set(side * 50, towerY, tz);
       chunkGroup.add(tower);
       names.push(towerName);
     }
@@ -2121,7 +2459,11 @@ class Game {
     [-1, 1].forEach(side => {
       const palm = KarachiModels.createPalmTree?.();
       if (!palm) return;
-      palm.position.set(side * 9.6, 0, side * 24);
+      const pz = side * 24;
+      const palmY = chunkGroup.userData?.startElevation !== undefined
+        ? CityGenerator.getSegmentElevation(chunkGroup.userData, pz, 60.0)
+        : 0;
+      palm.position.set(side * 9.6, palmY, pz);
       chunkGroup.add(palm);
     });
 
@@ -2130,11 +2472,124 @@ class Game {
   }
 
   /**
-   * Create a single 60-meter modular Corridor Segment (Asphalt, painted lane lines, sidewalks, buildings)
+   * Determine exact ground surface elevation (Y) along the 3-lane endless corridor.
+   * Uses Raycasting against active road meshes with fallback to mathematical slope interpolation.
    */
-  createCorridorChunk(chunkZ) {
+  getCorridorGroundHeight(worldZ, worldX = 0) {
+    if (!this.corridorChunks || this.corridorChunks.length === 0) return 0;
+
+    // 1. Raycasting approach against active road surface geometry
+    if (!this.runnerRaycaster) {
+      this.runnerRaycaster = new THREE.Raycaster();
+      this.runnerRayOrigin = new THREE.Vector3();
+      this.runnerRayDown = new THREE.Vector3(0, -1, 0);
+    }
+    const roadMeshes = [];
+    for (let i = 0; i < this.corridorChunks.length; i++) {
+      const c = this.corridorChunks[i];
+      if (Math.abs(c.position.z - worldZ) <= 35.0) {
+        c.traverse(child => {
+          if (child.isMesh && child.userData.isRoadSurface) roadMeshes.push(child);
+        });
+      }
+    }
+    if (roadMeshes.length > 0) {
+      this.runnerRayOrigin.set(worldX, 35.0, worldZ);
+      this.runnerRaycaster.set(this.runnerRayOrigin, this.runnerRayDown);
+      const hits = this.runnerRaycaster.intersectObjects(roadMeshes, false);
+      if (hits.length > 0) {
+        return hits[0].point.y;
+      }
+    }
+
+    // 2. High-precision mathematical interpolation based on the current chunk's elevation profile
+    for (let i = 0; i < this.corridorChunks.length; i++) {
+      const chunk = this.corridorChunks[i];
+      const cz = chunk.position.z;
+      if (worldZ <= cz + 30.001 && worldZ >= cz - 30.001) {
+        const localZ = worldZ - cz;
+        const t = THREE.MathUtils.clamp((30.0 - localZ) / 60.0, 0, 1);
+        const s = t * t * (3 - 2 * t);
+        const startElev = chunk.userData?.startElevation || 0;
+        const delta = chunk.userData?.elevationDelta || 0;
+        return startElev + s * delta;
+      }
+    }
+
+    // Fallback: search closest chunk
+    let closestChunk = this.corridorChunks[0];
+    let minDist = Infinity;
+    for (let i = 0; i < this.corridorChunks.length; i++) {
+      const dist = Math.abs(worldZ - this.corridorChunks[i].position.z);
+      if (dist < minDist) {
+        minDist = dist;
+        closestChunk = this.corridorChunks[i];
+      }
+    }
+    if (closestChunk) {
+      const localZ = worldZ - closestChunk.position.z;
+      const t = THREE.MathUtils.clamp((30.0 - localZ) / 60.0, 0, 1);
+      const s = t * t * (3 - 2 * t);
+      const startElev = closestChunk.userData?.startElevation || 0;
+      const delta = closestChunk.userData?.elevationDelta || 0;
+      return startElev + s * delta;
+    }
+    return 0;
+  }
+
+  /**
+   * Create a single 60-meter modular Corridor Segment (Asphalt, painted lane lines, sidewalks, buildings)
+   * Supports three elevation profiles: FLAT, RAMP_UP (+5m), RAMP_DOWN (-5m)
+   */
+  createCorridorChunk(chunkZ, forceSlope = null, forceStartElevation = null) {
     const chunkGroup = new THREE.Group();
     chunkGroup.position.z = chunkZ;
+
+    // Elevation Profiles: support FLAT, RAMP_UP (+5m), RAMP_DOWN (-5m)
+    let startElevation = Number.isFinite(forceStartElevation)
+      ? forceStartElevation
+      : (this.corridorElevation || 0.0);
+    let slopeState = forceSlope;
+
+    if (!slopeState) {
+      if (Math.abs(chunkZ - 60.0) < 125.0) {
+        // Safe flat start zone around initial run spawn
+        slopeState = 'FLAT';
+        startElevation = 0;
+      } else {
+        const distToJunction = this.runnerJunction ? Math.abs(chunkZ - this.runnerJunction.z) : Infinity;
+        if (distToJunction < 130.0) {
+          // Approach to turn junction: level out back to 0
+          if (startElevation > 0) slopeState = 'RAMP_DOWN';
+          else if (startElevation < 0) slopeState = 'RAMP_UP';
+          else slopeState = 'FLAT';
+        } else {
+          // Rolling Karachi flyovers and elevated arterial ridges
+          if (startElevation <= 0) {
+            slopeState = Math.random() < 0.45 ? 'RAMP_UP' : 'FLAT';
+          } else if (startElevation >= 5.0) {
+            slopeState = Math.random() < 0.55 ? 'RAMP_DOWN' : 'FLAT';
+          } else {
+            slopeState = 'FLAT';
+          }
+        }
+      }
+    }
+
+    const elevationDelta = slopeState === 'RAMP_UP' ? 5.0 : slopeState === 'RAMP_DOWN' ? -5.0 : 0.0;
+    const endElevation = startElevation + elevationDelta;
+    this.corridorElevation = endElevation;
+
+    chunkGroup.userData.slopeState = slopeState;
+    chunkGroup.userData.startElevation = startElevation;
+    chunkGroup.userData.endElevation = endElevation;
+    chunkGroup.userData.elevationDelta = elevationDelta;
+
+    const getLocalY = (z) => CityGenerator.getSegmentElevation(
+      { slopeState, startElevation, elevationDelta },
+      z,
+      60.0
+    );
     const districtStyles = {
       1: {
         name: 'SOLDIER BAZAR · GARDEN HERITAGE',
@@ -2223,55 +2678,22 @@ class Game {
     chunkGroup.userData.patrolAreaLevel = this.currentDistrictLevel;
     chunkGroup.userData.runnerIdentity = getDistrictConfig(this.currentDistrictLevel)?.runnerFocus || 'Karachi urban arterial corridor · high-speed traffic';
 
-    // 1. Smooth Dark Asphalt Road Surface (13m wide, 60m long)
-    const roadGeo = new THREE.PlaneGeometry(13.0, 60.0);
-    roadGeo.rotateX(-Math.PI / 2);
-    const roadMat = new THREE.MeshLambertMaterial({
-      color: districtStyle.roadColor
+    // 1-4. Modular Subdivided Roadway Surface, Dividers, Curbs & Sidewalks with elevation slope
+    const roadSegment = CityGenerator.createModularRoadSegment(60.0, 13.0, {
+      roadColor: districtStyle.roadColor,
+      laneMarking: districtStyle.laneMarking,
+      sidewalkColor: districtStyle.sidewalkColor,
+      slopeState,
+      startElevation,
+      elevationDelta
     });
-    const roadMesh = new THREE.Mesh(roadGeo, roadMat);
-    roadMesh.position.y = 0.02;
-    roadMesh.receiveShadow = true;
-    chunkGroup.add(roadMesh);
-
-    // 2. Crisp Painted White Dashed Lane Dividers at X = -1.6 and X = +1.6
-    [-1.6, 1.6].forEach(divX => {
-      for (let dz = -25; dz <= 25; dz += 10) {
-        const dashGeo = new THREE.PlaneGeometry(0.18, 5.0);
-        dashGeo.rotateX(-Math.PI / 2);
-        const dashMat = new THREE.MeshBasicMaterial({ color: districtStyle.laneMarking });
-        const dash = new THREE.Mesh(dashGeo, dashMat);
-        dash.position.set(divX, 0.026, dz);
-        chunkGroup.add(dash);
-      }
-    });
-
-    // Outer Yellow Curbside Lines at X = -5.8 and X = +5.8
-    [-5.8, 5.8].forEach(borderX => {
-      const bGeo = new THREE.PlaneGeometry(0.24, 60.0);
-      bGeo.rotateX(-Math.PI / 2);
-      const bMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
-      const bLine = new THREE.Mesh(bGeo, bMat);
-      bLine.position.set(borderX, 0.026, 0);
-      chunkGroup.add(bLine);
-    });
-
-    // 3. Sidewalks on Left and Right
-    [-8.0, 8.0].forEach(sideX => {
-      const walkMat = new THREE.MeshLambertMaterial({ color: districtStyle.sidewalkColor });
-      for (let seg = 0; seg < 6; seg++) {
-        const walk = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.28, 10.0), walkMat);
-        walk.position.set(sideX, 0.14, -25 + seg * 10);
-        walk.receiveShadow = true;
-        chunkGroup.add(walk);
-      }
-    });
+    chunkGroup.add(roadSegment);
 
     // 4. Streetlights every 30m along sidewalks
     [-20, 10].forEach(lz => {
       [-6.5, 6.5].forEach(lx => {
         const lightPole = KarachiModels.createStreetLamp();
-        lightPole.position.set(lx, 0.28, lz);
+        lightPole.position.set(lx, getLocalY(lz) + 0.28, lz);
         if (lx < 0) lightPole.rotation.y = Math.PI;
         chunkGroup.add(lightPole);
       });
@@ -2284,7 +2706,7 @@ class Game {
       route.cross,
       route.crossUrdu
     );
-    leftStreetSign.position.set(-8.7, 0, -15);
+    leftStreetSign.position.set(-8.7, getLocalY(-15), -15);
     leftStreetSign.rotation.y = Math.PI / 2;
     chunkGroup.add(leftStreetSign);
 
@@ -2294,7 +2716,7 @@ class Game {
       route.avenue,
       route.avenueUrdu
     );
-    rightStreetSign.position.set(8.7, 0, 15);
+    rightStreetSign.position.set(8.7, getLocalY(15), 15);
     rightStreetSign.rotation.y = -Math.PI / 2;
     chunkGroup.add(rightStreetSign);
 
@@ -2303,7 +2725,7 @@ class Game {
       : this.currentDistrictLevel === 2
         ? (routeIndex % 2 === 0 ? KarachiModels.createChaiDhaba() : KarachiModels.createRoadsidePaanKhokha())
         : (routeIndex % 2 === 0 ? KarachiModels.createChaiDhaba() : KarachiModels.createRoadsidePaanKhokha());
-    roadsideStall.position.set(routeIndex % 2 === 0 ? -10.8 : 10.8, 0, 0);
+    roadsideStall.position.set(routeIndex % 2 === 0 ? -10.8 : 10.8, getLocalY(0), 0);
     roadsideStall.rotation.y = routeIndex % 2 === 0 ? Math.PI / 2 : -Math.PI / 2;
     chunkGroup.add(roadsideStall);
 
@@ -2321,13 +2743,13 @@ class Game {
       const crossbar = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.12, 0.12), frameMaterial);
       crossbar.position.y = 2.1;
       goal.add(crossbar);
-      goal.position.set(8.6, 0, -20);
+      goal.position.set(8.6, getLocalY(-20), -20);
       chunkGroup.add(goal);
       const football = new THREE.Mesh(
         new THREE.SphereGeometry(0.32, 10, 8),
         new THREE.MeshLambertMaterial({ color: 0xffffff })
       );
-      football.position.set(7.0, 0.32, -17);
+      football.position.set(7.0, getLocalY(-17) + 0.32, -17);
       chunkGroup.add(football);
     }
 
@@ -2337,20 +2759,20 @@ class Game {
         new THREE.BoxGeometry(4.2, 0.3, 4.2),
         new THREE.MeshLambertMaterial({ color: 0xc8c2b8 })
       );
-      roof.position.set(-15.5, 11.5, 0);
+      roof.position.set(-15.5, getLocalY(0) + 11.5, 0);
       chunkGroup.add(roof);
       const tank = new THREE.Mesh(
         new THREE.CylinderGeometry(1.25, 1.25, 1.8, 14),
         new THREE.MeshLambertMaterial({ color: 0x416b79 })
       );
-      tank.position.set(-15.5, 12.55, 0);
+      tank.position.set(-15.5, getLocalY(0) + 12.55, 0);
       tank.castShadow = true;
       chunkGroup.add(tank);
       const tankTop = new THREE.Mesh(
         new THREE.CylinderGeometry(1.28, 1.28, 0.12, 14),
         new THREE.MeshLambertMaterial({ color: 0x698c96 })
       );
-      tankTop.position.set(-15.5, 13.5, 0);
+      tankTop.position.set(-15.5, getLocalY(0) + 13.5, 0);
       chunkGroup.add(tankTop);
     } else if (this.currentDistrictLevel === 2) {
       chunkGroup.userData.lyariMuralWall = true;
@@ -2358,7 +2780,7 @@ class Game {
         new THREE.BoxGeometry(0.16, 3.4, 9.5),
         new THREE.MeshLambertMaterial({ color: 0x9b4b36 })
       );
-      muralWall.position.set(-10.35, 2.0, 0);
+      muralWall.position.set(-10.35, getLocalY(0) + 2.0, 0);
       chunkGroup.add(muralWall);
       [
         { color: 0x168a73, y: 1.1, z: 0 },
@@ -2370,18 +2792,33 @@ class Game {
           new THREE.BoxGeometry(0.04, 0.54, 2.5),
           new THREE.MeshLambertMaterial({ color: stripe.color })
         );
-        paint.position.set(-10.24, stripe.y, stripe.z);
+        paint.position.set(-10.24, getLocalY(stripe.z) + stripe.y, stripe.z);
         chunkGroup.add(paint);
       });
       const muralBall = new THREE.Mesh(
         new THREE.SphereGeometry(0.72, 16, 12),
         new THREE.MeshLambertMaterial({ color: 0xf4ead2 })
       );
-      muralBall.position.set(-10.18, 2.0, 0);
+      muralBall.position.set(-10.18, getLocalY(0) + 2.0, 0);
       muralBall.scale.set(0.12, 1, 1);
       chunkGroup.add(muralBall);
     } else if (this.currentDistrictLevel === 3) {
       chunkGroup.userData.saddarHeritageFacade = true;
+    }
+
+    // Concrete flyover support pillars when road is elevated above ground
+    if (startElevation > 0.5 || endElevation > 0.5) {
+      [-20, 20].forEach(pz => {
+        const pY = getLocalY(pz);
+        if (pY > 0.8) {
+          const pier = new THREE.Mesh(
+            new THREE.BoxGeometry(2.4, pY, 2.4),
+            new THREE.MeshLambertMaterial({ color: 0x475569 })
+          );
+          pier.position.set(0, pY / 2, pz);
+          chunkGroup.add(pier);
+        }
+      });
     }
 
     // Iconic Karachi landmarks from the classic city replace plain box blocks on some roadsides.
@@ -2402,7 +2839,8 @@ class Game {
         const bGeo = new THREE.BoxGeometry(w, h, d);
         const bMat = new THREE.MeshLambertMaterial({ color });
         const bld = new THREE.Mesh(bGeo, bMat);
-        bld.position.set(sideX, h / 2, bz);
+        const bldGroundY = getLocalY(bz);
+        bld.position.set(sideX, bldGroundY + h / 2, bz);
         chunkGroup.add(bld);
 
         if (this.currentDistrictLevel === 3) {
@@ -2410,19 +2848,19 @@ class Game {
           const trimMat = new THREE.MeshLambertMaterial({ color: 0xd7c4a1 });
           const shadowMat = new THREE.MeshLambertMaterial({ color: 0x51473e });
           const cornice = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.38, d + 0.6), trimMat);
-          cornice.position.set(facadeX, h - 0.7, bz);
+          cornice.position.set(facadeX, bldGroundY + h - 0.7, bz);
           chunkGroup.add(cornice);
           [-4.8, 0, 4.8].forEach(windowZ => {
             const window = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.5, 1.45), shadowMat);
-            window.position.set(facadeX + (sideX < 0 ? 0.06 : -0.06), 4.0, bz + windowZ);
+            window.position.set(facadeX + (sideX < 0 ? 0.06 : -0.06), bldGroundY + 4.0, bz + windowZ);
             chunkGroup.add(window);
             const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.16, 1.7), trimMat);
-            lintel.position.set(window.position.x, 5.34, bz + windowZ);
+            lintel.position.set(window.position.x, bldGroundY + 5.34, bz + windowZ);
             chunkGroup.add(lintel);
           });
           [-7.4, 7.4].forEach(pierZ => {
             const pier = new THREE.Mesh(new THREE.BoxGeometry(0.28, Math.max(5, h - 2), 0.38), trimMat);
-            pier.position.set(facadeX, Math.max(5, h - 2) / 2, bz + pierZ);
+            pier.position.set(facadeX, bldGroundY + Math.max(5, h - 2) / 2, bz + pierZ);
             chunkGroup.add(pier);
           });
         }
@@ -2599,16 +3037,11 @@ class Game {
         const chunk = this.corridorChunks[i];
         if (chunk.position.z > this.player.position.z + 50.0) {
           const newZ = minZ - 60.0;
-          if (chunk.userData.patrolAreaLevel !== undefined &&
-              chunk.userData.patrolAreaLevel !== this.currentDistrictLevel) {
-            this.scene.remove(chunk);
-            this.disposeCorridorChunk(chunk);
-            const newChunk = this.createCorridorChunk(newZ);
-            this.scene.add(newChunk);
-            this.corridorChunks[i] = newChunk;
-          } else {
-            chunk.position.z = newZ;
-          }
+          this.scene.remove(chunk);
+          this.disposeCorridorChunk(chunk);
+          const newChunk = this.createCorridorChunk(newZ);
+          this.scene.add(newChunk);
+          this.corridorChunks[i] = newChunk;
           minZ = newZ;
         }
       }
@@ -2655,6 +3088,13 @@ class Game {
       speed += 8.5 * this.draftCharge;
     }
     if (this.runnerSection?.type === 'flyover') speed *= 1.08;
+
+    // Stumble penalty: reduce currentSpeed by 25% for 1.5 seconds
+    if (this.runnerStumbleTimer > 0) {
+      this.runnerStumbleTimer = Math.max(0, this.runnerStumbleTimer - dt);
+      speed *= 0.75;
+    }
+
     this.player.currentSpeed = speed;
 
     // Calculate real-time NASCAR Cockpit metrics
@@ -2702,6 +3142,14 @@ class Game {
     // 3. Forward Movement Along Street (Heading North towards -Z)
     this.player.position.z -= speed * dt;
     this.distanceMeters += speed * dt;
+
+    // Funnel Tracking: Fire progression events every 500 meters to build a retention funnel
+    this.lastFunnelMeters = this.lastFunnelMeters || 0;
+    while (this.distanceMeters >= this.lastFunnelMeters + 500) {
+      this.lastFunnelMeters += 500;
+      this.recordProgressionFunnel(this.lastFunnelMeters);
+    }
+
     if (this.updateRunnerProgression()) return;
     this.updateRunnerWeather(dt);
     this.updateRunnerNavigation(dt);
@@ -2718,17 +3166,18 @@ class Game {
       this.player.avatarMesh.rotation.z = this.currentBankRoll;
     }
 
-    // 4. Camera Rig: Lock smoothly behind player (z = player.z + 5.2, y = 2.85),
+    // 4. Camera Rig: Lock smoothly behind player
     // following player.position.x * 0.45 smoothly for dynamic lane switches
     if (this.camera) {
+      const baseGroundY = this.getCorridorGroundHeight(this.player.position.z, this.player.position.x);
       const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
       const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
       const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
       const targetCamX = this.player.position.x * horizontalCameraFollow;
-      const targetCamY = 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0);
+      const targetCamY = baseGroundY + 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0);
       const targetCamZ = this.player.position.z + 5.2;
       const targetLookX = this.player.position.x * horizontalLookAhead;
-      const targetLookY = 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0);
+      const targetLookY = baseGroundY + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0);
       const targetLookZ = this.player.position.z - 18.0;
 
       if ((this.cameraSmoothTimer || 0) > 0 && this.cameraSmoothPos && this.cameraSmoothLookAt) {
@@ -2758,24 +3207,35 @@ class Game {
       }
     }
 
-    // 5. Update Vertical Traversal (Jump gravity & arc, Jetpack sky flight)
+    // 5. Update Vertical Traversal (Jump gravity & arc, Jetpack sky flight, Sloped Terrain Grounding)
+    const groundY = this.getCorridorGroundHeight(this.player.position.z, this.player.position.x);
     if (this.jetpackTimer > 0) {
       this.jetpackTimer = Math.max(0, this.jetpackTimer - dt);
-      const skyAltitude = 4.8;
+      const skyAltitude = groundY + 4.8;
       this.player.position.y = THREE.MathUtils.lerp(this.player.position.y, skyAltitude, dt * 5.0);
       this.player.isGrounded = false;
       this.player.group.position.y = this.player.position.y;
       this.particles.createSkidSmoke(new THREE.Vector3(this.player.position.x, this.player.position.y - 0.4, this.player.position.z + 0.3), 1);
       this.particles.createDevourSparkles(new THREE.Vector3(this.player.position.x, this.player.position.y - 0.4, this.player.position.z + 0.3), 2, 0x00e5ff);
-    } else if (!this.player.isGrounded || this.player.position.y > 0 || this.player.velocityY !== 0) {
+    } else if (!this.player.isGrounded || this.player.position.y > groundY + 0.05 || this.player.velocityY !== 0) {
       const gravity = 18.0;
       this.player.velocityY -= gravity * dt;
       this.player.position.y += this.player.velocityY * dt;
-      if (this.player.position.y <= 0) {
-        this.player.position.y = 0;
+      if (this.player.position.y <= groundY) {
+        this.player.position.y = groundY;
         this.player.velocityY = 0;
         this.player.isGrounded = true;
       }
+      this.player.group.position.y = this.player.position.y;
+    } else {
+      // Grounded: smoothly snap to terrain height beneath player
+      this.player.position.y = THREE.MathUtils.lerp(
+        this.player.position.y,
+        groundY,
+        Math.min(1.0, dt * 25.0)
+      );
+      this.player.velocityY = 0;
+      this.player.isGrounded = true;
       this.player.group.position.y = this.player.position.y;
     }
 
@@ -3004,6 +3464,7 @@ class Game {
 
         // Shrink obstacle bounding box by 20% relative to visual meshes (1.4 -> 1.12)
         const crossesObstacle = runnerSegmentCrossesZ(obs.z, previousRunnerPosition.z, pPos.z, 1.12);
+        const crossesVisualZ = runnerSegmentCrossesZ(obs.z, previousRunnerPosition.z, pPos.z, 1.40);
         if (crossesObstacle) {
           if (obs.hazardType === 'HIGH_HAZARD' || obs.type === 'wire' || obs.type === 'heritage_scaffold') {
             if (this.isSliding) {
@@ -3033,7 +3494,10 @@ class Game {
             );
             // Shrink obstacle bounding box by 20% (1.35 -> 1.08)
             if (laneDistanceSq < 1.08 * 1.08) {
-              if ((!this.player.isGrounded && this.player.position.y > 0.28) || previousRunnerPosition.y > 0.28) {
+              const groundYAtObstacle = this.getCorridorGroundHeight(obs.z, obs.laneX || 0);
+              const isAirborneAboveObstacle = (!this.player.isGrounded && this.player.position.y > groundYAtObstacle + 0.28) ||
+                (previousRunnerPosition.y > groundYAtObstacle + 0.28);
+              if (isAirborneAboveObstacle) {
                 obs.isHit = true;
                 this.guttersJumped = (this.guttersJumped || 0) + 1;
                 this.awardRunnerXP(150);
@@ -3053,6 +3517,21 @@ class Game {
                           : '🌊 Sewage Overflow';
                 this.handleRunnerHit(obs, label);
               }
+            } else if (laneDistanceSq < 1.35 * 1.35 && !obs.isGrazed) {
+              // Collision forgiveness window saves player from heart loss -> trigger stumble
+              obs.isGrazed = true;
+              const label = obs.type === 'gutter'
+                ? '🕳️ Open Gutter'
+                : obs.type === 'digging'
+                  ? '🚧 Road Digging'
+                  : obs.type === 'pothole'
+                    ? '🕳️ Rain-Softened Pothole'
+                    : obs.type === 'football'
+                      ? '⚽ Lyari Street Football'
+                      : obs.type === 'combined_roadwork'
+                        ? '🚧 Combined Roadwork'
+                        : '🌊 Sewage Overflow';
+              this.triggerRunnerStumble(obs, label);
             }
           } else if (obs.hazardType === 'FULL_BLOCK' || obs.type === 'rickshaw' || obs.type === 'snatcher' ||
                      obs.type === 'water_tanker' || obs.type === 'market_cart') {
@@ -3074,6 +3553,59 @@ class Game {
                       ? '🛒 Saddar Market Handcart'
                       : '🚧 Full Block Hazard';
               this.handleRunnerHit(obs, label);
+            } else if (laneDistanceSq < 1.35 * 1.35 && !obs.isGrazed) {
+              // Collision forgiveness window saves player from heart loss -> trigger stumble
+              obs.isGrazed = true;
+              const label = obs.type === 'rickshaw'
+                ? '🛺 Stalled Qingqi Rickshaw'
+                : obs.type === 'snatcher'
+                  ? '🏍️ 70cc Snatcher'
+                  : obs.type === 'water_tanker'
+                    ? '🚰 PECHS Water-Tanker Queue'
+                    : obs.type === 'market_cart'
+                      ? '🛒 Saddar Market Handcart'
+                      : '🚧 Full Block Hazard';
+              this.triggerRunnerStumble(obs, label);
+            }
+          }
+        } else if (crossesVisualZ && !obs.isGrazed) {
+          if (obs.hazardType === 'HIGH_HAZARD' || obs.type === 'wire' || obs.type === 'heritage_scaffold') {
+            if (!this.isSliding) {
+              obs.isGrazed = true;
+              this.triggerRunnerStumble(
+                obs,
+                obs.type === 'wire' ? '⚡ Hanging Wires' : '🏛️ Saddar Heritage Scaffolding'
+              );
+            }
+          } else {
+            const laneDistanceSq = runnerSegmentDistanceSquared(
+              obs.laneX,
+              obs.z,
+              previousRunnerPosition,
+              pPos
+            );
+            if (laneDistanceSq < 1.35 * 1.35) {
+              obs.isGrazed = true;
+              const label = obs.type === 'gutter'
+                ? '🕳️ Open Gutter'
+                : obs.type === 'rickshaw'
+                  ? '🛺 Stalled Qingqi Rickshaw'
+                  : obs.type === 'digging'
+                    ? '🚧 Road Digging'
+                    : obs.type === 'pothole'
+                      ? '🕳️ Rain-Softened Pothole'
+                      : obs.type === 'snatcher'
+                        ? '🏍️ 70cc Snatcher'
+                        : obs.type === 'water_tanker'
+                          ? '🚰 PECHS Water-Tanker Queue'
+                          : obs.type === 'market_cart'
+                            ? '🛒 Saddar Market Handcart'
+                            : obs.type === 'football'
+                              ? '⚽ Lyari Street Football'
+                              : obs.type === 'combined_roadwork'
+                                ? '🚧 Combined Roadwork'
+                                : '🚧 Road Hazard';
+              this.triggerRunnerStumble(obs, label);
             }
           }
         }
@@ -3093,6 +3625,7 @@ class Game {
         const previousTrafficZ = v.mesh.position.z;
         v.mesh.position.z -= v.speed * dt;
         v.mesh.position.x = v.laneX;
+        v.mesh.position.y = this.getCorridorGroundHeight(v.mesh.position.z, v.laneX);
 
         // Check if player is drafting directly behind vehicle
         const distZ = pPos.z - v.mesh.position.z; // positive when player is behind vehicle
@@ -3150,6 +3683,10 @@ class Game {
             } else {
               this.handleRunnerHit(v, v.label);
             }
+          } else if (((absDz < 1.55 && distX < 1.30) || sweptDistanceSq < 1.30 * 1.30) && !v.isGrazed) {
+            // Collision forgiveness window on traffic: grazing without direct hit
+            v.isGrazed = true;
+            this.triggerRunnerStumble(v, v.label);
           } else if (
             ((absDz < 1.5 && distX >= 1.04 && distX <= 2.2) ||
               (sweptDistanceSq >= 1.04 * 1.04 && sweptDistanceSq <= 2.2 * 2.2)) &&
@@ -3213,6 +3750,48 @@ class Game {
 
       const rollAngle = (this.targetLaneX - this.player.position.x) * -0.015;
       this.camera.rotation.z = THREE.MathUtils.lerp(this.camera.rotation.z, rollAngle, dt * 6.0);
+    }
+
+    // 11e. Sindh Police Chaser Entity Dynamics & Recovery (Lerp back to 15m and fade opacity to 0 after 5s clean run)
+    if (this.isChaserClose) {
+      if (this.chaserRecoveryTimer > 0) {
+        this.chaserRecoveryTimer -= dt;
+        if (this.chaserRecoveryTimer <= 0) {
+          // Clean run completed! Reset chaser back to 15m away and fade to 0 opacity
+          this.isChaserClose = false;
+          this.targetChaserDistance = 15.0;
+          this.targetChaserOpacity = 0.0;
+          this.ui?.showAnnouncement?.('🚓 Police Mobile lost your trail! Escaped!', '#00e5ff');
+        }
+      }
+    } else {
+      this.targetChaserDistance = 15.0;
+      this.targetChaserOpacity = 0.0;
+    }
+
+    const distLerpSpeed = this.isChaserClose ? 8.0 : 2.5;
+    this.chaserDistance = THREE.MathUtils.lerp(this.chaserDistance || 15.0, this.targetChaserDistance, dt * distLerpSpeed);
+    this.chaserOpacity = THREE.MathUtils.lerp(this.chaserOpacity || 0.0, this.targetChaserOpacity, dt * 2.5);
+
+    if (this.chaserEntity) {
+      if (this.chaserOpacity <= 0.02 && !this.isChaserClose) {
+        this.chaserEntity.visible = false;
+        this.setMeshOpacity(this.chaserEntity, 0.0);
+      } else {
+        this.chaserEntity.visible = true;
+        this.setMeshOpacity(this.chaserEntity, THREE.MathUtils.clamp(this.chaserOpacity, 0, 1));
+        const chaserX = THREE.MathUtils.lerp(this.chaserEntity.position.x, pPos.x, dt * 10.0);
+        const chaserZ = pPos.z + this.chaserDistance;
+        const chaserY = this.getCorridorGroundHeight(chaserZ, chaserX);
+        this.chaserEntity.position.set(chaserX, chaserY, chaserZ);
+        this.chaserEntity.rotation.set(0, 0, 0);
+
+        if (this.chaserEntity.userData.redLight && this.chaserEntity.userData.blueLight) {
+          const flashPhase = Math.floor(Date.now() / 120) % 2;
+          this.chaserEntity.userData.redLight.material.opacity = flashPhase === 0 ? this.chaserOpacity : this.chaserOpacity * 0.15;
+          this.chaserEntity.userData.blueLight.material.opacity = flashPhase === 1 ? this.chaserOpacity : this.chaserOpacity * 0.15;
+        }
+      }
     }
 
     // 12. Despawn Passed Objects Behind Player (> 28m)
@@ -3423,6 +4002,7 @@ class Game {
     this.runSpeed = RUNNER_SPEEDS.standard;
     this.currentDistrictLevel = 1;
     this.distanceMeters = 0;
+    this.lastFunnelMeters = 0;
     this.coins = 0;
     this.runnerRunRecorded = true;
     this.hearts = 3;
@@ -3444,6 +4024,7 @@ class Game {
 
     if (this.isTempleRun) {
       this.distanceMeters = 0;
+      this.lastFunnelMeters = 0;
       this.runnerRouteComplete = false;
       this.runnerNeighborhoodIndex = 1;
       this.runnerAreaIndex = 0;
@@ -3605,6 +4186,7 @@ class Game {
     this.moveVector = { x: 0, y: 0 };
     this.score = 0;
     this.distanceMeters = 0;
+    this.lastFunnelMeters = 0;
     this.runnerWeatherState = 'clear';
     this.runnerRainOverride = null;
     this.coins = 0;
@@ -4700,6 +5282,7 @@ class Game {
 
     if (this.isTempleRun) {
       this.initCorridorTerrain();
+      this.initRunnerChaser();
       if (this.ui) this.ui.setRunnerMode(true);
     } else {
       if (this.ui) this.ui.setRunnerMode(false);
@@ -6815,6 +7398,13 @@ class Game {
           }
         }
 
+        // Check connection status to sync locally batched telemetry payloads when online
+        if (typeof navigator !== 'undefined' && navigator.onLine === true) {
+          if (this.opsEngine && typeof this.opsEngine.hasOfflineQueue === 'function' && this.opsEngine.hasOfflineQueue()) {
+            this.opsEngine.syncOfflineQueue();
+          }
+        }
+
         this.recordPeriodicRuntimeSnapshot();
       }
     } catch (e) {
@@ -7465,7 +8055,7 @@ class Game {
       const innerSide = dir === -1 ? 'left' : 'right';
       const turnChunks = [];
       for (let i = 0; i < 3; i++) {
-        const chunk = this.createCorridorChunk(z - i * 60);
+        const chunk = this.createCorridorChunk(z - i * 60, 'FLAT', 0);
         chunk.position.set(0, 0, -i * 60);
         if (i === 0) {
           chunk.userData.slabs.forEach(slab => {
@@ -7559,7 +8149,7 @@ class Game {
     const incomingLane = Math.max(-1, Math.min(1, this.currentLane ?? 0));
     this.runnerTurn = {
       dir,
-      sign: dir === -1 ? 1 : -1,
+      sign: dir,
       t: 0,
       startZ: z0,
       startX: this.player.position.x,
@@ -7585,10 +8175,11 @@ class Game {
     const theta = p * Math.PI / 2;
     const s = turn.sign;
     const R = turn.radius;
-    const endZ = turn.startZ - R;
-    const x = s * R * (Math.cos(theta) - 1) + turn.startX * (1 - p);
-    const z = turn.startZ - R * Math.sin(theta) + (turn.pivotZ - endZ) * p;
-    const angle = s * theta;
+    const pivotX = turn.startX + (turn.sign * R);
+    const pivotZ = turn.startZ;
+    const x = pivotX - (turn.sign * R * Math.cos(theta));
+    const z = pivotZ - (R * Math.sin(theta));
+    const angle = -s * theta;
     const fx = -Math.sin(angle);
     const fz = -Math.cos(angle);
 
@@ -7597,7 +8188,7 @@ class Game {
     if (player.avatarMesh) {
       player.avatarMesh.visible = true;
       // Dynamic motorcycle/runner athletic banking roll into the turn
-      player.avatarMesh.rotation.z = -s * 0.32 * Math.sin(Math.PI * p);
+      player.avatarMesh.rotation.z = s * 0.32 * Math.sin(Math.PI * p);
     }
     player.group.rotation.y = Math.PI + angle;
     player.facingAngle = Math.PI + angle;
@@ -7610,6 +8201,13 @@ class Game {
     const lookZ = z + fz * 18.0;
     this.camera.position.set(camX, 2.85 + lift, camZ);
     this.camera.lookAt(lookX, 1.25, lookZ);
+
+    if (this.chaserEntity && this.isChaserClose) {
+      this.chaserEntity.visible = true;
+      this.setMeshOpacity(this.chaserEntity, this.chaserOpacity);
+      this.chaserEntity.position.set(x - fx * this.chaserDistance, 0, z - fz * this.chaserDistance);
+      this.chaserEntity.rotation.y = Math.PI + angle;
+    }
 
     if (turn.t >= 1) this.finishRunnerTurn();
   }
@@ -7635,18 +8233,24 @@ class Game {
       });
       junction.turnChunks = [];
       const oldChunks = this.corridorChunks || [];
-      const keep = oldChunks.slice(0, Math.max(0, 7 - crossChunks.length));
-      oldChunks.slice(keep.length).forEach(chunk => {
+      oldChunks.forEach(chunk => {
         this.scene.remove(chunk);
         this.disposeCorridorChunk(chunk);
       });
-      keep.forEach((chunk, m) => {
-        chunk.position.set(0, 0, junctionZ + R - (crossChunks.length + m) * 60);
-        chunk.userData.slabs.forEach(slab => { slab.visible = true; });
-      });
-      this.corridorChunks = [...crossChunks, ...keep];
+      this.corridorChunks = [...crossChunks];
+      let minZ = junctionZ + R - (crossChunks.length - 1) * 60;
+      this.corridorElevation = 0.0;
+      while (this.corridorChunks.length < 7) {
+        const newZ = minZ - 60;
+        const newChunk = this.createCorridorChunk(newZ);
+        this.scene.add(newChunk);
+        this.corridorChunks.push(newChunk);
+        minZ = newZ;
+      }
     }
     this.removeRunnerJunction();
+    this.clearRunnerObjects();
+    this.corridorElevation = 0.0;
     if (!crossChunks.length) this.initCorridorTerrain();
     const preservedLane = Math.max(-1, Math.min(1, turn?.incomingLane ?? this.currentLane ?? 0));
     this.currentLane = preservedLane;
@@ -7659,9 +8263,13 @@ class Game {
     if (this.player.avatarMesh) {
       this.player.avatarMesh.rotation.z = 0;
     }
+    if (this.chaserEntity) {
+      this.chaserEntity.position.set(this.targetLaneX, 0, junctionZ + this.chaserDistance);
+      this.chaserEntity.rotation.set(0, 0, 0);
+    }
 
-    // 80m obstacle-free safety buffer and 2.5s invulnerability post-turn
-    this.nextRunnerWaveZ = junctionZ - 80.0;
+    // Reset wave spawner safely ahead on the new street
+    this.nextRunnerWaveZ = junctionZ - 60.0;
     this.lastRunnerZ = junctionZ;
     this.runnerInvulnerableTimer = Math.max(this.runnerInvulnerableTimer || 0, 2.5);
 

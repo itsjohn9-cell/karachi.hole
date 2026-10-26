@@ -305,7 +305,7 @@ export class Hole {
     // Glides smoothly around obstacle corners and map boundaries with zero sticking, jitter, or oscillation
     const substeps = 4;
     const subDt = dt / substeps;
-    const avatarBodyRadius = 0.70;
+    const avatarBodyRadius = 0.50;
 
     for (let step = 0; step < substeps; step++) {
       let nextX = this.position.x + dx * speed * subDt;
@@ -317,6 +317,10 @@ export class Hole {
           if (!obs) continue;
           if (obs.mesh && (obs.mesh.userData?.isSwallowed || obs.mesh.parent === null || obs.mesh.visible === false || obs.item?.state === 'swallowed')) continue;
           if (obs.item && (obs.item.isDistrictEvil || obs.item.isBadGuy)) continue;
+
+          // Forgiving 0.50 radius for traffic, rickshaws, tankers, and roadworks; 0.70 for solid building structures
+          const isBuildingWall = Boolean(obs.item?.isBuilding || (obs.isBox && (obs.maxX - obs.minX) > 3.0 && !obs.item?.isTransport));
+          const effectiveRadius = isBuildingWall ? 0.70 : avatarBodyRadius;
 
           if (obs.isBox) {
             let minX = obs.minX, maxX = obs.maxX, minZ = obs.minZ, maxZ = obs.maxZ;
@@ -334,10 +338,10 @@ export class Hole {
             const diffZ = nextZ - cz;
             const distSq = diffX * diffX + diffZ * diffZ;
 
-            if (distSq < avatarBodyRadius * avatarBodyRadius) {
+            if (distSq < effectiveRadius * effectiveRadius) {
               if (distSq > 0.000001) {
                 const dist = Math.sqrt(distSq);
-                const penetration = avatarBodyRadius - dist;
+                const penetration = effectiveRadius - dist;
                 nextX += (diffX / dist) * penetration;
                 nextZ += (diffZ / dist) * penetration;
               } else {
@@ -347,17 +351,17 @@ export class Hole {
                 const dT = nextZ - minZ;
                 const dB = maxZ - nextZ;
                 const minP = Math.min(dL, dR, dT, dB);
-                if (minP === dL) nextX = minX - avatarBodyRadius;
-                else if (minP === dR) nextX = maxX + avatarBodyRadius;
-                else if (minP === dT) nextZ = minZ - avatarBodyRadius;
-                else nextZ = maxZ + avatarBodyRadius;
+                if (minP === dL) nextX = minX - effectiveRadius;
+                else if (minP === dR) nextX = maxX + effectiveRadius;
+                else if (minP === dT) nextZ = minZ - effectiveRadius;
+                else nextZ = maxZ + effectiveRadius;
               }
             }
           } else {
             const oPos = (obs.mesh && obs.mesh.position) || obs.position;
             if (!oPos) continue;
             const oRad = obs.radius || obs.collisionRadius || 2.2;
-            const totalClearance = oRad + avatarBodyRadius;
+            const totalClearance = oRad + effectiveRadius;
             const diffX = nextX - oPos.x;
             const diffZ = nextZ - oPos.z;
             const distSq = diffX * diffX + diffZ * diffZ;
