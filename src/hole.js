@@ -397,6 +397,9 @@ export class Hole {
     // Boundary walls clamp
     this.position.x = THREE.MathUtils.clamp(this.position.x, -maxCoord, maxCoord);
     this.position.z = THREE.MathUtils.clamp(this.position.z, -maxCoord, maxCoord);
+    if (!this.gutterTrapTimer && !this.isTrappedInGutter) {
+      this.position.y = Math.max(0, this.position.y);
+    }
     this.group.position.copy(this.position);
   }
 

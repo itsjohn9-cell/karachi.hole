@@ -7298,7 +7298,9 @@ export class Game {
     } else {
       // Exponential frame-rate independent pivot tracking
       const pivotLerp = 1.0 - Math.exp(-12.0 * dt);
-      this.cameraPivot.lerp(this.player.position, pivotLerp);
+      this.cameraPivot.x = THREE.MathUtils.lerp(this.cameraPivot.x, this.player.position.x, pivotLerp);
+      this.cameraPivot.z = THREE.MathUtils.lerp(this.cameraPivot.z, this.player.position.z, pivotLerp);
+      this.cameraPivot.y = this.player.position.y;
     }
 
     // Dynamic Camera Rotation Tracking:
@@ -7349,7 +7351,7 @@ export class Game {
 
     // Camera orbit position placed behind smoothed cameraPivot with spring-arm lag sway
     const targetCamX = this.cameraPivot.x - Math.sin(this.camAngle) * camDist;
-    const targetCamY = Math.max(1.85, (this.cameraPivot.y || 0) + camHeight);
+    const targetCamY = Math.max(1.85, this.cameraPivot.y + camHeight);
     const targetCamZ = this.cameraPivot.z - Math.cos(this.camAngle) * camDist;
     this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, Math.min(1.0, dt * 6.0));
     this.camera.position.y = targetCamY;
@@ -7378,7 +7380,15 @@ export class Game {
     const bankLerp = 1.0 - Math.exp(-5.0 * dt);
     this.cameraBankX = THREE.MathUtils.lerp(this.cameraBankX || 0, targetBank, bankLerp);
     this.camera.up.set(this.cameraBankX, 1.0, 0).normalize();
-    this.camera.lookAt(targetLookX, targetLookY, targetLookZ);
+    if (
+      isNaN(targetLookX) || targetLookX === undefined ||
+      isNaN(targetLookY) || targetLookY === undefined ||
+      isNaN(targetLookZ) || targetLookZ === undefined
+    ) {
+      this.camera.lookAt(this.player.position);
+    } else {
+      this.camera.lookAt(targetLookX, targetLookY, targetLookZ);
+    }
 
     // =========================================================
     // Dynamic Obstacle Transparency: Never let buildings, stalls, or vehicles block the view!
@@ -7904,7 +7914,9 @@ export class Game {
           this.__devAnomalyWatch = {
             lastTimeLeft: this.timeLeft,
             stuckTimerCount: 0,
-            reportedTimerStuck: false
+            reportedTimerStuck: false,
+            reportedOOB: false,
+            reportedUnderground: false
           };
         }
         
@@ -7934,6 +7946,39 @@ export class Game {
             }
           } else {
             this.__devAnomalyWatch.reportedOOB = false;
+          }
+        }
+
+        // Check 3: Camera under-map anomaly detection
+        if (this.camera && this.camera.position) {
+          const inGutterTrap = Boolean(this.player?.gutterTrapTimer > 0 || this.player?.isTrappedInGutter);
+          if (this.camera.position.y < 1.0 && !inGutterTrap) {
+            if (!this.__devAnomalyWatch.reportedUnderground) {
+              this.__devAnomalyWatch.reportedUnderground = true;
+              this.recordDevNote('ANOMALY_CAMERA_UNDERGROUND', 'Camera elevation sank below road terrain', { y: this.camera.position.y });
+            }
+          } else {
+            this.__devAnomalyWatch.reportedUnderground = false;
+          }
+        }
+
+        // Check 4: NaN crash detection & emergency position restoration
+        if (this.player && this.player.position && this.camera && this.camera.position) {
+          if (isNaN(this.player.position.x) || isNaN(this.camera.position.x)) {
+            this.recordDevNote('ANOMALY_NAN_CRASH', 'NaN coordinate detected on player or camera transform', {
+              playerX: this.player.position.x,
+              cameraX: this.camera.position.x
+            });
+            const safeZ = Number.isFinite(this.lastRunnerZ) ? this.lastRunnerZ : 0;
+            this.player.position.x = 0;
+            this.player.position.y = 0;
+            this.player.position.z = safeZ;
+            if (this.player.group) {
+              this.player.group.position.set(0, 0, safeZ);
+            }
+            if (isNaN(this.camera.position.x) || isNaN(this.camera.position.y) || isNaN(this.camera.position.z)) {
+              this.camera.position.set(0, 3.0, safeZ + 6.0);
+            }
           }
         }
 
@@ -8071,6 +8116,9 @@ export class Game {
       ['player-position', Boolean(this.player &&
         Number.isFinite(this.player.position.x) &&
         Number.isFinite(this.player.position.z))],
+      ['camera-valid-matrix', !isNaN(this.camera.position.x) && !isNaN(this.camera.position.y) && !isNaN(this.camera.position.z)],
+      ['camera-elevation-safe', this.camera.position.y >= 1.0],
+      ['player-y-bounds', this.player.position.y >= -1.0],
       ['hazard-metadata', (this.runnerObstacles || []).filter(obstacle =>
         obstacle && !obstacle.isHit
       ).every(obstacle =>
@@ -8762,8 +8810,8 @@ export class Game {
     player.targetRotationY = Math.PI + angle;
 
     const lift = this.runnerCameraLift || 0;
-    const camX = x - fx * 5.2;
-    const camZ = z - fz * 5.2;
+    const camX = x - (fx * 4.2) + (turn.sign * 1.5 * Math.sin(Math.PI * p));
+    const camZ = z - (fz * 4.2) + (turn.sign * 1.5 * Math.sin(Math.PI * p));
     const lookX = x + fx * 18.0;
     const lookZ = z + fz * 18.0;
     this.camera.position.set(camX, 2.85 + lift, camZ);
