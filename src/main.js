@@ -1247,8 +1247,8 @@ class Game {
     const targetJunctionZ = this.runnerJunction?.z ??
       (upcomingJunctionDist > 0 && this.player ? this.player.position.z - upcomingJunctionDist : null);
 
-    if (targetJunctionZ !== null && waveZ <= targetJunctionZ + 110.0 && waveZ >= targetJunctionZ - 70.0) {
-      // Clean asphalt runway with smooth central coins - 100% hurdle-free approach!
+    if (targetJunctionZ !== null && waveZ <= targetJunctionZ + 110.0) {
+      // Clean asphalt runway with smooth central coins - 100% hurdle-free approach and turn!
       [-3.0, 0, 3.0].forEach(zOff => {
         const coin = KarachiModels.createRupeeCoin(50);
         coin.position.set(0, 0.7, waveZ + zOff);
@@ -2816,7 +2816,7 @@ class Game {
           this.ui.showFloatingFeedback('🚀 SKY FLIGHT!', this.player.position, '#00e5ff');
           for (let s = 1; s <= 8; s++) {
             const skyZ = pPos.z - s * 5.0;
-            const skyCoin = this.createRupeeCoinMesh();
+            const skyCoin = KarachiModels.createRupeeCoin(100);
             skyCoin.position.set(this.targetLaneX, 5.0, skyZ);
             this.scene.add(skyCoin);
             this.runnerCoins.push({ mesh: skyCoin, x: this.targetLaneX, z: skyZ, value: 100 });
@@ -6489,7 +6489,7 @@ class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.5',
+            appVersion: '2.2.6',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };
@@ -7386,13 +7386,13 @@ class Game {
     }
 
     // Guide coins: a neat arc of gold coins showing the player the clean path into the turn
-    if (kind === 'turn' && this.runnerCoins && typeof this.createRupeeCoinMesh === 'function') {
+    if (kind === 'turn' && this.runnerCoins) {
       const turnLaneX = dir === -1 ? -this.laneWidth : this.laneWidth;
       for (let c = 0; c < 6; c++) {
         const progress = c / 5;
         const cz = z + 40 - progress * 32;
         const cx = turnLaneX * progress;
-        const coin = this.createRupeeCoinMesh();
+        const coin = KarachiModels.createRupeeCoin(50);
         coin.position.set(cx, 0.7, cz);
         this.scene.add(coin);
         this.runnerCoins.push({ mesh: coin, value: 50, x: cx, z: cz });
@@ -7551,18 +7551,6 @@ class Game {
       });
       this.corridorChunks = [...crossChunks, ...keep];
     }
-    if (this.oldJunctionGroup) {
-      this.scene?.remove(this.oldJunctionGroup);
-      this.oldJunctionGroup.traverse(o => {
-        if (o.isMesh) {
-          if (o.geometry !== RUNNER_POTHOLE_ARROW_GEOMETRY) o.geometry?.dispose();
-          if (o.material !== RUNNER_POTHOLE_ARROW_MATERIAL) o.material?.dispose();
-        }
-      });
-    }
-    this.oldJunctionGroup = this.runnerJunction?.group || null;
-    this.oldJunctionGroupZ = junctionZ;
-    if (this.runnerJunction) this.runnerJunction.group = null; // Detach so barrier remains visible behind player
     this.removeRunnerJunction();
     if (!crossChunks.length) this.initCorridorTerrain();
     const preservedLane = Math.max(-1, Math.min(1, turn?.incomingLane ?? this.currentLane ?? 0));
@@ -7682,16 +7670,6 @@ class Game {
     });
     this.runnerSectionDecor = (this.runnerSectionDecor || []).filter(Boolean);
 
-    if (this.oldJunctionGroup && this.player && this.player.position.z < (this.oldJunctionGroupZ || 0) - 45.0) {
-      this.scene?.remove(this.oldJunctionGroup);
-      this.oldJunctionGroup.traverse(o => {
-        if (o.isMesh) {
-          if (o.geometry !== RUNNER_POTHOLE_ARROW_GEOMETRY) o.geometry?.dispose();
-          if (o.material !== RUNNER_POTHOLE_ARROW_MATERIAL) o.material?.dispose();
-        }
-      });
-      this.oldJunctionGroup = null;
-    }
 
     let nav = null;
     const heading = this.getRunnerHeadingLabel();
