@@ -394,6 +394,13 @@ export class Hole {
       }
     }
 
+    // Absolute NaN & Void Fall Protection
+    if (Number.isNaN(this.position.y) || this.position.y < -5.0) {
+      this.position.y = 0;
+      this.velocityY = 0;
+      this.isGrounded = true;
+    }
+
     // Boundary walls clamp
     this.position.x = THREE.MathUtils.clamp(this.position.x, -maxCoord, maxCoord);
     this.position.z = THREE.MathUtils.clamp(this.position.z, -maxCoord, maxCoord);

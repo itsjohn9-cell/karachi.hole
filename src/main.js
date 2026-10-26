@@ -3571,11 +3571,17 @@ export class Game {
       const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
       const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
       const targetCamX = this.player.position.x * horizontalCameraFollow;
-      const targetCamY = baseGroundY + 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.isBusSurfing ? 2.2 : 0) + (this.runnerCameraLift || 0);
+      const targetCamY = this.player.position.y + 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0);
       const targetCamZ = this.player.position.z + 5.2;
+      
       const targetLookX = this.player.position.x * horizontalLookAhead;
-      const targetLookY = baseGroundY + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0) + (this.isBusSurfing ? 1.6 : 0);
+      const targetLookY = this.player.position.y + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0);
       const targetLookZ = this.player.position.z - 18.0;
+
+      if (Number.isNaN(targetLookX) || Number.isNaN(targetLookY) || Number.isNaN(targetLookZ)) {
+        console.warn("NaN detected in camera target. Aborting frame update.");
+        return;
+      }
 
       if ((this.cameraSmoothTimer || 0) > 0 && this.cameraSmoothPos && this.cameraSmoothLookAt) {
         this.cameraSmoothTimer = Math.max(0, this.cameraSmoothTimer - dt);
@@ -7949,37 +7955,28 @@ export class Game {
           }
         }
 
-        // Check 3: Camera under-map anomaly detection
-        if (this.camera && this.camera.position) {
-          const inGutterTrap = Boolean(this.player?.gutterTrapTimer > 0 || this.player?.isTrappedInGutter);
-          if (this.camera.position.y < 1.0 && !inGutterTrap) {
-            if (!this.__devAnomalyWatch.reportedUnderground) {
-              this.__devAnomalyWatch.reportedUnderground = true;
-              this.recordDevNote('ANOMALY_CAMERA_UNDERGROUND', 'Camera elevation sank below road terrain', { y: this.camera.position.y });
-            }
-          } else {
-            this.__devAnomalyWatch.reportedUnderground = false;
+        // Check 3: Camera underground anomaly
+        if (this.camera && this.camera.position.y < 1.0 && !this.player.isTrappedInGutter) {
+          if (!this.__devAnomalyWatch.reportedCameraSink) {
+            this.__devAnomalyWatch.reportedCameraSink = true;
+            this.recordDevNote('ANOMALY_CAMERA_UNDERGROUND', 'Camera sank beneath the asphalt', { y: this.camera.position.y });
           }
+        } else {
+          this.__devAnomalyWatch.reportedCameraSink = false;
         }
 
-        // Check 4: NaN crash detection & emergency position restoration
-        if (this.player && this.player.position && this.camera && this.camera.position) {
-          if (isNaN(this.player.position.x) || isNaN(this.camera.position.x)) {
-            this.recordDevNote('ANOMALY_NAN_CRASH', 'NaN coordinate detected on player or camera transform', {
-              playerX: this.player.position.x,
-              cameraX: this.camera.position.x
-            });
-            const safeZ = Number.isFinite(this.lastRunnerZ) ? this.lastRunnerZ : 0;
-            this.player.position.x = 0;
-            this.player.position.y = 0;
-            this.player.position.z = safeZ;
-            if (this.player.group) {
-              this.player.group.position.set(0, 0, safeZ);
-            }
-            if (isNaN(this.camera.position.x) || isNaN(this.camera.position.y) || isNaN(this.camera.position.z)) {
-              this.camera.position.set(0, 3.0, safeZ + 6.0);
+        // Check 4: NaN Crash Protection
+        if (Number.isNaN(this.player.position.x) || (this.camera && Number.isNaN(this.camera.position.x))) {
+          if (!this.__devAnomalyWatch.reportedNaN) {
+            this.__devAnomalyWatch.reportedNaN = true;
+            this.recordDevNote('ANOMALY_NAN_CRASH', 'NaN coordinate detected, triggering failsafe reset', {});
+            this.player.position.set(0, 0, this.lastRunnerZ || 0);
+            if (this.camera) {
+               this.camera.position.set(0, 2.85, (this.lastRunnerZ || 0) + 5.2);
             }
           }
+        } else {
+          this.__devAnomalyWatch.reportedNaN = false;
         }
 
         if (this.ui?.updateDevModeHUD) {
@@ -8116,7 +8113,7 @@ export class Game {
       ['player-position', Boolean(this.player &&
         Number.isFinite(this.player.position.x) &&
         Number.isFinite(this.player.position.z))],
-      ['camera-valid-matrix', !isNaN(this.camera.position.x) && !isNaN(this.camera.position.y) && !isNaN(this.camera.position.z)],
+      ['camera-valid-matrix', !Number.isNaN(this.camera.position.x) && !Number.isNaN(this.camera.position.y) && !Number.isNaN(this.camera.position.z)],
       ['camera-elevation-safe', this.camera.position.y >= 1.0],
       ['player-y-bounds', this.player.position.y >= -1.0],
       ['hazard-metadata', (this.runnerObstacles || []).filter(obstacle =>
@@ -8814,8 +8811,9 @@ export class Game {
     const camZ = z - (fz * 4.2) + (turn.sign * 1.5 * Math.sin(Math.PI * p));
     const lookX = x + fx * 18.0;
     const lookZ = z + fz * 18.0;
-    this.camera.position.set(camX, 2.85 + lift, camZ);
-    this.camera.lookAt(lookX, 1.25, lookZ);
+    
+    this.camera.position.set(camX, (this.player.position.y || 0) + 2.85 + lift, camZ);
+    this.camera.lookAt(lookX, (this.player.position.y || 0) + 1.25, lookZ);
 
     if (this.chaserEntity && this.isChaserClose) {
       this.chaserEntity.visible = true;
