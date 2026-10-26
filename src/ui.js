@@ -3836,8 +3836,11 @@ export class UIManager {
       distValEl.textContent = d >= 1000 ? `${d.toLocaleString()} m (${(d / 1000).toFixed(1)} km)` : `${d} m`;
     }
     const milestoneEl = document.getElementById('hud-milestone-tag');
-    if (milestoneEl && currentMilestone) {
+    if (milestoneEl && currentMilestone && milestoneEl.textContent !== currentMilestone) {
       milestoneEl.textContent = currentMilestone;
+      milestoneEl.classList.remove('milestone-badge-pulse');
+      void milestoneEl.offsetWidth;
+      milestoneEl.classList.add('milestone-badge-pulse');
     }
     const coinsEl = document.getElementById('hud-coins-val');
     if (coinsEl) {

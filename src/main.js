@@ -827,7 +827,7 @@ class Game {
     }
 
     // Check Super Chingchi Rickshaw (Chaos Smash Mode)
-    if (this.chingchiTimer > 0) {
+    if (this.chingchiTimer > 0 && !isTurnMistake) {
       obstacle.isHit = true;
       audio.playSmashObstacle();
       this.cameraShakeTimer = 0.35;
@@ -842,7 +842,7 @@ class Game {
     }
 
     // Check CNG Turbo Nitro (Invulnerability Smash)
-    if (this.nitroTimer > 0) {
+    if (this.nitroTimer > 0 && !isTurnMistake) {
       obstacle.isHit = true;
       audio.playCrash();
       this.particles.createDevourSparkles(obstacle.mesh?.position || this.player.position, 20, 0xffd700);
@@ -854,7 +854,7 @@ class Game {
     }
 
     // Check Water Tanker Iron Shield (Impact Absorption)
-    if (this.shieldTimer > 0) {
+    if (this.shieldTimer > 0 && !isTurnMistake) {
       obstacle.isHit = true;
       audio.playCrash();
       this.shieldTimer = 0;
@@ -1850,20 +1850,10 @@ class Game {
         this.ui?.refreshProgressionContent();
       }
       this.corridorDistrictLevel = this.currentDistrictLevel;
-      if (this.corridorChunks && this.corridorChunks.length > 0) {
-        const baseZ = this.player?.position.z ?? 60.0;
-        this.corridorChunks.forEach(chunk => {
-          this.scene.remove(chunk);
-          this.disposeCorridorChunk(chunk);
-        });
-        this.corridorChunks = [];
-        for (let i = 0; i < 7; i++) {
-          const chunkZ = baseZ - (i * 60.0);
-          const chunk = this.createCorridorChunk(chunkZ);
-          this.scene.add(chunk);
-          this.corridorChunks.push(chunk);
-        }
-      }
+      // Seamless progression: do NOT destroy ground underneath player;
+      // spawn a grand ceremonial welcome arch ahead and let upcoming chunks cycle naturally.
+      const archZ = (this.player?.position?.z || 0) - 35.0;
+      this.spawnMilestoneArchAhead(RUNNER_AREA_NAMES[areaIndex] || 'KARACHI ROUTE', archZ);
       this.ui?.showAnnouncement(
         `🏁 KARACHI ROUTE: ${RUNNER_AREA_NAMES[areaIndex].toUpperCase()} · NEW STREET CHALLENGES`,
         '#00e5ff'
@@ -2628,22 +2618,38 @@ class Game {
       const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
       const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
       const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
-      this.camera.position.x = THREE.MathUtils.lerp(
-        this.camera.position.x,
-        this.player.position.x * horizontalCameraFollow,
-        Math.min(1.0, dt * 6.0)
-      );
-      this.camera.position.y = THREE.MathUtils.lerp(
-        this.camera.position.y,
-        2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0),
-        cameraFollow
-      );
-      this.camera.position.z = this.player.position.z + 5.2;
-      this.camera.lookAt(
-        this.player.position.x * horizontalLookAhead,
-        1.25 + (this.jetpackTimer > 0 ? 2.5 : 0),
-        this.player.position.z - 18.0
-      );
+      const targetCamX = this.player.position.x * horizontalCameraFollow;
+      const targetCamY = 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0);
+      const targetCamZ = this.player.position.z + 5.2;
+      const targetLookX = this.player.position.x * horizontalLookAhead;
+      const targetLookY = 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0);
+      const targetLookZ = this.player.position.z - 18.0;
+
+      if ((this.cameraSmoothTimer || 0) > 0 && this.cameraSmoothPos && this.cameraSmoothLookAt) {
+        this.cameraSmoothTimer = Math.max(0, this.cameraSmoothTimer - dt);
+        const smoothRate = Math.min(1.0, dt * 7.0);
+        this.cameraSmoothPos.x = THREE.MathUtils.lerp(this.cameraSmoothPos.x, targetCamX, smoothRate);
+        this.cameraSmoothPos.y = THREE.MathUtils.lerp(this.cameraSmoothPos.y, targetCamY, smoothRate);
+        this.cameraSmoothPos.z = THREE.MathUtils.lerp(this.cameraSmoothPos.z, targetCamZ, smoothRate);
+        this.cameraSmoothLookAt.x = THREE.MathUtils.lerp(this.cameraSmoothLookAt.x, targetLookX, smoothRate);
+        this.cameraSmoothLookAt.y = THREE.MathUtils.lerp(this.cameraSmoothLookAt.y, targetLookY, smoothRate);
+        this.cameraSmoothLookAt.z = THREE.MathUtils.lerp(this.cameraSmoothLookAt.z, targetLookZ, smoothRate);
+        this.camera.position.copy(this.cameraSmoothPos);
+        this.camera.lookAt(this.cameraSmoothLookAt);
+      } else {
+        this.camera.position.x = THREE.MathUtils.lerp(
+          this.camera.position.x,
+          targetCamX,
+          Math.min(1.0, dt * 6.0)
+        );
+        this.camera.position.y = THREE.MathUtils.lerp(
+          this.camera.position.y,
+          targetCamY,
+          cameraFollow
+        );
+        this.camera.position.z = targetCamZ;
+        this.camera.lookAt(targetLookX, targetLookY, targetLookZ);
+      }
     }
 
     // 4. Update Vertical Traversal (Jumps & Jetpack Sky Flight)
@@ -2710,7 +2716,7 @@ class Game {
       this.nextRunnerWaveZ = this.player.position.z - 25.0;
     }
     while (this.nextRunnerWaveZ > this.player.position.z - 110.0) {
-      if (this.runnerJunction && this.nextRunnerWaveZ < this.runnerJunction.z + 20.0) break;
+      if (this.runnerJunction && this.nextRunnerWaveZ < this.runnerJunction.z + 65.0) break;
       this.spawnRunnerWave(this.nextRunnerWaveZ);
       this.spawnRunnerSectionExtras(this.nextRunnerWaveZ - waveSpacing * 0.5);
       this.nextRunnerWaveZ -= waveSpacing;
@@ -6461,7 +6467,7 @@ class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.1',
+            appVersion: '2.2.2',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };
@@ -7361,7 +7367,7 @@ class Game {
       for (let i = list.length - 1; i >= 0; i--) {
         const item = list[i];
         const itemZ = item.mesh?.position?.z ?? item.z;
-        if (itemZ !== undefined && itemZ < z + 20) {
+        if (itemZ !== undefined && itemZ <= z + 65) {
           if (item.mesh) this.scene.remove(item.mesh);
           list.splice(i, 1);
         }
@@ -7370,6 +7376,20 @@ class Game {
     clearBeyond(this.runnerObstacles || []);
     clearBeyond(this.runnerCoins || []);
     clearBeyond(this.runnerTraffic || []);
+
+    // Guide coins: a neat arc of gold coins showing the player the clean path into the turn
+    if (kind === 'turn' && this.runnerCoins && typeof this.createRupeeCoinMesh === 'function') {
+      const turnLaneX = dir === -1 ? -this.laneWidth : this.laneWidth;
+      for (let c = 0; c < 6; c++) {
+        const progress = c / 5;
+        const cz = z + 40 - progress * 32;
+        const cx = turnLaneX * progress;
+        const coin = this.createRupeeCoinMesh();
+        coin.position.set(cx, 0.7, cz);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: cx, z: cz });
+      }
+    }
     this.recordGameOpsEvent('runner.junction', { kind, dir, distanceMeters: Math.round(this.distanceMeters) });
     return true;
   }
@@ -7447,6 +7467,8 @@ class Game {
     if (this.player.avatarMesh) this.player.avatarMesh.visible = true;
     this.isSliding = false;
     this.slideTimer = 0;
+    // Clear all obstacles during the turn so the player has clean asphalt
+    this.clearRunnerObjects();
     this.ui.updateRunnerNav?.(null);
     audio.playTireScreech();
     this.particles.createSkidSmoke(this.player.position, 8);
@@ -7470,7 +7492,11 @@ class Game {
 
     player.position.set(x, 0, z);
     player.group.position.set(x, 0, z);
-    if (player.avatarMesh) player.avatarMesh.visible = true;
+    if (player.avatarMesh) {
+      player.avatarMesh.visible = true;
+      // Dynamic motorcycle/runner athletic banking roll into the turn
+      player.avatarMesh.rotation.z = -s * 0.32 * Math.sin(Math.PI * p);
+    }
     player.group.rotation.y = Math.PI + angle;
     player.facingAngle = Math.PI + angle;
     player.targetRotationY = Math.PI + angle;
@@ -7530,11 +7556,24 @@ class Game {
     this.player.group.rotation.y = Math.PI;
     this.player.facingAngle = Math.PI;
     this.player.targetRotationY = Math.PI;
-    this.nextRunnerWaveZ = junctionZ - 45;
+    if (this.player.avatarMesh) {
+      this.player.avatarMesh.rotation.z = 0;
+    }
+
+    // 80m obstacle-free safety buffer and 2.5s invulnerability post-turn
+    this.nextRunnerWaveZ = junctionZ - 80.0;
     this.lastRunnerZ = junctionZ;
-    this.runnerInvulnerableTimer = Math.max(this.runnerInvulnerableTimer || 0, 1.0);
-    this.camera.position.set(this.targetLaneX, 2.85 + (this.runnerCameraLift || 0), junctionZ + 5.2);
-    this.camera.lookAt(this.targetLaneX, 1.25, junctionZ - 18);
+    this.runnerInvulnerableTimer = Math.max(this.runnerInvulnerableTimer || 0, 2.5);
+
+    // Smooth post-turn camera handoff: preserve position and smoothly pan behind runner
+    this.cameraSmoothPos = this.camera.position.clone();
+    this.cameraSmoothLookAt = new THREE.Vector3(
+      this.targetLaneX + (turn.sign * 6.0),
+      1.25,
+      junctionZ - 14.0
+    );
+    this.cameraSmoothTimer = 0.45;
+
     this.ui.showAnnouncement(`🧭 NOW HEADING ${this.getRunnerHeadingLabel()}`, '#00e5ff');
     const navProfile = this.getRunnerNavProfile();
     this.nextJunctionAt = this.distanceMeters + (this.runnerJunctionIndex % 4 === 1 ? navProfile.chainGap : navProfile.gap);
