@@ -8102,7 +8102,10 @@ export class Game {
         Number.isFinite(this.player.position.z))],
       ['camera-valid-matrix', !Number.isNaN(this.camera.position.x) && !Number.isNaN(this.camera.position.y) && !Number.isNaN(this.camera.position.z)],
       ['camera-elevation-safe', this.camera.position.y >= 1.0],
-      ['player-y-bounds', this.player.position.y >= -1.0],
+      ['camera-elevation-sync', this.camera.position.y >= (this.player.position.y || 0) + 1.0],
+      ['camera-turn-clearance', !this.runnerTurn || this.camera.position.distanceTo(this.player.position) < 4.0],
+      ['player-y-bounds', (this.player.position.y || 0) >= -1.0],
+      ['matrix-nan-guard', !Number.isNaN(this.camera.position.x) && !Number.isNaN(this.player.position.x)],
       ['hazard-metadata', (this.runnerObstacles || []).filter(obstacle =>
         obstacle && !obstacle.isHit
       ).every(obstacle =>
