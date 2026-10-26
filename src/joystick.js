@@ -53,6 +53,7 @@ export class VirtualJoystick {
     // Mouse drag support on desktop
     let isMouseDown = false;
     window.addEventListener('mousedown', (e) => {
+      if (window.game?.isTempleRun) return;
       // Ignore if clicking UI buttons
       if (e.target.closest('.ui-interactive, button, .modal')) return;
       isMouseDown = true;
@@ -60,11 +61,25 @@ export class VirtualJoystick {
     });
 
     window.addEventListener('mousemove', (e) => {
+      if (window.game?.isTempleRun) {
+        if (isMouseDown || this.active) {
+          isMouseDown = false;
+          this.endJoystick();
+        }
+        return;
+      }
       if (!isMouseDown) return;
       this.moveJoystick(e.clientX, e.clientY);
     });
 
     window.addEventListener('mouseup', () => {
+      if (window.game?.isTempleRun) {
+        if (isMouseDown || this.active) {
+          isMouseDown = false;
+          this.endJoystick();
+        }
+        return;
+      }
       if (!isMouseDown) return;
       isMouseDown = false;
       this.endJoystick();
@@ -72,6 +87,7 @@ export class VirtualJoystick {
   }
 
   handleTouchStart(e) {
+    if (window.game?.isTempleRun) return;
     if (this.active) return;
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
@@ -89,6 +105,10 @@ export class VirtualJoystick {
   }
 
   handleTouchMove(e) {
+    if (window.game?.isTempleRun) {
+      if (this.active) this.endJoystick();
+      return;
+    }
     if (!this.active) return;
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
@@ -101,6 +121,10 @@ export class VirtualJoystick {
   }
 
   handleTouchEnd(e) {
+    if (window.game?.isTempleRun) {
+      if (this.active) this.endJoystick();
+      return;
+    }
     if (!this.active) return;
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
@@ -114,6 +138,7 @@ export class VirtualJoystick {
   }
 
   startJoystick(clientX, clientY) {
+    if (window.game?.isTempleRun) return;
     this.active = true;
     this.origin = { x: clientX, y: clientY };
     this.current = { x: clientX, y: clientY };
@@ -127,6 +152,10 @@ export class VirtualJoystick {
   }
 
   moveJoystick(clientX, clientY) {
+    if (window.game?.isTempleRun) {
+      if (this.active) this.endJoystick();
+      return;
+    }
     const dx = clientX - this.origin.x;
     const dy = clientY - this.origin.y;
     const distance = Math.sqrt(dx * dx + dy * dy);

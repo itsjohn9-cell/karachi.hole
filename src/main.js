@@ -65,8 +65,8 @@ const RUNNER_AREA_NAMES = [
 ];
 const RUNNER_AREA_THRESHOLDS = [3300, 6700, 10000, 13400, 16700, 20000];
 const RUNNER_SPEEDS = { easy: 15, standard: 19, hard: 22 };
-const RUNNER_TURN_INPUT_METERS = 32;
-const RUNNER_TURN_ENTRY_METERS = 12;
+const RUNNER_TURN_INPUT_METERS = 45;
+const RUNNER_TURN_ENTRY_METERS = 14;
 
 function runnerSegmentDistanceSquared(x, z, start, end) {
   const dx = end.x - start.x;
@@ -859,9 +859,10 @@ class Game {
       audio.playCrash();
       this.shieldTimer = 0;
       if (this.player) this.player.isShielded = false;
+      this.runnerInvulnerableTimer = 2.0;
       this.cameraShakeTimer = 0.3;
       this.particles.createSkidSmoke(this.player.position, 10);
-      this.ui.showAnnouncement(`🛡️ WATER TANKER SHIELD BROKE! Absorbed Impact on ${reason}!`, '#00e5ff');
+      this.ui.showAnnouncement(`🛡️ WATER TANKER SHIELD BROKE! Absorbed Impact on ${reason}! (2s Grace)`, '#00e5ff');
       this.ui.showFloatingFeedback('🛡️ SHIELD BROKE!', this.player.position, '#00e5ff');
       if (obstacle.mesh) this.scene.remove(obstacle.mesh);
       return;
@@ -1277,6 +1278,7 @@ class Game {
       this.scene.add(wires);
       this.runnerObstacles.push({
         type: 'wire',
+        hazardType: 'HIGH_HAZARD',
         z: waveZ,
         requiredAction: 'slide',
         mesh: wires,
@@ -1291,7 +1293,7 @@ class Game {
         this.runnerCoins.push({ mesh: coin, value: 50, x: 0, z: waveZ + zOff });
       });
     } else if (archetype === 1) {
-      // 2. Open Unpaved Gutter (Ground - Must JUMP over!)
+      // 2. Open Unpaved Gutter (LOW_HAZARD - Must JUMP over!)
       const gutterLaneIdx = Math.floor(Math.random() * 3);
       const gutterLaneX = lanes[gutterLaneIdx];
       const gutter = KarachiModels.createOpenGutterHazard(1.4);
@@ -1299,6 +1301,7 @@ class Game {
       this.scene.add(gutter);
       this.runnerObstacles.push({
         type: 'gutter',
+        hazardType: 'LOW_HAZARD',
         laneX: gutterLaneX,
         z: waveZ,
         requiredAction: 'jump',
@@ -1324,7 +1327,7 @@ class Game {
         this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
       });
     } else if (archetype === 2) {
-      // 3. Unannounced KMC Road Digging & Construction Rubble (Must JUMP or switch lane)
+      // 3. Unannounced KMC Road Digging & Construction Rubble (LOW_HAZARD - Must JUMP or switch lane)
       const digLaneIdx = Math.floor(Math.random() * 3);
       const digLaneX = lanes[digLaneIdx];
       const rubble = KarachiModels.createRoadDiggingObstacle(2.8);
@@ -1332,6 +1335,7 @@ class Game {
       this.scene.add(rubble);
       this.runnerObstacles.push({
         type: 'digging',
+        hazardType: 'LOW_HAZARD',
         laneX: digLaneX,
         z: waveZ,
         requiredAction: 'jump_or_dodge',
@@ -1347,7 +1351,7 @@ class Game {
         this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
       });
     } else if (archetype === 3) {
-      // 4. Stalled Qingqi Rickshaw (Full Lane Blocker - Must switch lane)
+      // 4. Stalled Qingqi Rickshaw (FULL_BLOCK - Must switch lane)
       const rickLaneIdx = Math.floor(Math.random() * 3);
       const rickLaneX = lanes[rickLaneIdx];
       const rick = KarachiModels.createStalledRickshawObstacle();
@@ -1355,6 +1359,7 @@ class Game {
       this.scene.add(rick);
       this.runnerObstacles.push({
         type: 'rickshaw',
+        hazardType: 'FULL_BLOCK',
         laneX: rickLaneX,
         z: waveZ,
         requiredAction: 'dodge',
@@ -1370,7 +1375,7 @@ class Game {
         this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
       });
     } else if (archetype === 4) {
-      // 5. Overflowing Sewage Water Spill (Puddle - Must JUMP or switch lane)
+      // 5. Overflowing Sewage Water Spill (LOW_HAZARD - Must JUMP or switch lane)
       const sewLaneIdx = Math.floor(Math.random() * 3);
       const sewLaneX = lanes[sewLaneIdx];
       const sewage = KarachiModels.createSewageSpillHazard(3.0);
@@ -1378,6 +1383,7 @@ class Game {
       this.scene.add(sewage);
       this.runnerObstacles.push({
         type: 'sewage',
+        hazardType: 'LOW_HAZARD',
         laneX: sewLaneX,
         z: waveZ,
         requiredAction: 'jump_or_dodge',
@@ -1393,7 +1399,7 @@ class Game {
         this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
       });
     } else if (archetype === 5) {
-      // 6. 70cc Snatcher Motorcycle (Evade or blast with King Pressure Horn [H]!)
+      // 6. 70cc Snatcher Motorcycle (FULL_BLOCK - Evade or blast with King Pressure Horn [H]!)
       const bikeLaneIdx = Math.floor(Math.random() * 3);
       const bikeLaneX = lanes[bikeLaneIdx];
       const bike = KarachiModels.createSnatcherMotorbike();
@@ -1401,6 +1407,7 @@ class Game {
       this.scene.add(bike);
       this.runnerObstacles.push({
         type: 'snatcher',
+        hazardType: 'FULL_BLOCK',
         laneX: bikeLaneX,
         z: waveZ,
         requiredAction: 'dodge_or_horn',
@@ -1454,6 +1461,7 @@ class Game {
 
       this.runnerTraffic.push({
         type: 'traffic_vehicle',
+        hazardType: 'FULL_BLOCK',
         mesh: vMesh,
         laneX: trafficLaneX,
         speed: vSpeed,
@@ -1499,6 +1507,7 @@ class Game {
       this.scene.add(tanker);
       this.runnerObstacles.push({
         type: 'water_tanker',
+        hazardType: 'FULL_BLOCK',
         laneX,
         z: waveZ,
         requiredAction: 'dodge',
@@ -1521,9 +1530,10 @@ class Game {
       this.scene.add(football);
       this.runnerObstacles.push({
         type: 'football',
+        hazardType: 'LOW_HAZARD',
         laneX,
         z: waveZ,
-        requiredAction: 'dodge',
+        requiredAction: 'jump',
         mesh: football,
         isHit: false
       });
@@ -1543,6 +1553,7 @@ class Game {
       this.scene.add(handcart);
       this.runnerObstacles.push({
         type: 'market_cart',
+        hazardType: 'FULL_BLOCK',
         laneX,
         z: waveZ,
         requiredAction: 'dodge',
@@ -1564,6 +1575,7 @@ class Game {
       this.scene.add(scaffold);
       this.runnerObstacles.push({
         type: 'heritage_scaffold',
+        hazardType: 'HIGH_HAZARD',
         z: waveZ,
         requiredAction: 'slide',
         mesh: scaffold,
@@ -1598,9 +1610,10 @@ class Game {
         this.scene.add(pothole);
         this.runnerObstacles.push({
           type: 'pothole',
+          hazardType: 'LOW_HAZARD',
           laneX,
           z: waveZ - (index * 3.0),
-          requiredAction: 'jump_or_dodge',
+          requiredAction: 'jump',
           mesh: pothole,
           isHit: false
         });
@@ -1636,12 +1649,41 @@ class Game {
       this.scene.add(roadwork);
       this.runnerObstacles.push({
         type: 'combined_roadwork',
+        hazardType: 'LOW_HAZARD',
         laneX: comboLaneX,
         z: waveZ,
-        requiredAction: 'jump_or_dodge',
+        requiredAction: 'jump',
         mesh: roadwork,
         isHit: false
       });
+    }
+
+    // Fairness Rule: Never spawn FULL_BLOCK across all 3 lanes at the same Z-position. At least one lane must always remain clear.
+    const fullBlocks = [
+      ...this.runnerObstacles.slice(obstacleStartIndex).filter(obstacle => obstacle.hazardType === 'FULL_BLOCK'),
+      ...this.runnerTraffic.slice(trafficStartIndex).filter(vehicle => vehicle.hazardType === 'FULL_BLOCK')
+    ];
+    const fullBlockOccupiedLanes = new Map();
+    lanes.forEach((laneX, laneIdx) => {
+      const blocker = fullBlocks.find(item => {
+        const itemX = item.laneX ?? item.mesh?.position?.x;
+        const itemZ = item.z ?? item.mesh?.position?.z ?? waveZ;
+        return Number.isFinite(itemX) && Math.abs(itemX - laneX) < 0.25 && Math.abs(itemZ - waveZ) <= 6.0;
+      });
+      if (blocker) fullBlockOccupiedLanes.set(laneIdx, blocker);
+    });
+
+    if (fullBlockOccupiedLanes.size >= 3) {
+      // All 3 lanes are blocked by FULL_BLOCK at waveZ! Clear at least one lane to ensure fairness.
+      const clearLaneIdx = Math.floor(Math.random() * 3);
+      const toRemove = fullBlockOccupiedLanes.get(clearLaneIdx);
+      if (toRemove) {
+        if (toRemove.mesh) this.scene.remove(toRemove.mesh);
+        const obsIdx = this.runnerObstacles.indexOf(toRemove);
+        if (obsIdx !== -1) this.runnerObstacles.splice(obsIdx, 1);
+        const trafIdx = this.runnerTraffic.indexOf(toRemove);
+        if (trafIdx !== -1) this.runnerTraffic.splice(trafIdx, 1);
+      }
     }
 
     this.runnerWaveCount += 1;
@@ -1650,7 +1692,7 @@ class Game {
       const chosenType = pTypes[this.runnerPowerupDropCount % pTypes.length];
       const blockedLanes = [
         ...this.runnerObstacles.slice(obstacleStartIndex)
-          .filter(obstacle => obstacle.type !== 'wire')
+          .filter(obstacle => obstacle.type !== 'wire' && obstacle.hazardType !== 'HIGH_HAZARD')
           .map(obstacle => obstacle.laneX),
         ...this.runnerTraffic.slice(trafficStartIndex).map(vehicle => vehicle.laneX)
       ];
@@ -1676,7 +1718,7 @@ class Game {
         saveManager.getReviveTokenCount() < MAX_REVIVE_TOKENS) {
       const blockedLanes = [
         ...this.runnerObstacles.slice(obstacleStartIndex)
-          .filter(obstacle => obstacle.type !== 'wire')
+          .filter(obstacle => obstacle.type !== 'wire' && obstacle.hazardType !== 'HIGH_HAZARD')
           .map(obstacle => obstacle.laneX),
         ...this.runnerTraffic.slice(trafficStartIndex).map(vehicle => vehicle.laneX)
       ];
@@ -2543,7 +2585,10 @@ class Game {
     }
     const previousRunnerPosition = this.player.position.clone();
 
-    // 0. Endless Procedural Corridor Chunk Recycling (Track never ends!)
+    // 0. Endless Procedural Corridor Chunk Recycling (Active pool of 7 modular road chunks, each 60 units long)
+    if (!this.corridorChunks || this.corridorChunks.length === 0) {
+      this.initCorridorTerrain();
+    }
     if (this.corridorChunks && this.corridorChunks.length > 0) {
       let minZ = 0;
       for (let i = 0; i < this.corridorChunks.length; i++) {
@@ -2552,7 +2597,7 @@ class Game {
       }
       for (let i = 0; i < this.corridorChunks.length; i++) {
         const chunk = this.corridorChunks[i];
-        if (chunk.position.z > this.player.position.z + 45.0) {
+        if (chunk.position.z > this.player.position.z + 50.0) {
           const newZ = minZ - 60.0;
           if (chunk.userData.patrolAreaLevel !== undefined &&
               chunk.userData.patrolAreaLevel !== this.currentDistrictLevel) {
@@ -2566,6 +2611,28 @@ class Game {
           }
           minZ = newZ;
         }
+      }
+
+      // Maintain active pool size of exactly 7 modular chunks (each 60 units long)
+      while (this.corridorChunks.length < 7) {
+        const newZ = minZ - 60.0;
+        const newChunk = this.createCorridorChunk(newZ);
+        this.scene.add(newChunk);
+        this.corridorChunks.push(newChunk);
+        minZ = newZ;
+      }
+      while (this.corridorChunks.length > 7) {
+        let maxIdx = 0;
+        let maxZ = -Infinity;
+        for (let j = 0; j < this.corridorChunks.length; j++) {
+          if (this.corridorChunks[j].position.z > maxZ) {
+            maxZ = this.corridorChunks[j].position.z;
+            maxIdx = j;
+          }
+        }
+        const removed = this.corridorChunks.splice(maxIdx, 1)[0];
+        this.scene.remove(removed);
+        this.disposeCorridorChunk(removed);
       }
     }
 
@@ -2600,11 +2667,25 @@ class Game {
     const rpm = Math.round(2500 + ((kmh - gearMin) / Math.max(1, gearMax - gearMin)) * 5500);
     this.currentRpm = rpm;
 
-    // 2. Snap to the selected lane; discrete lane input is handled by keyboard,
-    // touch buttons, and swipe gestures without joystick-based duplicate turns.
+    // 2. Discrete 3-Lane Movement & Snapping (Temple Run 2 feel)
+    // Strictly restrict X-axis movement to 3 discrete lanes (-1, 0, 1)
     if (this.isAutoPilotActive) this.executeRunnerAutoPilot(dt);
+    this.currentLane = THREE.MathUtils.clamp(Math.round(this.currentLane || 0), -1, 1);
+    this.laneWidth = 3.2;
     this.targetLaneX = this.currentLane * this.laneWidth;
-    this.player.position.x = THREE.MathUtils.lerp(this.player.position.x, this.targetLaneX, Math.min(1.0, dt * 16.0));
+    this.player.position.x = THREE.MathUtils.lerp(
+      this.player.position.x,
+      this.targetLaneX,
+      Math.min(1.0, dt * 16.0)
+    );
+
+    // Dynamic banking roll (rotation.z) during lane changes that settles back to 0
+    const laneDiff = this.targetLaneX - this.player.position.x;
+    const targetRoll = THREE.MathUtils.clamp(laneDiff * -0.065, -0.22, 0.22);
+    this.currentBankRoll = THREE.MathUtils.lerp(this.currentBankRoll || 0, targetRoll, Math.min(1.0, dt * 14.0));
+    if (Math.abs(laneDiff) < 0.035) {
+      this.currentBankRoll = THREE.MathUtils.lerp(this.currentBankRoll, 0, Math.min(1.0, dt * 12.0));
+    }
 
     // Update Runner Invulnerability Grace Timer & Blinking Mesh
     if ((this.runnerInvulnerableTimer || 0) > 0) {
@@ -2626,17 +2707,20 @@ class Game {
     this.updateRunnerNavigation(dt);
     if (this.isGameOver) return;
 
-    // Sync 3D group position & orientation
+    // Sync 3D group position, orientation, and banking roll
     this.player.group.position.x = this.player.position.x;
     this.player.group.position.z = this.player.position.z;
     this.player.facingAngle = Math.PI;
     this.player.targetRotationY = Math.PI;
     this.player.group.rotation.y = Math.PI;
+    this.player.group.rotation.z = this.currentBankRoll;
+    if (this.player.avatarMesh) {
+      this.player.avatarMesh.rotation.z = this.currentBankRoll;
+    }
 
-    // Keep the chase camera attached to the runner instead of letting the player
-    // run out of frame as the endless corridor advances.
+    // 4. Camera Rig: Lock smoothly behind player (z = player.z + 5.2, y = 2.85),
+    // following player.position.x * 0.45 smoothly for dynamic lane switches
     if (this.camera) {
-      const cameraFollow = Math.min(1.0, dt * 12.0);
       const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
       const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
       const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
@@ -2662,19 +2746,19 @@ class Game {
         this.camera.position.x = THREE.MathUtils.lerp(
           this.camera.position.x,
           targetCamX,
-          Math.min(1.0, dt * 6.0)
+          Math.min(1.0, dt * 7.5)
         );
         this.camera.position.y = THREE.MathUtils.lerp(
           this.camera.position.y,
           targetCamY,
-          cameraFollow
+          Math.min(1.0, dt * 12.0)
         );
         this.camera.position.z = targetCamZ;
         this.camera.lookAt(targetLookX, targetLookY, targetLookZ);
       }
     }
 
-    // 4. Update Vertical Traversal (Jumps & Jetpack Sky Flight)
+    // 5. Update Vertical Traversal (Jump gravity & arc, Jetpack sky flight)
     if (this.jetpackTimer > 0) {
       this.jetpackTimer = Math.max(0, this.jetpackTimer - dt);
       const skyAltitude = 4.8;
@@ -2684,7 +2768,8 @@ class Game {
       this.particles.createSkidSmoke(new THREE.Vector3(this.player.position.x, this.player.position.y - 0.4, this.player.position.z + 0.3), 1);
       this.particles.createDevourSparkles(new THREE.Vector3(this.player.position.x, this.player.position.y - 0.4, this.player.position.z + 0.3), 2, 0x00e5ff);
     } else if (!this.player.isGrounded || this.player.position.y > 0 || this.player.velocityY !== 0) {
-      this.player.velocityY -= 18.0 * dt;
+      const gravity = 18.0;
+      this.player.velocityY -= gravity * dt;
       this.player.position.y += this.player.velocityY * dt;
       if (this.player.position.y <= 0) {
         this.player.position.y = 0;
@@ -2699,12 +2784,17 @@ class Game {
       this.particles.createDevourSparkles(this.player.position, 1, 0xffd600);
     }
 
-    // 5. Update Slide Timer & Mesh Crouch Scale
+    // 6. Update Slide Timer & Mesh Crouch Scale (Scale Y to 0.42 for 0.72s to duck under hanging wires)
     if (this.isSliding) {
       this.slideTimer -= dt;
+      if (this.player.avatarMesh) {
+        this.player.avatarMesh.scale.set(1.15, 0.42, 1.25);
+        this.player.avatarMesh.position.y = -0.32;
+      }
       this.particles.createSkidSmoke(this.player.position, 1);
       if (this.slideTimer <= 0) {
         this.isSliding = false;
+        this.slideTimer = 0;
         if (this.player.avatarMesh) {
           this.player.avatarMesh.scale.set(1, 1, 1);
           this.player.avatarMesh.position.y = 0;
@@ -2912,76 +3002,83 @@ class Game {
         const obs = this.runnerObstacles[i];
         if (!obs || obs.isHit || !obs.mesh) continue;
 
-        const crossesObstacle = runnerSegmentCrossesZ(obs.z, previousRunnerPosition.z, pPos.z, 1.4);
+        // Shrink obstacle bounding box by 20% relative to visual meshes (1.4 -> 1.12)
+        const crossesObstacle = runnerSegmentCrossesZ(obs.z, previousRunnerPosition.z, pPos.z, 1.12);
         if (crossesObstacle) {
-        if (obs.type === 'wire' || obs.type === 'heritage_scaffold') {
-          if (this.isSliding) {
-            obs.isHit = true;
-            this.awardRunnerXP(150);
-            this.score += 150;
-            audio.playSlide();
-            this.ui.showFloatingFeedback(
-              obs.type === 'wire' ? '⚡ SLID UNDER!' : '🏛️ CLEARED THE SCAFFOLD!',
-              this.player.position,
-              '#00e5ff'
-            );
-          } else {
-            this.handleRunnerHit(
-              obs,
-              obs.type === 'wire' ? '⚡ Hanging Wires' : '🏛️ Saddar Heritage Scaffolding'
-            );
-          }
-        } else if (obs.type === 'gutter' || obs.type === 'digging' ||
-                   obs.type === 'sewage' || obs.type === 'pothole') {
-          const laneDistanceSq = runnerSegmentDistanceSquared(
-            obs.laneX,
-            obs.z,
-            previousRunnerPosition,
-            pPos
-          );
-          if (laneDistanceSq < 1.35 * 1.35) {
-            if ((!this.player.isGrounded && this.player.position.y > 0.35) || previousRunnerPosition.y > 0.35) {
+          if (obs.hazardType === 'HIGH_HAZARD' || obs.type === 'wire' || obs.type === 'heritage_scaffold') {
+            if (this.isSliding) {
               obs.isHit = true;
-              this.guttersJumped++;
               this.awardRunnerXP(150);
               this.score += 150;
-              this.ui.showFloatingFeedback('💨 CLEARED JUMP!', this.player.position, '#00e676');
+              audio.playSlide();
+              this.ui.showFloatingFeedback(
+                obs.type === 'wire' ? '⚡ SLID UNDER!' : '🏛️ CLEARED THE SCAFFOLD!',
+                this.player.position,
+                '#00e5ff'
+              );
             } else {
-              const label = obs.type === 'gutter'
-                ? '🕳️ Open Gutter'
-                : obs.type === 'digging'
-                  ? '🚧 Road Digging'
-                  : obs.type === 'pothole'
-                    ? '🕳️ Rain-Softened Pothole'
-                    : '🌊 Sewage Overflow';
+              this.handleRunnerHit(
+                obs,
+                obs.type === 'wire' ? '⚡ Hanging Wires' : '🏛️ Saddar Heritage Scaffolding'
+              );
+            }
+          } else if (obs.hazardType === 'LOW_HAZARD' || obs.type === 'gutter' || obs.type === 'digging' ||
+                     obs.type === 'sewage' || obs.type === 'pothole' || obs.type === 'football' ||
+                     obs.type === 'combined_roadwork') {
+            const laneDistanceSq = runnerSegmentDistanceSquared(
+              obs.laneX,
+              obs.z,
+              previousRunnerPosition,
+              pPos
+            );
+            // Shrink obstacle bounding box by 20% (1.35 -> 1.08)
+            if (laneDistanceSq < 1.08 * 1.08) {
+              if ((!this.player.isGrounded && this.player.position.y > 0.28) || previousRunnerPosition.y > 0.28) {
+                obs.isHit = true;
+                this.guttersJumped = (this.guttersJumped || 0) + 1;
+                this.awardRunnerXP(150);
+                this.score += 150;
+                this.ui.showFloatingFeedback('💨 CLEARED JUMP!', this.player.position, '#00e676');
+              } else {
+                const label = obs.type === 'gutter'
+                  ? '🕳️ Open Gutter'
+                  : obs.type === 'digging'
+                    ? '🚧 Road Digging'
+                    : obs.type === 'pothole'
+                      ? '🕳️ Rain-Softened Pothole'
+                      : obs.type === 'football'
+                        ? '⚽ Lyari Street Football'
+                        : obs.type === 'combined_roadwork'
+                          ? '🚧 Combined Roadwork'
+                          : '🌊 Sewage Overflow';
+                this.handleRunnerHit(obs, label);
+              }
+            }
+          } else if (obs.hazardType === 'FULL_BLOCK' || obs.type === 'rickshaw' || obs.type === 'snatcher' ||
+                     obs.type === 'water_tanker' || obs.type === 'market_cart') {
+            const laneDistanceSq = runnerSegmentDistanceSquared(
+              obs.laneX,
+              obs.z,
+              previousRunnerPosition,
+              pPos
+            );
+            // Shrink obstacle bounding box by 20% (1.35 -> 1.08)
+            if (laneDistanceSq < 1.08 * 1.08) {
+              const label = obs.type === 'rickshaw'
+                ? '🛺 Stalled Qingqi Rickshaw'
+                : obs.type === 'snatcher'
+                  ? '🏍️ 70cc Snatcher'
+                  : obs.type === 'water_tanker'
+                    ? '🚰 PECHS Water-Tanker Queue'
+                    : obs.type === 'market_cart'
+                      ? '🛒 Saddar Market Handcart'
+                      : '🚧 Full Block Hazard';
               this.handleRunnerHit(obs, label);
             }
-          }
-        } else if (obs.type === 'rickshaw' || obs.type === 'snatcher' ||
-                   obs.type === 'water_tanker' ||
-                   obs.type === 'football' || obs.type === 'market_cart') {
-          const laneDistanceSq = runnerSegmentDistanceSquared(
-            obs.laneX,
-            obs.z,
-            previousRunnerPosition,
-            pPos
-          );
-          if (laneDistanceSq < 1.35 * 1.35) {
-            const label = obs.type === 'rickshaw'
-              ? '🛺 Stalled Qingqi Rickshaw'
-              : obs.type === 'snatcher'
-                ? '🏍️ 70cc Snatcher'
-                : obs.type === 'water_tanker'
-                  ? '🚰 PECHS Water-Tanker Queue'
-                  : obs.type === 'football'
-                    ? '⚽ Lyari Street Football'
-                    : '🛒 Saddar Market Handcart';
-            this.handleRunnerHit(obs, label);
           }
         }
       }
     }
-  }
 
     // 11b. Update Highway Cruising Traffic Vehicles & Drafting Physics
     const nowTime = performance.now();
@@ -3014,7 +3111,7 @@ class Game {
           if (v.ribbons) v.ribbons.visible = false;
         }
 
-        // Check crash into traffic vehicle
+        // Check crash into traffic vehicle (Shrunk bounding box by 20%)
         if (!v.isHit && (this.runnerInvulnerableTimer || 0) <= 0) {
           const absDz = Math.abs(pPos.z - v.mesh.position.z);
           const relativeStartX = previousRunnerPosition.x - v.laneX;
@@ -3030,7 +3127,7 @@ class Game {
           const closestRelativeX = relativeStartX + relativeDx * closestT;
           const closestRelativeZ = relativeStartZ + relativeDz * closestT;
           const sweptDistanceSq = closestRelativeX * closestRelativeX + closestRelativeZ * closestRelativeZ;
-          if ((absDz < 1.6 && distX < 1.3) || sweptDistanceSq < 1.3 * 1.3) {
+          if ((absDz < 1.28 && distX < 1.04) || sweptDistanceSq < 1.04 * 1.04) {
             if (this.chingchiTimer > 0) {
               v.isHit = true;
               audio.playSmashObstacle();
@@ -3054,8 +3151,8 @@ class Game {
               this.handleRunnerHit(v, v.label);
             }
           } else if (
-            ((absDz < 1.5 && distX >= 1.35 && distX <= 2.2) ||
-              (sweptDistanceSq >= 1.35 * 1.35 && sweptDistanceSq <= 2.2 * 2.2)) &&
+            ((absDz < 1.5 && distX >= 1.04 && distX <= 2.2) ||
+              (sweptDistanceSq >= 1.04 * 1.04 && sweptDistanceSq <= 2.2 * 2.2)) &&
             !v.nearMissAwarded && kmh >= 75
           ) {
             v.nearMissAwarded = true;
@@ -3101,13 +3198,12 @@ class Game {
       }
     }
 
-    // 11d. Stock-Car Dynamic Banking Roll & Camera FOV Punch
-    if (!this.currentBankRoll) this.currentBankRoll = 0;
-    if (!this.targetBankRoll) this.targetBankRoll = 0;
-    this.currentBankRoll = THREE.MathUtils.lerp(this.currentBankRoll, this.targetBankRoll, dt * 10.0);
-    this.targetBankRoll = THREE.MathUtils.lerp(this.targetBankRoll, 0, dt * 4.0);
+    // 11d. Dynamic Banking Roll & Camera FOV Punch
     if (this.player?.group) {
-      this.player.group.rotation.z = this.currentBankRoll;
+      this.player.group.rotation.z = this.currentBankRoll || 0;
+    }
+    if (this.player?.avatarMesh) {
+      this.player.avatarMesh.rotation.z = this.currentBankRoll || 0;
     }
 
     if (this.camera) {
@@ -7508,11 +7604,10 @@ class Game {
     player.targetRotationY = Math.PI + angle;
 
     const lift = this.runnerCameraLift || 0;
-    const w = THREE.MathUtils.smoothstep(Math.min(1, p / 0.2), 0, 1);
-    const camX = THREE.MathUtils.lerp(x * 0.45, x - fx * 5.2, w);
-    const camZ = THREE.MathUtils.lerp(z + 5.2, z - fz * 5.2, w);
-    const lookX = THREE.MathUtils.lerp(x * 0.65, x + fx * 18, w);
-    const lookZ = THREE.MathUtils.lerp(z - 18, z + fz * 18, w);
+    const camX = x - fx * 5.2;
+    const camZ = z - fz * 5.2;
+    const lookX = x + fx * 18.0;
+    const lookZ = z + fz * 18.0;
     this.camera.position.set(camX, 2.85 + lift, camZ);
     this.camera.lookAt(lookX, 1.25, lookZ);
 
@@ -7570,14 +7665,19 @@ class Game {
     this.lastRunnerZ = junctionZ;
     this.runnerInvulnerableTimer = Math.max(this.runnerInvulnerableTimer || 0, 2.5);
 
-    // Smooth post-turn camera handoff: preserve position and smoothly pan behind runner
-    this.cameraSmoothPos = this.camera.position.clone();
-    this.cameraSmoothLookAt = new THREE.Vector3(
-      this.targetLaneX + (turn.sign * 6.0),
-      1.25,
-      junctionZ - 14.0
-    );
-    this.cameraSmoothTimer = 0.45;
+    // Smooth post-turn camera handoff: frame runner on new heading
+    if (this.camera) {
+      const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
+      const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
+      const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
+      const postCamX = this.targetLaneX * horizontalCameraFollow;
+      const postCamZ = junctionZ + 5.2;
+      const postLookX = this.targetLaneX * horizontalLookAhead;
+      const postLookZ = junctionZ - 18.0;
+      this.camera.position.set(postCamX, 2.85 + (this.runnerCameraLift || 0), postCamZ);
+      this.camera.lookAt(postLookX, 1.25, postLookZ);
+      this.cameraSmoothTimer = 0;
+    }
 
     this.ui.showAnnouncement(`🧭 NOW HEADING ${this.getRunnerHeadingLabel()}`, '#00e5ff');
     const navProfile = this.getRunnerNavProfile();

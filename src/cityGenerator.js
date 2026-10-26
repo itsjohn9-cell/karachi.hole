@@ -1600,4 +1600,59 @@ export class CityGenerator {
       this.keyCitizens.push(npc);
     });
   }
+
+  /**
+   * Modular 60-unit road chunk builder for runner corridor mode.
+   * Generates asphalt roadway, painted dividers, curbs, and sidewalks.
+   */
+  static createModularRoadSegment(length = 60.0, width = 13.0, options = {}) {
+    const group = new THREE.Group();
+    const roadColor = options.roadColor || 0x181e26;
+    const laneMarkingColor = options.laneMarking || 0xffffff;
+    const sidewalkColor = options.sidewalkColor || 0x64748b;
+
+    // 1. Asphalt Surface
+    const roadGeo = new THREE.PlaneGeometry(width, length);
+    roadGeo.rotateX(-Math.PI / 2);
+    const roadMat = new THREE.MeshLambertMaterial({ color: roadColor });
+    const roadMesh = new THREE.Mesh(roadGeo, roadMat);
+    roadMesh.position.y = 0.02;
+    roadMesh.receiveShadow = true;
+    group.add(roadMesh);
+
+    // 2. Dashed White Lane Dividers
+    [-1.6, 1.6].forEach(divX => {
+      for (let dz = -25; dz <= 25; dz += 10) {
+        const dashGeo = new THREE.PlaneGeometry(0.18, 5.0);
+        dashGeo.rotateX(-Math.PI / 2);
+        const dashMat = new THREE.MeshBasicMaterial({ color: laneMarkingColor });
+        const dash = new THREE.Mesh(dashGeo, dashMat);
+        dash.position.set(divX, 0.026, dz);
+        group.add(dash);
+      }
+    });
+
+    // 3. Yellow Outer Curb Lines
+    [-5.8, 5.8].forEach(borderX => {
+      const bGeo = new THREE.PlaneGeometry(0.24, length);
+      bGeo.rotateX(-Math.PI / 2);
+      const bMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+      const bLine = new THREE.Mesh(bGeo, bMat);
+      bLine.position.set(borderX, 0.026, 0);
+      group.add(bLine);
+    });
+
+    // 4. Sidewalks
+    [-8.0, 8.0].forEach(sideX => {
+      const walkMat = new THREE.MeshLambertMaterial({ color: sidewalkColor });
+      for (let seg = 0; seg < 6; seg++) {
+        const walk = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.28, 10.0), walkMat);
+        walk.position.set(sideX, 0.14, -25 + seg * 10);
+        walk.receiveShadow = true;
+        group.add(walk);
+      }
+    });
+
+    return group;
+  }
 }
