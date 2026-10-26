@@ -15,7 +15,7 @@ def releaseSigningValues = [
 def hasReleaseSigning = releaseSigningValues.values().every { it }
 
 def rootPkgJson = file("${rootDir}/../package.json")
-def pkgVersion = "2.2.6"
+def pkgVersion = "2.2.7"
 if (rootPkgJson.exists()) {
     try {
         def parsedPkg = new groovy.json.JsonSlurper().parseText(rootPkgJson.text)
@@ -25,7 +25,7 @@ if (rootPkgJson.exists()) {
     } catch (ignored) {}
 }
 
-def releaseVersionCodeValue = project.findProperty('releaseVersionCode') ?: System.getenv('KARACHI_RUNNER_VERSION_CODE') ?: '28'
+def releaseVersionCodeValue = project.findProperty('releaseVersionCode') ?: System.getenv('KARACHI_RUNNER_VERSION_CODE') ?: '29'
 def releaseVersionNameValue = project.findProperty('releaseVersionName') ?: System.getenv('KARACHI_RUNNER_VERSION_NAME') ?: pkgVersion
 def releaseVersionCode = releaseVersionCodeValue.toString().toInteger()
 def releaseVersionName = releaseVersionNameValue.toString()
