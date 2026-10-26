@@ -416,11 +416,96 @@ export class AvatarBuilder {
   }
 
   /**
+   * Trigger Gutter / Manhole death animation: flailing limbs upward while dropping into void
+   */
+  static triggerGutterFall(group) {
+    if (!group || !group.userData) return;
+    group.userData.deathType = 'gutter';
+    group.userData.deathTimer = 2.5;
+  }
+
+  /**
+   * Trigger Vehicle / Wall crash death animation: backward arched ragdoll / knockback
+   */
+  static triggerBackwardRagdoll(group) {
+    if (!group || !group.userData) return;
+    group.userData.deathType = 'ragdoll';
+    group.userData.deathTimer = 2.5;
+  }
+
+  /**
+   * Trigger Chaser Capture death animation: tripping flat forward onto asphalt
+   */
+  static triggerTripAndFall(group) {
+    if (!group || !group.userData) return;
+    group.userData.deathType = 'trip';
+    group.userData.deathTimer = 2.5;
+  }
+
+  /**
+   * Reset death animation and restore character pose
+   */
+  static resetDeathAnimation(group) {
+    if (!group || !group.userData) return;
+    const ud = group.userData;
+    ud.deathType = null;
+    ud.deathTimer = 0;
+    if (ud.torso) ud.torso.rotation.set(0, 0, 0);
+    if (ud.head) ud.head.rotation.set(0, 0, 0);
+    if (ud.armLGroup) ud.armLGroup.rotation.set(0, 0, 0);
+    if (ud.armRGroup) ud.armRGroup.rotation.set(0, 0, 0);
+    if (ud.legLGroup) ud.legLGroup.rotation.set(0, 0, 0);
+    if (ud.legRGroup) ud.legRGroup.rotation.set(0, 0, 0);
+    group.rotation.set(0, group.rotation.y, 0);
+    group.scale.set(1, 1, 1);
+  }
+
+  /**
    * Update character walk/run and idle animations every frame
    */
   static updateAnimation(group, isMoving, dt, speedMult = 1.0, isJumping = false) {
     if (!group || !group.userData) return;
     const ud = group.userData;
+
+    // Hazard-Specific Death Animation States
+    if (ud.deathType === 'gutter') {
+      // 1. Gutter Void Fall: arms flail straight up, head looks up in panic, legs kick
+      ud.armLGroup.rotation.x = THREE.MathUtils.lerp(ud.armLGroup.rotation.x, -2.8, dt * 14.0);
+      ud.armRGroup.rotation.x = THREE.MathUtils.lerp(ud.armRGroup.rotation.x, -2.7, dt * 14.0);
+      ud.armLGroup.rotation.z = THREE.MathUtils.lerp(ud.armLGroup.rotation.z, -0.65, dt * 10.0);
+      ud.armRGroup.rotation.z = THREE.MathUtils.lerp(ud.armRGroup.rotation.z, 0.65, dt * 10.0);
+      ud.legLGroup.rotation.x = Math.sin(Date.now() * 0.035) * 0.7;
+      ud.legRGroup.rotation.x = -Math.sin(Date.now() * 0.035) * 0.7;
+      ud.head.rotation.x = THREE.MathUtils.lerp(ud.head.rotation.x, -0.65, dt * 12.0);
+      ud.torso.rotation.x = THREE.MathUtils.lerp(ud.torso.rotation.x, 0.25, dt * 10.0);
+      return;
+    }
+
+    if (ud.deathType === 'ragdoll') {
+      // 2. Vehicle/Wall Crash: Backward arched ragdoll, limbs knocked wide
+      ud.torso.rotation.x = THREE.MathUtils.lerp(ud.torso.rotation.x, -1.25, dt * 14.0);
+      ud.head.rotation.x = THREE.MathUtils.lerp(ud.head.rotation.x, -0.85, dt * 14.0);
+      ud.armLGroup.rotation.x = THREE.MathUtils.lerp(ud.armLGroup.rotation.x, 1.4, dt * 12.0);
+      ud.armRGroup.rotation.x = THREE.MathUtils.lerp(ud.armRGroup.rotation.x, 1.35, dt * 12.0);
+      ud.armLGroup.rotation.z = THREE.MathUtils.lerp(ud.armLGroup.rotation.z, -1.1, dt * 10.0);
+      ud.armRGroup.rotation.z = THREE.MathUtils.lerp(ud.armRGroup.rotation.z, 1.1, dt * 10.0);
+      ud.legLGroup.rotation.x = THREE.MathUtils.lerp(ud.legLGroup.rotation.x, -1.15, dt * 12.0);
+      ud.legRGroup.rotation.x = THREE.MathUtils.lerp(ud.legRGroup.rotation.x, -0.95, dt * 12.0);
+      return;
+    }
+
+    if (ud.deathType === 'trip') {
+      // 3. Chaser Capture: Trip forward flat onto asphalt, hands bracing pavement
+      ud.torso.rotation.x = THREE.MathUtils.lerp(ud.torso.rotation.x, 1.48, dt * 14.0);
+      ud.torso.position.y = THREE.MathUtils.lerp(ud.torso.position.y, 0.22, dt * 14.0);
+      ud.head.rotation.x = THREE.MathUtils.lerp(ud.head.rotation.x, 0.45, dt * 12.0);
+      ud.head.position.y = THREE.MathUtils.lerp(ud.head.position.y, 0.28, dt * 14.0);
+      ud.armLGroup.rotation.x = THREE.MathUtils.lerp(ud.armLGroup.rotation.x, -1.55, dt * 14.0);
+      ud.armRGroup.rotation.x = THREE.MathUtils.lerp(ud.armRGroup.rotation.x, -1.55, dt * 14.0);
+      ud.legLGroup.rotation.x = THREE.MathUtils.lerp(ud.legLGroup.rotation.x, 0, dt * 10.0);
+      ud.legRGroup.rotation.x = THREE.MathUtils.lerp(ud.legRGroup.rotation.x, 0, dt * 10.0);
+      return;
+    }
 
     if ((ud.stumbleTimer || 0) > 0) {
       ud.stumbleTimer = Math.max(0, ud.stumbleTimer - dt);

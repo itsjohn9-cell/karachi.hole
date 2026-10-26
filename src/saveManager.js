@@ -41,6 +41,12 @@ export const DEFAULT_SAVE_DATA = {
     totalRupees: 0,
     completedRuns: 0
   },
+  powerUpUpgrades: {
+    magnet: 1,
+    shield: 1,
+    nitro: 1,
+    double_coins: 1
+  },
   citizenConversations: {}
 };
 
@@ -69,6 +75,7 @@ class SaveManager {
         settings: { ...DEFAULT_SAVE_DATA.settings, ...(parsed.settings || {}) },
         districts: { ...DEFAULT_SAVE_DATA.districts, ...(parsed.districts || {}) },
         runnerStats: { ...DEFAULT_SAVE_DATA.runnerStats, ...(parsed.runnerStats || {}) },
+        powerUpUpgrades: { ...DEFAULT_SAVE_DATA.powerUpUpgrades, ...(parsed.powerUpUpgrades || {}) },
         badges: Array.isArray(parsed.badges) ? parsed.badges : DEFAULT_SAVE_DATA.badges
       };
       const reviveTokens = Number(data.player.reviveTokens);
@@ -79,6 +86,12 @@ class SaveManager {
         const value = Number(data.runnerStats[key]);
         data.runnerStats[key] = Number.isSafeInteger(value) ? Math.max(0, value) : 0;
       });
+      if (data.powerUpUpgrades) {
+        ['magnet', 'shield', 'nitro', 'double_coins'].forEach(key => {
+          const lvl = Number(data.powerUpUpgrades[key]);
+          data.powerUpUpgrades[key] = Number.isSafeInteger(lvl) ? Math.max(1, Math.min(5, lvl)) : 1;
+        });
+      }
       return data;
     } catch (error) {
       console.error('[SAVE] Could not load career data; starting with default progress.', error);
@@ -152,6 +165,77 @@ class SaveManager {
     if (this.save()) return true;
     this.data.runnerStats = previousStats;
     return false;
+  }
+
+  _normalizePowerUpKey(type) {
+    const t = String(type || '').toLowerCase();
+    if (t.includes('magnet') || t.includes('biryani')) return 'magnet';
+    if (t.includes('shield') || t.includes('tanker')) return 'shield';
+    if (t.includes('nitro') || t.includes('turbo') || t.includes('cng')) return 'nitro';
+    if (t.includes('coin') || t.includes('double')) return 'double_coins';
+    return t;
+  }
+
+  getPowerUpUpgradeLevel(type) {
+    const key = this._normalizePowerUpKey(type);
+    const upgrades = this.data.powerUpUpgrades || DEFAULT_SAVE_DATA.powerUpUpgrades;
+    const lvl = Number(upgrades[key]);
+    return Number.isSafeInteger(lvl) ? Math.max(1, Math.min(5, lvl)) : 1;
+  }
+
+  getPowerUpUpgradeCost(type) {
+    const lvl = this.getPowerUpUpgradeLevel(type);
+    if (lvl >= 5) return null; // Already at MAX level (5)
+    // Level scaling: Lvl 1->2 = 500 Rs, Lvl 2->3 = 1500 Rs, Lvl 3->4 = 3000 Rs, Lvl 4->5 = 5000 Rs
+    const costs = { 1: 500, 2: 1500, 3: 3000, 4: 5000 };
+    return costs[lvl] || 5000;
+  }
+
+  getAllPowerUpUpgrades() {
+    return {
+      magnet: this.getPowerUpUpgradeLevel('magnet'),
+      shield: this.getPowerUpUpgradeLevel('shield'),
+      nitro: this.getPowerUpUpgradeLevel('nitro'),
+      double_coins: this.getPowerUpUpgradeLevel('double_coins')
+    };
+  }
+
+  upgradePowerUp(type, availableCoins = null) {
+    const key = this._normalizePowerUpKey(type);
+    const currentLevel = this.getPowerUpUpgradeLevel(key);
+    if (currentLevel >= 5) {
+      return { success: false, reason: 'Ability is already at MAX Level 5!' };
+    }
+
+    const cost = this.getPowerUpUpgradeCost(key);
+    const walletRupees = Number.isFinite(availableCoins)
+      ? availableCoins
+      : (this.data.runnerStats?.totalRupees || 0);
+
+    if (walletRupees < cost) {
+      return {
+        success: false,
+        reason: `Insufficient Rupees! Need ${cost.toLocaleString()} Rs (Have ${walletRupees.toLocaleString()} Rs).`
+      };
+    }
+
+    if (!this.data.powerUpUpgrades) {
+      this.data.powerUpUpgrades = { ...DEFAULT_SAVE_DATA.powerUpUpgrades };
+    }
+    this.data.powerUpUpgrades[key] = currentLevel + 1;
+
+    // Deduct from persistent career rupees if deducting from career wallet
+    if (availableCoins === null && this.data.runnerStats) {
+      this.data.runnerStats.totalRupees = Math.max(0, (this.data.runnerStats.totalRupees || 0) - cost);
+    }
+
+    this.save();
+    return {
+      success: true,
+      key,
+      newLevel: currentLevel + 1,
+      cost
+    };
   }
 
   isDistrictUnlocked(districtLevel) {

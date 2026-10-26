@@ -207,6 +207,7 @@ export class UIManager {
     this.createMissionJournalModal();
     this.createRunnerHelpModal();
     this.createRunnerProgressModal();
+    this.createRunnerShopModal();
     this.createRunnerTutorialOverlay();
     this.createRunnerDeveloperUI();
     this.createAnalyticsConsentModal();
@@ -222,8 +223,11 @@ export class UIManager {
 
     this.startModal.innerHTML = `
       <div class="modal-card start-mission-card">
-        <div class="start-hero-header">
+        <div class="start-hero-header" style="position: relative;">
           <h1 class="start-title">KARACHI RUNNER</h1>
+          <button class="secondary-btn ui-interactive" id="btn-home-shop" style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); padding: 5px 12px; font-size: 0.75rem; border-radius: 999px; background: rgba(255, 215, 0, 0.15); border: 1px solid rgba(255, 215, 0, 0.4); color: #ffd700; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+            <span aria-hidden="true">🛒</span> SHOP
+          </button>
         </div>
 
         <div class="start-form-section">
@@ -519,6 +523,13 @@ export class UIManager {
           <div><span>RESCUE TOKENS</span><strong id="runner-progress-tokens">0/3</strong></div>
         </div>
         <section class="runner-info-section">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <h3 style="margin: 0;">⚡ POWER-UP ABILITIES</h3>
+            <button class="primary-btn ui-interactive" id="btn-progress-open-shop" style="padding: 4px 10px; font-size: 0.72rem; min-height: 32px;">🛒 OPEN SHOP</button>
+          </div>
+          <div class="runner-progress-grid" id="runner-progress-upgrades"></div>
+        </section>
+        <section class="runner-info-section">
           <h3>🏅 ACHIEVEMENTS</h3>
           <div class="runner-progress-grid" id="runner-progress-badges"></div>
         </section>
@@ -592,6 +603,200 @@ export class UIManager {
         collectionGrid.appendChild(item);
       });
     }
+
+    const upgradeGrid = document.getElementById('runner-progress-upgrades');
+    if (upgradeGrid) {
+      upgradeGrid.replaceChildren();
+      const allUpgrades = [
+        { label: '🧲 Biryani Magnet', lvl: saveManager.getPowerUpUpgradeLevel('magnet') },
+        { label: '🛡️ Tanker Shield', lvl: saveManager.getPowerUpUpgradeLevel('shield') },
+        { label: '⚡ CNG Nitro', lvl: saveManager.getPowerUpUpgradeLevel('nitro') },
+        { label: '🪙 Double Coins', lvl: saveManager.getPowerUpUpgradeLevel('double_coins') }
+      ];
+      allUpgrades.forEach(u => {
+        const item = document.createElement('div');
+        item.className = 'runner-progress-item is-unlocked';
+        const name = document.createElement('span');
+        name.textContent = u.label;
+        const status = document.createElement('strong');
+        status.textContent = u.lvl >= 5 ? 'LVL 5 (MAX)' : `LVL ${u.lvl}/5`;
+        item.append(name, status);
+        upgradeGrid.appendChild(item);
+      });
+    }
+  }
+
+  createRunnerShopModal() {
+    this.runnerShopModal = document.createElement('div');
+    this.runnerShopModal.className = 'modal-backdrop runner-shop-backdrop';
+    this.runnerShopModal.id = 'modal-runner-shop';
+    this.runnerShopModal.style.display = 'none';
+    this.runnerShopModal.innerHTML = `
+      <section class="modal-card runner-info-card runner-shop-card" role="dialog" aria-modal="true" aria-labelledby="runner-shop-title">
+        <header class="runner-info-header">
+          <div>
+            <h2 id="runner-shop-title">🛒 POWER-UP UPGRADE SHOP</h2>
+            <p>Spend collected Karachi Rupees to supercharge your runner abilities!</p>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-runner-shop" aria-label="Close shop">&times;</button>
+        </header>
+
+        <div class="runner-shop-balance-banner">
+          <span class="balance-label">WALLET / RUN RUPEES:</span>
+          <span class="balance-value" id="runner-shop-balance">0 Rs</span>
+        </div>
+
+        <div class="runner-shop-grid" id="runner-shop-items-container"></div>
+
+        <button class="primary-btn ui-interactive runner-info-close" id="btn-runner-shop-done">DONE</button>
+      </section>
+    `;
+    document.body.appendChild(this.runnerShopModal);
+  }
+
+  showRunnerShop(gameInstance = null) {
+    if (gameInstance) this.activeGameInstance = gameInstance;
+    this.refreshRunnerShop();
+    if (this.runnerShopModal) {
+      this.runnerShopModal.style.display = 'flex';
+    }
+  }
+
+  hideRunnerShop() {
+    if (this.runnerShopModal) {
+      this.runnerShopModal.style.display = 'none';
+    }
+  }
+
+  getAvailableRupees() {
+    if (this.activeGameInstance && Number.isFinite(this.activeGameInstance.coins)) {
+      return Math.max(this.activeGameInstance.coins, saveManager.data.runnerStats?.totalRupees || 0);
+    }
+    return saveManager.data.runnerStats?.totalRupees || 0;
+  }
+
+  handlePowerUpUpgrade(key) {
+    const cost = saveManager.getPowerUpUpgradeCost(key);
+    const available = this.getAvailableRupees();
+
+    if (!cost || available < cost) {
+      audio.playWrongAnswer?.();
+      this.showAnnouncement(`❌ Need ${cost?.toLocaleString() || 0} Rs to upgrade! Collect more coins!`, '#ff1744');
+      return;
+    }
+
+    // Deduct from current run coins if active and affordable
+    if (this.activeGameInstance && Number.isFinite(this.activeGameInstance.coins) && this.activeGameInstance.coins >= cost) {
+      this.activeGameInstance.coins -= cost;
+    }
+    // Also deduct from persistent career rupees
+    if (saveManager.data.runnerStats) {
+      saveManager.data.runnerStats.totalRupees = Math.max(0, (saveManager.data.runnerStats.totalRupees || 0) - cost);
+    }
+
+    const res = saveManager.upgradePowerUp(key, available);
+    if (res.success) {
+      audio.playPowerUp?.();
+      const prettyKey = key.replace('_', ' ').toUpperCase();
+      this.showAnnouncement(`⚡ UPGRADED ${prettyKey} TO LEVEL ${res.newLevel}!`, '#76ff03');
+      this.refreshRunnerShop();
+      this.refreshRunnerProgress();
+    }
+  }
+
+  refreshRunnerShop(gameInstance = null) {
+    if (gameInstance) this.activeGameInstance = gameInstance;
+    if (!this.runnerShopModal) return;
+
+    const available = this.getAvailableRupees();
+    const balanceElem = document.getElementById('runner-shop-balance');
+    if (balanceElem) {
+      balanceElem.textContent = `${available.toLocaleString()} Rs`;
+    }
+
+    const container = document.getElementById('runner-shop-items-container');
+    if (!container) return;
+
+    const upgrades = [
+      {
+        key: 'magnet',
+        title: 'Burns Road Biryani Magnet',
+        icon: '🧲',
+        description: 'Litter vacuum pulls all Rupee coins from all 3 lanes.',
+        formatStat: (lvl) => `Duration: ${(10.0 * (1.0 + (lvl - 1) * 0.25)).toFixed(1)}s`
+      },
+      {
+        key: 'shield',
+        title: 'Water Tanker Iron Shield',
+        icon: '🛡️',
+        description: 'Reinforced armor absorbs 1 obstacle collision without losing hearts.',
+        formatStat: (lvl) => `Duration: ${(8.5 * (1.0 + (lvl - 1) * 0.25)).toFixed(1)}s`
+      },
+      {
+        key: 'nitro',
+        title: 'CNG Turbo Nitro',
+        icon: '⚡',
+        description: '2.4x blazing supersonic rush! Smashes right through hazards.',
+        formatStat: (lvl) => `Duration: ${(5.5 * (1.0 + (lvl - 1) * 0.25)).toFixed(1)}s`
+      },
+      {
+        key: 'double_coins',
+        title: 'Double Rupee Coins',
+        icon: '🪙',
+        description: 'Multiplies every collected Rupee coin by 2X (+100 Rs each)!',
+        formatStat: (lvl) => `Duration: ${(10.0 * (1.0 + (lvl - 1) * 0.25)).toFixed(1)}s`
+      }
+    ];
+
+    container.replaceChildren();
+
+    upgrades.forEach(item => {
+      const lvl = saveManager.getPowerUpUpgradeLevel(item.key);
+      const isMax = lvl >= 5;
+      const cost = saveManager.getPowerUpUpgradeCost(item.key);
+      const canAfford = !isMax && available >= cost;
+
+      const card = document.createElement('div');
+      card.className = `runner-shop-item ${isMax ? 'is-max' : ''}`;
+
+      let pips = '';
+      for (let p = 1; p <= 5; p++) {
+        pips += `<span class="shop-pip ${p <= lvl ? 'filled' : ''}"></span>`;
+      }
+
+      card.innerHTML = `
+        <div class="shop-item-icon">${item.icon}</div>
+        <div class="shop-item-details">
+          <div class="shop-item-title-row">
+            <h4>${item.title}</h4>
+            <span class="shop-item-level-tag">${isMax ? 'MAX LEVEL' : `LVL ${lvl}/5`}</span>
+          </div>
+          <p class="shop-item-desc">${item.description}</p>
+          <div class="shop-item-stat-row">
+            <span class="shop-item-stat">${item.formatStat(lvl)}${!isMax ? ` ➜ <span class="next-stat">${item.formatStat(lvl + 1).replace('Duration: ', '')}</span>` : ''}</span>
+            <div class="shop-pips-container">${pips}</div>
+          </div>
+        </div>
+        <div class="shop-item-action">
+          ${isMax
+            ? '<button class="secondary-btn shop-buy-btn" disabled>MAX</button>'
+            : `<button class="primary-btn shop-buy-btn ui-interactive ${canAfford ? 'can-afford' : 'cannot-afford'}" data-upgrade="${item.key}">
+                UPGRADE<br><span class="shop-btn-cost">${cost.toLocaleString()} Rs</span>
+              </button>`
+          }
+        </div>
+      `;
+
+      if (!isMax) {
+        const btn = card.querySelector(`button[data-upgrade="${item.key}"]`);
+        btn?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.handlePowerUpUpgrade(item.key);
+        });
+      }
+
+      container.appendChild(card);
+    });
   }
 
   refreshProgressionContent() {
@@ -1373,6 +1578,15 @@ export class UIManager {
             <div class="hub-tile-info">
               <span class="hub-tile-name">Choose Getup</span>
               <span class="hub-tile-sub">Change runner clothing</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-shop">
+            <span class="hub-tile-icon">🛒</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">Power-Up Shop</span>
+              <span class="hub-tile-sub">Upgrade Magnet, Shield, Nitro &amp; Double Coins</span>
             </div>
             <span class="hub-tile-arrow">➔</span>
           </button>
@@ -2699,6 +2913,26 @@ export class UIManager {
     });
     this.runnerProgressModal?.addEventListener('click', event => {
       if (event.target === this.runnerProgressModal) closeProgress();
+    });
+
+    const openShop = () => {
+      audio.playClick();
+      this.showRunnerShop();
+    };
+    const closeShop = () => {
+      audio.playClick();
+      this.hideRunnerShop();
+    };
+    document.getElementById('btn-home-shop')?.addEventListener('click', openShop);
+    document.getElementById('btn-menu-open-shop')?.addEventListener('click', openShop);
+    document.getElementById('btn-progress-open-shop')?.addEventListener('click', () => {
+      closeProgress();
+      openShop();
+    });
+    document.getElementById('btn-close-runner-shop')?.addEventListener('click', closeShop);
+    document.getElementById('btn-runner-shop-done')?.addEventListener('click', closeShop);
+    this.runnerShopModal?.addEventListener('click', event => {
+      if (event.target === this.runnerShopModal) closeShop();
     });
 
     document.getElementById('btn-consent-decline')?.addEventListener('click', () => {
@@ -4706,7 +4940,8 @@ export class UIManager {
       snatcher: ['STREET HAZARD AHEAD', 'SWITCH LANES'],
       football: ['BALL IN THE ROAD', 'SWITCH LANES'],
       market_cart: ['MARKET CART AHEAD', 'SWITCH LANES'],
-      traffic: ['TRAFFIC AHEAD', 'SWITCH LANES']
+      traffic: ['TRAFFIC AHEAD', 'SWITCH LANES'],
+      overhead_bridge_sign: ['LOW BRIDGE SIGN', 'SLIDE OR SWITCH LANES']
     };
     const [title, action] = hazardInfo[upcoming.type] || ['ROAD HAZARD AHEAD', 'SWITCH LANES'];
     const titleEl = document.getElementById('hud-runner-hazard-title');

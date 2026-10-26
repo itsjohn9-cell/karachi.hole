@@ -1722,4 +1722,263 @@ export class CityGenerator {
     const s = t * t * (3 - 2 * t);
     return startElevation + s * elevationDelta;
   }
+
+  /**
+   * W-11 Minibus Surfing Set-Piece Vehicle
+   * Features:
+   * 1. Full authentic Karachi W-11 minibus.
+   * 2. Heavy-duty inclined diamond-plate rear ramp (z: +7.5m down to +3.1m, y: 0.05m up to 3.12m).
+   * 3. Glowing neon chevron guide arrows and hazard guardrails.
+   * 4. Reinforced rooftop surfing deck with grip pads and edge lighting.
+   */
+  static createW11SurfingBus(options = {}) {
+    const group = new THREE.Group();
+    group.name = "W11-Surfing-Bus";
+
+    // 1. Core W-11 Minibus
+    const busMesh = KarachiModels.createW11MiniBus();
+    group.add(busMesh);
+
+    // 2. Attached Rear Ramp:
+    // Body ends at z = +3.1. Ramp begins at z = +7.5 (ground) and rises up to z = +3.1 (roof).
+    const rampStartZ = 7.5;
+    const rampEndZ = 3.1;
+    const rampLengthZ = rampStartZ - rampEndZ; // 4.4m
+    const groundY = 0.05;
+    const roofY = 3.12;
+    const heightRise = roofY - groundY; // 3.07m
+    const rampSlopeLength = Math.hypot(rampLengthZ, heightRise); // ~5.36m
+    const rampPitch = Math.atan2(heightRise, rampLengthZ); // ~34.9 deg
+
+    const rampGroup = new THREE.Group();
+    rampGroup.name = "W11-Rear-Ramp";
+
+    // Ramp Main Plate (textured diamond-plate style)
+    const rampGeo = new THREE.BoxGeometry(2.3, 0.1, rampSlopeLength);
+    const rampMat = new THREE.MeshStandardMaterial({
+      color: 0x1f2937,
+      roughness: 0.35,
+      metalness: 0.65
+    });
+    const rampPlate = new THREE.Mesh(rampGeo, rampMat);
+    rampPlate.castShadow = true;
+    rampPlate.receiveShadow = true;
+    rampGroup.add(rampPlate);
+
+    // Yellow Hazard Stripes on Ramp Edges
+    const stripeMat = new THREE.MeshBasicMaterial({ color: 0xffd600 });
+    const edgeGeo = new THREE.BoxGeometry(0.12, 0.12, rampSlopeLength);
+    const edgeL = new THREE.Mesh(edgeGeo, stripeMat);
+    edgeL.position.x = -1.15;
+    rampGroup.add(edgeL);
+
+    const edgeR = new THREE.Mesh(edgeGeo, stripeMat);
+    edgeR.position.x = 1.15;
+    rampGroup.add(edgeR);
+
+    // Glowing Neon Chevron Arrows pointing up the ramp towards roof
+    const chevronMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    for (let c = -1.8; c <= 1.8; c += 0.9) {
+      const chev = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.12, 0.18), chevronMat);
+      chev.position.set(0, 0.06, c);
+      rampGroup.add(chev);
+    }
+
+    // Safety Side Rails
+    const railMat = new THREE.MeshStandardMaterial({ color: 0xff6d00, metalness: 0.8 });
+    [-1.2, 1.2].forEach(rx => {
+      const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, rampSlopeLength), railMat);
+      rail.rotation.x = Math.PI / 2;
+      rail.position.set(rx, 0.35, 0);
+      rampGroup.add(rail);
+    });
+
+    // Position and angle the ramp group so bottom touches ground and top aligns to roof
+    rampGroup.position.set(0, (groundY + roofY) * 0.5, (rampStartZ + rampEndZ) * 0.5);
+    rampGroup.rotation.x = rampPitch;
+    group.add(rampGroup);
+
+    // 3. Rooftop Surfing Platform & Grip Rails
+    const roofDeckGeo = new THREE.BoxGeometry(2.4, 0.08, 6.2);
+    const roofDeckMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.3,
+      metalness: 0.5
+    });
+    const roofDeck = new THREE.Mesh(roofDeckGeo, roofDeckMat);
+    roofDeck.position.set(0, roofY, 0);
+    roofDeck.receiveShadow = true;
+    group.add(roofDeck);
+
+    // Neon Edge Glow along bus roof
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    [-1.22, 1.22].forEach(gx => {
+      const glowBar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 6.2), glowMat);
+      glowBar.position.set(gx, roofY + 0.05, 0);
+      group.add(glowBar);
+    });
+
+    // Surfboard Grip Pads on Roof
+    const padMat = new THREE.MeshBasicMaterial({ color: 0xffab00 });
+    [-1.8, 0, 1.8].forEach(pz => {
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.09, 0.8), padMat);
+      pad.position.set(0, roofY + 0.02, pz);
+      group.add(pad);
+    });
+
+    // 4. Floating Holographic Ramp Sign ("🏄 SURF RAMP")
+    const signBoard = new THREE.Mesh(
+      new THREE.BoxGeometry(2.0, 0.45, 0.08),
+      new THREE.MeshBasicMaterial({ color: 0x00e5ff })
+    );
+    signBoard.position.set(0, 2.2, rampStartZ + 0.2);
+    group.add(signBoard);
+
+    group.userData = {
+      isSurfingBus: true,
+      roofHeight: roofY,
+      rampStartZ,
+      rampEndZ,
+      rampLength: rampLengthZ,
+      groundY,
+      width: 2.4
+    };
+
+    return group;
+  }
+
+  /**
+   * Low-hanging Karachi Overhead Highway Bridge Sign
+   * - Spans roadway across vertical clearance (3.52m to 4.70m).
+   * - Ground runners safely pass underneath.
+   * - Bus roof surfers hit the sign UNLESS they slide to duck OR swipe left/right to unblocked lanes.
+   */
+  static createOverheadBridgeSign(options = {}) {
+    const group = new THREE.Group();
+    group.name = "Overhead-Bridge-Sign";
+
+    const blockedLanes = options.blockedLanes || [-3.2, 0, 3.2];
+    const isFullSpan = blockedLanes.length >= 3;
+    const text = options.text || (isFullSpan ? "⚠️ LOW CLEARANCE 3.2M - SLIDE! ⚠️" : "✈️ JINNAH TERMINAL / SADDAR");
+
+    // Support Truss Pillars on Sides
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.3 });
+    [-6.2, 6.2].forEach(px => {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.35, 5.8, 0.35), pillarMat);
+      pillar.position.set(px, 2.9, 0);
+      pillar.castShadow = true;
+      group.add(pillar);
+
+      // Footing concrete base
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.8), new THREE.MeshLambertMaterial({ color: 0x334155 }));
+      foot.position.set(px, 0.2, 0);
+      group.add(foot);
+    });
+
+    // Overhead Steel Truss Beams
+    const trussBeam = new THREE.Mesh(new THREE.BoxGeometry(12.8, 0.35, 0.35), pillarMat);
+    trussBeam.position.set(0, 5.2, 0);
+    group.add(trussBeam);
+
+    const lowerTrussBeam = new THREE.Mesh(new THREE.BoxGeometry(12.8, 0.25, 0.25), pillarMat);
+    lowerTrussBeam.position.set(0, 4.8, 0);
+    group.add(lowerTrussBeam);
+
+    // Overhead Highway Signboard
+    // Sign bottom at y = 3.52, top at y = 4.67 (height 1.15)
+    let signWidth = 10.5;
+    let signCenterX = 0;
+    if (!isFullSpan && blockedLanes.length > 0) {
+      const minLane = Math.min(...blockedLanes);
+      const maxLane = Math.max(...blockedLanes);
+      signCenterX = (minLane + maxLane) * 0.5;
+      signWidth = (maxLane - minLane) + 2.5;
+    }
+
+    const signBoard = new THREE.Mesh(
+      new THREE.BoxGeometry(signWidth, 1.15, 0.16),
+      new THREE.MeshStandardMaterial({
+        color: options.color || (isFullSpan ? 0xd97706 : 0x065f46),
+        roughness: 0.3
+      })
+    );
+    signBoard.position.set(signCenterX, 4.07, 0);
+    signBoard.castShadow = true;
+    group.add(signBoard);
+
+    // White border trim
+    const trim = new THREE.Mesh(
+      new THREE.BoxGeometry(signWidth + 0.1, 1.25, 0.12),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
+    trim.position.set(signCenterX, 4.07, -0.01);
+    group.add(trim);
+
+    // Flashing Amber Warning Beacons on Top of Sign
+    const beaconMat = new THREE.MeshBasicMaterial({ color: 0xffa000 });
+    [-signWidth * 0.4, signWidth * 0.4].forEach(bx => {
+      const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.22, 8), beaconMat);
+      beacon.position.set(signCenterX + bx, 4.75, 0);
+      group.add(beacon);
+    });
+
+    // Bottom warning hazard stripe bar
+    const hazardBar = new THREE.Mesh(
+      new THREE.BoxGeometry(signWidth, 0.12, 0.18),
+      new THREE.MeshBasicMaterial({ color: 0xffd600 })
+    );
+    hazardBar.position.set(signCenterX, 3.52, 0);
+    group.add(hazardBar);
+
+    group.userData = {
+      isOverheadBridgeSign: true,
+      hazardType: 'HIGH_HAZARD',
+      bottomY: 3.52,
+      topY: 4.70,
+      blockedLanes,
+      requiredAction: isFullSpan ? 'slide' : 'slide_or_dodge',
+      text
+    };
+
+    return group;
+  }
+
+  /**
+   * Complete "W-11 Minibus Surfing" Set-Piece Chunk
+   * Returns:
+   * - surfingBus: The moving bus with rear ramp
+   * - bridgeSigns: Downstream low-hanging bridge signs
+   */
+  static createW11SurfingSetPiece(waveZ = 0, options = {}) {
+    const laneX = Number.isFinite(options.laneX) ? options.laneX : 0;
+    const bus = this.createW11SurfingBus(options);
+    bus.position.set(laneX, 0, waveZ);
+
+    const bridgeSigns = [];
+    // 1st bridge sign at waveZ - 45: Blocks left & center lanes (-3.2, 0), right lane (+3.2) open
+    const sign1 = this.createOverheadBridgeSign({
+      blockedLanes: [-3.2, 0],
+      text: "⚠️ RIGHT LANE OPEN / SLIDE!"
+    });
+    sign1.position.set(0, 0, waveZ - 45);
+    bridgeSigns.push(sign1);
+
+    // 2nd bridge sign at waveZ - 90: Spans all 3 lanes (-3.2, 0, 3.2), MUST SLIDE!
+    const sign2 = this.createOverheadBridgeSign({
+      blockedLanes: [-3.2, 0, 3.2],
+      text: "⚠️ LOW CLEARANCE 3.2M - DUCK & SLIDE! ⚠️"
+    });
+    sign2.position.set(0, 0, waveZ - 90);
+    bridgeSigns.push(sign2);
+
+    // 3rd bridge sign at waveZ - 135: Blocks center & right lanes (0, 3.2), left lane (-3.2) open
+    const sign3 = this.createOverheadBridgeSign({
+      blockedLanes: [0, 3.2],
+      text: "⚠️ LEFT LANE OPEN / SLIDE!"
+    });
+    sign3.position.set(0, 0, waveZ - 135);
+    bridgeSigns.push(sign3);
+
+    return { bus, bridgeSigns, laneX, waveZ };
+  }
 }

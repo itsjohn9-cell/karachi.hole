@@ -9181,3 +9181,177 @@ body.mode-runner #btn-manual-pause {
     height: 38px;
   }
 }
+
+/* =========================================================
+   Power-Up Upgrade Shop Modal
+   ========================================================= */
+.runner-shop-card {
+  width: min(620px, 96vw);
+  max-width: 620px;
+}
+
+.runner-shop-balance-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(0, 229, 255, 0.1));
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 12px;
+  margin-bottom: 6px;
+}
+
+.runner-shop-balance-banner .balance-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ffd700;
+}
+
+.runner-shop-balance-banner .balance-value {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+}
+
+.runner-shop-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.runner-shop-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 12px;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+
+.runner-shop-item:hover {
+  border-color: rgba(0, 229, 255, 0.5);
+}
+
+.runner-shop-item.is-max {
+  border-color: rgba(118, 255, 3, 0.35);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.shop-item-icon {
+  font-size: 2rem;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.shop-item-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shop-item-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.shop-item-title-row h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.shop-item-level-tag {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 229, 255, 0.2);
+  color: #00e5ff;
+}
+
+.runner-shop-item.is-max .shop-item-level-tag {
+  background: rgba(118, 255, 3, 0.2);
+  color: #76ff03;
+}
+
+.shop-item-desc {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.shop-item-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.shop-item-stat {
+  font-size: 0.75rem;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.shop-item-stat .next-stat {
+  color: #76ff03;
+  font-weight: 700;
+}
+
+.shop-pips-container {
+  display: flex;
+  gap: 3px;
+}
+
+.shop-pip {
+  width: 10px;
+  height: 6px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.shop-pip.filled {
+  background: #ffd700;
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+}
+
+.shop-item-action {
+  flex-shrink: 0;
+}
+
+.shop-buy-btn {
+  min-width: 96px;
+  padding: 8px 10px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  text-align: center;
+  border-radius: 10px;
+}
+
+.shop-btn-cost {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #ffd700;
+}
+
+.shop-buy-btn.cannot-afford {
+  opacity: 0.65;
+  filter: grayscale(0.4);
+}

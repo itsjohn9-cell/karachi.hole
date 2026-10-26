@@ -305,7 +305,7 @@ export class Hole {
     // Glides smoothly around obstacle corners and map boundaries with zero sticking, jitter, or oscillation
     const substeps = 4;
     const subDt = dt / substeps;
-    const avatarBodyRadius = 0.50;
+    const avatarBodyRadius = 0.45;
 
     for (let step = 0; step < substeps; step++) {
       let nextX = this.position.x + dx * speed * subDt;

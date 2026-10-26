@@ -10,6 +10,7 @@ class AudioManager {
     this.isPlayingMusic = false;
     this.musicInterval = null;
     this.musicStep = 0;
+    this.musicPitch = 1.0;
 
     // Load saved preferences
     try {
@@ -858,7 +859,8 @@ class AudioManager {
 
       const t = this.ctx.currentTime;
       const noteIdx = this.musicStep % melody.length;
-      const freq = melody[noteIdx];
+      const pitch = this.musicPitch || 1.0;
+      const freq = melody[noteIdx] * pitch;
 
       // Play lead note
       if (noteIdx % 2 === 0 || noteIdx === 3 || noteIdx === 7) {
@@ -879,13 +881,13 @@ class AudioManager {
 
       // Play rhythmic bass kick every 4 steps
       if (this.musicStep % 4 === 0) {
-        const bassFreq = bass[Math.floor(this.musicStep / 4) % bass.length];
+        const bassFreq = bass[Math.floor(this.musicStep / 4) % bass.length] * pitch;
         const bOsc = this.ctx.createOscillator();
         const bGain = this.ctx.createGain();
 
         bOsc.type = 'sine';
         bOsc.frequency.setValueAtTime(bassFreq, t);
-        bOsc.frequency.exponentialRampToValueAtTime(40, t + 0.22);
+        bOsc.frequency.exponentialRampToValueAtTime(Math.max(10, 40 * pitch), t + 0.22);
 
         bGain.gain.setValueAtTime(0.12, t);
         bGain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
@@ -899,6 +901,18 @@ class AudioManager {
 
       this.musicStep++;
     }, stepIntervalMs);
+  }
+
+  setMusicPitch(pitch = 1.0) {
+    this.musicPitch = Math.max(0.5, Math.min(2.5, pitch));
+  }
+
+  getMusicPitch() {
+    return this.musicPitch || 1.0;
+  }
+
+  resetMusicPitch() {
+    this.musicPitch = 1.0;
   }
 
   // Coastal Arabian Sea Wave Splash & Spray (Triggered at water corners & seawall)
