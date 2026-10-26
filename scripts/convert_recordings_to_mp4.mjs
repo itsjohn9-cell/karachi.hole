@@ -14,7 +14,9 @@ const recordings = [
   'gameplay_20s',
   'gameplay_1min',
   'gameplay_2min',
-  'gameplay_with_startup_and_pause'
+  'gameplay_with_startup_and_pause',
+  'gameplay_mobile_390x844',
+  'gameplay_mobile_with_startup_and_pause'
 ];
 
 console.log('🎬 [CONVERTER] Starting conversion of recordings to standard MP4 (H.264/AAC/YUV420p)...');
@@ -52,22 +54,29 @@ for (const name of recordings) {
   }
 }
 
-// Create designated renamed copies in artifact directory
+// Create designated renamed copies in artifact directory starting with 003, 004, 005, 006
 if (fs.existsSync(artifactDir)) {
   const m2Path = path.join(artifactDir, 'gameplay_2min.mp4');
   const uiPath = path.join(artifactDir, 'gameplay_with_startup_and_pause.mp4');
+  const mobPath = path.join(artifactDir, 'gameplay_mobile_390x844.mp4');
+  const mobUiPath = path.join(artifactDir, 'gameplay_mobile_with_startup_and_pause.mp4');
 
-  if (fs.existsSync(m2Path)) {
-    const latest2m = path.join(artifactDir, '01_LATEST_gameplay_2min.mp4');
-    fs.copyFileSync(m2Path, latest2m);
-    console.log(`✅ Created: ${latest2m}`);
-  }
+  const copies = [
+    { src: m2Path, names: ['003_gameplay_2min.mp4', '003_LATEST_gameplay_2min.mp4'] },
+    { src: uiPath, names: ['004_gameplay_with_startup_and_pause.mp4', '004_LATEST_gameplay_with_startup_and_pause.mp4'] },
+    { src: mobPath, names: ['005_gameplay_mobile_390x844.mp4', '005_LATEST_gameplay_mobile_390x844.mp4'] },
+    { src: mobUiPath, names: ['006_gameplay_mobile_with_startup_and_pause.mp4', '006_LATEST_gameplay_mobile_with_startup_and_pause.mp4'] }
+  ];
 
-  if (fs.existsSync(uiPath)) {
-    const latestUi = path.join(artifactDir, '02_LATEST_gameplay_with_startup_and_pause.mp4');
-    fs.copyFileSync(uiPath, latestUi);
-    console.log(`✅ Created: ${latestUi}`);
+  for (const { src, names } of copies) {
+    if (fs.existsSync(src)) {
+      for (const name of names) {
+        const dest = path.join(artifactDir, name);
+        fs.copyFileSync(src, dest);
+        console.log(`✅ Created numbered artifact: ${dest}`);
+      }
+    }
   }
 }
 
-console.log('\n🎉 [CONVERTER SUCCESS] All requested recordings are converted and ready!');
+console.log('\n🎉 [CONVERTER SUCCESS] All 4 requested recordings (003, 004, 005, 006) are converted and ready!');
