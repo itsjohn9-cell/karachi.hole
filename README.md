@@ -146,6 +146,20 @@ npm run build:android:aab
 
 Upload `android/app/build/outputs/bundle/release/app-release.aab` to Play Console and enroll in Play App Signing. Do not use the debug APK or the standalone `npm run build:apk` signer for Play uploads.
 
+### Automated End-to-End Release (`release:play`)
+
+To take everything live in a single command across all platforms and testing tracks:
+
+```bash
+npm run release:play
+```
+
+This automated pipeline:
+1. **Detects Version Codes**: Queries Google Play Console API for the highest registered version code and auto-increments it.
+2. **Builds & Signs**: Compiles the release `.aab` using OpenJDK 21 and the release keystore.
+3. **Deploys to Both Testing Groups**: Publishes and rolls out to **both Closed Testing (`alpha`) and Internal Testing (`internal`)** tracks on Google Play Console.
+4. **Deploys Web Build**: Builds the production web app and deploys to GitHub Pages (`gh-pages`).
+
 ### Connected release workflow
 
 The **Prepare and publish release** GitHub Actions workflow connects the regression suite, production web build, optional signed Android App Bundle, and GitHub Pages publishing. Run it manually from the Actions tab and choose `website`, `android`, or `both`. Website releases must be run from `main`.
