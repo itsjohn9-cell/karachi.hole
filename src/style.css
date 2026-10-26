@@ -740,8 +740,9 @@ html, body {
   border-radius: 24px;
   width: 100%;
   max-width: 520px;
-  max-height: 85vh;
+  max-height: 90dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 24px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
   display: flex;

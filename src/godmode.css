@@ -1981,3 +1981,10 @@ input:checked + .slider:before {
 .feed-user { color: #ffd700; font-weight: 700; }
 .feed-event { color: #38bdf8; font-weight: 800; }
 .feed-params { color: #94a3b8; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Responsive Modal Card for Short/Landscape Mobile Screens */
+.modal-card {
+  max-height: 90dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
