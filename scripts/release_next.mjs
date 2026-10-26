@@ -76,8 +76,8 @@ async function autoRelease() {
     stdio: 'inherit'
   });
 
-  console.log('\n🚀 [4/5] Publishing to Google Play Console...');
-  execSync('node scripts/publish_play_console.mjs', {
+  console.log('\n🚀 [4/5] Publishing to Google Play Console (Internal & Closed Testing)...');
+  execSync('node scripts/publish_play_console.mjs --tracks=internal,alpha', {
     stdio: 'inherit'
   });
 

@@ -15,14 +15,15 @@ const POSSIBLE_KEY_PATHS = [
   path.resolve('.play-service-account.json')
 ].filter(Boolean);
 
-// Parse CLI arguments: --track=internal|production|alpha|beta, --draft, --aab=/path/to/file
+// Parse CLI arguments: --tracks=internal,alpha, --track=internal, --draft, --aab=/path/to/file
 const args = process.argv.slice(2);
-let track = 'internal';
+let tracks = ['internal', 'alpha'];
 let isDraft = false;
 let aabPath = DEFAULT_AAB_PATH;
 
 args.forEach(arg => {
-  if (arg.startsWith('--track=')) track = arg.split('=')[1];
+  if (arg.startsWith('--tracks=')) tracks = arg.split('=')[1].split(',').map(t => t.trim()).filter(Boolean);
+  else if (arg.startsWith('--track=')) tracks = arg.split('=')[1].split(',').map(t => t.trim()).filter(Boolean);
   else if (arg === '--draft') isDraft = true;
   else if (arg.startsWith('--aab=')) aabPath = path.resolve(arg.split('=')[1]);
 });
@@ -31,7 +32,7 @@ console.log('====================================================');
 console.log('   KARACHI RUNNER - GOOGLE PLAY AUTO-PUBLISHER      ');
 console.log('====================================================');
 console.log(`📦 Package ID : ${PACKAGE_NAME}`);
-console.log(`🎯 Target Track: ${track} (${isDraft ? 'Draft' : 'Rollout Completed'})`);
+console.log(`🎯 Target Tracks: ${tracks.join(', ')} (${isDraft ? 'Draft' : 'Rollout Completed'})`);
 console.log(`📁 Bundle Path : ${aabPath}`);
 
 // 1. Locate and validate Service Account JSON credentials
@@ -125,32 +126,34 @@ async function publish() {
     const pkg = JSON.parse(fs.readFileSync(path.resolve('package.json'), 'utf8'));
     const versionName = pkg.version || '2.2.0';
 
-    console.log(`🚀 [3/5] Assigning Version Code ${versionCode} (${versionName}) to track: [${track}]...`);
+    console.log(`🚀 [3/5] Assigning Version Code ${versionCode} (${versionName}) to tracks: [${tracks.join(', ')}]...`);
     const releaseStatus = isDraft ? 'draft' : 'completed';
     const releaseNotes = [
       {
         language: 'en-US',
-        text: 'Super Chingchi smash mode, Chai rocket jetpack, mystery crates, and new playable characters!'
+        text: 'Obstacle-free turn runway, zero hurdle popping, seamless corner banking, and Karachi patrol district updates!'
       }
     ];
 
-    await play.edits.tracks.update({
-      packageName: PACKAGE_NAME,
-      editId,
-      track,
-      requestBody: {
-        track,
-        releases: [
-          {
-            name: `${versionName} (${versionCode})`,
-            versionCodes: [versionCode.toString()],
-            status: releaseStatus,
-            releaseNotes
-          }
-        ]
-      }
-    });
-    console.log(`✔ Release assigned to ${track} track with status: ${releaseStatus}`);
+    for (const t of tracks) {
+      await play.edits.tracks.update({
+        packageName: PACKAGE_NAME,
+        editId,
+        track: t,
+        requestBody: {
+          track: t,
+          releases: [
+            {
+              name: `${versionName} (${versionCode})`,
+              versionCodes: [versionCode.toString()],
+              status: releaseStatus,
+              releaseNotes
+            }
+          ]
+        }
+      });
+      console.log(`✔ Release assigned to [${t}] track with status: ${releaseStatus}`);
+    }
 
     console.log('🚀 [4/5] Validating Edit transaction with Google Play...');
     await play.edits.validate({
@@ -170,8 +173,7 @@ async function publish() {
     console.log('====================================================');
     console.log(`App Name    : Karachi Runner`);
     console.log(`Package ID  : ${PACKAGE_NAME}`);
-    console.log(`Version     : ${versionName} (Version Code: ${versionCode})`);
-    console.log(`Track       : ${track.toUpperCase()}`);
+    console.log(`Track       : ${tracks.join(', ').toUpperCase()}`);
     console.log(`Status      : ${releaseStatus.toUpperCase()}`);
     console.log(`Console URL : https://play.google.com/console/u/0/developers/app/releases/overview?appId=${PACKAGE_NAME}`);
     console.log('====================================================\n');

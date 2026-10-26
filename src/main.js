@@ -1242,6 +1242,23 @@ class Game {
       return;
     }
 
+    // Safety approach & junction zone: Never spawn any obstacles within 105m before or 60m after a junction!
+    const metersToJunction = (this.nextJunctionAt || 0) - (this.distanceMeters || 0);
+    const targetJunctionZ = this.runnerJunction
+      ? this.runnerJunction.z
+      : (metersToJunction > 0 && metersToJunction <= 180 && this.player ? this.player.position.z - metersToJunction : null);
+
+    if (targetJunctionZ !== null && waveZ <= targetJunctionZ + 105.0 && waveZ >= targetJunctionZ - 60.0) {
+      // Clean asphalt runway with smooth central coins - 100% hurdle-free approach!
+      [-3.0, 0, 3.0].forEach(zOff => {
+        const coin = KarachiModels.createRupeeCoin(50);
+        coin.position.set(0, 0.7, waveZ + zOff);
+        this.scene.add(coin);
+        this.runnerCoins.push({ mesh: coin, value: 50, x: 0, z: waveZ + zOff });
+      });
+      return;
+    }
+
     const localArchetypes = this.currentDistrictLevel === 1
       ? ['soldier_tanker']
       : this.currentDistrictLevel === 2
@@ -2456,10 +2473,16 @@ class Game {
   }
 
   // Hides straight-corridor slabs that overlap a cross-road zone (world z range). Pass null to restore.
-  setCorridorZoneHidden(minZ, maxZ) {
+  // When turnDir is specified, ONLY hide the turn-opening side so opposite barriers/walls stay intact!
+  setCorridorZoneHidden(minZ, maxZ, turnDir = null) {
     (this.corridorChunks || []).forEach(chunk => {
       (chunk.userData.slabs || []).forEach(slab => {
         if (slab.userData.slab === 'full') return;
+        if (turnDir !== null) {
+          const side = slab.userData.side;
+          if (turnDir === -1 && side !== 'left') return;
+          if (turnDir === 1 && side !== 'right') return;
+        }
         const lo = chunk.position.z + slab.userData.zMin;
         const hi = chunk.position.z + slab.userData.zMax;
         slab.visible = !(minZ !== null && hi > minZ && lo < maxZ);
@@ -6467,7 +6490,7 @@ class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.3',
+            appVersion: '2.2.4',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };
@@ -7360,14 +7383,16 @@ class Game {
       this.scene.add(turnGroup);
       this.runnerJunction.turnGroup = turnGroup;
       this.runnerJunction.turnChunks = turnChunks;
-      this.setCorridorZoneHidden(z - 26, z + 7);
+      this.setCorridorZoneHidden(z - 26, z + 7, dir);
     }
 
+    // Only prune obstacles that are placed in the dead-end beyond the intersection (z - 12)
+    // NEVER prune visible obstacles in front of the player's approach path!
     const clearBeyond = list => {
       for (let i = list.length - 1; i >= 0; i--) {
         const item = list[i];
         const itemZ = item.mesh?.position?.z ?? item.z;
-        if (itemZ !== undefined && itemZ <= z + 65) {
+        if (itemZ !== undefined && itemZ <= z - 12) {
           if (item.mesh) this.scene.remove(item.mesh);
           list.splice(i, 1);
         }
@@ -7467,8 +7492,6 @@ class Game {
     if (this.player.avatarMesh) this.player.avatarMesh.visible = true;
     this.isSliding = false;
     this.slideTimer = 0;
-    // Clear all obstacles during the turn so the player has clean asphalt
-    this.clearRunnerObjects();
     this.ui.updateRunnerNav?.(null);
     audio.playTireScreech();
     this.particles.createSkidSmoke(this.player.position, 8);
@@ -7624,7 +7647,7 @@ class Game {
     const junction = this.runnerJunction;
     if (junction) {
       if (junction.kind === 'turn' && !junction.resolved) {
-        this.setCorridorZoneHidden(junction.z - 26, junction.z + 7);
+        this.setCorridorZoneHidden(junction.z - 26, junction.z + 7, junction.dir);
       }
       const ahead = this.player.position.z - junction.z;
       if (junction.kind === 'turn' && junction.turnQueued && ahead <= RUNNER_TURN_ENTRY_METERS && ahead > -3) {
@@ -7644,7 +7667,7 @@ class Game {
       }
       if (junction.kind === 'fork' && junction.resolved && ahead < -14) this.removeRunnerJunction();
       this.runnerTraffic = (this.runnerTraffic || []).filter(vehicle => {
-        if (vehicle?.mesh && vehicle.mesh.position.z < junction.z + 8) {
+        if (vehicle?.mesh && vehicle.mesh.position.z < junction.z - 15) {
           this.scene.remove(vehicle.mesh);
           return false;
         }
