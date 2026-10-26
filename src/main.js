@@ -1242,13 +1242,12 @@ class Game {
       return;
     }
 
-    // Safety approach & junction zone: Never spawn any obstacles within 105m before or 60m after a junction!
-    const metersToJunction = (this.nextJunctionAt || 0) - (this.distanceMeters || 0);
-    const targetJunctionZ = this.runnerJunction
-      ? this.runnerJunction.z
-      : (metersToJunction > 0 && metersToJunction <= 180 && this.player ? this.player.position.z - metersToJunction : null);
+    // Safety approach & junction zone: Never spawn any obstacles within 110m before or 70m after a junction!
+    const upcomingJunctionDist = (this.nextJunctionAt || 0) - (this.distanceMeters || 0);
+    const targetJunctionZ = this.runnerJunction?.z ??
+      (upcomingJunctionDist > 0 && this.player ? this.player.position.z - upcomingJunctionDist : null);
 
-    if (targetJunctionZ !== null && waveZ <= targetJunctionZ + 105.0 && waveZ >= targetJunctionZ - 60.0) {
+    if (targetJunctionZ !== null && waveZ <= targetJunctionZ + 110.0 && waveZ >= targetJunctionZ - 70.0) {
       // Clean asphalt runway with smooth central coins - 100% hurdle-free approach!
       [-3.0, 0, 3.0].forEach(zOff => {
         const coin = KarachiModels.createRupeeCoin(50);
@@ -6490,7 +6489,7 @@ class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.4',
+            appVersion: '2.2.5',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };
@@ -7386,22 +7385,6 @@ class Game {
       this.setCorridorZoneHidden(z - 26, z + 7, dir);
     }
 
-    // Only prune obstacles that are placed in the dead-end beyond the intersection (z - 12)
-    // NEVER prune visible obstacles in front of the player's approach path!
-    const clearBeyond = list => {
-      for (let i = list.length - 1; i >= 0; i--) {
-        const item = list[i];
-        const itemZ = item.mesh?.position?.z ?? item.z;
-        if (itemZ !== undefined && itemZ <= z - 12) {
-          if (item.mesh) this.scene.remove(item.mesh);
-          list.splice(i, 1);
-        }
-      }
-    };
-    clearBeyond(this.runnerObstacles || []);
-    clearBeyond(this.runnerCoins || []);
-    clearBeyond(this.runnerTraffic || []);
-
     // Guide coins: a neat arc of gold coins showing the player the clean path into the turn
     if (kind === 'turn' && this.runnerCoins && typeof this.createRupeeCoinMesh === 'function') {
       const turnLaneX = dir === -1 ? -this.laneWidth : this.laneWidth;
@@ -7568,9 +7551,20 @@ class Game {
       });
       this.corridorChunks = [...crossChunks, ...keep];
     }
+    if (this.oldJunctionGroup) {
+      this.scene?.remove(this.oldJunctionGroup);
+      this.oldJunctionGroup.traverse(o => {
+        if (o.isMesh) {
+          if (o.geometry !== RUNNER_POTHOLE_ARROW_GEOMETRY) o.geometry?.dispose();
+          if (o.material !== RUNNER_POTHOLE_ARROW_MATERIAL) o.material?.dispose();
+        }
+      });
+    }
+    this.oldJunctionGroup = this.runnerJunction?.group || null;
+    this.oldJunctionGroupZ = junctionZ;
+    if (this.runnerJunction) this.runnerJunction.group = null; // Detach so barrier remains visible behind player
     this.removeRunnerJunction();
     if (!crossChunks.length) this.initCorridorTerrain();
-    this.clearRunnerObjects();
     const preservedLane = Math.max(-1, Math.min(1, turn?.incomingLane ?? this.currentLane ?? 0));
     this.currentLane = preservedLane;
     this.targetLaneX = preservedLane * this.laneWidth;
@@ -7687,6 +7681,17 @@ class Game {
       }
     });
     this.runnerSectionDecor = (this.runnerSectionDecor || []).filter(Boolean);
+
+    if (this.oldJunctionGroup && this.player && this.player.position.z < (this.oldJunctionGroupZ || 0) - 45.0) {
+      this.scene?.remove(this.oldJunctionGroup);
+      this.oldJunctionGroup.traverse(o => {
+        if (o.isMesh) {
+          if (o.geometry !== RUNNER_POTHOLE_ARROW_GEOMETRY) o.geometry?.dispose();
+          if (o.material !== RUNNER_POTHOLE_ARROW_MATERIAL) o.material?.dispose();
+        }
+      });
+      this.oldJunctionGroup = null;
+    }
 
     let nav = null;
     const heading = this.getRunnerHeadingLabel();
