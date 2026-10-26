@@ -1,14 +1,32 @@
 apply plugin: 'com.android.application'
 
+def userHome = System.getProperty('user.home')
+def credsFile = file("${userHome}/.karachi-runner-keys/credentials.txt")
+def credsProps = new Properties()
+if (credsFile.exists()) {
+    credsFile.withInputStream { credsProps.load(it) }
+}
 def releaseSigningValues = [
-    storeFile: System.getenv('KARACHI_RUNNER_KEYSTORE'),
-    storePassword: System.getenv('KARACHI_RUNNER_KEYSTORE_PASSWORD'),
-    keyAlias: System.getenv('KARACHI_RUNNER_KEY_ALIAS'),
-    keyPassword: System.getenv('KARACHI_RUNNER_KEY_PASSWORD')
+    storeFile: System.getenv('KARACHI_RUNNER_KEYSTORE') ?: credsProps.getProperty('KARACHI_RUNNER_KEYSTORE') ?: "${userHome}/.karachi-runner-keys/upload.jks",
+    storePassword: System.getenv('KARACHI_RUNNER_KEYSTORE_PASSWORD') ?: credsProps.getProperty('KEYSTORE_PASSWORD'),
+    keyAlias: System.getenv('KARACHI_RUNNER_KEY_ALIAS') ?: credsProps.getProperty('KEY_ALIAS'),
+    keyPassword: System.getenv('KARACHI_RUNNER_KEY_PASSWORD') ?: credsProps.getProperty('KEY_PASSWORD')
 ]
 def hasReleaseSigning = releaseSigningValues.values().every { it }
-def releaseVersionCodeValue = project.findProperty('releaseVersionCode') ?: System.getenv('KARACHI_RUNNER_VERSION_CODE') ?: '1'
-def releaseVersionNameValue = project.findProperty('releaseVersionName') ?: System.getenv('KARACHI_RUNNER_VERSION_NAME') ?: '1.0'
+
+def rootPkgJson = file("${rootDir}/../package.json")
+def pkgVersion = "2.2.1"
+if (rootPkgJson.exists()) {
+    try {
+        def parsedPkg = new groovy.json.JsonSlurper().parseText(rootPkgJson.text)
+        if (parsedPkg?.version) {
+            pkgVersion = parsedPkg.version
+        }
+    } catch (ignored) {}
+}
+
+def releaseVersionCodeValue = project.findProperty('releaseVersionCode') ?: System.getenv('KARACHI_RUNNER_VERSION_CODE') ?: '23'
+def releaseVersionNameValue = project.findProperty('releaseVersionName') ?: System.getenv('KARACHI_RUNNER_VERSION_NAME') ?: pkgVersion
 def releaseVersionCode = releaseVersionCodeValue.toString().toInteger()
 def releaseVersionName = releaseVersionNameValue.toString()
 
@@ -61,10 +79,10 @@ tasks.configureEach { task ->
                     'KARACHI_RUNNER_KEYSTORE_PASSWORD, KARACHI_RUNNER_KEY_ALIAS, and KARACHI_RUNNER_KEY_PASSWORD.'
                 )
             }
-            if (!System.getenv('KARACHI_RUNNER_VERSION_NAME') && !project.hasProperty('releaseVersionName')) {
+            if (!releaseVersionName) {
                 throw new GradleException('Set KARACHI_RUNNER_VERSION_NAME or -PreleaseVersionName for a Play release.')
             }
-            if (!System.getenv('KARACHI_RUNNER_VERSION_CODE') && !project.hasProperty('releaseVersionCode')) {
+            if (!releaseVersionCode || releaseVersionCode < 1) {
                 throw new GradleException('Set KARACHI_RUNNER_VERSION_CODE or -PreleaseVersionCode for a Play release.')
             }
         }
