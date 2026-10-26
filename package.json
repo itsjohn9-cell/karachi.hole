@@ -1,6 +1,6 @@
 {
   "name": "karachi-runner",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,7 +17,8 @@
     "build:apk": "node scripts/sign_apk.mjs",
     "deploy:web": "node scripts/deploy_pages.mjs",
     "publish:play": "node scripts/publish_play_console.mjs",
-    "release:play": "npm run build:android:aab && npm run publish:play"
+    "release:play": "node scripts/release_next.mjs",
+    "release:next": "node scripts/release_next.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.6.9",

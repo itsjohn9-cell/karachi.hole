@@ -184,7 +184,13 @@ async function publish() {
       console.error(error.message || error);
     }
 
-    if (errObj.code === 403 || errObj.status === 'PERMISSION_DENIED') {
+    const msg = String(errObj.message || '');
+    if (msg.includes('already been used') || msg.includes('Version code')) {
+      console.log('\n💡 [Version Code Already Live on Play Console]:');
+      console.log('This Version Code has already been published to Google Play Console!');
+      console.log('To automatically bump the version code and publish the next release:');
+      console.log('👉 Run: npm run release:next\n');
+    } else if (errObj.code === 403 || errObj.status === 'PERMISSION_DENIED') {
       console.log('\n💡 [Quick 1-Step Fix in Google Play Console]:');
       console.log('1. Open: https://play.google.com/console');
       console.log('2. Go to "Users and permissions" -> "Invite new users" (or "Setup" -> "API access")');
