@@ -9,11 +9,12 @@
     "build:android": "npm run build && cap sync android",
     "build:android:aab": "npm run build:android && cd android && ./gradlew :app:bundleRelease",
     "preview": "vite preview",
-    "test": "npm run test:ops && node scripts/test_runner.js",
+    "test": "npm run test:analytics && npm run test:ops && node scripts/test_runner.js",
+    "test:analytics": "node --test scripts/test_analytics_command_center.mjs",
     "test:ops": "node --test scripts/test_game_ops_engine.mjs",
     "test:5173": "node scripts/test_runner.js --port=5173",
     "release:check": "npm test && npm run build",
-    "release:check:ci": "npm run test:ops && node scripts/test_runner.js --only=TC-01,TC-02,TC-10,TC-26,TC-27,TC-28 && npm run build",
+    "release:check:ci": "npm run test:analytics && npm run test:ops && node scripts/test_runner.js --only=TC-01,TC-02,TC-10,TC-26,TC-27,TC-28 && npm run build",
     "build:apk": "node scripts/sign_apk.mjs",
     "deploy:web": "node scripts/deploy_pages.mjs",
     "publish:play": "node scripts/publish_play_console.mjs",
@@ -31,6 +32,11 @@
   "dependencies": {
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "ffmpeg-static": "^5.3.0",
+    "lucide-react": "^1.61.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "three": "^0.186.1"
   }
 }
