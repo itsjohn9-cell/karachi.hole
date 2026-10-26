@@ -87,6 +87,54 @@ export const AVATAR_PROFILES = [
       hair: 0x261e19,
       shoes: 0x1a1a1a
     }
+  },
+  {
+    id: 'biryani_rider',
+    name: 'Chacha Biryani - Fast Delivery',
+    tag: 'Speedy Food Rider',
+    icon: '🛵',
+    perk: 'Biryani Super Boost + Magnet',
+    outfit: 'Delivery Jacket, Yellow Helmet & Steaming Biryani Box',
+    colors: {
+      kameez: 0xff6d00, // Vibrant Orange Delivery Jacket
+      shalwar: 0x212121, // Black Cargo Trousers
+      vest: 0xffd600, // High-Vis Yellow Vest
+      skin: 0xd29b70,
+      hair: 0x111111,
+      shoes: 0xff3d00
+    }
+  },
+  {
+    id: 'captain_karachi',
+    name: 'Captain Karachi - Super Kid',
+    tag: 'Cosmic Superhero',
+    icon: '⚡',
+    perk: 'Super Flying Boosts & Electric Cape',
+    outfit: 'Red & Gold Super Suit with Electric Blue Flying Cape',
+    colors: {
+      kameez: 0xd50000, // Vibrant Hero Red
+      shalwar: 0xffd600, // Hero Gold
+      cape: 0x2979ff, // Electric Blue Hero Cape
+      skin: 0xe0a97d,
+      hair: 0x212121,
+      shoes: 0xd50000
+    }
+  },
+  {
+    id: 'chai_wala',
+    name: 'Ustad Chai Wala',
+    tag: 'Burns Road Chai Legend',
+    icon: '🫖',
+    perk: 'Instant 2x Heart Restores & Kettle',
+    outfit: 'Mustard Kurta, Red Apron & Metallic Chai Kettle',
+    colors: {
+      kameez: 0xfbc02d, // Classic Mustard Kurta
+      shalwar: 0xffffff, // White Shalwar
+      vest: 0xb71c1c, // Crimson Red Apron
+      skin: 0xc68a5c,
+      hair: 0x212121,
+      shoes: 0x5d4037
+    }
   }
 ];
 
@@ -175,7 +223,7 @@ export class AvatarBuilder {
       group.add(mustache);
     }
 
-    // Hair / Police Cap
+    // Hair / Helmets / Accessories
     if (avatarId === 'farooq') {
       // Traffic Police Peaked Cap with Golden Karachi Emblem
       const capCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.19, 0.12, 12), new THREE.MeshLambertMaterial({ color: 0xffffff }));
@@ -190,6 +238,39 @@ export class AvatarBuilder {
       const capBadge = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.02), new THREE.MeshLambertMaterial({ color: 0xffd700 }));
       capBadge.position.set(0, 1.67, 0.19);
       group.add(capBadge);
+    } else if (avatarId === 'biryani_rider') {
+      // High-Visibility Delivery Helmet + Tinted Visor
+      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 12), new THREE.MeshLambertMaterial({ color: 0xffeb3b }));
+      helmet.position.y = 1.54;
+      group.add(helmet);
+
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.07, 0.12), new THREE.MeshLambertMaterial({ color: 0x212121 }));
+      visor.position.set(0, 1.53, 0.14);
+      group.add(visor);
+
+      // Steaming Hot Biryani Delivery Backpack
+      const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.44, 0.32), new THREE.MeshLambertMaterial({ color: 0xff6d00 }));
+      backpack.position.set(0, 1.05, -0.32);
+      group.add(backpack);
+
+      const boxLid = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.06, 0.34), new THREE.MeshLambertMaterial({ color: 0xffd600 }));
+      boxLid.position.set(0, 1.28, -0.32);
+      group.add(boxLid);
+    } else if (avatarId === 'captain_karachi') {
+      // Styled Hair + Superhero Gold Star Mask
+      const hairGeo = new THREE.SphereGeometry(0.19, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.55);
+      const hair = new THREE.Mesh(hairGeo, hairMat);
+      hair.position.y = 1.54;
+      group.add(hair);
+
+      const mask = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.06, 0.05), new THREE.MeshLambertMaterial({ color: 0xffd600 }));
+      mask.position.set(0, 1.55, 0.16);
+      group.add(mask);
+
+      // Hero Lightning Emblem on Chest
+      const emblem = new THREE.Mesh(new THREE.TetrahedronGeometry(0.10), new THREE.MeshLambertMaterial({ color: 0xffd600 }));
+      emblem.position.set(0, 1.15, 0.24);
+      group.add(emblem);
     } else {
       // Styled Hair
       const hairGeo = new THREE.SphereGeometry(0.19, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.55);
@@ -227,6 +308,25 @@ export class AvatarBuilder {
     const handR = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), skinMat);
     handR.position.y = -0.52;
     armRGroup.add(handR);
+
+    // Metallic Chai Kettle for Ustad Chai Wala
+    if (avatarId === 'chai_wala') {
+      const kettle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.1, 0.16, 8),
+        new THREE.MeshLambertMaterial({ color: 0x90a4ae })
+      );
+      kettle.position.set(0, -0.62, 0.08);
+      armRGroup.add(kettle);
+
+      const spout = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.03, 0.1, 6),
+        new THREE.MeshLambertMaterial({ color: 0x78909c })
+      );
+      spout.rotation.x = -0.6;
+      spout.position.set(0, -0.58, 0.18);
+      armRGroup.add(spout);
+    }
+
     group.add(armRGroup);
 
     // Left Leg

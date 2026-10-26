@@ -17,6 +17,9 @@ if (typeof window !== 'undefined') {
 
 const AVATAR_GETUPS = {
   tariq: 'Green shalwar kameez · waistcoat',
+  biryani_rider: '🛵 Chacha Biryani · helmet & delivery pack',
+  captain_karachi: '⚡ Captain Karachi · super suit & cape',
+  chai_wala: '🫖 Ustad Chai Wala · apron & kettle',
   ayesha: 'Turquoise kameez · Ajrak scarf',
   farooq: 'White traffic-police uniform',
   bilal: 'Edhi rescue vest · white shalwar kameez',
@@ -25,6 +28,9 @@ const AVATAR_GETUPS = {
 
 const AVATAR_UNLOCK_HINTS = {
   tariq: 'Available from the start',
+  biryani_rider: 'Available now · Speedy Food Delivery',
+  captain_karachi: 'Available now · Cosmic Superhero',
+  chai_wala: 'Available now · Burns Road Chai Master',
   ayesha: 'Reach career Level 2 or earn Clean Green',
   farooq: 'Reach career Level 3 or earn Road Safety',
   bilal: 'Reach career Level 2 or earn Lifesaver',
@@ -279,6 +285,18 @@ export class UIManager {
             <div class="avatar-selection-grid" id="start-avatar-grid" aria-label="Avatar clothing">
               <div class="avatar-card active ui-interactive" data-avatar="tariq">
                 <span class="avatar-card-outfit">Green shalwar kameez · waistcoat</span>
+                <span class="avatar-card-status" aria-hidden="true"></span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="biryani_rider">
+                <span class="avatar-card-outfit">🛵 Chacha Biryani · helmet & delivery pack</span>
+                <span class="avatar-card-status" aria-hidden="true"></span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="captain_karachi">
+                <span class="avatar-card-outfit">⚡ Captain Karachi · super suit & cape</span>
+                <span class="avatar-card-status" aria-hidden="true"></span>
+              </div>
+              <div class="avatar-card ui-interactive" data-avatar="chai_wala">
+                <span class="avatar-card-outfit">🫖 Ustad Chai Wala · apron & kettle</span>
                 <span class="avatar-card-status" aria-hidden="true"></span>
               </div>
               <div class="avatar-card ui-interactive" data-avatar="ayesha">
@@ -1507,6 +1525,9 @@ export class UIManager {
         </div>
         <div class="avatar-selection-grid" id="menu-avatar-grid" aria-label="Avatar clothing">
           <div class="avatar-card ui-interactive" data-avatar="tariq"><span class="avatar-card-outfit">Green shalwar kameez · waistcoat</span><span class="avatar-card-status" aria-hidden="true"></span></div>
+          <div class="avatar-card ui-interactive" data-avatar="biryani_rider"><span class="avatar-card-outfit">🛵 Chacha Biryani · helmet & delivery pack</span><span class="avatar-card-status" aria-hidden="true"></span></div>
+          <div class="avatar-card ui-interactive" data-avatar="captain_karachi"><span class="avatar-card-outfit">⚡ Captain Karachi · super suit & cape</span><span class="avatar-card-status" aria-hidden="true"></span></div>
+          <div class="avatar-card ui-interactive" data-avatar="chai_wala"><span class="avatar-card-outfit">🫖 Ustad Chai Wala · apron & kettle</span><span class="avatar-card-status" aria-hidden="true"></span></div>
           <div class="avatar-card ui-interactive" data-avatar="ayesha"><span class="avatar-card-outfit">Turquoise kameez · Ajrak scarf</span><span class="avatar-card-status" aria-hidden="true"></span></div>
           <div class="avatar-card ui-interactive" data-avatar="farooq"><span class="avatar-card-outfit">White traffic-police uniform</span><span class="avatar-card-status" aria-hidden="true"></span></div>
           <div class="avatar-card ui-interactive" data-avatar="bilal"><span class="avatar-card-outfit">Edhi rescue vest · white shalwar kameez</span><span class="avatar-card-status" aria-hidden="true"></span></div>

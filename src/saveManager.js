@@ -179,7 +179,9 @@ class SaveManager {
   }
 
   isAvatarUnlocked(avatarId) {
-    if (avatarId === 'tariq' || this.data.masterUnlockAllContent) return true;
+    if (['tariq', 'biryani_rider', 'captain_karachi', 'chai_wala'].includes(avatarId) || this.data.masterUnlockAllContent) {
+      return true;
+    }
 
     const careerLevel = this.getCareerLevel();
     const badges = this.data.badges || [];

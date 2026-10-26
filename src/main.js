@@ -148,6 +148,10 @@ class Game {
     this.nitroTimer = 0;
     this.shieldTimer = 0;
     this.superJumpTimer = 0;
+    this.chingchiTimer = 0;
+    this.jetpackTimer = 0;
+    this.coinComboCount = 0;
+    this.lastCoinPickupTime = 0;
     this.activePowerUp = null;
     this.gutterHazards = [];
     this.finishGate = null;
@@ -817,6 +821,26 @@ class Game {
     // Turn mistakes are always charged; grace only protects against repeat obstacle hits.
     if ((this.runnerInvulnerableTimer || 0) > 0 && !isTurnMistake) return;
 
+    // Sky Flight Jetpack (Flies safely above ground obstacles)
+    if (this.jetpackTimer > 0 && !isTurnMistake) {
+      return;
+    }
+
+    // Check Super Chingchi Rickshaw (Chaos Smash Mode)
+    if (this.chingchiTimer > 0) {
+      obstacle.isHit = true;
+      audio.playSmashObstacle();
+      this.cameraShakeTimer = 0.35;
+      this.particles.createCelebrationConfetti(obstacle.mesh?.position || this.player.position, 28);
+      this.particles.createImpactDust(this.player.position, 16);
+      this.ui.showAnnouncement(`🛺💥 CHINGCHI SMASH! Demolished ${reason}! +1,000 PTS`, '#ffd600');
+      this.ui.showFloatingFeedback('🛺 RAMMED! +1000', this.player.position, '#ffd600');
+      this.awardRunnerXP(1000);
+      this.score += 1000;
+      if (obstacle.mesh) this.scene.remove(obstacle.mesh);
+      return;
+    }
+
     // Check CNG Turbo Nitro (Invulnerability Smash)
     if (this.nitroTimer > 0) {
       obstacle.isHit = true;
@@ -905,7 +929,11 @@ class Game {
   triggerTempleRunGameOver(reason) {
     this.isGameOver = true;
     this.isPaused = true;
+    audio.playCartoonBoing();
     audio.playGameOver();
+    this.cameraShakeTimer = 0.55;
+    this.particles.createSkidSmoke(this.player.position, 16);
+
     const ranked = [...(this.holes || [])].sort((a, b) => b.score - a.score);
     this.ui.showGameOver({
       rankedHoles: ranked,
@@ -918,6 +946,20 @@ class Game {
       crashReason: reason || 'Karachi Street Hazard',
       canAdvanceNext: false
     });
+
+    if (this.player?.avatarMesh) {
+      let tumbles = 0;
+      const spinTimer = setInterval(() => {
+        tumbles++;
+        if (this.player?.avatarMesh) {
+          this.player.avatarMesh.rotation.y += 0.8;
+          this.player.avatarMesh.rotation.z = Math.sin(tumbles * 0.5) * 0.6;
+        }
+        if (tumbles >= 10) {
+          clearInterval(spinTimer);
+        }
+      }, 40);
+    }
   }
 
   /**
@@ -1046,6 +1088,107 @@ class Game {
         new THREE.MeshBasicMaterial({ color: 0xffd700 })
       ));
       group.userData = { powerupType: type, isRare: true };
+      return group;
+    }
+
+    if (type === 'mystery_box') {
+      const box = new THREE.Mesh(
+        new THREE.BoxGeometry(0.72, 0.72, 0.72),
+        new THREE.MeshStandardMaterial({
+          color: 0x9c27b0,
+          emissive: 0xba68c8,
+          emissiveIntensity: 0.65,
+          metalness: 0.4,
+          roughness: 0.3
+        })
+      );
+      box.position.y = 0.95;
+      group.add(box);
+
+      const ribbon = new THREE.Mesh(
+        new THREE.BoxGeometry(0.75, 0.75, 0.16),
+        new THREE.MeshBasicMaterial({ color: 0xffd700 })
+      );
+      ribbon.position.y = 0.95;
+      group.add(ribbon);
+
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.55, 0.06, 8, 20),
+        new THREE.MeshBasicMaterial({ color: 0xffeb3b })
+      );
+      ring.position.y = 0.95;
+      group.add(ring);
+      group.userData = { powerupType: type, isMystery: true };
+      return group;
+    }
+
+    if (type === 'chingchi') {
+      const rickshawBody = new THREE.Mesh(
+        new THREE.BoxGeometry(0.75, 0.5, 0.9),
+        new THREE.MeshStandardMaterial({
+          color: 0x00e676,
+          emissive: 0x00c853,
+          emissiveIntensity: 0.5,
+          metalness: 0.6,
+          roughness: 0.2
+        })
+      );
+      rickshawBody.position.y = 0.85;
+      group.add(rickshawBody);
+
+      const canopy = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.42, 0.45, 0.15, 12),
+        new THREE.MeshBasicMaterial({ color: 0xffd600 })
+      );
+      canopy.position.y = 1.15;
+      group.add(canopy);
+
+      const halo = new THREE.Mesh(
+        new THREE.TorusGeometry(0.75, 0.06, 8, 20),
+        new THREE.MeshBasicMaterial({ color: 0xffd600 })
+      );
+      halo.rotation.x = Math.PI / 2;
+      halo.position.y = 0.85;
+      group.add(halo);
+
+      group.userData = { powerupType: type, isChingchi: true };
+      return group;
+    }
+
+    if (type === 'jetpack') {
+      const rocketKettle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.24, 0.28, 0.68, 12),
+        new THREE.MeshStandardMaterial({
+          color: 0x00e5ff,
+          emissive: 0x00b0ff,
+          emissiveIntensity: 0.6,
+          metalness: 0.8,
+          roughness: 0.2
+        })
+      );
+      rocketKettle.position.y = 0.95;
+      group.add(rocketKettle);
+
+      const nozzleL = new THREE.Mesh(
+        new THREE.ConeGeometry(0.12, 0.24, 8),
+        new THREE.MeshBasicMaterial({ color: 0xff9100 })
+      );
+      nozzleL.rotation.x = Math.PI;
+      nozzleL.position.set(-0.2, 0.6, 0);
+      group.add(nozzleL);
+
+      const nozzleR = nozzleL.clone();
+      nozzleR.position.x = 0.2;
+      group.add(nozzleR);
+
+      const wings = new THREE.Mesh(
+        new THREE.BoxGeometry(0.85, 0.05, 0.25),
+        new THREE.MeshBasicMaterial({ color: 0xffd700 })
+      );
+      wings.position.y = 0.95;
+      group.add(wings);
+
+      group.userData = { powerupType: type, isJetpack: true };
       return group;
     }
 
@@ -1487,7 +1630,7 @@ class Game {
 
     this.runnerWaveCount += 1;
     if (this.runnerWaveCount % 3 === 0) {
-      const pTypes = ['cng', 'shield', 'magnet', 'chai', 'jump'];
+      const pTypes = ['chingchi', 'jetpack', 'mystery_box', 'cng', 'shield', 'magnet', 'chai', 'jump'];
       const chosenType = pTypes[this.runnerPowerupDropCount % pTypes.length];
       const blockedLanes = [
         ...this.runnerObstacles.slice(obstacleStartIndex)
@@ -2419,7 +2562,11 @@ class Game {
     if (this.isNascarSuperSpeed) {
       speed *= 2.2;
     }
-    if (this.nitroTimer > 0) {
+    if (this.chingchiTimer > 0) {
+      speed *= 2.2;
+    } else if (this.jetpackTimer > 0) {
+      speed *= 1.85;
+    } else if (this.nitroTimer > 0) {
       speed *= 2.1;
     } else if (this.turboTimer > 0 || this.isBoosting) {
       speed *= 1.45;
@@ -2486,17 +2633,29 @@ class Game {
         this.player.position.x * horizontalCameraFollow,
         Math.min(1.0, dt * 6.0)
       );
-      this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, 2.85 + (this.runnerCameraLift || 0), cameraFollow);
+      this.camera.position.y = THREE.MathUtils.lerp(
+        this.camera.position.y,
+        2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0),
+        cameraFollow
+      );
       this.camera.position.z = this.player.position.z + 5.2;
       this.camera.lookAt(
         this.player.position.x * horizontalLookAhead,
-        1.25,
+        1.25 + (this.jetpackTimer > 0 ? 2.5 : 0),
         this.player.position.z - 18.0
       );
     }
 
-    // 4. Update Vertical Traversal (Jumps)
-    if (!this.player.isGrounded || this.player.position.y > 0 || this.player.velocityY !== 0) {
+    // 4. Update Vertical Traversal (Jumps & Jetpack Sky Flight)
+    if (this.jetpackTimer > 0) {
+      this.jetpackTimer = Math.max(0, this.jetpackTimer - dt);
+      const skyAltitude = 4.8;
+      this.player.position.y = THREE.MathUtils.lerp(this.player.position.y, skyAltitude, dt * 5.0);
+      this.player.isGrounded = false;
+      this.player.group.position.y = this.player.position.y;
+      this.particles.createSkidSmoke(new THREE.Vector3(this.player.position.x, this.player.position.y - 0.4, this.player.position.z + 0.3), 1);
+      this.particles.createDevourSparkles(new THREE.Vector3(this.player.position.x, this.player.position.y - 0.4, this.player.position.z + 0.3), 2, 0x00e5ff);
+    } else if (!this.player.isGrounded || this.player.position.y > 0 || this.player.velocityY !== 0) {
       this.player.velocityY -= 18.0 * dt;
       this.player.position.y += this.player.velocityY * dt;
       if (this.player.position.y <= 0) {
@@ -2505,6 +2664,11 @@ class Game {
         this.player.isGrounded = true;
       }
       this.player.group.position.y = this.player.position.y;
+    }
+
+    if (this.chingchiTimer > 0) {
+      this.chingchiTimer = Math.max(0, this.chingchiTimer - dt);
+      this.particles.createDevourSparkles(this.player.position, 1, 0xffd600);
     }
 
     // 5. Update Slide Timer & Mesh Crouch Scale
@@ -2578,9 +2742,18 @@ class Game {
         this.awardRunnerXP(100);
         if (this.coins >= 1000) this.unlockRunnerBadge('clean_green');
         this.score += 100;
-        audio.playCoin();
-        this.particles.createDevourSparkles(coin.mesh.position, 6, 0xffd700);
-        this.ui.showFloatingFeedback('+50 Rs', coin.mesh.position, '#ffd700');
+
+        const nowCoin = performance.now();
+        if (nowCoin - (this.lastCoinPickupTime || 0) < 650) {
+          this.coinComboCount = Math.min(8, (this.coinComboCount || 0) + 1);
+        } else {
+          this.coinComboCount = 1;
+        }
+        this.lastCoinPickupTime = nowCoin;
+        audio.playMelodicCoin(this.coinComboCount);
+
+        this.particles.createDevourSparkles(coin.mesh.position, 8, 0xffd700);
+        this.ui.showFloatingFeedback(`+${coin.value || 50} Rs`, coin.mesh.position, '#ffd700');
         this.scene.remove(coin.mesh);
         this.runnerCoins.splice(i, 1);
       }
@@ -2596,7 +2769,54 @@ class Game {
       const pathDistSq = runnerSegmentDistanceSquared3D(p.mesh.position, previousRunnerPosition, pPos);
       if (dist < 1.55 || pathDistSq < 1.55 * 1.55) {
         const type = p.type;
-        if (type === 'cng') {
+        if (type === 'chingchi') {
+          this.chingchiTimer = 9.0;
+          this.player.isBoosting = true;
+          this.activePowerUp = { title: 'Super Chingchi Smash 🛺', timer: 9.0 };
+          audio.playMusicalHorn();
+          this.cameraShakeTimer = 0.25;
+          this.particles.createCelebrationConfetti(this.player.position, 28);
+          this.ui.showAnnouncement('🛺 SUPER CHINGCHI SMASH! Plow through everything! 💥', '#ffd600');
+          this.ui.showFloatingFeedback('🛺 CHINGCHI SMASH!', this.player.position, '#ffd600');
+        } else if (type === 'jetpack') {
+          this.jetpackTimer = 8.0;
+          this.activePowerUp = { title: 'Chai Rocket Jetpack 🚀', timer: 8.0 };
+          audio.playJetpackWhoosh();
+          this.cameraShakeTimer = 0.2;
+          this.particles.createCelebrationConfetti(this.player.position, 28);
+          this.ui.showAnnouncement('🚀 CHAI ROCKET JETPACK! Sky Flight Above Traffic! ✨', '#00e5ff');
+          this.ui.showFloatingFeedback('🚀 SKY FLIGHT!', this.player.position, '#00e5ff');
+          for (let s = 1; s <= 8; s++) {
+            const skyZ = pPos.z - s * 5.0;
+            const skyCoin = this.createRupeeCoinMesh();
+            skyCoin.position.set(this.targetLaneX, 5.0, skyZ);
+            this.scene.add(skyCoin);
+            this.runnerCoins.push({ mesh: skyCoin, x: this.targetLaneX, z: skyZ, value: 100 });
+          }
+        } else if (type === 'mystery_box') {
+          audio.playMysteryBox();
+          this.particles.createCelebrationConfetti(p.mesh.position, 35);
+          const roll = Math.random();
+          if (roll < 0.45) {
+            this.coins += 1000;
+            this.score += 1000;
+            this.awardRunnerXP(1000);
+            this.ui.showAnnouncement('🎁 MYSTERY CRATE JACKPOT! +1,000 RS! 💰', '#ffd700');
+            this.ui.showFloatingFeedback('💰 +1,000 RS JACKPOT!', this.player.position, '#ffd700');
+          } else if (roll < 0.70) {
+            saveManager.addReviveToken();
+            this.ui.updateReviveTokenCount(saveManager.getReviveTokenCount());
+            this.ui.showAnnouncement('🎁 MYSTERY CRATE: FREE RESCUE TOKEN! ✨', '#00e5ff');
+            this.ui.showFloatingFeedback('✨ RESCUE TOKEN!', this.player.position, '#00e5ff');
+          } else {
+            this.chingchiTimer = 7.0;
+            this.player.isBoosting = true;
+            this.activePowerUp = { title: 'Surprise Chingchi 🛺', timer: 7.0 };
+            audio.playMusicalHorn();
+            this.ui.showAnnouncement('🎁 MYSTERY CRATE: SECRET CHINGCHI TURBO! 🛺💨', '#76ff03');
+            this.ui.showFloatingFeedback('🛺 SURPRISE CHINGCHI!', this.player.position, '#76ff03');
+          }
+        } else if (type === 'cng') {
           this.nitroTimer = 6.0;
           this.player.isBoosting = true;
           this.activePowerUp = { title: 'CNG Turbo Nitro ⚡', timer: 6.0 };
@@ -2783,7 +3003,18 @@ class Game {
           const closestRelativeZ = relativeStartZ + relativeDz * closestT;
           const sweptDistanceSq = closestRelativeX * closestRelativeX + closestRelativeZ * closestRelativeZ;
           if ((absDz < 1.6 && distX < 1.3) || sweptDistanceSq < 1.3 * 1.3) {
-            if (this.nitroTimer > 0) {
+            if (this.chingchiTimer > 0) {
+              v.isHit = true;
+              audio.playSmashObstacle();
+              this.cameraShakeTimer = 0.35;
+              this.particles.createCelebrationConfetti(v.mesh.position, 28);
+              this.particles.createImpactDust(v.mesh.position, 18);
+              this.ui.showAnnouncement(`🛺💥 CHINGCHI RAM! ${v.label} OBLITERATED! +1,000 PTS`, '#ffd600');
+              this.ui.showFloatingFeedback('🛺 RAMMED! +1000', this.player.position, '#ffd600');
+              this.awardRunnerXP(1000);
+              this.score += 1000;
+              this.scene.remove(v.mesh);
+            } else if (this.nitroTimer > 0) {
               v.isHit = true;
               audio.playCrash();
               this.particles.createDevourSparkles(v.mesh.position, 25, 0xffd700);
@@ -3270,6 +3501,10 @@ class Game {
     this.nitroTimer = 0;
     this.shieldTimer = 0;
     this.superJumpTimer = 0;
+    this.chingchiTimer = 0;
+    this.jetpackTimer = 0;
+    this.coinComboCount = 0;
+    this.lastCoinPickupTime = 0;
     this.runnerInvulnerableTimer = 0;
     this.activePowerUp = null;
     this.isNascarSuperSpeed = false;
