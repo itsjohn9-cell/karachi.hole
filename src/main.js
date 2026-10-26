@@ -938,12 +938,16 @@ export class Game {
       this.isChaserClose = true;
       this.chaserActiveTimer = 5.0;
       this.chaserRecoveryTimer = 5.0;
-      this.targetChaserDistance = 3.0;
+      const flankSign = (this.player?.position?.x || 0) > 0.8 ? -1 : ((this.player?.position?.x || 0) < -0.8 ? 1 : 1);
+      this.chaserFlankSign = flankSign;
+      this.targetChaserDistance = 2.8;
       this.targetChaserOpacity = 1.0;
-      this.chaserDistance = THREE.MathUtils.lerp(this.chaserDistance || 15.0, 3.5, 0.75);
+      this.chaserDistance = THREE.MathUtils.lerp(this.chaserDistance || 15.0, 3.2, 0.75);
       this.chaserOpacity = Math.max(this.chaserOpacity || 0, 0.9);
       if (this.chaserEntity) {
         this.chaserEntity.visible = true;
+        const startX = (this.player?.position?.x || 0) + (flankSign * (this.laneWidth || 2.4) * 0.78);
+        this.chaserEntity.position.set(startX, 0, (this.player?.position?.z || 0) + 2.8);
         this.setMeshOpacity(this.chaserEntity, this.chaserOpacity);
       }
 
@@ -2268,17 +2272,17 @@ export class Game {
       transparent: true,
       opacity: 0
     });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1.25, 4.6), bodyMat);
-    body.position.y = 0.95;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.95, 3.4), bodyMat);
+    body.position.y = 0.75;
     group.add(body);
 
     // Navy blue side markings
     const stripeMat = new THREE.MeshBasicMaterial({ color: 0x0d2b5c, transparent: true, opacity: 0 });
-    const stripeL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.32, 4.2), stripeMat);
-    stripeL.position.set(-1.16, 0.95, 0);
+    const stripeL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.24, 3.2), stripeMat);
+    stripeL.position.set(-0.96, 0.75, 0);
     group.add(stripeL);
-    const stripeR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.32, 4.2), stripeMat);
-    stripeR.position.set(1.16, 0.95, 0);
+    const stripeR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.24, 3.2), stripeMat);
+    stripeR.position.set(0.96, 0.75, 0);
     group.add(stripeR);
 
     // 2. Cabin & Windshield
@@ -2289,48 +2293,48 @@ export class Game {
       transparent: true,
       opacity: 0
     });
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.95, 2.6), glassMat);
-    cab.position.set(0, 1.85, -0.15);
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.75, 1.9), glassMat);
+    cab.position.set(0, 1.45, -0.1);
     group.add(cab);
 
     // 3. Emergency Police Light Bar on Roof
     const flasherBar = new THREE.Mesh(
-      new THREE.BoxGeometry(1.6, 0.18, 0.32),
+      new THREE.BoxGeometry(1.3, 0.14, 0.24),
       new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, transparent: true, opacity: 0 })
     );
-    flasherBar.position.set(0, 2.4, -0.15);
+    flasherBar.position.set(0, 1.88, -0.1);
     group.add(flasherBar);
 
     const redLightMat = new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: 0 });
-    const redLight = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.28), redLightMat);
-    redLight.position.set(-0.52, 2.42, -0.15);
+    const redLight = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.22), redLightMat);
+    redLight.position.set(-0.42, 1.9, -0.1);
     group.add(redLight);
 
     const blueLightMat = new THREE.MeshBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0 });
-    const blueLight = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.28), blueLightMat);
-    blueLight.position.set(0.52, 2.42, -0.15);
+    const blueLight = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.22), blueLightMat);
+    blueLight.position.set(0.42, 1.9, -0.1);
     group.add(blueLight);
 
     // 4. Chrome Bull-Bar Grille
     const grilleMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0 });
-    const grille = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.65, 0.25), grilleMat);
-    grille.position.set(0, 0.72, -2.35);
+    const grille = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.5, 0.2), grilleMat);
+    grille.position.set(0, 0.58, -1.72);
     group.add(grille);
 
     // 5. Headlights Beaming Forward
     const headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffee, transparent: true, opacity: 0 });
-    const hLeft = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.25, 0.1), headlightMat);
-    hLeft.position.set(-0.85, 0.85, -2.32);
+    const hLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.08), headlightMat);
+    hLeft.position.set(-0.68, 0.68, -1.71);
     group.add(hLeft);
-    const hRight = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.25, 0.1), headlightMat);
-    hRight.position.set(0.85, 0.85, -2.32);
+    const hRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.08), headlightMat);
+    hRight.position.set(0.68, 0.68, -1.71);
     group.add(hRight);
 
     // 6. 4 Wheels
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1f2421, roughness: 0.9, transparent: true, opacity: 0 });
-    const wheelGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.36, 12);
+    const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 12);
     wheelGeo.rotateZ(Math.PI / 2);
-    [[-1.18, 0.48, 1.3], [1.18, 0.48, 1.3], [-1.18, 0.48, -1.3], [1.18, 0.48, -1.3]].forEach(p => {
+    [[-0.98, 0.38, 1.0], [0.98, 0.38, 1.0], [-0.98, 0.38, -1.0], [0.98, 0.38, -1.0]].forEach(p => {
       const w = new THREE.Mesh(wheelGeo, wheelMat);
       w.position.set(...p);
       group.add(w);
@@ -2408,14 +2412,17 @@ export class Game {
       AvatarBuilder.triggerStumble(this.player.avatarMesh, 1.5);
     }
 
-    // Bring Chaser visible and right behind player (3 units)
-    this.targetChaserDistance = 3.0;
+    // Bring Chaser visible in adjacent flanking lane (2.8m behind, offset to side)
+    const flankSign = this.player.position.x > 0.8 ? -1 : (this.player.position.x < -0.8 ? 1 : 1);
+    this.chaserFlankSign = flankSign;
+    this.targetChaserDistance = 2.8;
     this.targetChaserOpacity = 1.0;
-    this.chaserDistance = 3.0;
+    this.chaserDistance = 2.8;
     this.chaserOpacity = 1.0;
     if (this.chaserEntity) {
       this.chaserEntity.visible = true;
-      this.chaserEntity.position.set(this.player.position.x, 0, this.player.position.z + 3.0);
+      const startX = this.player.position.x + (flankSign * (this.laneWidth || 2.4) * 0.78);
+      this.chaserEntity.position.set(startX, 0, this.player.position.z + 2.8);
       this.setMeshOpacity(this.chaserEntity, 1.0);
     }
 
@@ -3557,12 +3564,14 @@ export class Game {
       const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
       const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
       const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
+      const chaserCameraLift = this.isChaserClose ? 0.65 : 0;
+      const chaserCameraDist = this.isChaserClose ? 0.6 : 0;
       const targetCamX = this.player.position.x * horizontalCameraFollow;
-      const targetCamY = (this.player.position.y || 0) + 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0);
-      const targetCamZ = this.player.position.z + 5.2;
+      const targetCamY = (this.player.position.y || 0) + 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0) + chaserCameraLift;
+      const targetCamZ = this.player.position.z + 5.2 + chaserCameraDist;
       
       const targetLookX = this.player.position.x * horizontalLookAhead;
-      const targetLookY = (this.player.position.y || 0) + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0);
+      const targetLookY = (this.player.position.y || 0) + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0) + (this.isChaserClose ? 0.2 : 0);
       const targetLookZ = this.player.position.z - 18.0;
 
       if (Number.isNaN(targetLookX) || Number.isNaN(targetLookY) || Number.isNaN(targetLookZ)) {
@@ -4305,17 +4314,41 @@ export class Game {
         this.setMeshOpacity(this.chaserEntity, 0.0);
       } else {
         this.chaserEntity.visible = true;
-        this.setMeshOpacity(this.chaserEntity, THREE.MathUtils.clamp(this.chaserOpacity, 0, 1));
-        const chaserX = THREE.MathUtils.lerp(this.chaserEntity.position.x, pPos.x, dt * 10.0);
+
+        // Smart lateral flanking: keep chaser offset to the adjacent lane/flank
+        // so it never blocks the runner's line of sight or the road ahead.
+        let targetFlank = (this.laneWidth || 2.4) * 0.78;
+        if (pPos.x > 0.8) {
+          targetFlank = -targetFlank;
+        } else if (pPos.x < -0.8) {
+          targetFlank = targetFlank;
+        } else {
+          targetFlank = (this.chaserFlankSign || 1) * targetFlank;
+        }
+        this.chaserFlankSign = targetFlank >= 0 ? 1 : -1;
+
+        const targetX = this.isChaserClose ? (pPos.x + targetFlank) : pPos.x;
+        const chaserX = THREE.MathUtils.lerp(this.chaserEntity.position.x, targetX, dt * 8.0);
         const chaserZ = pPos.z + this.chaserDistance;
         const chaserY = this.getCorridorGroundHeight(chaserZ, chaserX);
         this.chaserEntity.position.set(chaserX, chaserY, chaserZ);
         this.chaserEntity.rotation.set(0, 0, 0);
 
+        // Line-of-sight & proximity transparency guard:
+        // If the chaser ever enters the player's direct line of sight or gets within camera near zone,
+        // fade it to ghost semi-transparency (0.25) so obstacles, lane markers, and the player are ALWAYS 100% visible.
+        const dxToPlayer = Math.abs(chaserX - pPos.x);
+        const distToCam = this.camera ? this.camera.position.distanceTo(this.chaserEntity.position) : 5.0;
+        let viewAlpha = this.chaserOpacity;
+        if (this.isChaserClose && (dxToPlayer < 0.95 || distToCam < 3.4)) {
+          viewAlpha = Math.min(viewAlpha, 0.25);
+        }
+        this.setMeshOpacity(this.chaserEntity, THREE.MathUtils.clamp(viewAlpha, 0, 1));
+
         if (this.chaserEntity.userData.redLight && this.chaserEntity.userData.blueLight) {
           const flashPhase = Math.floor(Date.now() / 120) % 2;
-          this.chaserEntity.userData.redLight.material.opacity = flashPhase === 0 ? this.chaserOpacity : this.chaserOpacity * 0.15;
-          this.chaserEntity.userData.blueLight.material.opacity = flashPhase === 1 ? this.chaserOpacity : this.chaserOpacity * 0.15;
+          this.chaserEntity.userData.redLight.material.opacity = flashPhase === 0 ? viewAlpha : viewAlpha * 0.15;
+          this.chaserEntity.userData.blueLight.material.opacity = flashPhase === 1 ? viewAlpha : viewAlpha * 0.15;
         }
       }
     }
@@ -8808,8 +8841,21 @@ export class Game {
 
     if (this.chaserEntity && this.isChaserClose) {
       this.chaserEntity.visible = true;
-      this.setMeshOpacity(this.chaserEntity, this.chaserOpacity);
-      this.chaserEntity.position.set(x - fx * this.chaserDistance, 0, z - fz * this.chaserDistance);
+      const turnFlankSign = this.chaserFlankSign || 1;
+      const flankX = -fz * turnFlankSign * 1.5;
+      const flankZ = fx * turnFlankSign * 1.5;
+      const chaserX = x - fx * this.chaserDistance + flankX;
+      const chaserZ = z - fz * this.chaserDistance + flankZ;
+      const chaserY = this.getCorridorGroundHeight(chaserZ, chaserX);
+
+      const distToPlayer = Math.hypot(chaserX - x, chaserZ - z);
+      const distToCam = this.camera ? this.camera.position.distanceTo(new THREE.Vector3(chaserX, chaserY, chaserZ)) : 5.0;
+      let viewAlpha = this.chaserOpacity;
+      if (distToCam < 3.2 || distToPlayer < 1.2) {
+        viewAlpha = Math.min(viewAlpha, 0.25);
+      }
+      this.setMeshOpacity(this.chaserEntity, THREE.MathUtils.clamp(viewAlpha, 0, 1));
+      this.chaserEntity.position.set(chaserX, chaserY, chaserZ);
       this.chaserEntity.rotation.y = Math.PI + angle;
     }
 
