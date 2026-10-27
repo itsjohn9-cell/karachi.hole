@@ -131,7 +131,7 @@ async function publish() {
     const releaseNotes = [
       {
         language: 'en-US',
-        text: 'Smoother Karachi runs with improved lane movement, fast-fall slides, skyline and road details. Fixed bus-surfing errors, unfair jump stumbles, restart and revive glitches, near-miss rewards and run-score displays. Improved memory use during longer runs.'
+        text: 'Removed the police pursuer. Fixed raised roads hiding the runner at intersections, smoother turn entry and exit across all lanes, and camera continuity. Confirmed turns now stay queued when dodging. Missed and wrong turns still cost a heart, with clearer warnings and longer damage-cause messages.'
       }
     ];
 

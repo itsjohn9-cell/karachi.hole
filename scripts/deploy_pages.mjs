@@ -44,7 +44,7 @@ try {
     console.log('✔ [DEPLOY] Website bundle is identical to current gh-pages. No commit needed.');
   } else {
     const headCommit = execSync('git rev-parse --short HEAD').toString().trim();
-    execSync(`git -C "${tempDir}" commit -m "Deploy website from ${headCommit} (web admin & security gate)"`, { stdio: 'inherit' });
+    execSync(`git -C "${tempDir}" commit -m "Deploy website from ${headCommit}" -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"`, { stdio: 'inherit' });
     execSync(`git push origin HEAD:gh-pages`, { cwd: tempDir, stdio: 'inherit' });
     console.log('🎉 [DEPLOY] Successfully deployed to GitHub Pages (gh-pages)!');
   }

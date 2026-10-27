@@ -160,3 +160,90 @@ AAB build or Play publication is included. The already-published Android version
   buttons, horn activation feedback, lane switching and return to home.
 - Deployment worktree removed; only the pre-existing untracked frame directories
   remain. Play Console was not changed.
+
+### Follow-up Android publication
+
+The user subsequently approved **2.2.17 (39)** for **internal** and **alpha**
+testing only.
+
+- Signed release AAB build and signature verification passed; generated and
+  packaged manifests confirm `pk.karachi.runner`, version 39, version name
+  2.2.17 and target SDK 36.
+- Bundle SHA-256:
+  `41805d861622ec6c58adb1d0177b6056f5049d707270c2db1ceb4d6c4ffeb74f`.
+- Bundle size: 3,557,512 bytes. Packaged web assets match the local release build;
+  Capacitor-generated files and the omitted `.nojekyll` were checked separately.
+- Play bundle upload, edit validation and publication commit succeeded.
+- An independent fresh edit verified internal and alpha both contain release
+  `2.2.17 (39)`, status `completed`, and the uploaded bundle hash matches.
+  The verification edit was deleted without committing it.
+- Beta and production remain empty and unchanged. No website redeployment or
+  Git push was performed for this Android release; version metadata, release
+  notes and these results remain local pending separate GitHub push approval.
+
+Play API `completed` status confirms the track release configuration, not that
+Google review/processing has finished or every tester can already download it.
+
+## Second follow-up: turn continuity and removing the police pursuer
+
+These changes were approved for GitHub main, the website and Google Play
+internal/alpha publication as **2.2.18 (40)**. Verification is recorded below.
+The user explicitly chose to retain heart penalties for missed/wrong turns,
+with unmistakable warnings and damage explanations.
+
+| Finding | Correction |
+| --- | --- |
+| Police van remained a confusing visual threat after capture deaths were removed. | Removed the pursuer model, spawn/update paths, shadow, chase camera changes and obsolete capture resolution. No pursuer returns after restart or repeated grazes. |
+| Turns could jump sideways or shift the street/camera at the exit, especially outside the centre lane. | Calculate the arc and outgoing street frame from actual entry coordinates and selected lane, transform the camera into that frame, and clear stale lane interpolation/banking. Blend the entry camera rather than snapping it. |
+| Missed inputs could resolve after crossing the corner, producing an invalid tight arc. | Clamp forward travel to the queued-turn or last-input boundary, including boosted/large frames, and resolve missed turns before the junction. |
+| A lane dodge could cancel an already-confirmed turn. | Preserve queued turn input; award its bonus only once. |
+| Raised straight roads overlapped flat intersections, hiding the runner behind asphalt/ground. | Rebuild existing approach chunks with a continuous transition to ground level, keep newly generated nearby chunks flat, and realign affected objects/player/camera to the new terrain. |
+| Heart-loss messages were brief and could immediately be replaced by rewards or heading updates. | Show the actual cause, one-heart cost and remaining hearts for four seconds at higher priority. The turn guide explicitly states the miss penalty; help matches the no-pursuer behavior. |
+
+### Repeated two-minute rendered audit
+
+An initial 120.257-second run revealed the raised-road obstruction in its
+mid-turn screenshot despite clean runtime/error metrics. The terrain fix was
+then tested and the entire real-time audit repeated in isolated Chrome:
+
+- Duration: **120.175 seconds**, **7,198 rendered frames**, approximately **59.90 FPS**.
+- Distance: **2,303 m**; four turns in both directions, including an outer-lane turn.
+- No captured runtime errors, police pursuer or automatic restarts.
+- Two actual heart losses: **Low-Hanging Bridge Sign** at 643 m and
+  **Open Gutter** at 1,216 m. These were hazard impacts, not police capture.
+- One heart remained. Normal damage was enabled; no invincibility.
+- Mid-turn screenshot inspected: runner and road visible, with no raised-road
+  obstruction. This is automated gameplay observation, not physical-device or
+  human-playtest certification.
+- GPU geometries/textures changed from 597/55 to 745/67 as scenery changed;
+  those samples alone do not prove leak freedom. TC-58 separately verifies
+  resource cleanup.
+
+### Re-audit validation
+
+- Full browser/build runner: **90/90** checks, including new TC-64 through TC-66
+  and all 14 HUD layout sizes.
+- Analytics **7/7**, operations **15/15**, supplemental death/economy/W-11
+  tests **18/18**: **130 passing checks** in total.
+- Production web build and whitespace/diff validation passed.
+- Existing Three.js clock-deprecation and large-bundle warnings remain.
+- Android 2.2.17 (39) does **not** contain this second follow-up; version 40 does.
+
+### Approved 2.2.18 (40) publication
+
+- Release metadata checks TC-01/02 passed after the version bump; publisher and
+  Pages deployment scripts passed syntax checks and `git diff --check` passed.
+- Signed release AAB built successfully. JAR signature verified; merged release
+  manifests confirm version code 40, version name 2.2.18 and target SDK 36.
+- Bundle size: **3,556,190 bytes**; SHA-256:
+  `b3eb0e5c8008a46052226c88a32df2309ebc798875affe123b3f0634b77f9df5`.
+- All 20 application files from the web build match the AAB byte-for-byte.
+  The Pages-only `.nojekyll` marker is intentionally excluded by Android;
+  packaged Cordova files match the Capacitor asset copies.
+- Google Play upload, edit validation and commit succeeded. A fresh independent
+  edit verified **internal** and **alpha** at **2.2.18 (40)**, both `completed`,
+  and confirmed the uploaded bundle hash above. Beta and production remain empty.
+- Google review, processing and tester availability may still be pending despite
+  the API `completed` release status.
+- GitHub source and Pages deployment verification will be appended after their
+  approved publication completes.

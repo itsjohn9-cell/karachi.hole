@@ -79,6 +79,7 @@ const RUNNER_AREA_THRESHOLDS = [3300, 6700, 10000, 13400, 16700, 20000];
 const RUNNER_SPEEDS = { easy: 15, standard: 19, hard: 22 };
 const RUNNER_TURN_INPUT_METERS = 45;
 const RUNNER_TURN_ENTRY_METERS = 14;
+const RUNNER_TURN_LAST_INPUT_METERS = 6.5;
 
 function runnerSegmentDistanceSquared(x, z, start, end) {
   const dx = end.x - start.x;
@@ -197,7 +198,6 @@ export class Game {
     this.slideTimer = 0;
     this.isFastFalling = false;
     this.playerBlobShadow = null;
-    this.chaserBlobShadow = null;
     this.laneChangeTimer = 0.18;
     this.laneChangeDuration = 0.18;
     this.laneChangeStartX = 0;
@@ -238,7 +238,6 @@ export class Game {
     this.runnerTurnsCompleted = 0;
     this.runnerJunctionIndex = 0;
     this.runnerCameraLift = 0;
-    this.chaserActiveTimer = 0;
     this.nextJunctionAt = 150;
     this.currentMilestone = getKarachiNeighborhoodName(1);
     this.milestones = [
@@ -871,19 +870,8 @@ export class Game {
     this.nextSurfingBusDist = 260;
     this.isDrafting = false;
     this.draftCharge = 0;
-    this.isChaserClose = false;
-    this.chaserActiveTimer = 0;
-    this.chaserRecoveryTimer = 0;
     this.runnerStumbleTimer = 0;
     this.doubleCoinsTimer = 0;
-    this.chaserDistance = 15.0;
-    this.targetChaserDistance = 15.0;
-    this.chaserOpacity = 0.0;
-    this.targetChaserOpacity = 0.0;
-    if (this.chaserEntity) {
-      this.chaserEntity.visible = false;
-      this.setMeshOpacity(this.chaserEntity, 0.0);
-    }
     if (typeof audio !== 'undefined' && audio.resetMusicPitch) {
       audio.resetMusicPitch();
     }
@@ -984,6 +972,11 @@ export class Game {
     });
     obstacle.isHit = true;
     this.hearts = Math.max(0, this.hearts - 1);
+    this.ui.showAnnouncement(
+      `❌ ${reason} — 1 HEART LOST · ${this.hearts} LEFT`,
+      '#ff1744',
+      { priority: 1, duration: 4000 }
+    );
     audio.playCrash();
     audio.vibrate([120, 60, 160]);
     this.cameraShakeTimer = 0.45;
@@ -993,23 +986,6 @@ export class Game {
     if (obstacle.mesh) this.disposeRunnerObject(obstacle.mesh);
 
     if (this.hearts > 0) {
-      // Alert and bring Chaser (Pursuer) close
-      this.isChaserClose = true;
-      this.chaserActiveTimer = 5.0;
-      this.chaserRecoveryTimer = 5.0;
-      const flankSign = (this.player?.position?.x || 0) > 0.8 ? -1 : ((this.player?.position?.x || 0) < -0.8 ? 1 : 1);
-      this.chaserFlankSign = flankSign;
-      this.targetChaserDistance = 2.8;
-      this.targetChaserOpacity = 1.0;
-      this.chaserDistance = THREE.MathUtils.lerp(this.chaserDistance || 15.0, 3.2, 0.75);
-      this.chaserOpacity = Math.max(this.chaserOpacity || 0, 0.9);
-      if (this.chaserEntity) {
-        this.chaserEntity.visible = true;
-        const startX = (this.player?.position?.x || 0) + (flankSign * (this.laneWidth || 2.4) * 0.78);
-        this.chaserEntity.position.set(startX, 0, (this.player?.position?.z || 0) + 2.8);
-        this.setMeshOpacity(this.chaserEntity, this.chaserOpacity);
-      }
-
       // Grant 2.0s invulnerability grace window so player has time to orient themselves
       this.runnerInvulnerableTimer = 2.0;
 
@@ -1018,15 +994,8 @@ export class Game {
       if (rLower.includes('wire')) hint = 'Slide [S]!';
       else if (rLower.includes('gutter') || rLower.includes('digging') || rLower.includes('sewage')) hint = 'Jump [W/Space]!';
 
-      // Update UI & Particles to show pursuer closing in
       this.particles.createSkidSmoke(this.player.position, 16);
       this.particles.createImpactDust(this.player.position, 12);
-      this.ui.showAnnouncement(
-        isTurnMistake
-          ? `❌ WRONG TURN — 1 HEART LOST · ${this.hearts} LEFT`
-          : `⚠️ ${reason} · 1 HEART LOST · ${this.hearts} LEFT`,
-        '#ff1744'
-      );
       this.ui.showFloatingFeedback(`⚠️ ${hint} · 2s GRACE`, this.player.position, '#ff1744');
 
       // Trigger Stumble: reduce currentSpeed to baseSpeed * 0.75 for 1.5 seconds
@@ -1114,18 +1083,6 @@ export class Game {
       return 'gutter';
     }
 
-    // 3. Chaser Capture death
-    if (
-      obsType === 'chaser_capture' ||
-      rLower.includes('police') ||
-      rLower.includes('captured') ||
-      rLower.includes('pursuer') ||
-      rLower.includes('rival') ||
-      rLower.includes('chaser')
-    ) {
-      return 'chaser';
-    }
-
     // 2. Vehicle / Wall Crash (default for all obstacles/traffic/walls/scaffolds)
     return 'vehicle_crash';
   }
@@ -1134,8 +1091,7 @@ export class Game {
    * Game Over when runner runs out of hearts with hazard-specific death resolutions:
    * 1. Gutter/Manhole Death: Player drops instantly on Y-axis into void with heavy splash, camera looks down into hole.
    * 2. Vehicle/Wall Crash: Player stops instantly, backward ragdoll/knockback, camera jolts violently.
-   * 3. Chaser Capture: Player trips on asphalt, camera whips 180 degrees backward revealing Pursuer looming over them.
-   * 4. Audio: Dynamic background music pitch resets on death.
+   * Audio: Dynamic background music pitch resets on death.
    */
   triggerTempleRunGameOver(reason, obstacle = null) {
     this.isGameOver = true;
@@ -1162,8 +1118,6 @@ export class Game {
 
     if (deathType === 'gutter') {
       this.executeGutterDeathResolution();
-    } else if (deathType === 'chaser') {
-      this.executeChaserCaptureDeathResolution();
     } else {
       this.executeVehicleCrashDeathResolution();
     }
@@ -1311,73 +1265,6 @@ export class Game {
     }, 33);
   }
 
-  /**
-   * 3. Chaser Capture: Player trips on the asphalt, the camera whips 180 degrees to face backward,
-   * revealing the Pursuer (Police Mobile / Rival) looming over them.
-   */
-  executeChaserCaptureDeathResolution() {
-    this.cancelRunnerDeathAnimation();
-    audio.playBrakeScreech();
-    audio.playGameOver();
-
-    if (this.player) {
-      this.player.currentSpeed = 0;
-    }
-
-    // Skid smoke on asphalt
-    this.particles?.createSkidSmoke?.(this.player.position, 28);
-    this.particles?.createImpactDust?.(this.player.position, 16);
-
-    if (typeof AvatarBuilder !== 'undefined' && AvatarBuilder.triggerTripAndFall && this.player?.avatarMesh) {
-      AvatarBuilder.triggerTripAndFall(this.player.avatarMesh);
-    }
-
-    const pPos = this.player.position;
-    const groundY = this.getCorridorGroundHeight(pPos.z, pPos.x);
-
-    // Reveal and place Pursuer (Police Mobile / Rival) directly behind and looming over player
-    this.isChaserClose = true;
-    if (this.chaserEntity) {
-      this.chaserEntity.visible = true;
-      this.setMeshOpacity(this.chaserEntity, 1.0);
-      this.chaserEntity.position.set(pPos.x, groundY, pPos.z + 2.5);
-      this.chaserEntity.rotation.y = 0; // Looming towards player
-    }
-
-    // Whip camera 180 degrees to face backward (+Z)
-    // Camera is positioned ahead of the fallen player looking back at player & looming pursuer!
-    const targetCamX = pPos.x;
-    const targetCamY = groundY + 1.35;
-    const targetCamZ = pPos.z - 3.4; // 3.4m ahead in -Z, looking back (+Z)
-    const targetLookX = pPos.x;
-    const targetLookY = groundY + 1.25;
-    const targetLookZ = pPos.z + 2.2; // Pointed at player and looming chaser mobile
-
-    let elapsed = 0;
-    const duration = 1.2;
-
-    this.runnerDeathAnimation = setInterval(() => {
-      elapsed += 0.033;
-      const t = Math.min(1.0, elapsed / duration);
-      const easeWhip = 1 - Math.pow(1 - t, 3); // cubic whip transition
-
-      if (this.player?.avatarMesh) {
-        AvatarBuilder.updateAnimation?.(this.player.avatarMesh, false, 0.033, 1.0, false);
-      }
-
-      if (this.camera) {
-        this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, easeWhip);
-        this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, easeWhip);
-        this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetCamZ, easeWhip);
-        this.camera.lookAt(targetLookX, targetLookY, targetLookZ);
-      }
-
-      if (t >= 1.0) {
-        this.cancelRunnerDeathAnimation();
-      }
-    }, 33);
-  }
-
   cancelRunnerDeathAnimation() {
     if (this.runnerDeathAnimation !== undefined) {
       clearInterval(this.runnerDeathAnimation);
@@ -1456,20 +1343,8 @@ export class Game {
       }
     }
 
-    this.isChaserClose = false;
-    this.chaserActiveTimer = 0;
-    this.chaserRecoveryTimer = 0;
     this.runnerStumbleTimer = 0;
     this.doubleCoinsTimer = 0;
-    this.chaserDistance = 15.0;
-    this.targetChaserDistance = 15.0;
-    this.chaserOpacity = 0.0;
-    this.targetChaserOpacity = 0.0;
-    if (this.chaserEntity) {
-      this.chaserEntity.position.set(0, 0, pZ + 15.0);
-      this.chaserEntity.visible = false;
-      this.setMeshOpacity(this.chaserEntity, 0.0);
-    }
 
     this.particles.createCelebrationConfetti(this.player.position, 35);
     this.particles.createDevourSparkles(this.player.position, 40, 0x76ff03);
@@ -2559,146 +2434,6 @@ export class Game {
     return group;
   }
 
-  createChaserPoliceMobile() {
-    const group = new THREE.Group();
-    group.name = 'Chaser-Police-Mobile';
-
-    // 1. Sindh Police Mobile Chassis (White & Navy Livery)
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0xf4f6f8,
-      roughness: 0.25,
-      metalness: 0.35,
-      transparent: true,
-      opacity: 0
-    });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.95, 3.4), bodyMat);
-    body.position.y = 0.75;
-    group.add(body);
-
-    // Navy blue side markings
-    const stripeMat = new THREE.MeshBasicMaterial({ color: 0x0d2b5c, transparent: true, opacity: 0 });
-    const stripeL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.24, 3.2), stripeMat);
-    stripeL.position.set(-0.96, 0.75, 0);
-    group.add(stripeL);
-    const stripeR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.24, 3.2), stripeMat);
-    stripeR.position.set(0.96, 0.75, 0);
-    group.add(stripeR);
-
-    // 2. Cabin & Windshield
-    const glassMat = new THREE.MeshStandardMaterial({
-      color: 0x1a2634,
-      roughness: 0.1,
-      metalness: 0.9,
-      transparent: true,
-      opacity: 0
-    });
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.75, 1.9), glassMat);
-    cab.position.set(0, 1.45, -0.1);
-    group.add(cab);
-
-    // 3. Emergency Police Light Bar on Roof
-    const flasherBar = new THREE.Mesh(
-      new THREE.BoxGeometry(1.3, 0.14, 0.24),
-      new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, transparent: true, opacity: 0 })
-    );
-    flasherBar.position.set(0, 1.88, -0.1);
-    group.add(flasherBar);
-
-    const redLightMat = new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: 0 });
-    const redLight = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.22), redLightMat);
-    redLight.position.set(-0.42, 1.9, -0.1);
-    group.add(redLight);
-
-    const blueLightMat = new THREE.MeshBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0 });
-    const blueLight = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.22), blueLightMat);
-    blueLight.position.set(0.42, 1.9, -0.1);
-    group.add(blueLight);
-
-    // 4. Chrome Bull-Bar Grille
-    const grilleMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0 });
-    const grille = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.5, 0.2), grilleMat);
-    grille.position.set(0, 0.58, -1.72);
-    group.add(grille);
-
-    // 5. Headlights Beaming Forward
-    const headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffee, transparent: true, opacity: 0 });
-    const hLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.08), headlightMat);
-    hLeft.position.set(-0.68, 0.68, -1.71);
-    group.add(hLeft);
-    const hRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.08), headlightMat);
-    hRight.position.set(0.68, 0.68, -1.71);
-    group.add(hRight);
-
-    // 5b. Headlight Projected Light Cones onto Asphalt
-    const beamL = this.createHeadlightBeam(0xfffae0, 14.0, 1.6);
-    beamL.position.set(-0.68, 0.65, -1.72);
-    beamL.rotation.x = -0.04;
-    group.add(beamL);
-
-    const beamR = this.createHeadlightBeam(0xfffae0, 14.0, 1.6);
-    beamR.position.set(0.68, 0.65, -1.72);
-    beamR.rotation.x = -0.04;
-    group.add(beamR);
-
-    // 6. 4 Wheels
-    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1f2421, roughness: 0.9, transparent: true, opacity: 0 });
-    const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 12);
-    wheelGeo.rotateZ(Math.PI / 2);
-    [[-0.98, 0.38, 1.0], [0.98, 0.38, 1.0], [-0.98, 0.38, -1.0], [0.98, 0.38, -1.0]].forEach(p => {
-      const w = new THREE.Mesh(wheelGeo, wheelMat);
-      w.position.set(...p);
-      group.add(w);
-    });
-
-    group.userData = { redLight, blueLight };
-    group.visible = false;
-    return group;
-  }
-
-  setMeshOpacity(obj, opacity) {
-    if (!obj) return;
-    obj.traverse(child => {
-      if (child.isMesh && child.material) {
-        if (Array.isArray(child.material)) {
-          child.material.forEach(m => {
-            m.transparent = true;
-            m.opacity = opacity;
-          });
-        } else {
-          child.material.transparent = true;
-          child.material.opacity = opacity;
-        }
-      }
-    });
-  }
-
-  initRunnerChaser() {
-    if (this.chaserEntity) {
-      this.disposeRunnerObject(this.chaserEntity);
-      this.chaserEntity = null;
-    }
-    this.chaserEntity = this.createChaserPoliceMobile();
-    this.chaserDistance = 15.0;
-    this.targetChaserDistance = 15.0;
-    this.chaserOpacity = 0.0;
-    this.targetChaserOpacity = 0.0;
-    this.isChaserClose = false;
-    this.chaserRecoveryTimer = 0.0;
-    this.runnerStumbleTimer = 0.0;
-
-    const pZ = this.player?.position.z ?? 60.0;
-    const pX = this.player?.position.x ?? 0.0;
-    this.chaserEntity.position.set(pX, 0, pZ + 15.0);
-    this.chaserEntity.visible = false;
-    this.setMeshOpacity(this.chaserEntity, 0.0);
-    this.scene.add(this.chaserEntity);
-
-    if (!this.chaserBlobShadow) {
-      this.chaserBlobShadow = this.createBlobShadow(2.1, 3.6);
-      if (this.chaserBlobShadow) this.scene.add(this.chaserBlobShadow);
-    }
-  }
-
   triggerRunnerStumble(obstacle, label) {
     if (!this.player || this.isGameOver) return;
 
@@ -2710,26 +2445,10 @@ export class Game {
     if (this.jetpackTimer > 0 || this.chingchiTimer > 0 || this.nitroTimer > 0) return;
 
     // Trigger Stumble:
-    this.isChaserClose = true;
-    this.chaserRecoveryTimer = 5.0; // 5 seconds of clean running to shake off chaser
     this.runnerStumbleTimer = 1.5;  // 1.5s 25% speed reduction
 
     if (typeof AvatarBuilder !== 'undefined' && AvatarBuilder.triggerStumble && this.player?.avatarMesh) {
       AvatarBuilder.triggerStumble(this.player.avatarMesh, 1.5);
-    }
-
-    // Bring Chaser visible in adjacent flanking lane (2.8m behind, offset to side)
-    const flankSign = this.player.position.x > 0.8 ? -1 : (this.player.position.x < -0.8 ? 1 : 1);
-    this.chaserFlankSign = flankSign;
-    this.targetChaserDistance = 2.8;
-    this.targetChaserOpacity = 1.0;
-    this.chaserDistance = 2.8;
-    this.chaserOpacity = 1.0;
-    if (this.chaserEntity) {
-      this.chaserEntity.visible = true;
-      const startX = this.player.position.x + (flankSign * (this.laneWidth || 2.4) * 0.78);
-      this.chaserEntity.position.set(startX, 0, this.player.position.z + 2.8);
-      this.setMeshOpacity(this.chaserEntity, 1.0);
     }
 
     audio.playTireScreech();
@@ -3054,7 +2773,6 @@ export class Game {
    * Initialize Infinite Procedural 3-Lane Corridor for Karachi Subway Run
    */
   initCorridorTerrain() {
-    if (!this.chaserEntity) this.initRunnerChaser();
     const baseZ = this.player?.position.z ?? 60.0;
     if (this.corridorChunks) {
       this.corridorChunks.forEach(chunk => this.disposeCorridorChunk(chunk));
@@ -3230,7 +2948,10 @@ export class Game {
         startElevation = 0;
       } else {
         const distToJunction = this.runnerJunction ? Math.abs(chunkZ - this.runnerJunction.z) : Infinity;
-        if (distToJunction < 130.0) {
+        if (this.runnerJunction?.kind === 'turn' && distToJunction < 100) {
+          slopeState = 'FLAT';
+          startElevation = 0;
+        } else if (distToJunction < 130.0) {
           // Approach to turn junction: level out back to 0
           if (startElevation > 0) slopeState = 'RAMP_DOWN';
           else if (startElevation < 0) slopeState = 'RAMP_UP';
@@ -3843,6 +3564,10 @@ export class Game {
 
     // 2. Fixed-Duration 180ms Eased Lane Switching (Subway Surfers signature snappiness)
     if (this.isAutoPilotActive) this.executeRunnerAutoPilot(dt);
+    if (this.runnerTurn) {
+      this.updateRunnerTurnAnimation(dt);
+      return;
+    }
     this.currentLane = THREE.MathUtils.clamp(Math.round(this.currentLane || 0), -1, 1);
     this.laneWidth = 3.2;
     this.targetLaneX = this.currentLane * this.laneWidth;
@@ -3879,8 +3604,13 @@ export class Game {
     }
 
     // 3. Forward Movement Along Street (Heading North towards -Z)
-    this.player.position.z -= speed * dt;
-    this.distanceMeters += speed * dt;
+    let travelled = speed * dt;
+    if (this.runnerJunction?.kind === 'turn' && !this.runnerJunction.resolved) {
+      const entry = this.runnerJunction.turnQueued ? RUNNER_TURN_ENTRY_METERS : RUNNER_TURN_LAST_INPUT_METERS;
+      travelled = Math.min(travelled, Math.max(0, this.player.position.z - this.runnerJunction.z - entry));
+    }
+    this.player.position.z -= travelled;
+    this.distanceMeters += travelled;
 
     // Funnel Tracking: Fire progression events every 500 meters to build a retention funnel
     this.lastFunnelMeters = this.lastFunnelMeters || 0;
@@ -3893,6 +3623,10 @@ export class Game {
     this.updateRunnerWeather(dt);
     this.updateRunnerNavigation(dt);
     if (this.isGameOver) return;
+    if (this.runnerTurn) {
+      this.updateRunnerTurnAnimation(0);
+      return;
+    }
 
     // Sync 3D group position, orientation, and banking roll
     this.player.group.position.x = this.player.position.x;
@@ -3913,14 +3647,12 @@ export class Game {
       const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
       const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
       const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
-      const chaserCameraLift = this.isChaserClose ? 0.65 : 0;
-      const chaserCameraDist = this.isChaserClose ? 0.6 : 0;
       const targetCamX = this.player.position.x * horizontalCameraFollow;
-      const targetCamY = (this.player.position.y || 0) + 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0) + chaserCameraLift;
-      const targetCamZ = this.player.position.z + 5.2 + chaserCameraDist;
+      const targetCamY = (this.player.position.y || 0) + 2.85 + (this.jetpackTimer > 0 ? 3.6 : 0) + (this.runnerCameraLift || 0);
+      const targetCamZ = this.player.position.z + 5.2;
       
       const targetLookX = this.player.position.x * horizontalLookAhead;
-      const targetLookY = (this.player.position.y || 0) + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0) + (this.isChaserClose ? 0.2 : 0);
+      const targetLookY = (this.player.position.y || 0) + 1.25 + (this.jetpackTimer > 0 ? 2.5 : 0);
       const targetLookZ = this.player.position.z - 18.0;
 
       if (Number.isNaN(targetLookX) || Number.isNaN(targetLookY) || Number.isNaN(targetLookZ)) {
@@ -4055,19 +3787,6 @@ export class Game {
         }
       } else {
         this.playerBlobShadow.visible = false;
-      }
-    }
-
-    if (this.chaserBlobShadow) {
-      if (this.chaserEntity && this.chaserEntity.visible && (this.chaserOpacity || 0) > 0.05) {
-        this.chaserBlobShadow.visible = true;
-        const chaserZ = this.chaserEntity.position.z;
-        const chaserX = this.chaserEntity.position.x;
-        const chaserGroundY = this.getCorridorGroundHeight(chaserZ, chaserX);
-        this.chaserBlobShadow.position.set(chaserX, chaserGroundY + 0.03, chaserZ);
-        this.chaserBlobShadow.material.opacity = Math.min(0.65, (this.chaserOpacity || 0) * 0.7);
-      } else {
-        this.chaserBlobShadow.visible = false;
       }
     }
 
@@ -4708,74 +4427,6 @@ export class Game {
 
       const rollAngle = (this.targetLaneX - this.player.position.x) * -0.015;
       this.camera.rotation.z = THREE.MathUtils.lerp(this.camera.rotation.z, rollAngle, dt * 6.0);
-    }
-
-    // 11e. Sindh Police Chaser Entity Dynamics & Recovery (Lerp back to 15m and fade opacity to 0 after 5s clean run)
-    if (this.isChaserClose) {
-      if (this.chaserActiveTimer > 0) this.chaserActiveTimer = Math.max(0, this.chaserActiveTimer - dt);
-      if (this.chaserRecoveryTimer > 0) {
-        this.chaserRecoveryTimer -= dt;
-        if (this.chaserRecoveryTimer <= 0) {
-          // Clean run completed! Reset chaser back to 15m away and fade to 0 opacity
-          this.isChaserClose = false;
-          this.chaserActiveTimer = 0;
-          this.targetChaserDistance = 15.0;
-          this.targetChaserOpacity = 0.0;
-          this.ui?.showAnnouncement?.('🚓 Police Mobile lost your trail! Escaped!', '#00e5ff');
-        }
-      }
-    } else {
-      this.targetChaserDistance = 15.0;
-      this.targetChaserOpacity = 0.0;
-    }
-
-    const distLerpSpeed = this.isChaserClose ? 8.0 : 2.5;
-    this.chaserDistance = THREE.MathUtils.lerp(this.chaserDistance || 15.0, this.targetChaserDistance, dt * distLerpSpeed);
-    this.chaserOpacity = THREE.MathUtils.lerp(this.chaserOpacity || 0.0, this.targetChaserOpacity, dt * 2.5);
-
-    if (this.chaserEntity) {
-      if (this.chaserOpacity <= 0.02 && !this.isChaserClose) {
-        this.chaserEntity.visible = false;
-        this.setMeshOpacity(this.chaserEntity, 0.0);
-      } else {
-        this.chaserEntity.visible = true;
-
-        // Smart lateral flanking: keep chaser offset to the adjacent lane/flank
-        // so it never blocks the runner's line of sight or the road ahead.
-        let targetFlank = (this.laneWidth || 2.4) * 0.78;
-        if (pPos.x > 0.8) {
-          targetFlank = -targetFlank;
-        } else if (pPos.x < -0.8) {
-          targetFlank = targetFlank;
-        } else {
-          targetFlank = (this.chaserFlankSign || 1) * targetFlank;
-        }
-        this.chaserFlankSign = targetFlank >= 0 ? 1 : -1;
-
-        const targetX = this.isChaserClose ? (pPos.x + targetFlank) : pPos.x;
-        const chaserX = THREE.MathUtils.lerp(this.chaserEntity.position.x, targetX, dt * 8.0);
-        const chaserZ = pPos.z + this.chaserDistance;
-        const chaserY = this.getCorridorGroundHeight(chaserZ, chaserX);
-        this.chaserEntity.position.set(chaserX, chaserY, chaserZ);
-        this.chaserEntity.rotation.set(0, 0, 0);
-
-        // Line-of-sight & proximity transparency guard:
-        // If the chaser ever enters the player's direct line of sight or gets within camera near zone,
-        // fade it to ghost semi-transparency (0.25) so obstacles, lane markers, and the player are ALWAYS 100% visible.
-        const dxToPlayer = Math.abs(chaserX - pPos.x);
-        const distToCam = this.camera ? this.camera.position.distanceTo(this.chaserEntity.position) : 5.0;
-        let viewAlpha = this.chaserOpacity;
-        if (this.isChaserClose && (dxToPlayer < 0.95 || distToCam < 3.4)) {
-          viewAlpha = Math.min(viewAlpha, 0.25);
-        }
-        this.setMeshOpacity(this.chaserEntity, THREE.MathUtils.clamp(viewAlpha, 0, 1));
-
-        if (this.chaserEntity.userData.redLight && this.chaserEntity.userData.blueLight) {
-          const flashPhase = Math.floor(Date.now() / 120) % 2;
-          this.chaserEntity.userData.redLight.material.opacity = flashPhase === 0 ? viewAlpha : viewAlpha * 0.15;
-          this.chaserEntity.userData.blueLight.material.opacity = flashPhase === 1 ? viewAlpha : viewAlpha * 0.15;
-        }
-      }
     }
 
     // 12. Despawn Passed Objects Behind Player (> 28m)
@@ -6324,7 +5975,6 @@ export class Game {
 
     if (this.isTempleRun) {
       this.initCorridorTerrain();
-      this.initRunnerChaser();
       if (this.ui) this.ui.setRunnerMode(true);
     } else {
       if (this.ui) this.ui.setRunnerMode(false);
@@ -8223,7 +7873,7 @@ export class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.16',
+            appVersion: '2.2.18',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };
@@ -9034,6 +8684,7 @@ export class Game {
   }
 
   resetRunnerNavigation() {
+    this.ui?.clearAnnouncement?.();
     this.removeRunnerJunction();
     (this.runnerSectionDecor || []).forEach(mesh => this.disposeRunnerObject(mesh));
     this.runnerSectionDecor = [];
@@ -9230,6 +8881,7 @@ export class Game {
     this.scene.add(group);
     this.runnerJunction = { kind, dir, z, group, resolved: false };
 
+    if (kind === 'turn') this.levelRunnerJunctionTerrain(z);
     this.clearRunnerJunctionApproach();
     this.runnerCoins = this.runnerCoins.filter(coin => {
       if (!this.isRunnerJunctionZone(coin.mesh.position.z)) return true;
@@ -9278,6 +8930,43 @@ export class Game {
     return true;
   }
 
+  levelRunnerJunctionTerrain(junctionZ) {
+    const objects = [
+      ...(this.runnerObstacles || []), ...(this.runnerTraffic || []),
+      ...(this.runnerCoins || []), ...(this.runnerPowerups || []),
+      ...(this.runnerReviveTokens || []), ...(this.runnerBoostPads || []),
+      ...(this.surfingBuses || [])
+    ].filter(item => item?.mesh).map(item => ({
+      mesh: item.mesh,
+      ground: this.getCorridorGroundHeight(item.mesh.position.z, item.mesh.position.x)
+    }));
+    const playerGround = this.getCorridorGroundHeight(this.player.position.z, this.player.position.x);
+    const chunks = [...this.corridorChunks].sort((a, b) => b.position.z - a.position.z);
+    const firstFlat = chunks.findIndex(chunk => chunk.position.z - 30 <= junctionZ + 80);
+    if (firstFlat < 0) return;
+    for (let i = Math.max(0, firstFlat - 1); i < chunks.length; i++) {
+      const old = chunks[i];
+      if (old.position.z + 30 < junctionZ - 90) break;
+      const transition = i === firstFlat - 1;
+      const start = transition ? old.userData.startElevation : 0;
+      const slope = start > 0 ? 'RAMP_DOWN' : start < 0 ? 'RAMP_UP' : 'FLAT';
+      const replacement = this.createCorridorChunk(old.position.z, slope, start);
+      this.scene.add(replacement);
+      replacement.updateWorldMatrix(true, true);
+      this.corridorChunks[this.corridorChunks.indexOf(old)] = replacement;
+      this.disposeCorridorChunk(old);
+    }
+    this.corridorElevation = [...this.corridorChunks].sort((a, b) => a.position.z - b.position.z)[0]?.userData.endElevation || 0;
+    for (const { mesh, ground } of objects) {
+      mesh.position.y += this.getCorridorGroundHeight(mesh.position.z, mesh.position.x) - ground;
+    }
+    const newGround = this.getCorridorGroundHeight(this.player.position.z, this.player.position.x);
+    const heightChange = newGround - playerGround;
+    this.player.position.y = newGround + Math.max(0, this.player.position.y - playerGround);
+    this.player.group.position.copy(this.player.position);
+    this.camera.position.y += heightChange;
+  }
+
   /**
    * Handle a lane input in the junction zone. Returns true when the input was consumed.
    */
@@ -9285,7 +8974,7 @@ export class Game {
     const junction = this.runnerJunction;
     if (!junction || junction.resolved || this.runnerTurn || !this.player) return false;
     const ahead = this.player.position.z - junction.z;
-    if (ahead > RUNNER_TURN_INPUT_METERS || ahead < -1) return false;
+    if (ahead > RUNNER_TURN_INPUT_METERS || ahead < RUNNER_TURN_LAST_INPUT_METERS) return false;
 
     if (junction.kind === 'fork') {
       junction.resolved = true;
@@ -9298,19 +8987,18 @@ export class Game {
       if (dir === junction.dir) {
         if (!junction.turnQueued) {
           junction.turnQueued = true;
-          const perfect = ahead <= 7;
-          const bonus = perfect ? 500 : 300;
+          const bonus = 300;
           this.score = (Number(this.score) || 0) + bonus;
           this.awardRunnerXP(bonus);
           audio.playPowerUp();
-          this.ui.showAnnouncement(perfect ? `🧭 PERFECT TURN! +${bonus}` : `🧭 CLEAN TURN +${bonus}`, '#76ff03');
+          this.ui.showAnnouncement(`🧭 TURN QUEUED +${bonus}`, '#76ff03');
+          this.updateRunnerNavigation(0);
         }
         return true;
       } else {
         // Player pressed opposite direction while still far ahead:
         // They want to dodge obstacles or switch lanes!
-        // Cancel any queued turn so they are not trapped into an automatic turn.
-        junction.turnQueued = false;
+        // A lane dodge must not undo an already-confirmed corner input.
         return false;
       }
     }
@@ -9318,7 +9006,7 @@ export class Game {
     // In the immediate turn zone (ahead <= RUNNER_TURN_ENTRY_METERS):
     junction.resolved = true;
     if (dir === junction.dir) {
-      const perfect = ahead <= 7;
+      const perfect = ahead <= 10;
       const bonus = perfect ? 500 : 300;
       this.score = (Number(this.score) || 0) + bonus;
       this.awardRunnerXP(bonus);
@@ -9335,14 +9023,17 @@ export class Game {
 
   beginRunnerTurn(junction, dir) {
     const z0 = this.player.position.z;
-    const radius = Math.max(3, z0 - junction.z);
     const incomingLane = Math.max(-1, Math.min(1, this.currentLane ?? 0));
+    const radius = z0 - junction.z - dir * incomingLane * this.laneWidth;
     this.runnerTurn = {
       dir,
       sign: dir,
       t: 0,
-      startZ: junction.z + radius,
+      startZ: z0,
       startX: this.player.position.x,
+      startY: this.player.position.y,
+      cameraStartPosition: this.camera.position.clone(),
+      cameraStartQuaternion: this.camera.quaternion.clone(),
       incomingLane,
       pivotZ: junction.z,
       radius,
@@ -9351,7 +9042,7 @@ export class Game {
     for (let i = 1; i <= 8; i++) {
       const theta = i / 9 * Math.PI / 2;
       const x = this.runnerTurn.startX + dir * radius * (1 - Math.cos(theta));
-      const z = junction.z + radius * (1 - Math.sin(theta));
+      const z = z0 - radius * Math.sin(theta);
       const coin = KarachiModels.createRupeeCoin(50);
       coin.position.set(x, 0.7, z);
       this.scene.add(coin);
@@ -9360,6 +9051,12 @@ export class Game {
     if (this.player.avatarMesh) this.player.avatarMesh.visible = true;
     this.isSliding = false;
     this.slideTimer = 0;
+    this.player.velocityY = 0;
+    this.player.isGrounded = true;
+    if (this.player.avatarMesh) {
+      this.player.avatarMesh.scale.set(1, 1, 1);
+      this.player.avatarMesh.position.y = 0;
+    }
     this.ui.updateRunnerNav?.(null);
     audio.playTireScreech();
     this.particles.createSkidSmoke(this.player.position, 8);
@@ -9376,15 +9073,16 @@ export class Game {
     const s = turn.sign;
     const R = turn.radius;
     const pivotX = turn.startX + (turn.sign * R);
-    const pivotZ = (turn.pivotZ !== undefined ? (turn.pivotZ + R) : turn.startZ);
+    const pivotZ = turn.startZ;
     const x = pivotX - (turn.sign * R * Math.cos(theta));
     const z = pivotZ - (R * Math.sin(theta));
     const angle = -s * theta;
     const fx = -Math.sin(angle);
     const fz = -Math.cos(angle);
 
-    player.position.set(x, 0, z);
-    player.group.position.set(x, 0, z);
+    const y = THREE.MathUtils.lerp(turn.startY || 0, 0, p);
+    player.position.set(x, y, z);
+    player.group.position.copy(player.position);
     if (player.avatarMesh) {
       player.avatarMesh.visible = true;
       // Dynamic motorcycle/runner athletic banking roll into the turn
@@ -9419,6 +9117,11 @@ export class Game {
     const lookZ = z + (fz * 16.0);
     this.camera.position.set(camX, (this.player.position.y || 0) + 2.85 + lift, camZ);
     this.camera.lookAt(lookX, (this.player.position.y || 0) + 1.25, lookZ);
+    if (p < 0.2) {
+      const blend = THREE.MathUtils.smoothstep(p, 0, 0.2);
+      this.camera.position.lerpVectors(turn.cameraStartPosition, this.camera.position, blend);
+      this.camera.quaternion.slerpQuaternions(turn.cameraStartQuaternion, this.camera.quaternion.clone(), blend);
+    }
     this.updateRunnerCoins(dt, previousPosition);
 
     if (this.playerBlobShadow) {
@@ -9436,26 +9139,6 @@ export class Game {
       this.skylineBackdrop.position.set(x * 0.15, 0, z);
     }
 
-    if (this.chaserEntity && this.isChaserClose) {
-      this.chaserEntity.visible = true;
-      const turnFlankSign = this.chaserFlankSign || 1;
-      const flankX = -fz * turnFlankSign * 1.5;
-      const flankZ = fx * turnFlankSign * 1.5;
-      const chaserX = x - fx * this.chaserDistance + flankX;
-      const chaserZ = z - fz * this.chaserDistance + flankZ;
-      const chaserY = this.getCorridorGroundHeight(chaserZ, chaserX);
-
-      const distToPlayer = Math.hypot(chaserX - x, chaserZ - z);
-      const distToCam = this.camera ? this.camera.position.distanceTo(new THREE.Vector3(chaserX, chaserY, chaserZ)) : 5.0;
-      let viewAlpha = this.chaserOpacity;
-      if (distToCam < 3.2 || distToPlayer < 1.2) {
-        viewAlpha = Math.min(viewAlpha, 0.25);
-      }
-      this.setMeshOpacity(this.chaserEntity, THREE.MathUtils.clamp(viewAlpha, 0, 1));
-      this.chaserEntity.position.set(chaserX, chaserY, chaserZ);
-      this.chaserEntity.rotation.y = Math.PI + angle;
-    }
-
     if (turn.t >= 1) this.finishRunnerTurn();
   }
 
@@ -9464,6 +9147,10 @@ export class Game {
     const junctionZ = turn.pivotZ;
     const R = turn.radius;
     const junction = this.runnerJunction;
+    const exitX = turn.startX + turn.dir * R;
+    const streetOriginZ = junctionZ + turn.dir * exitX;
+    const cameraPosition = this.camera.position.clone();
+    const cameraRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), turn.dir * Math.PI / 2);
     this.runnerHeading = (this.runnerHeading + (turn.dir === -1 ? 1 : 3)) % 4;
     this.runnerTurn = null;
     this.runnerTurnsCompleted = (this.runnerTurnsCompleted || 0) + 1;
@@ -9473,7 +9160,7 @@ export class Game {
     if (crossChunks.length) {
       crossChunks.forEach((chunk, i) => {
         junction.turnGroup.remove(chunk);
-        chunk.position.set(0, 0, junctionZ + R - i * 60);
+        chunk.position.set(0, 0, streetOriginZ - i * 60);
         chunk.rotation.set(0, 0, 0);
         if (i > 0) chunk.userData.slabs.forEach(slab => { slab.visible = true; });
         this.scene.add(chunk);
@@ -9485,7 +9172,7 @@ export class Game {
         this.disposeCorridorChunk(chunk);
       });
       this.corridorChunks = [...crossChunks];
-      let minZ = junctionZ + R - (crossChunks.length - 1) * 60;
+      let minZ = streetOriginZ - (crossChunks.length - 1) * 60;
       this.corridorElevation = 0.0;
       while (this.corridorChunks.length < 7) {
         const newZ = minZ - 60;
@@ -9502,17 +9189,17 @@ export class Game {
     const preservedLane = Math.max(-1, Math.min(1, turn?.incomingLane ?? this.currentLane ?? 0));
     this.currentLane = preservedLane;
     this.targetLaneX = preservedLane * this.laneWidth;
+    this.laneChangeStartX = this.targetLaneX;
+    this.laneChangeTimer = this.laneChangeDuration || 0.18;
+    this.currentBankRoll = 0;
+    this.targetBankRoll = 0;
     this.player.position.set(this.targetLaneX, 0, junctionZ);
     this.player.group.position.set(this.targetLaneX, 0, junctionZ);
-    this.player.group.rotation.y = Math.PI;
+    this.player.group.rotation.set(0, Math.PI, 0);
     this.player.facingAngle = Math.PI;
     this.player.targetRotationY = Math.PI;
     if (this.player.avatarMesh) {
       this.player.avatarMesh.rotation.z = 0;
-    }
-    if (this.chaserEntity) {
-      this.chaserEntity.position.set(this.targetLaneX, 0, junctionZ + this.chaserDistance);
-      this.chaserEntity.rotation.set(0, 0, 0);
     }
 
     // Reset wave spawner safely ahead on the new street
@@ -9522,18 +9209,15 @@ export class Game {
 
     // Smooth post-turn camera handoff: frame runner on new heading
     if (this.camera) {
-      const narrowViewport = THREE.MathUtils.clamp((1.15 - this.camera.aspect) / 0.65, 0, 1);
-      const horizontalCameraFollow = THREE.MathUtils.lerp(0.45, 0.72, narrowViewport);
-      const horizontalLookAhead = THREE.MathUtils.lerp(0.65, 0.95, narrowViewport);
-      const postCamX = this.targetLaneX * horizontalCameraFollow;
-      const postCamZ = junctionZ + 5.2;
-      const postLookX = this.targetLaneX * horizontalLookAhead;
-      const postLookZ = junctionZ - 18.0;
-      this.camera.position.set(postCamX, 2.85 + (this.runnerCameraLift || 0), postCamZ);
-      this.camera.lookAt(postLookX, 1.25, postLookZ);
+      this.camera.position.set(
+        turn.dir * (cameraPosition.z - junctionZ),
+        cameraPosition.y,
+        junctionZ - turn.dir * (cameraPosition.x - exitX)
+      );
+      this.camera.quaternion.premultiply(cameraRotation);
       this.cameraSmoothPos = this.camera.position.clone();
-      this.cameraSmoothLookAt = new THREE.Vector3(postLookX, 1.25, postLookZ);
-      this.cameraSmoothTimer = 0.25;
+      this.cameraSmoothLookAt = this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(18).add(this.camera.position);
+      this.cameraSmoothTimer = 0.4;
     }
 
     this.ui.showAnnouncement(`🧭 NOW HEADING ${this.getRunnerHeadingLabel()}`, '#00e5ff');
@@ -9592,12 +9276,12 @@ export class Game {
     const junction = this.runnerJunction;
     if (junction) {
       const ahead = this.player.position.z - junction.z;
-      if (junction.kind === 'turn' && junction.turnQueued && ahead <= RUNNER_TURN_ENTRY_METERS && ahead > -3) {
+      if (junction.kind === 'turn' && junction.turnQueued && ahead <= RUNNER_TURN_ENTRY_METERS + 1e-6 && ahead > -3) {
         junction.resolved = true;
         this.beginRunnerTurn(junction, junction.dir);
         return;
       }
-      if (!junction.resolved && ahead <= -0.5) {
+      if (!junction.resolved && ahead <= (junction.kind === 'turn' ? RUNNER_TURN_LAST_INPUT_METERS + 1e-6 : -0.5)) {
         junction.resolved = true;
         if (junction.kind === 'fork') {
           this.enterRunnerSection('underpass');
@@ -9639,7 +9323,7 @@ export class Game {
             text: j.turnQueued
               ? `🧭 TURN ${turnDirText} LOCKED IN!`
               : meters <= 45
-                ? `⚡ SWIPE [${turnKey}] TO TURN ${turnDirText}!`
+                ? `TURN ${turnDirText}: SWIPE / ${turnKey} · MISS = -1 HEART`
                 : `TURN ${turnDirText}`,
             meters,
             heading,

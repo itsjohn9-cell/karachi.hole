@@ -4,6 +4,41 @@ All notable changes to the **Karachi Hole.io: The City Savior** project are docu
 
 ---
 
+## [v2.2.18] - 2026-10-27
+
+### Turn continuity and police pursuer removal
+- Removed the police pursuer, shadow and chase-camera behavior.
+- Fixed raised-road obstruction at flat intersections, all-lane turn entry/exit
+  continuity, and stale lane interpolation after turning.
+- Preserved queued turns during lane dodges and prevented boosted frames from
+  overshooting the corner.
+- Retained missed/wrong-turn heart penalties with explicit warnings and
+  protected four-second damage-cause announcements.
+- Validation: 130 checks passed; a 120-second rendered audit completed four
+  turns at approximately 59.9 FPS, with no police or captured runtime errors.
+- Approved release targets: GitHub main, GitHub Pages, and Google Play
+  **internal** and **alpha**, version **2.2.18 (40)**. Publication verification
+  is recorded in the gameplay audit; production and beta are excluded.
+
+---
+
+## [v2.2.17] - 2026-10-27
+
+### Controls, turn clarity and Shop Android testing release
+- Removed traversal buttons while preserving swipe/keyboard controls; redesigned
+  the horn with a clearer icon and activation feedback.
+- Removed police-capture deaths; direct road hazards still cost hearts.
+- Cleared turn approaches, corrected direction arrows, and kept coins upright
+  and collectable throughout turns.
+- Fixed responsive menu text, Shop placement, wallet charging and save rollback.
+- Validation: 127 gameplay/build checks passed before release; signed AAB and
+  packaged web-asset parity verified for version **2.2.17 (39)**, target SDK 36.
+- Published to Google Play **internal** and **alpha** testing. Fresh API inspection
+  verified both tracks as `completed` on version code **39**. Beta and production
+  remain empty. No website redeployment was performed.
+
+---
+
 ## [v2.2.16] - 2026-10-27
 
 ### Gameplay stability and Android testing release

@@ -62,9 +62,9 @@ test('Hazard Death Resolution Classification (getDeathResolutionType)', async ()
   assert.equal(game.getDeathResolutionType('Sewage Overflow', { type: 'sewage' }), 'gutter');
   assert.equal(game.getDeathResolutionType('Fell into Open Manhole', null), 'gutter');
 
-  // 2. Chaser Capture deaths
-  assert.equal(game.getDeathResolutionType('Captured by Sindh Police Mobile!', { type: 'chaser_capture' }), 'chaser');
-  assert.equal(game.getDeathResolutionType('Tackled by Rival Gang Pursuer', null), 'chaser');
+  // Removed pursuer classification cannot invoke a camera-whip capture scene.
+  assert.equal(game.getDeathResolutionType('Captured by Sindh Police Mobile!', { type: 'chaser_capture' }), 'vehicle_crash');
+  assert.equal(game.getDeathResolutionType('Tackled by Rival Gang Pursuer', null), 'vehicle_crash');
 
   // 3. Vehicle / Wall crash deaths
   assert.equal(game.getDeathResolutionType('Stalled Qingqi Rickshaw', { type: 'rickshaw' }), 'vehicle_crash');

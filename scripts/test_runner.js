@@ -3130,7 +3130,7 @@ async function runTestSuite() {
 
         // Continue to just before the finish and compare the street frame across the re-frame.
         while (game.runnerTurn && game.runnerTurn.t < 0.99) {
-          step(0.016);
+          step(Math.min(0.016, (0.99-game.runnerTurn.t)*game.runnerTurn.duration));
           if (!game.player.avatarMesh.visible) throw new Error('Runner disappeared during the turn animation');
           maxPlayerStep = Math.max(maxPlayerStep, game.player.position.distanceTo(prevPlayer));
           maxCamStep = Math.max(maxCamStep, game.camera.position.distanceTo(prevCam));
@@ -3287,7 +3287,7 @@ async function runTestSuite() {
       testId: 'TC-46',
       screenshotName: `tc46_hud_layout_${w}x${h}.png`,
       windowSize: `${Math.max(Number(w), 500)},${Math.max(Number(h), 481)}`,
-      extraStyle: '#modal-start-mission { display: none !important; }',
+      extraStyle: '#modal-start-mission { display: none !important; } #hud-announcement { transition: none !important; }',
       waitMs: 3500,
       scriptInjection: hudLayoutScript(w, h)
     });
@@ -3957,13 +3957,8 @@ async function runTestSuite() {
         if (boostedFOV <= normalFOV + 0.8) throw new Error('Camera FOV did not expand under high speed: ' + boostedFOV + ' vs ' + normalFOV);
         if (boostedFOV > 71.0) throw new Error('Camera FOV exceeded maximum threshold: ' + boostedFOV);
 
-        // 4. Audit Vehicle Headlight Cones & Overhead Catenary Wires
-        game.initRunnerChaser();
-        let foundHeadlightBeam = false;
-        game.chaserEntity.traverse(child => {
-          if (child.userData?.isHeadlightBeam) foundHeadlightBeam = true;
-        });
-        if (!foundHeadlightBeam) throw new Error('Police mobile chaser is missing projected headlight beam cones');
+        // 4. The pursuer is removed; street wires remain.
+        if (game.chaserEntity || game.scene.getObjectByName('Chaser-Police-Mobile')) throw new Error('Removed police pursuer returned');
 
         const chunk = game.corridorChunks[0];
         let foundWire = false;
@@ -4514,6 +4509,192 @@ async function runTestSuite() {
     });
     recordTest('TC-63 ' + width + 'x' + height, 'Responsive Home, Help, Progress & Shop', result.skipped ? 'SKIPPED' : result.success ? 'PASSED' : 'FAILED', Date.now() - started, result.error || 'No overlapping title or overflowing menu text; modal actions remain reachable');
   }
+
+  const t64Start = Date.now();
+  const res64 = await runChromeTest({
+    testId: 'TC-64',
+    beforeAppScript: "localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true');",
+    waitMs: 6000,
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        game.startGame();
+        game.isPaused = true;
+        const Mat4 = game.camera.matrix.constructor;
+        const Quat = game.camera.quaternion.constructor;
+        const Vec3 = game.player.position.constructor;
+        const playerFrame = () => new Mat4().compose(game.player.position, game.player.group.quaternion, new Vec3(1,1,1)).invert();
+        const relative = object => {
+          game.scene.updateMatrixWorld(true);
+          return playerFrame().multiply(object.matrixWorld);
+        };
+        const difference = (a,b) => Math.max(...a.elements.map((n,i)=>Math.abs(n-b.elements[i])));
+        for (const district of [1,2,3]) for (const dir of [-1,1]) for (const lane of [-1,0,1]) {
+          game.currentDistrictLevel = district;
+          game.removeRunnerJunction();
+          game.clearRunnerObjects();
+          const ahead = [6.5,10,14][lane+1];
+          game.player.position.set(lane*3.2 + 0.4, district === 2 ? 2 : 0, 0);
+          game.currentLane = lane;
+          game.targetLaneX = lane*3.2;
+          game.laneChangeStartX = -lane*3.2;
+          game.laneChangeTimer = 0.07;
+          game.player.group.position.copy(game.player.position);
+          game.player.group.rotation.set(0,Math.PI,0);
+          game.camera.position.set(game.player.position.x*0.7,game.player.position.y+2.85,5.2);
+          game.camera.lookAt(game.player.position.x,game.player.position.y+1.25,-18);
+          game.spawnRunnerJunction('turn',dir,ahead);
+          const junction = game.runnerJunction;
+          game.beginRunnerTurn(junction,dir);
+          const start = game.player.position.clone();
+          const cameraStart = game.camera.position.clone();
+          game.updateRunnerTurnAnimation(0);
+          if (game.player.position.distanceTo(start)>0.001 || game.camera.position.distanceTo(cameraStart)>0.001) throw new Error('Turn entry teleported player or camera');
+          let previous = start.clone();
+          let previousCamera = cameraStart.clone();
+          for(let f=0;f<59;f++){
+            game.updateRunnerTurnAnimation(game.runnerTurn.duration/60);
+            if(game.player.position.distanceTo(previous)>0.8 || game.camera.position.distanceTo(previousCamera)>1.1) throw new Error('Turn animation steps discontinuously');
+            previous.copy(game.player.position);
+            previousCamera.copy(game.camera.position);
+          }
+          game.runnerTurn.t=1;
+          const finish=game.finishRunnerTurn;
+          game.finishRunnerTurn=()=>{};
+          game.updateRunnerTurnAnimation(0);
+          game.finishRunnerTurn=finish;
+          const streetBefore=relative(junction.turnChunks[0]);
+          const cameraBefore=relative(game.camera);
+          game.finishRunnerTurn();
+          const streetAfter=relative(game.corridorChunks[0]);
+          const cameraAfter=relative(game.camera);
+          if(difference(streetBefore,streetAfter)>0.03) throw new Error('Street-frame jump: '+JSON.stringify({district,dir,lane,diff:difference(streetBefore,streetAfter)}));
+          if(difference(cameraBefore,cameraAfter)>0.03) throw new Error('Camera-frame jump: '+JSON.stringify({district,dir,lane,diff:difference(cameraBefore,cameraAfter)}));
+          if(game.currentLane!==lane || Math.abs(game.player.position.x-lane*3.2)>0.01) throw new Error('Turn lost selected lane');
+          game.nextRunnerWaveZ=game.player.position.z-10000;
+          game.nextJunctionAt=Infinity;
+          game.isPaused=false;
+          game.updateTempleRunCorridor(0.016);
+          game.isPaused=true;
+          if(Math.abs(game.player.position.x-lane*3.2)>0.01) throw new Error('Old lane easing moved player after turn');
+          if(game.chaserEntity || game.chaserBlobShadow || game.scene.getObjectByName('Chaser-Police-Mobile')) throw new Error('Police van returned');
+        }
+      })();
+    `
+  });
+  recordTest('TC-64','All-Lane Turn Entry, Exit & Camera Continuity',res64.success?'PASSED':'FAILED',Date.now()-t64Start,res64.error||'Both directions, three lanes and three scenery styles preserve player/camera/street frame including in-flight lane easing and elevated entry');
+
+  const t65Start=Date.now();
+  const res65=await runChromeTest({
+    testId:'TC-65',
+    beforeAppScript:"localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true');",
+    scriptInjection:`
+      (() => {
+        const game=window.game;
+        game.startGame();
+        game.clearRunnerObjects();
+        game.removeRunnerJunction();
+        game.nextJunctionAt=Infinity;
+        game.nextRunnerWaveZ=-10000;
+        game.player.position.set(0,0,0);
+        game.currentLane=0;
+        game.spawnRunnerJunction('turn',-1,35);
+        game.updateRunnerNavigation(0);
+        if(!document.getElementById('hud-runner-nav').textContent.includes('MISS = -1 HEART')) throw new Error('Turn warning omits heart cost');
+        game.changeLane(-1);
+        game.changeLane(1);
+        if(!game.runnerJunction.turnQueued) throw new Error('Lane dodge cancelled confirmed turn');
+        game.removeRunnerJunction();
+        for(const mistake of ['missed','wrong']) {
+          game.clearRunnerObjects();
+          game.player.position.set(3.2,0,0);
+          game.currentLane=1;
+          game.targetLaneX=3.2;
+          game.hearts=3;
+          game.spawnRunnerJunction('turn',1,mistake==='missed'?20:10);
+          const before=game.hearts;
+          if(mistake==='missed') {
+            game.player.currentSpeed=100;
+            game.nitroTimer=5;
+            game.updateTempleRunCorridor(0.5);
+          } else game.changeLane(-1);
+          if(!game.runnerTurn || game.runnerTurn.radius<=0 || game.hearts!==before-1) throw new Error('Turn mistake was not charged exactly once before corner');
+          const notice=document.getElementById('hud-announcement').textContent;
+          if(!notice.includes(mistake==='missed'?'MISSED TURN':'WRONG WAY') || !notice.includes('1 HEART LOST')) throw new Error('Damage cause is not explicit: '+notice);
+          game.ui.showAnnouncement('COIN BONUS');
+          if(document.getElementById('hud-announcement').textContent!==notice) throw new Error('Damage notice overwritten by reward');
+          while(game.runnerTurn) game.updateRunnerTurnAnimation(0.05);
+          if(game.hearts!==before-1 || document.getElementById('hud-announcement').textContent!==notice) throw new Error('Turn finish overwrote damage or charged twice');
+          game.nextJunctionAt=Infinity;
+          game.nextRunnerWaveZ=game.player.position.z-10000;
+          game.ui.clearAnnouncement();
+        }
+        game.nitroTimer=game.chingchiTimer=game.jetpackTimer=0;
+        const hearts=game.hearts;
+        for(let i=0;i<5;i++) game.triggerRunnerStumble({type:'pothole'},'POTHOLE');
+        if(game.hearts!==hearts || game.chaserEntity || game.scene.getObjectByName('Chaser-Police-Mobile')) throw new Error('Graze spawned police or lost a heart');
+        game.restartGame();
+        if(game.chaserEntity || game.scene.getObjectByName('Chaser-Police-Mobile')) throw new Error('Restart spawned police');
+        game.isPaused=true;
+      })();
+    `
+  });
+  recordTest('TC-65','Explicit Turn Penalties, Queued Inputs & No Police Van',res65.success?'PASSED':'FAILED',Date.now()-t65Start,res65.error||'Turn warning states heart cost, damage cause persists across rewards/finish, missed/wrong turns cost once, queued turns survive dodges, police never spawn');
+
+  const t66Start=Date.now();
+  const res66=await runChromeTest({
+    testId:'TC-66',
+    beforeAppScript:"localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true');",
+    screenshotName:'tc66_flat_visible_turn.png',
+    scriptInjection:`
+      (() => {
+        const game=window.game;
+        game.startGame();
+        game.isPaused=true;
+        game.clearRunnerObjects();
+        game.removeRunnerJunction();
+        game.initCorridorTerrain();
+        const original=game.corridorChunks.find(chunk=>chunk.userData.startElevation===5 && chunk.userData.endElevation===5);
+        if(!original) throw new Error('Raised-road fixture is missing');
+        const junctionZ=original.position.z;
+        game.player.position.set(0,0,junctionZ+100);
+        game.spawnRunnerJunction('turn',-1,100);
+        game.scene.updateMatrixWorld(true);
+        for(const offset of [-6,0,6,25,40]){
+          const ground=game.getCorridorGroundHeight(junctionZ+offset,0);
+          if(Math.abs(ground)>0.05) throw new Error('Elevated road still crosses flat corner at '+offset+': '+ground);
+        }
+        const approaching=[...game.corridorChunks].sort((a,b)=>b.position.z-a.position.z);
+        for(let i=1;i<approaching.length;i++){
+          if(approaching[i].position.z+30<junctionZ-60)break;
+          if(Math.abs(approaching[i-1].userData.endElevation-approaching[i].userData.startElevation)>0.05) throw new Error('Levelling created a cliff on approach');
+        }
+        game.player.position.set(0,0,junctionZ+14);
+        game.player.group.position.copy(game.player.position);
+        game.camera.position.set(0,2.85,junctionZ+19.2);
+        game.camera.lookAt(0,1.25,junctionZ-4);
+        game.beginRunnerTurn(game.runnerJunction,-1);
+        for(let frame=0;frame<9;frame++){
+          game.updateRunnerTurnAnimation(game.runnerTurn.duration/10);
+          game.scene.updateMatrixWorld(true);
+          const torso=game.player.position.clone();torso.y+=1.2;
+          const direction=torso.clone().sub(game.camera.position);
+          const distance=direction.length();
+          game.runnerRaycaster.set(game.camera.position,direction.normalize());
+          const roads=[];
+          game.scene.traverse(mesh=>{
+            if(mesh.isMesh && mesh.userData.isRoadSurface)roads.push(mesh);
+          });
+          const blocked=game.runnerRaycaster.intersectObjects(roads,false).some(hit=>hit.distance<distance-0.1);
+          if(blocked) throw new Error('Road surface hides runner during turn at '+game.runnerTurn.t);
+          const projected=torso.project(game.camera);
+          if(Math.abs(projected.x)>0.95 || Math.abs(projected.y)>0.95) throw new Error('Runner leaves camera framing during turn');
+        }
+        game.renderer.render(game.scene,game.camera);
+      })();
+    `
+  });
+  recordTest('TC-66','Raised-Road Turn Clearance & Visible Runner',res66.success?'PASSED':'FAILED',Date.now()-t66Start,res66.error||'A real elevated corridor is levelled into a continuous flat intersection; camera-to-runner ray remains unobstructed by all road surfaces through the turn');
 
   // Summary Report Output
   // -------------------------------------------------------------------------

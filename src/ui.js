@@ -430,7 +430,8 @@ export class UIManager {
             <p><strong>Change lane:</strong> ← / → or A / D, or swipe left/right.</p>
             <p><strong>Jump:</strong> ↑ / W / Space, or swipe up.</p>
             <p><strong>Slide:</strong> ↓ / S, or swipe down.</p>
-            <p><strong>Police chase:</strong> Visual only. Grazes slow you down but do not cost hearts; direct hazard impacts still do.</p>
+            <p><strong>Hearts:</strong> Direct hazard impacts and missed or wrong turns cost one heart. Grazes only slow you down. There is no police pursuer.</p>
+            <p><strong>Turns:</strong> Swipe in the signed direction when the turn guide prompts you. A check mark confirms it is queued; lane changes will not cancel it. Missing the turn or swiping the wrong way at the corner costs one heart.</p>
             <p><strong>Turns &amp; forks:</strong> follow the navigation banner. Press ← / → (or swipe) within 45 m of a junction to turn the right way: perfect turns near the corner pay more. Wrong or missed turns cost a heart. At a fork, ← takes the fast flyover and → takes the dark underpass full of low wires.</p>
             <p><strong>Horn:</strong> H or tap HORN. <strong>Pause:</strong> Esc or ⏸.</p>
           </section>
@@ -4902,9 +4903,20 @@ export class UIManager {
     alert.classList.toggle('is-imminent', upcoming.distance <= 12);
   }
 
-  showAnnouncement(text, color = '#ffd700') {
+  clearAnnouncement() {
+    clearTimeout(this.announcementTimeout);
+    this.announcementPriority = 0;
+    this.announcementUntil = 0;
+    const el = document.getElementById('hud-announcement');
+    if (el) el.style.opacity = '0';
+  }
+
+  showAnnouncement(text, color = '#ffd700', { priority = 0, duration = 1800 } = {}) {
     const el = document.getElementById('hud-announcement');
     if (!el) return;
+    if (performance.now() < (this.announcementUntil || 0) && priority < (this.announcementPriority || 0)) return;
+    this.announcementPriority = priority;
+    this.announcementUntil = performance.now() + duration;
     this.layoutRunnerPopups();
     el.textContent = text;
     el.style.color = color;
@@ -4915,7 +4927,7 @@ export class UIManager {
     this.announcementTimeout = setTimeout(() => {
       el.style.opacity = '0';
       el.style.transform = 'translate(-50%, -10px) scale(0.95)';
-    }, 1800);
+    }, duration);
   }
 
   showFloatingFeedback(text, position, colorOrY = '#ffd700', legacyColor) {

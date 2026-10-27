@@ -9,7 +9,7 @@ This document specifies the formal test cases and testing architecture for **KAR
 ### Gameplay audit regressions (2026-10-27)
 
 - **TC-53**: Contact shadows, fast-fall landing, slide hitbox dimensions and road decals.
-- **TC-54**: Skyline/sky, 180 ms lane interpolation, speed FOV and headlight beams.
+- **TC-54**: Skyline/sky, 180 ms lane interpolation, speed FOV and absence of the removed police pursuer.
 - **TC-55**: Near-miss feedback, speed wind lines, magnet attraction and emissive signage.
 - **TC-56**: Airborne low-hazard grazes do not cause stumbles; boost-speed near misses reward exactly once and unlock Road Safety.
 - **TC-57**: Boundary inputs cannot release a drafting boost; the real bus-boarding update does not throw; immediate crash/restart cancels old animation and transient movement state.
@@ -19,12 +19,17 @@ This document specifies the formal test cases and testing architecture for **KAR
 - **TC-61**: Both turn directions in all three scenery styles have clear approaches, including overhead wires and moving traffic. Stored clearance bounds match actual rendered geometry, asphalt remains correctly positioned, direction signs use arrows, and camera-facing coins can be collected throughout the arc. Structures do not pop back at the exit.
 - **TC-62**: Home Shop opens above the menu, charges the career wallet once, persists purchases, rolls back a real storage failure with visible feedback, closes with Escape, and preserves active/paused run state. Unbanked run coins cannot be spent.
 - **TC-63**: Home Shop/title placement and help/progress/shop text containment at 320x568, 568x320, 768x1024 and 1280x800.
+- **TC-64**: Both turn directions, all three lanes and three scenery styles preserve the player-relative street and camera frame at entry/exit, including partial lane interpolation and elevated entry. Old lane easing cannot move the runner after the turn.
+- **TC-65**: Queued turn inputs survive lane dodges. Missed and wrong turns retain their heart penalty, resolve before passing the junction even at boosted speed, and display a protected damage-cause announcement. Grazes and restart never recreate a police pursuer.
+- **TC-66**: An existing elevated road is levelled into a continuous flat turn approach. Camera-to-runner raycasts across the turn cannot hit intervening road surfaces, and the runner remains inside the camera frame.
 
 Run the focused checks with
-`node scripts/test_runner.js --only=TC-53,TC-54,TC-55,TC-56,TC-57,TC-58,TC-59,TC-60,TC-61,TC-62,TC-63`.
+`node scripts/test_runner.js --only=TC-53,TC-54,TC-55,TC-56,TC-57,TC-58,TC-59,TC-60,TC-61,TC-62,TC-63,TC-64,TC-65,TC-66`.
 TC-01 and TC-02 always execute, including the production build and Android asset-copy check.
 Browser tests use isolated Chrome profiles but temporarily inject the working
 `index.html`; do not run them concurrently with an interactive gameplay audit.
+TC-46 disables the announcement's CSS transition while synchronously measuring
+its final layout, avoiding an opacity measurement at the start of its fade-in.
 
 The test suite is powered by `scripts/test_runner.js` and can be invoked directly from the command line:
 
