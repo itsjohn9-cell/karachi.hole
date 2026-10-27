@@ -146,3 +146,17 @@ The user approved publishing this follow-up to GitHub `main` and GitHub Pages
 only. Deployment verification is recorded below after publication. No release
 AAB build or Play publication is included. The already-published Android version
 2.2.16 (38) does not contain this follow-up.
+
+### Follow-up website publication
+
+- Source pushed to `main`: `8e4910b0b08c01fb091f17cc35b89c3c1315c792`.
+- GitHub Pages deployment: `9138b06d710807cba9039c014011f082116eceea`,
+  independently verified as `built` for that exact commit.
+- Live URL: <https://itsjohn9-cell.github.io/karachi.hole/?release=9138b06>.
+- Live HTML and all five directly referenced JavaScript/CSS assets returned
+  HTTP 200 and matched local production SHA-256 hashes exactly.
+- Live-browser smoke verified Shop visibility above the main menu, four upgrade
+  rows without horizontal overflow, Escape close, run start, removed traversal
+  buttons, horn activation feedback, lane switching and return to home.
+- Deployment worktree removed; only the pre-existing untracked frame directories
+  remain. Play Console was not changed.
