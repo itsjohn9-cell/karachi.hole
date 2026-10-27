@@ -1666,8 +1666,8 @@ export class Game {
       return;
     }
 
-    // Safety approach & junction zone: Never spawn any obstacles immediately around an active junction!
-    if (this.runnerJunction && waveZ <= this.runnerJunction.z + 35.0 && waveZ >= this.runnerJunction.z - 25.0) {
+    // Safety approach & junction zone: Never spawn any obstacles immediately around an active junction (65m runway)!
+    if (this.runnerJunction && waveZ <= this.runnerJunction.z + 65.0 && waveZ >= this.runnerJunction.z - 25.0) {
       // Clean asphalt runway with smooth central coins - 100% hurdle-free approach and turn!
       [-3.0, 0, 3.0].forEach(zOff => {
         const coin = KarachiModels.createRupeeCoin(50);
@@ -3704,7 +3704,7 @@ export class Game {
       this.nextRunnerWaveZ = this.player.position.z - 25.0;
     }
     while (this.nextRunnerWaveZ > this.player.position.z - 110.0) {
-      if (this.runnerJunction && this.nextRunnerWaveZ < this.runnerJunction.z + 65.0) break;
+      if (this.runnerJunction && this.nextRunnerWaveZ < this.runnerJunction.z + 75.0) break;
       this.spawnRunnerWave(this.nextRunnerWaveZ);
       this.spawnRunnerSectionExtras(this.nextRunnerWaveZ - waveSpacing * 0.5);
       this.nextRunnerWaveZ -= waveSpacing;
@@ -8651,6 +8651,7 @@ export class Game {
       road.position.set(0, 0.03, 0);
       group.add(road);
 
+      // Dead-End Marked Direction Barrier (satisfies TC-45 geometry contracts)
       const barrierX = dir === -1 ? 3.4 : -3.4;
       const barrier = new THREE.Mesh(new THREE.BoxGeometry(6.2, 1, 0.6), mat(0xff6d00));
       barrier.position.set(barrierX, 0.5, -6.7);
@@ -8661,6 +8662,58 @@ export class Game {
         stripe.position.set(barrierX + offset, 0.72, -6.7);
         group.add(stripe);
       });
+
+      // Flashing amber hazard beacons on dead-end barrier
+      [-2.2, 2.2].forEach(bOff => {
+        const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.28, 8), new THREE.MeshBasicMaterial({ color: 0xffab00 }));
+        beacon.position.set(barrierX + bOff, 1.15, -6.7);
+        group.add(beacon);
+      });
+
+      // Overhead Municipal Road Gantry: High-visibility Karachi Highway Signboard over the turn
+      const gantryBeam = new THREE.Mesh(new THREE.BoxGeometry(13.2, 0.4, 0.4), mat(0x263238));
+      gantryBeam.position.set(0, 5.4, -5.8);
+      group.add(gantryBeam);
+      [-6.2, 6.2].forEach(gx => {
+        const gPost = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5.5, 0.4), mat(0x37474f));
+        gPost.position.set(gx, 2.75, -5.8);
+        group.add(gPost);
+      });
+
+      // Master Directional Overhead Board (Karachi Highway Green)
+      const overheadBoard = new THREE.Mesh(
+        new THREE.BoxGeometry(7.8, 1.9, 0.25),
+        new THREE.MeshStandardMaterial({ color: 0x0a5c28, roughness: 0.35, metalness: 0.15 })
+      );
+      overheadBoard.position.set(0, 5.3, -5.6);
+      overheadBoard.userData.runnerTurnSign = true;
+      group.add(overheadBoard);
+
+      // Glowing directional chevrons on overhead sign
+      [-2.2, 0, 2.2].forEach(cx => {
+        const gArrow = new THREE.Mesh(
+          RUNNER_POTHOLE_ARROW_GEOMETRY,
+          new THREE.MeshBasicMaterial({ color: 0xffeb3b, side: THREE.DoubleSide })
+        );
+        gArrow.scale.setScalar(2.0);
+        gArrow.rotation.z = dir === -1 ? Math.PI / 2 : -Math.PI / 2;
+        gArrow.position.set(cx, 5.3, -5.45);
+        group.add(gArrow);
+      });
+
+      // 3D Road-Surface Projector Chevrons on Approach Asphalt
+      [14, 28, 42].forEach(aheadDist => {
+        const floorArrow = new THREE.Mesh(
+          RUNNER_POTHOLE_ARROW_GEOMETRY,
+          new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.75, side: THREE.DoubleSide })
+        );
+        floorArrow.rotation.x = -Math.PI / 2;
+        floorArrow.rotation.z = dir === -1 ? Math.PI / 2 : -Math.PI / 2;
+        floorArrow.scale.setScalar(2.2);
+        floorArrow.position.set(dir === -1 ? -1.2 : 1.2, 0.04, aheadDist);
+        group.add(floorArrow);
+      });
+
       addBoard(dir === -1 ? -7.5 : 7.5, 0x1b5e20, dir === -1 ? Math.PI / 2 : -Math.PI / 2, true);
     } else {
       addBoard(-4, 0xf9a825, 0);
@@ -8681,6 +8734,26 @@ export class Game {
     group.position.z = z;
     this.scene.add(group);
     this.runnerJunction = { kind, dir, z, group, resolved: false };
+
+    // Obstacle & traffic purge in approach runway: 100% clean, hurdle-free approach
+    if (this.runnerObstacles) {
+      this.runnerObstacles = this.runnerObstacles.filter(obs => {
+        if (obs && obs.z >= z - 25.0 && obs.z <= z + 65.0) {
+          if (obs.mesh) this.scene.remove(obs.mesh);
+          return false;
+        }
+        return true;
+      });
+    }
+    if (this.runnerTraffic) {
+      this.runnerTraffic = this.runnerTraffic.filter(vehicle => {
+        if (vehicle?.mesh && vehicle.mesh.position.z >= z - 25.0 && vehicle.mesh.position.z <= z + 65.0) {
+          this.scene.remove(vehicle.mesh);
+          return false;
+        }
+        return true;
+      });
+    }
 
     if (kind === 'turn') {
       // A real cross-road built from corridor chunks so the corner already looks like the street.
@@ -8828,6 +8901,22 @@ export class Game {
     player.group.rotation.y = Math.PI + angle;
     player.facingAngle = Math.PI + angle;
     player.targetRotationY = Math.PI + angle;
+
+    // Active running animation during turn so runner legs and arms never freeze
+    if (typeof AvatarBuilder !== 'undefined' && AvatarBuilder.updateAnimation && player.avatarMesh) {
+      const runPace = Math.max(12, this.getRunnerSpeed()) / 14.0;
+      AvatarBuilder.updateAnimation(player.avatarMesh, true, dt, runPace, false);
+    }
+
+    // Dynamic drifting tire/shoe smoke during the turn apex
+    if (p > 0.15 && p < 0.85 && Math.random() < 0.35) {
+      this.particles?.createSkidSmoke?.(player.position, 1);
+    }
+
+    // Accumulate distance and score smoothly through the turn
+    const curSpeed = this.getRunnerSpeed();
+    this.distanceMeters += curSpeed * dt;
+    this.score += Math.round(curSpeed * dt * 0.5);
 
     const lift = this.runnerCameraLift || 0;
     const apex = Math.sin(Math.PI * p);
@@ -9008,51 +9097,63 @@ export class Game {
         }
       }
       if (junction.kind === 'fork' && junction.resolved && ahead < -14) this.removeRunnerJunction();
-      this.runnerTraffic = (this.runnerTraffic || []).filter(vehicle => {
-        if (vehicle?.mesh && vehicle.mesh.position.z < junction.z - 15) {
-          this.scene.remove(vehicle.mesh);
-          return false;
-        }
-        return true;
-      });
-    }
-
-    const section = this.runnerSection;
-    if (section && this.distanceMeters >= section.endDist) this.endRunnerSection();
-    const targetLift = this.runnerSection?.type === 'flyover' ? 1.1 : this.runnerSection ? -0.7 : 0;
-    this.runnerCameraLift = THREE.MathUtils.lerp(this.runnerCameraLift || 0, targetLift, Math.min(1, dt * 3));
-
-    (this.runnerSectionDecor || []).forEach((mesh, index, list) => {
-      if (mesh.position.z > this.player.position.z + 20) {
-        this.scene.remove(mesh);
-        list[index] = null;
+    this.runnerTraffic = (this.runnerTraffic || []).filter(vehicle => {
+      if (vehicle?.mesh && vehicle.mesh.position.z <= junction.z + 65.0 && vehicle.mesh.position.z >= junction.z - 30.0) {
+        this.scene.remove(vehicle.mesh);
+        return false;
       }
+      return true;
     });
-    this.runnerSectionDecor = (this.runnerSectionDecor || []).filter(Boolean);
-
-
-    let nav = null;
-    const heading = this.getRunnerHeadingLabel();
-    if (this.runnerJunction && !this.runnerJunction.resolved) {
-      const meters = Math.max(0, Math.round(this.player.position.z - this.runnerJunction.z));
-      if (meters < 320) {
-        const j = this.runnerJunction;
-        nav = j.kind === 'fork'
-          ? { arrow: '⬆⬇', text: 'FORK: ⬅ FLYOVER · UNDERPASS ➡', meters, heading, urgent: meters < 45 }
-          : { arrow: j.dir === -1 ? '↰' : '↱', text: `TURN ${j.dir === -1 ? 'LEFT' : 'RIGHT'}`, meters, heading, urgent: meters < 45 };
-      }
-    }
-    if (!nav) {
-      nav = {
-        arrow: this.runnerSection ? (this.runnerSection.type === 'flyover' ? '⬆' : '⬇') : '⬆',
-        text: this.runnerSection ? this.runnerSection.type.toUpperCase() : 'KEEP STRAIGHT',
-        meters: null,
-        heading,
-        urgent: false
-      };
-    }
-    this.ui.updateRunnerNav?.(nav);
   }
+
+  const section = this.runnerSection;
+  if (section && this.distanceMeters >= section.endDist) this.endRunnerSection();
+  const targetLift = this.runnerSection?.type === 'flyover' ? 1.1 : this.runnerSection ? -0.7 : 0;
+  this.runnerCameraLift = THREE.MathUtils.lerp(this.runnerCameraLift || 0, targetLift, Math.min(1, dt * 3));
+
+  (this.runnerSectionDecor || []).forEach((mesh, index, list) => {
+    if (mesh.position.z > this.player.position.z + 20) {
+      this.scene.remove(mesh);
+      list[index] = null;
+    }
+  });
+  this.runnerSectionDecor = (this.runnerSectionDecor || []).filter(Boolean);
+
+
+  let nav = null;
+  const heading = this.getRunnerHeadingLabel();
+  if (this.runnerJunction && !this.runnerJunction.resolved) {
+    const meters = Math.max(0, Math.round(this.player.position.z - this.runnerJunction.z));
+    if (meters < 320) {
+      const j = this.runnerJunction;
+      const turnKey = j.dir === -1 ? 'A / ←' : 'D / →';
+      const turnDirText = j.dir === -1 ? 'LEFT' : 'RIGHT';
+      nav = j.kind === 'fork'
+        ? { arrow: '⬆⬇', text: 'FORK: ⬅ FLYOVER · UNDERPASS ➡', meters, heading, urgent: meters < 45 }
+        : {
+            arrow: j.turnQueued ? '✔' : (j.dir === -1 ? '↰' : '↱'),
+            text: j.turnQueued
+              ? `🧭 TURN ${turnDirText} LOCKED IN!`
+              : meters <= 45
+                ? `⚡ SWIPE [${turnKey}] TO TURN ${turnDirText}!`
+                : `TURN ${turnDirText}`,
+            meters,
+            heading,
+            urgent: meters < 45
+          };
+    }
+  }
+  if (!nav) {
+    nav = {
+      arrow: this.runnerSection ? (this.runnerSection.type === 'flyover' ? '⬆' : '⬇') : '⬆',
+      text: this.runnerSection ? this.runnerSection.type.toUpperCase() : 'KEEP STRAIGHT',
+      meters: null,
+      heading,
+      urgent: false
+    };
+  }
+  this.ui.updateRunnerNav?.(nav);
+}
 
   executeRunnerAutoPilot(dt) {
     const junction = this.runnerJunction;

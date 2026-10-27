@@ -3729,6 +3729,104 @@ async function runTestSuite() {
   }
 
   // -------------------------------------------------------------------------
+  // TC-52: Runner Turn Overhaul Audit (Visibility, Runway Clearance, Animation & Smooth Transition)
+  // -------------------------------------------------------------------------
+  const t52Start = Date.now();
+  const res52 = await runChromeTest({
+    testId: 'TC-52',
+    screenshotName: 'tc52_runner_turn_overhaul.png',
+    windowSize: '667,375',
+    extraStyle: '#modal-start-mission, #modal-pause, #modal-tutorial { display: none !important; }',
+    waitMs: 4000,
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        if (!game?.scene || !game.player) throw new Error('Runner scene is not ready for turn audit');
+        document.getElementById('btn-start-patrol')?.click();
+        game.isTempleRun = true;
+        game.isGameStarted = true;
+        game.isGameOver = false;
+        game.resetRunnerNavigation();
+        game.clearRunnerObjects();
+        game.initCorridorTerrain();
+        game.distanceMeters = 500;
+        game.player.position.set(0, 0, 0);
+        game.currentLane = 0;
+        game.hearts = 3;
+        game.runnerInvulnerableTimer = 100;
+        game.isPaused = false;
+
+        // 1. Audit Junction High-Visibility Visibility Decor
+        if (!game.spawnRunnerJunction('turn', -1, 120)) throw new Error('Turn junction did not spawn');
+        const junction = game.runnerJunction;
+        if (!junction || !junction.group) throw new Error('Junction group missing');
+
+        // Check overhead gantry and directional signs
+        const turnSigns = junction.group.children.filter(child => child.userData.runnerTurnSign);
+        if (turnSigns.length < 2) throw new Error('Overhead turn gantry and roadside signboards are missing: found ' + turnSigns.length);
+        const barrier = junction.group.children.find(child => child.userData.runnerTurnBarrier);
+        if (!barrier) throw new Error('Dead-end barrier is missing');
+
+        // 2. Audit Obstacle-Free Approach Runway
+        // Deliberately inject test obstacles in the approach zone and verify runway safety purge
+        game.spawnRunnerTestObstacle('pothole', 0);
+        const testObs = game.runnerObstacles[game.runnerObstacles.length - 1];
+        if (testObs) {
+          testObs.z = junction.z + 30.0;
+          if (testObs.mesh) testObs.mesh.position.z = junction.z + 30.0;
+        }
+
+        // Remove first junction and respawn to trigger approach clearance sweep
+        game.removeRunnerJunction();
+        if (!game.spawnRunnerJunction('turn', -1, 120)) throw new Error('Could not respawn junction');
+        const activeJunction = game.runnerJunction;
+        const hazardsInRunway = (game.runnerObstacles || []).filter(o => o.z <= activeJunction.z + 65.0 && o.z >= activeJunction.z - 25.0);
+        if (hazardsInRunway.length > 0) throw new Error('Obstacles were not purged from the approach runway: ' + hazardsInRunway.length);
+        const trafficInRunway = (game.runnerTraffic || []).filter(v => v.mesh && v.mesh.position.z <= activeJunction.z + 65.0 && v.mesh.position.z >= activeJunction.z - 25.0);
+        if (trafficInRunway.length > 0) throw new Error('Traffic was not purged from the approach runway: ' + trafficInRunway.length);
+
+        // 3. Step towards junction and verify HUD guidance & early turn queue
+        const step = dt => game.updateTempleRunCorridor(dt);
+        for (let i = 0; i < 400 && game.player.position.z - activeJunction.z > 35; i++) step(0.016);
+        game.changeLane(-1);
+        if (!activeJunction.turnQueued) throw new Error('Early turn input did not queue in the approach zone');
+
+        // Verify HUD shows locked-in turn feedback
+        const navEl = document.getElementById('hud-runner-nav');
+        if (!navEl || navEl.textContent.indexOf('TURN') === -1) throw new Error('HUD navigation did not show turn guidance');
+
+        // 4. Step into turn and audit animation & continuity
+        const startDist = game.distanceMeters;
+        const startScore = game.score;
+        for (let i = 0; i < 400 && !game.runnerTurn; i++) step(0.016);
+        if (!game.runnerTurn) throw new Error('Turn animation did not start at the corner');
+
+        let framesInTurn = 0;
+        let animatedLegs = false;
+        let bankingObserved = false;
+        while (game.runnerTurn && framesInTurn < 120) {
+          step(0.016);
+          framesInTurn++;
+          if (game.player.avatarMesh && Math.abs(game.player.avatarMesh.rotation.z) > 0.05) bankingObserved = true;
+          if (game.distanceMeters > startDist) animatedLegs = true;
+        }
+
+        if (!bankingObserved) throw new Error('Runner did not bank into the turn');
+        if (!animatedLegs) throw new Error('Distance/running progression froze during turn');
+        if (game.runnerTurn) throw new Error('Turn did not finish within expected duration');
+
+        // 5. Audit post-turn alignment & zero snap
+        if (game.getRunnerHeadingLabel() !== 'W') throw new Error('Heading did not update to W');
+        if (game.player.position.x !== game.targetLaneX) throw new Error('Player lane did not preserve correctly after turn');
+        if (game.corridorChunks.length !== 7) throw new Error('Corridor chunks broken after turn');
+
+        window.__turnOverhaulDone = true;
+      })();
+    `
+  });
+  recordTest('TC-52', 'Runner Turn Overhaul Audit (Visibility, Runway Clearance & Animation)', res52.success ? 'PASSED' : 'FAILED', Date.now() - t52Start, res52.success ? 'Verified high-visibility overhead gantry, clean hurdle-free runway, active avatar banking/animation and smooth post-turn alignment' : res52.error);
+
+  // -------------------------------------------------------------------------
   // Summary Report Output
   // -------------------------------------------------------------------------
   const totalDuration = Date.now() - startTime;
