@@ -92,4 +92,57 @@ bundle to `gh-pages`.
 - Live-browser smoke: onboarding, tutorial dismissal, start, lane switching,
   jump/fast-fall/slide and current-run score verified; no runtime errors captured.
 
-No Android release bundle, Play Console upload or track publication was performed.
+### Subsequent approved Google Play release
+
+After the web release, the user separately approved Android publication:
+
+- Package: `pk.karachi.runner`.
+- Version: **2.2.16 (38)**.
+- Tracks: **internal** and **alpha**, both independently verified as `completed`.
+- Google Play upload, edit validation and edit commit: successful.
+- Bundle SHA-256:
+  `02b66f6403a198dba2adda7890050a6739070d7cf065d71dfe7847b358efc103`.
+- Signed AAB build and signature verification passed; generated release manifest
+  confirms version 38, version name 2.2.16 and target SDK 36.
+- Packaged web assets match the corresponding local production build.
+- Production and beta tracks remain empty and unchanged. No website redeployment
+  was performed for this Android-only version bump.
+
+Play API track status does not establish that Google review, processing or tester
+availability is complete. The subsequent website-only release approval also
+covers pushing this existing release metadata and these notes to GitHub.
+
+## Follow-up: controls, turns and Shop feedback
+
+The subsequent player feedback is addressed locally:
+
+| Feedback | Root cause and correction |
+| --- | --- |
+| Remove movement buttons; make horn clearer | Removed left/right/jump/slide buttons and their listeners. Swipes and keyboard remain. Horn now has a high-contrast sound-wave icon, label, input hint and activation animation, respecting reduced-motion preferences. Help text matches the controls. |
+| Unexplained police deaths | A second graze while the police car was close invoked an instant capture game-over, independent of hearts. Removed this capture path. Grazes now explicitly report slowdown without heart loss; direct hazard impacts still remove hearts. |
+| Structures obstruct turns | Slab bounds were calculated while some groups were detached from their chunk, mixing local/world coordinates. Nonmerged props could also be translated twice. Snapshot transforms before reparenting, compute bounds in the attached frame, and include wires/sprites in clearance. Preserve asphalt and ground while clearing both sides, the cross-road entry and exit. Maintain clearance as chunks recycle and traffic moves; remove obstructive power-ups, buses and decorative arches from the approach. |
+| Turns hard to read | Junction signs reused the X-shaped pothole marker. They now use dedicated directional arrows, sized to fit their boards. |
+| Coins turn sideways | Coins now face the camera without edge-on spinning, with upright face text. The same collection update runs during turns; additional coins follow the actual quarter-circle path. |
+| Menu text overflows | Added wrapping/shrink-safe headers and shop rows, stacked purchases on narrow screens, and a compact landscape action row. Menus remain scrollable with reachable actions. |
+| Main-menu Shop misplaced/nonfunctional | Replaced the absolute-positioned button with a responsive header grid. Shop now layers above home/menu overlays, supports Escape/focus return, and preserves pause state. Purchases charge only the banked career wallet once, persist atomically, roll back on storage failure and display errors inside the Shop. |
+
+### Follow-up verification
+
+- Full `npm test`: **87/87 browser/build checks**, **7/7 analytics** and
+  **15/15 operations**.
+- Supplemental hazard, upgrade-economy and W-11 surfing tests: **18/18**.
+- **127 passing checks total**; production build and `git diff --check` passed.
+- TC-61 checks actual rendered bounds, not only clearance metadata, for left
+  and right turns in all three scenery styles. Existing turn-frame continuity
+  and GPU-recycling regressions also pass.
+- TC-63 checks home/help/progress/shop at 320x568, 568x320, 768x1024 and
+  1280x800. Existing phone-landscape menu/HUD and popup-layout checks also pass.
+- Interactive browser spot-checks inspected both turn directions, face-on
+  readable coins, the horn and the Shop overlay. These are spot checks, not a
+  new two-minute uninterrupted gameplay measurement.
+- Existing large-bundle and deprecated `THREE.Clock` warnings remain.
+
+The user approved publishing this follow-up to GitHub `main` and GitHub Pages
+only. Deployment verification is recorded below after publication. No release
+AAB build or Play publication is included. The already-published Android version
+2.2.16 (38) does not contain this follow-up.

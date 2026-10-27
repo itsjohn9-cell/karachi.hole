@@ -200,17 +200,19 @@ class SaveManager {
     };
   }
 
-  upgradePowerUp(type, availableCoins = null) {
+  upgradePowerUp(type) {
     const key = this._normalizePowerUpKey(type);
+    if (!Object.hasOwn(DEFAULT_SAVE_DATA.powerUpUpgrades, key)) {
+      console.error('[SHOP] Unknown power-up upgrade:', type);
+      return { success: false, reason: 'Unknown power-up upgrade.' };
+    }
     const currentLevel = this.getPowerUpUpgradeLevel(key);
     if (currentLevel >= 5) {
       return { success: false, reason: 'Ability is already at MAX Level 5!' };
     }
 
     const cost = this.getPowerUpUpgradeCost(key);
-    const walletRupees = Number.isFinite(availableCoins)
-      ? availableCoins
-      : (this.data.runnerStats?.totalRupees || 0);
+    const walletRupees = this.data.runnerStats?.totalRupees || 0;
 
     if (walletRupees < cost) {
       return {
@@ -223,13 +225,12 @@ class SaveManager {
       this.data.powerUpUpgrades = { ...DEFAULT_SAVE_DATA.powerUpUpgrades };
     }
     this.data.powerUpUpgrades[key] = currentLevel + 1;
-
-    // Deduct from persistent career rupees if deducting from career wallet
-    if (availableCoins === null && this.data.runnerStats) {
-      this.data.runnerStats.totalRupees = Math.max(0, (this.data.runnerStats.totalRupees || 0) - cost);
+    this.data.runnerStats.totalRupees = walletRupees - cost;
+    if (!this.save()) {
+      this.data.powerUpUpgrades[key] = currentLevel;
+      this.data.runnerStats.totalRupees = walletRupees;
+      return { success: false, reason: 'Could not save your upgrade. Check device storage and try again.' };
     }
-
-    this.save();
     return {
       success: true,
       key,

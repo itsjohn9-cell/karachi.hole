@@ -903,10 +903,9 @@ async function runTestSuite() {
             throw new Error('Could not enter legacy civic mode through Master Mode');
           }
 
-          // 1. Check Jump Button and Journal Button in HUD
-          const jumpBtn = document.getElementById('btn-jump');
+          // 1. Movement uses gestures/keyboard; legacy journal remains available.
           const journalBtn = document.getElementById('btn-journal');
-          if (!jumpBtn) throw new Error('#btn-jump missing from HUD controls');
+          if (document.getElementById('btn-jump')) throw new Error('Removed jump button returned');
           if (!journalBtn) throw new Error('#btn-journal missing from HUD controls');
 
           // 2. Open Mission Journal
@@ -1054,10 +1053,10 @@ async function runTestSuite() {
           game.changeLane(1);
           if (game.currentLane !== 1) throw new Error('Lane boundary clamping failed on right side: got ' + game.currentLane);
 
-          // 6. Verify touch HUD buttons exist and trigger lane changes
+          // 6. Traversal buttons are intentionally replaced by gestures.
           const btnL = document.getElementById('btn-lane-left');
           const btnR = document.getElementById('btn-lane-right');
-          if (!btnL || !btnR) throw new Error('Mobile touch lane buttons (#btn-lane-left, #btn-lane-right) missing');
+          if (btnL || btnR) throw new Error('Removed lane buttons returned');
         }, 500);
       });
     `
@@ -1459,7 +1458,7 @@ async function runTestSuite() {
             });
             window.dispatchEvent(event);
           };
-          const laneButton = document.getElementById('btn-lane-right');
+          const hornButton = document.getElementById('btn-horn');
           const canvasBounds = document.querySelector('#canvas-container canvas').getBoundingClientRect();
           const swipeStart = {
             identifier: 44,
@@ -1478,7 +1477,7 @@ async function runTestSuite() {
             throw new Error('Gameplay swipe did not make exactly one lane change; got ' + game.currentLane);
           }
 
-          const laneButtonBounds = laneButton.getBoundingClientRect();
+          const laneButtonBounds = hornButton.getBoundingClientRect();
           const buttonSwipeStart = {
             identifier: 45,
             clientX: laneButtonBounds.left + 10,
@@ -1497,9 +1496,9 @@ async function runTestSuite() {
           }
 
           game.currentLane = 0;
-          laneButton.click();
-          if (game.currentLane !== 1) {
-            throw new Error('Mobile lane button activated more than once per touch');
+          hornButton.click();
+          if (game.currentLane !== 0 || !hornButton.classList.contains('is-honking')) {
+            throw new Error('Horn failed to give feedback or unexpectedly changed lanes');
           }
 
           game.score = 900;
@@ -1520,10 +1519,6 @@ async function runTestSuite() {
           const visibleCityObjects = [...game.cityGen.worldObjects].filter(object => object.visible);
           const runnerHudControls = [
             'btn-manual-pause',
-            'btn-lane-left',
-            'btn-lane-right',
-            'btn-jump',
-            'btn-slide',
             'btn-horn'
           ];
           const hiddenRunnerControls = runnerHudControls.filter(id => {
@@ -2146,21 +2141,14 @@ async function runTestSuite() {
               document.getElementById('btn-runner-unstick')) {
             throw new Error('Legacy sprint, journal, or free unstick control is still exposed in runner mode');
           }
-          const laneControls = document.querySelector('.hud-runner-lanes');
           const actionControls = document.querySelector('.hud-controls-bottom-right');
-          if (!laneControls || !actionControls ||
-              getComputedStyle(laneControls).display === 'none' ||
-              getComputedStyle(actionControls).display === 'none') {
-            throw new Error('Runner touch controls are missing');
+          if (document.querySelector('#btn-lane-left, #btn-lane-right, #btn-jump, #btn-slide') ||
+              !actionControls || getComputedStyle(actionControls).display === 'none') {
+            throw new Error('Horn-only runner controls are incorrect');
           }
-          const laneRect = laneControls.getBoundingClientRect();
           const actionRect = actionControls.getBoundingClientRect();
-          if (laneRect.right > actionRect.left) {
-            throw new Error('Lane and traversal controls overlap on a 375px-wide screen');
-          }
-          if (!document.getElementById('btn-jump')?.title.includes('Jump') ||
-              !document.getElementById('btn-slide')?.title.includes('Slide') ||
-              !document.getElementById('btn-horn')?.title.includes('Horn')) {
+          if (!document.getElementById('btn-horn')?.title.includes('Horn') ||
+              !document.querySelector('#btn-horn .horn-icon')) {
             throw new Error('Visible runner actions do not explain what they do');
           }
 
@@ -2177,7 +2165,7 @@ async function runTestSuite() {
               throw new Error('Floating gameplay notifications overlap');
             }
           }
-          if (feedbackRects.some(rect => rect.bottom > laneRect.top || rect.bottom > actionRect.top)) {
+          if (feedbackRects.some(rect => rect.bottom > actionRect.top)) {
             throw new Error('Gameplay notifications overlap the touch-control area ' + innerWidth + 'x' + innerHeight + ' fb=' + feedbackRects.map(r => Math.round(r.top) + '-' + Math.round(r.bottom)) + ' lane=' + Math.round(laneRect.top) + ' act=' + Math.round(actionRect.top));
           }
         }, 500);
@@ -3621,10 +3609,6 @@ async function runTestSuite() {
       const required = [
         ['runner status', document.querySelector('.hud-center-stats-row')],
         ['pause button', document.getElementById('btn-manual-pause')],
-        ['left lane button', document.getElementById('btn-lane-left')],
-        ['right lane button', document.getElementById('btn-lane-right')],
-        ['jump button', document.getElementById('btn-jump')],
-        ['slide button', document.getElementById('btn-slide')],
         ['horn button', document.getElementById('btn-horn')]
       ];
       const rects = new Map();
@@ -3639,11 +3623,8 @@ async function runTestSuite() {
       const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 &&
         Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
       if (overlaps(rects.get('runner status'), rects.get('pause button'))) throw new Error('Runner status overlaps pause');
-      for (const lane of ['left lane button', 'right lane button']) {
-        for (const action of ['jump button', 'slide button', 'horn button']) {
-          if (overlaps(rects.get(lane), rects.get(action))) throw new Error(lane + ' overlaps ' + action);
-        }
-      }
+      if (overlaps(rects.get('pause button'), rects.get('horn button'))) throw new Error('Pause overlaps horn');
+      if (rects.get('horn button').width < 44 || rects.get('horn button').height < 44) throw new Error('Horn touch target is too small');
 
       const assertRunnerFramed = label => {
         game.camera.updateMatrixWorld(true);
@@ -4306,6 +4287,233 @@ async function runTestSuite() {
     `
   });
   recordTest('TC-59', 'Run Score HUD, Classic Score & Fresh-Run Isolation', res59.success ? 'PASSED' : 'FAILED', Date.now() - t59Start, res59.error || 'Runner HUD/menu use run score; classic score is preserved; fresh runs reset buffs and motion');
+
+  const t60Start = Date.now();
+  const res60 = await runChromeTest({
+    testId: 'TC-60',
+    beforeAppScript: "localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true');",
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        game.startGame();
+        game.clearRunnerObjects();
+        game.isImmortal = false;
+        const hearts = game.hearts;
+        for (let i = 0; i < 10; i++) {
+          game.isChaserClose = true;
+          game.chaserDistance = 2;
+          game.triggerRunnerStumble('Test graze');
+        }
+        if (game.isGameOver || game.hearts !== hearts) throw new Error('Police chase still kills or damages runner');
+        game.runnerInvulnerableTimer = 0;
+        game.shieldTimer = game.nitroTimer = game.chingchiTimer = game.jetpackTimer = 0;
+        game.handleRunnerHit({ type: 'pothole' }, 'Test road hazard');
+        if (game.hearts !== hearts - 1) throw new Error('Real road hazard no longer costs a heart');
+        game.player.isGrounded = true;
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', code: 'KeyW' }));
+        if (game.player.velocityY <= 0) throw new Error('Keyboard jump stopped working');
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS' }));
+        if (!game.isSliding) throw new Error('Keyboard slide stopped working');
+        const swipe = (dx, dy) => {
+          const start = { identifier: 71, clientX: innerWidth / 2, clientY: innerHeight / 2 };
+          for (const [type, touch, touches] of [
+            ['touchstart', start, [start]],
+            ['touchend', { ...start, clientX: start.clientX + dx, clientY: start.clientY + dy }, []]
+          ]) {
+            const event = new Event(type, { bubbles: true, cancelable: true });
+            Object.defineProperties(event, { changedTouches: { value: [touch] }, touches: { value: touches } });
+            window.dispatchEvent(event);
+          }
+        };
+        game.player.isGrounded = true;
+        game.player.velocityY = 0;
+        swipe(0, -80);
+        if (game.player.velocityY <= 0 || game.isSliding) throw new Error('Swipe-up jump stopped working');
+        swipe(0, 80);
+        if (!game.isSliding) throw new Error('Swipe-down slide stopped working');
+        document.getElementById('btn-horn').click();
+        if (!document.querySelector('#btn-horn.is-honking .horn-icon')) throw new Error('Horn has no activation feedback');
+        if (document.querySelector('#btn-lane-left, #btn-lane-right, #btn-jump, #btn-slide')) throw new Error('Traversal buttons remain');
+        game.isPaused = true;
+      })();
+    `
+  });
+  recordTest('TC-60', 'Nonlethal Police Chase & Horn-Only Controls', res60.success ? 'PASSED' : 'FAILED', Date.now() - t60Start, res60.error || 'Repeated close-chase grazes are nonlethal; road damage and keyboard traversal remain; horn gives visual feedback');
+
+  const t61Start = Date.now();
+  const res61 = await runChromeTest({
+    testId: 'TC-61',
+    waitMs: 6000,
+    beforeAppScript: "localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true');",
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        game.startGame();
+        game.isPaused = true;
+        game.clearRunnerObjects();
+        game.removeRunnerJunction();
+        for (const [district, dir] of [[1,-1],[1,1],[2,-1],[2,1],[3,-1],[3,1]]) {
+          game.currentDistrictLevel = district;
+          game.player.position.set(0, 0, 0);
+          game.spawnRunnerJunction('turn', dir, 14);
+          const junction = game.runnerJunction;
+          let hiddenLines = 0;
+          for (const chunk of game.corridorChunks) {
+            chunk.updateWorldMatrix(true, true);
+            for (const slab of chunk.userData.slabs) {
+              const lo = chunk.position.z + slab.userData.zMin;
+              const hi = chunk.position.z + slab.userData.zMax;
+              let actualBounds;
+              slab.traverse(child => {
+                if (!child.geometry) return;
+                child.geometry.computeBoundingBox();
+                const bounds = child.geometry.boundingBox.clone().applyMatrix4(child.matrixWorld);
+                if (actualBounds) actualBounds.union(bounds);
+                else actualBounds = bounds;
+                if (child.userData.isRoadSurface && Math.abs((bounds.min.z + bounds.max.z) / 2 - chunk.position.z) > 0.1) {
+                  throw new Error('Road surface was double-translated away from its chunk');
+                }
+              });
+              if (actualBounds && (Math.abs(actualBounds.min.z - lo) > 0.1 || Math.abs(actualBounds.max.z - hi) > 0.1)) {
+                throw new Error('Clearance bounds do not match rendered geometry: ' + JSON.stringify({
+                  chunkZ: chunk.position.z, slab: slab.name, lo, hi,
+                  actualLo: actualBounds.min.z, actualHi: actualBounds.max.z
+                }));
+              }
+              if (!slab.userData.roadSurface && hi > junction.z - 32 && lo < junction.z + 45 && slab.visible) {
+                throw new Error('Scenery remains in the intersection: ' + slab.name);
+              }
+              slab.traverse(child => { if (child.isLine && !slab.visible) hiddenLines++; });
+              if (slab.userData.roadSurface && !slab.visible) throw new Error('Clearance removed road surface');
+            }
+          }
+          if (!hiddenLines) throw new Error('Overhead wires were not included in turn clearance');
+          const cross = junction.turnChunks[0];
+          if (cross.userData.slabs.some(slab => !slab.userData.roadSurface && slab.visible)) throw new Error('Cross-road structures block turn');
+          const arrows = [];
+          junction.group.traverse(mesh => { if (mesh.geometry?.type === 'ShapeGeometry') arrows.push(mesh); });
+          if (arrows.length < 7 || arrows.some(mesh => mesh.geometry.parameters.shapes.getPoints().filter(p => p.y > 0.6).length !== 1)) {
+            throw new Error('Turn signs are not real directional arrows');
+          }
+          const blocker = new game.player.group.constructor();
+          blocker.position.z = junction.z + 30;
+          game.scene.add(blocker);
+          game.runnerTraffic.push({ mesh: blocker, speed: 10 });
+          game.updateRunnerNavigation(0);
+          if (blocker.parent || game.runnerTraffic.length) throw new Error('Moving traffic re-entered clear runway');
+          game.spawnRunnerWave(junction.z + 30);
+          if (game.runnerObstacles.length || game.runnerTraffic.length) throw new Error('Wave repopulated clear runway');
+          game.beginRunnerTurn(junction, dir);
+          const beforeCoins = game.coins;
+          for (let i = 0; i < 9; i++) {
+            game.updateRunnerTurnAnimation(game.runnerTurn.duration / 10);
+            for (const coin of game.runnerCoins) {
+              if (Math.abs(coin.mesh.quaternion.dot(game.camera.quaternion)) < 0.99999) throw new Error('Coin turned edge-on during camera turn');
+            }
+          }
+          if (game.coins < beforeCoins + 350) throw new Error('Arc coins cannot be collected during turn');
+          game.finishRunnerTurn();
+          if (game.corridorChunks[0].userData.slabs.some(slab => !slab.userData.roadSurface && slab.visible)) throw new Error('Structures pop back at turn exit');
+          game.removeRunnerJunction();
+          game.clearRunnerObjects();
+        }
+      })();
+    `
+  });
+  recordTest('TC-61', 'Clear Left/Right Turns, Direction Arrows & Facing Coins', res61.success ? 'PASSED' : 'FAILED', Date.now() - t61Start, res61.error || 'Actual scenery/wires and traffic stay clear; asphalt persists; directional arrows and collectable camera-facing arc coins verified');
+
+  const t62Start = Date.now();
+  const res62 = await runChromeTest({
+    testId: 'TC-62',
+    beforeAppScript: "localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true'); localStorage.setItem('karachi_hero_save_v2', JSON.stringify({powerUpUpgrades:{magnet:1}, runnerStats:{totalRupees:2000}}));",
+    scriptInjection: `
+      (() => {
+        const ui = window.game.ui;
+        document.getElementById('btn-home-shop').click();
+        const shop = document.getElementById('modal-runner-shop');
+        const card = shop.querySelector('.runner-shop-card');
+        const r = card.getBoundingClientRect();
+        if (!document.elementFromPoint(r.left + r.width / 2, r.top + 20)?.closest('#modal-runner-shop')) throw new Error('Shop is behind main menu');
+        document.querySelector('.shop-buy-btn[data-upgrade="magnet"]').click();
+        if (ui.getAvailableRupees() !== 1500) throw new Error('Shop upgrade charged incorrectly: ' + ui.getAvailableRupees());
+        const loaded = JSON.parse(localStorage.getItem('karachi_hero_save_v2'));
+        if (loaded.runnerStats.totalRupees !== 1500 || loaded.powerUpUpgrades.magnet !== 2) throw new Error('Upgrade did not persist');
+        const setItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = () => { throw new Error('Test storage full'); };
+        try {
+          document.querySelector('.shop-buy-btn[data-upgrade="magnet"]').click();
+          if (ui.getAvailableRupees() !== 1500 || !document.querySelector('.shop-item-level-tag').textContent.includes('2/5')) throw new Error('Failed save charged wallet');
+          if (!document.getElementById('runner-shop-status').textContent.includes('Could not save')) throw new Error('Failed save was hidden');
+        } finally { Storage.prototype.setItem = setItem; }
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' }));
+        if (shop.style.display !== 'none') throw new Error('Escape did not close shop');
+        window.game.startGame();
+        window.game.coins = 9000;
+        ui.showRunnerShop();
+        if (!window.game.isPaused || ui.getAvailableRupees() !== 1500) throw new Error('Shop did not pause game or included unbanked coins');
+        ui.hideRunnerShop();
+        if (window.game.isPaused) throw new Error('Shop did not resume an active run');
+        window.game.isPaused = true;
+        ui.showRunnerShop();
+        ui.hideRunnerShop();
+        if (!window.game.isPaused) throw new Error('Shop resumed an already-paused run');
+      })();
+    `
+  });
+  recordTest('TC-62', 'Shop Layering, Purchases, Persistence & Save Failure', res62.success ? 'PASSED' : 'FAILED', Date.now() - t62Start, res62.error || 'Shop overlays home; upgrades charge once, persist and roll back failed saves; Escape closes it');
+
+  for (const [width, height] of [[320, 568], [568, 320], [768, 1024], [1280, 800]]) {
+    const started = Date.now();
+    const result = await runChromeTest({
+      testId: 'TC-63',
+      windowSize: '1280,1024',
+      waitMs: 4000,
+      screenshotName: 'tc63_shop_' + width + 'x' + height + '.png',
+      scriptInjection: `
+        (() => {
+          if (window.parent === window) {
+            window.__testResult = { status: 'failed', error: 'Menu layout frame did not finish' };
+            const frame = document.createElement('iframe');
+            frame.src = location.href;
+            frame.style.cssText = 'position:fixed;inset:0;border:0;z-index:2147483647;width:${width}px;height:${height}px';
+            document.body.appendChild(frame);
+            const poll = setInterval(() => {
+              const result = frame.contentWindow?.__menuFeedbackDone;
+              if (result) { window.__testResult = result; clearInterval(poll); }
+            }, 50);
+            return;
+          }
+          try {
+            const ui = window.game.ui;
+            const title = document.querySelector('.start-title').getBoundingClientRect();
+            const homeShop = document.getElementById('btn-home-shop').getBoundingClientRect();
+            if (title.right > homeShop.left + 1 || homeShop.right > innerWidth) throw new Error('Home Shop overlaps title or viewport');
+            for (const [id, open, close] of [
+              ['modal-runner-help', () => document.getElementById('btn-home-help').click(), () => document.getElementById('btn-close-runner-help').click()],
+              ['modal-runner-progress', () => document.getElementById('btn-home-progress').click(), () => document.getElementById('btn-close-runner-progress').click()],
+              ['modal-runner-shop', () => ui.showRunnerShop(), () => ui.hideRunnerShop()]
+            ]) {
+              open();
+              const card = document.querySelector('#' + id + ' .runner-info-card');
+              const rect = card.getBoundingClientRect();
+              if (rect.left < -1 || rect.top < -1 || rect.right > innerWidth + 1 || rect.bottom > innerHeight + 1) throw new Error(id + ' leaves viewport');
+              for (const element of card.querySelectorAll('h2,h3,h4,p,button,.shop-item-title-row,.shop-item-stat-row')) {
+                if (element.scrollWidth > element.clientWidth + 2) throw new Error('Overflowing ' + id + ': ' + element.textContent.trim());
+              }
+              card.scrollTop = card.scrollHeight;
+              const done = card.querySelector('.runner-info-footer button');
+              if (done && done.getBoundingClientRect().bottom > rect.bottom + 1) throw new Error(id + ' footer unreachable');
+              close();
+            }
+            window.__menuFeedbackDone = { status: 'passed' };
+          } catch (error) {
+            window.__menuFeedbackDone = { status: 'failed', error: error.message };
+          }
+        })();
+      `
+    });
+    recordTest('TC-63 ' + width + 'x' + height, 'Responsive Home, Help, Progress & Shop', result.skipped ? 'SKIPPED' : result.success ? 'PASSED' : 'FAILED', Date.now() - started, result.error || 'No overlapping title or overflowing menu text; modal actions remain reachable');
+  }
 
   // Summary Report Output
   // -------------------------------------------------------------------------

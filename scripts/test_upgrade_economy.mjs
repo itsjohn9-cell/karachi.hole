@@ -93,3 +93,19 @@ test('Physics timing calculations: Lvl 1 Magnet = 10s, Lvl 5 Magnet = 20s', () =
   assert.equal(getMagnetDuration(4), 17.5);
   assert.equal(getMagnetDuration(5), 20.0);
 });
+
+test('Failed upgrade save rolls back both wallet and level', () => {
+  saveManager.data.powerUpUpgrades.shield = 1;
+  saveManager.data.runnerStats.totalRupees = 2000;
+  const save = saveManager.save;
+  saveManager.save = () => false;
+  try {
+    const result = saveManager.upgradePowerUp('shield');
+    assert.equal(result.success, false);
+    assert.match(result.reason, /Could not save/);
+    assert.equal(saveManager.data.powerUpUpgrades.shield, 1);
+    assert.equal(saveManager.data.runnerStats.totalRupees, 2000);
+  } finally {
+    saveManager.save = save;
+  }
+});

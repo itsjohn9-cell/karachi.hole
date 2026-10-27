@@ -223,9 +223,9 @@ export class UIManager {
 
     this.startModal.innerHTML = `
       <div class="modal-card start-mission-card">
-        <div class="start-hero-header" style="position: relative;">
+        <div class="start-hero-header">
           <h1 class="start-title">KARACHI RUNNER</h1>
-          <button class="secondary-btn ui-interactive" id="btn-home-shop" style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); padding: 5px 12px; font-size: 0.75rem; border-radius: 999px; background: rgba(255, 215, 0, 0.15); border: 1px solid rgba(255, 215, 0, 0.4); color: #ffd700; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+          <button class="secondary-btn ui-interactive home-shop-btn" id="btn-home-shop" aria-label="Open upgrade shop">
             <span aria-hidden="true">🛒</span> SHOP
           </button>
         </div>
@@ -427,9 +427,10 @@ export class UIManager {
         <div class="runner-info-content">
           <section class="runner-help-section">
             <h3>🎮 CONTROLS</h3>
-            <p><strong>Change lane:</strong> ← / → or A / D, swipe left/right, or tap the lane arrows.</p>
-            <p><strong>Jump:</strong> ↑ / W / Space, swipe up, or tap JUMP.</p>
-            <p><strong>Slide:</strong> ↓ / S, swipe down, or tap SLIDE.</p>
+            <p><strong>Change lane:</strong> ← / → or A / D, or swipe left/right.</p>
+            <p><strong>Jump:</strong> ↑ / W / Space, or swipe up.</p>
+            <p><strong>Slide:</strong> ↓ / S, or swipe down.</p>
+            <p><strong>Police chase:</strong> Visual only. Grazes slow you down but do not cost hearts; direct hazard impacts still do.</p>
             <p><strong>Turns &amp; forks:</strong> follow the navigation banner. Press ← / → (or swipe) within 45 m of a junction to turn the right way: perfect turns near the corner pay more. Wrong or missed turns cost a heart. At a fork, ← takes the fast flyover and → takes the dark underpass full of low wires.</p>
             <p><strong>Horn:</strong> H or tap HORN. <strong>Pause:</strong> Esc or ⏸.</p>
           </section>
@@ -630,11 +631,12 @@ export class UIManager {
         </header>
 
         <div class="runner-shop-balance-banner">
-          <span class="balance-label">WALLET / RUN RUPEES:</span>
+          <span class="balance-label">CAREER WALLET:</span>
           <span class="balance-value" id="runner-shop-balance">0 Rs</span>
         </div>
 
         <div class="runner-shop-grid" id="runner-shop-items-container"></div>
+        <p class="runner-shop-status" id="runner-shop-status" role="status">Rupees are banked when a run ends or you return home.</p>
 
         <button class="primary-btn ui-interactive runner-info-close" id="btn-runner-shop-done">DONE</button>
       </section>
@@ -642,58 +644,48 @@ export class UIManager {
     document.body.appendChild(this.runnerShopModal);
   }
 
-  showRunnerShop(gameInstance = null) {
-    if (gameInstance) this.activeGameInstance = gameInstance;
+  showRunnerShop() {
+    this.shopReturnFocus = document.activeElement;
+    this.shopShouldResume = !!window.game?.isGameStarted && !window.game.isPaused && !window.game.isGameOver;
+    if (this.shopShouldResume) this.onPauseGame?.();
     this.refreshRunnerShop();
+    const status = document.getElementById('runner-shop-status');
+    if (status) status.textContent = 'Rupees are banked when a run ends or you return home.';
     if (this.runnerShopModal) {
       this.runnerShopModal.style.display = 'flex';
+      document.getElementById('btn-close-runner-shop')?.focus();
     }
   }
 
   hideRunnerShop() {
     if (this.runnerShopModal) {
       this.runnerShopModal.style.display = 'none';
+      this.shopReturnFocus?.focus();
+      if (this.shopShouldResume) this.onResumeGame?.();
+      this.shopShouldResume = false;
     }
   }
 
   getAvailableRupees() {
-    if (this.activeGameInstance && Number.isFinite(this.activeGameInstance.coins)) {
-      return Math.max(this.activeGameInstance.coins, saveManager.data.runnerStats?.totalRupees || 0);
-    }
     return saveManager.data.runnerStats?.totalRupees || 0;
   }
 
   handlePowerUpUpgrade(key) {
-    const cost = saveManager.getPowerUpUpgradeCost(key);
-    const available = this.getAvailableRupees();
-
-    if (!cost || available < cost) {
-      audio.playWrongAnswer?.();
-      this.showAnnouncement(`❌ Need ${cost?.toLocaleString() || 0} Rs to upgrade! Collect more coins!`, '#ff1744');
-      return;
-    }
-
-    // Deduct from current run coins if active and affordable
-    if (this.activeGameInstance && Number.isFinite(this.activeGameInstance.coins) && this.activeGameInstance.coins >= cost) {
-      this.activeGameInstance.coins -= cost;
-    }
-    // Also deduct from persistent career rupees
-    if (saveManager.data.runnerStats) {
-      saveManager.data.runnerStats.totalRupees = Math.max(0, (saveManager.data.runnerStats.totalRupees || 0) - cost);
-    }
-
-    const res = saveManager.upgradePowerUp(key, available);
+    const res = saveManager.upgradePowerUp(key);
+    const status = document.getElementById('runner-shop-status');
     if (res.success) {
       audio.playPowerUp?.();
       const prettyKey = key.replace('_', ' ').toUpperCase();
-      this.showAnnouncement(`⚡ UPGRADED ${prettyKey} TO LEVEL ${res.newLevel}!`, '#76ff03');
+      if (status) status.textContent = `Upgraded ${prettyKey} to level ${res.newLevel}!`;
       this.refreshRunnerShop();
       this.refreshRunnerProgress();
+    } else {
+      audio.playWrongAnswer?.();
+      if (status) status.textContent = res.reason;
     }
   }
 
-  refreshRunnerShop(gameInstance = null) {
-    if (gameInstance) this.activeGameInstance = gameInstance;
+  refreshRunnerShop() {
     if (!this.runnerShopModal) return;
 
     const available = this.getAvailableRupees();
@@ -1261,12 +1253,6 @@ export class UIManager {
         </div>
       </div>
 
-      <!-- Bottom-Left: Runner lane controls for touch -->
-      <div class="hud-runner-lanes">
-        <button class="lane-btn ui-interactive" id="btn-lane-left" title="Switch lane left [A / Left]" aria-label="Switch lane left">◀</button>
-        <button class="lane-btn ui-interactive" id="btn-lane-right" title="Switch lane right [D / Right]" aria-label="Switch lane right">▶</button>
-      </div>
-
       <!-- Bottom-Center: Speed and drafting display -->
       <div class="nascar-cockpit-cluster" id="hud-nascar-cluster" style="display: none;">
         <!-- Dynamic Slipstream / Drafting Meter -->
@@ -1303,13 +1289,14 @@ export class UIManager {
       <!-- Bottom-Right: Traversal, Horn & Runner Controls -->
       <div class="hud-controls-bottom-right">
         <div class="runner-btn-row secondary-actions">
-          <button class="horn-btn ui-interactive" id="btn-horn" title="Horn [H] - repel robbers and clear nearby road">📢 HORN</button>
+          <button class="horn-btn ui-interactive" id="btn-horn" aria-label="Sound horn to clear hazards" title="Horn [H] - repel robbers and clear nearby road">
+            <svg class="horn-icon" viewBox="0 0 64 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 20h12L38 8v32L20 28H8zM18 29l4 12h8l-5-13M46 16q8 8 0 16M54 8q16 16 0 32"/>
+            </svg>
+            <span class="horn-label">HORN</span><span class="horn-hint">TAP / H</span>
+          </button>
           <button class="sprint-btn runner-legacy-section ui-interactive" id="btn-sprint" title="Hold to boost speed">⚡ SPRINT</button>
           <button class="journal-btn runner-legacy-section ui-interactive" id="btn-journal" title="Mission Journal & District Gauges [J]">📜 JOURNAL</button>
-        </div>
-        <div class="runner-btn-row primary-actions">
-          <button class="jump-btn ui-interactive" id="btn-jump" title="Jump [Space / W] - leap over gutters and roadworks">🦘 JUMP</button>
-          <button class="slide-btn ui-interactive" id="btn-slide" title="Slide [S / Down] - duck under hanging wires">🏃 SLIDE</button>
         </div>
       </div>
 
@@ -3032,42 +3019,11 @@ export class UIManager {
       btn.addEventListener('click', trigger);
     };
 
-    // Jump Button (Mobile Traversal)
-    const btnJump = document.getElementById('btn-jump');
-    if (btnJump) {
-      attachInstantTouch(btnJump, () => {
-        if (this.onJump) this.onJump();
-      });
-    }
-
     // King Pressure Horn Button (Clear Traffic & Stun Robbers)
     const btnHorn = document.getElementById('btn-horn');
     if (btnHorn) {
       attachInstantTouch(btnHorn, () => {
         if (this.onHorn) this.onHorn();
-      });
-    }
-
-    // Slide Button (Temple Run low slide duck under dangling wires)
-    const btnSlide = document.getElementById('btn-slide');
-    if (btnSlide) {
-      attachInstantTouch(btnSlide, () => {
-        if (this.onSlide) this.onSlide();
-      });
-    }
-
-    // Lane Switch Buttons (Mobile Left / Right Lane Arrows)
-    const btnLaneLeft = document.getElementById('btn-lane-left');
-    if (btnLaneLeft) {
-      attachInstantTouch(btnLaneLeft, () => {
-        if (this.onLaneLeft) this.onLaneLeft();
-      });
-    }
-
-    const btnLaneRight = document.getElementById('btn-lane-right');
-    if (btnLaneRight) {
-      attachInstantTouch(btnLaneRight, () => {
-        if (this.onLaneRight) this.onLaneRight();
       });
     }
 
@@ -3582,7 +3538,9 @@ export class UIManager {
     // Keyboard shortcut [Esc] for toggling Game Menu
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' || e.code === 'Escape') {
-        if (this.runnerHelpModal && this.runnerHelpModal.style.display !== 'none') {
+        if (this.runnerShopModal && this.runnerShopModal.style.display !== 'none') {
+          this.hideRunnerShop();
+        } else if (this.runnerHelpModal && this.runnerHelpModal.style.display !== 'none') {
           this.runnerHelpModal.style.display = 'none';
         } else if (this.runnerProgressModal && this.runnerProgressModal.style.display !== 'none') {
           this.runnerProgressModal.style.display = 'none';

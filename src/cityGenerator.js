@@ -1745,6 +1745,14 @@ export class CityGenerator {
     }
     roadGeo.computeVertexNormals();
 
+    const groundGeo = roadGeo.clone();
+    groundGeo.scale(180 / width, 1, 1);
+    groundGeo.translate(0, -0.08, 0);
+    const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ color: 0x665c4d }));
+    ground.userData.isRoadSurface = true;
+    ground.receiveShadow = true;
+    group.add(ground);
+
     const asphaltTex = CityGenerator.getAsphaltTexture();
     const roadMat = asphaltTex
       ? new THREE.MeshStandardMaterial({

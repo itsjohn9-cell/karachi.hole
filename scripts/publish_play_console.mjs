@@ -131,7 +131,7 @@ async function publish() {
     const releaseNotes = [
       {
         language: 'en-US',
-        text: 'Obstacle-free turn runway, zero hurdle popping, seamless corner banking, and Karachi patrol district updates!'
+        text: 'Smoother Karachi runs with improved lane movement, fast-fall slides, skyline and road details. Fixed bus-surfing errors, unfair jump stumbles, restart and revive glitches, near-miss rewards and run-score displays. Improved memory use during longer runs.'
       }
     ];
 

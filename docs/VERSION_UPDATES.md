@@ -4,6 +4,20 @@ All notable changes to the **Karachi Hole.io: The City Savior** project are docu
 
 ---
 
+## [v2.2.16] - 2026-10-27
+
+### Gameplay stability and Android testing release
+- Fixed W-11 boarding audio, GPU resource cleanup, airborne hazard grazes,
+  crash/revive/reset isolation, lane-boundary boosts and near-miss rewards.
+- Corrected current-run score displays and deterministic flat launch terrain.
+- Included the audited fast-fall, lane-easing, road-detail and skyline effects.
+- Validation: 119 checks passed; signed Android bundle built and verified.
+- Google Play version code **38** published to **internal** and **alpha** testing;
+  both tracks independently verified as `completed`. Production was unchanged.
+- See [the gameplay audit](GAMEPLAY_AUDIT_2026-10-27.md) for findings and verification.
+
+---
+
 ## [v2.2.1] - 2026-10-17
 
 ### 🚀 Highlights & Gameplay Bug Fixes
