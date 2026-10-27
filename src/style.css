@@ -7676,6 +7676,7 @@ body.mode-runner .powerup-slot-pill {
 
 .runner-help-backdrop,
 .runner-progress-backdrop,
+.runner-shop-backdrop,
 .analytics-consent-backdrop {
   position: fixed;
   inset: 0;
@@ -9355,4 +9356,183 @@ body.mode-runner #btn-manual-pause {
 .shop-buy-btn.cannot-afford {
   opacity: 0.65;
   filter: grayscale(0.4);
+}
+
+.start-hero-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.start-hero-header .start-title {
+  min-width: 0;
+  font-size: clamp(1rem, 3.8vw, 1.8rem) !important;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.home-shop-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid #ffd700;
+  border-radius: 12px;
+  color: #ffd700;
+  font-size: 0.75rem;
+}
+
+.modal-card :is(h1, h2, h3, h4, p, .hub-tile-sub, .hub-tile-label) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.runner-info-header > div,
+.game-menu-card .hub-tile-btn,
+.game-menu-card .menu-tag {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.runner-info-header .close-btn {
+  flex: 0 0 36px;
+}
+
+.runner-shop-card {
+  width: 100%;
+  max-height: 100%;
+  overflow-x: hidden;
+}
+
+.runner-shop-balance-banner,
+.shop-item-title-row,
+.shop-item-stat-row {
+  flex-wrap: wrap;
+}
+
+.shop-item-level-tag,
+.shop-pips-container {
+  flex-shrink: 0;
+}
+
+.runner-shop-status {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: #17283b;
+  color: #f8fafc;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+body.mode-runner .hud-controls-bottom-right {
+  max-width: 100px;
+}
+
+body.mode-runner .hud-controls-bottom-right .secondary-actions .horn-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: clamp(72px, 12vw, 92px);
+  min-height: 88px;
+  padding: 8px;
+  border: 2px solid #ffe082;
+  border-radius: 24px;
+  color: #172033;
+  background: linear-gradient(145deg, #fff4bc, #ffc107);
+  box-shadow: 0 4px 0 #9b6700, 0 0 20px #ffc10750;
+  white-space: normal;
+}
+
+.horn-icon {
+  width: 44px;
+  height: 34px;
+}
+
+.horn-label {
+  font-size: 0.85rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.horn-hint {
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+#btn-horn:focus-visible,
+.home-shop-btn:focus-visible {
+  outline: 3px solid #00e5ff;
+  outline-offset: 4px;
+}
+
+#btn-horn.is-honking .horn-icon {
+  animation: horn-blast 0.5s ease-out;
+}
+
+@keyframes horn-blast {
+  25%, 65% { transform: rotate(-12deg) scale(1.12); }
+  45%, 85% { transform: rotate(12deg) scale(1.12); }
+}
+
+@media (max-width: 480px) {
+  .runner-shop-item {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .shop-item-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.5rem;
+  }
+
+  .shop-item-action {
+    grid-column: 2;
+  }
+
+  .shop-buy-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+@media (max-height: 480px) and (min-width: 480px) {
+  .start-action-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .start-action-row .start-mission-btn {
+    grid-column: auto;
+  }
+}
+
+@media (max-height: 480px) {
+  body.mode-runner .hud-controls-bottom-right .secondary-actions .horn-btn {
+    min-height: 64px;
+    width: 72px;
+    padding: 5px;
+    border-radius: 18px;
+  }
+
+  .horn-icon {
+    height: 24px;
+    width: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #btn-horn.is-honking .horn-icon {
+    animation: none;
+  }
 }

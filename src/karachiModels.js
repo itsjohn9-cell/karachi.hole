@@ -5578,6 +5578,7 @@ export const KarachiModels = {
     // Shiny gold coin cylinder
     const coinGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.1, 24);
     coinGeo.rotateX(Math.PI / 2);
+    coinGeo.rotateZ(Math.PI / 2);
 
     const canvas = document.createElement('canvas');
     canvas.width = 128;
@@ -6035,5 +6036,4 @@ export const KarachiModels = {
     return group;
   }
 };
-
 

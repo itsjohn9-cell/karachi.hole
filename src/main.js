@@ -52,6 +52,18 @@ const RUNNER_POTHOLE_ARROW_MATERIAL = new THREE.MeshBasicMaterial({
   color: 0xffe45c,
   side: THREE.DoubleSide
 });
+const RUNNER_DIRECTION_ARROW_GEOMETRY = (() => {
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.2, -0.65);
+  shape.lineTo(0.2, -0.65);
+  shape.lineTo(0.2, 0.1);
+  shape.lineTo(0.65, 0.1);
+  shape.lineTo(0, 0.8);
+  shape.lineTo(-0.65, 0.1);
+  shape.lineTo(-0.2, 0.1);
+  shape.closePath();
+  return new THREE.ShapeGeometry(shape);
+})();
 const RUNNER_NEIGHBORHOOD_COUNT = 200;
 const RUNNER_METERS_PER_NEIGHBORHOOD = 100;
 const RUNNER_CITY_LOOP_METERS = RUNNER_NEIGHBORHOOD_COUNT * RUNNER_METERS_PER_NEIGHBORHOOD;
@@ -651,8 +663,14 @@ export class Game {
    * Emits supersonic acoustic shockwave, stuns robbers, scatters traffic
    */
   triggerKingPressureHorn() {
-    if (!this.player || this.isPaused) return;
+    if (!this.player || this.isPaused || this.isGameOver) return;
     if (!this.isGameStarted) this.startGame();
+    const hornButton = document.getElementById('btn-horn');
+    if (hornButton) {
+      hornButton.classList.remove('is-honking');
+      void hornButton.offsetWidth;
+      hornButton.classList.add('is-honking');
+    }
     audio.playKingPressureHorn();
     audio.vibrate([60, 30, 80]);
     this.cameraShakeTimer = 0.35;
@@ -1006,10 +1024,10 @@ export class Game {
       this.ui.showAnnouncement(
         isTurnMistake
           ? `❌ WRONG TURN — 1 HEART LOST · ${this.hearts} LEFT`
-          : `⚠️ STUMBLED ON ${reason}! 🚨 PURSUER CLOSING IN! ${'❤️'.repeat(this.hearts)} left!`,
+          : `⚠️ ${reason} · 1 HEART LOST · ${this.hearts} LEFT`,
         '#ff1744'
       );
-      this.ui.showFloatingFeedback(`🚨 PURSUER CLOSING IN! | ${hint}`, this.player.position, '#ff1744');
+      this.ui.showFloatingFeedback(`⚠️ ${hint} · 2s GRACE`, this.player.position, '#ff1744');
 
       // Trigger Stumble: reduce currentSpeed to baseSpeed * 0.75 for 1.5 seconds
       const origSpeed = this.player.currentSpeed;
@@ -1725,7 +1743,7 @@ export class Game {
     }
 
     // Safety approach & junction zone: Never spawn any obstacles immediately around an active junction (65m runway)!
-    if (this.runnerJunction && waveZ <= this.runnerJunction.z + 65.0 && waveZ >= this.runnerJunction.z - 25.0) {
+    if (this.isRunnerJunctionZone(waveZ)) {
       // Clean asphalt runway with smooth central coins - 100% hurdle-free approach and turn!
       [-3.0, 0, 3.0].forEach(zOff => {
         const coin = KarachiModels.createRupeeCoin(50);
@@ -2691,15 +2709,6 @@ export class Game {
 
     if (this.jetpackTimer > 0 || this.chingchiTimer > 0 || this.nitroTimer > 0) return;
 
-    // Capture Check: If player stumbles again while Chaser is visible and close!
-    if (this.isChaserClose && this.chaserDistance <= 5.5) {
-      if (this.chaserEntity) {
-        this.chaserEntity.position.z = this.player.position.z + 1.2;
-      }
-      this.triggerTempleRunGameOver('🚨 Captured by Sindh Police Mobile!', { type: 'chaser_capture' });
-      return;
-    }
-
     // Trigger Stumble:
     this.isChaserClose = true;
     this.chaserRecoveryTimer = 5.0; // 5 seconds of clean running to shake off chaser
@@ -2726,7 +2735,7 @@ export class Game {
     audio.playTireScreech();
     this.cameraShakeTimer = 0.25;
     this.particles.createSkidSmoke(this.player.position, 10);
-    this.ui.showAnnouncement(`⚠️ STUMBLED ON ${label}! POLICE CLOSING IN!`, '#ff9100');
+    this.ui.showAnnouncement(`⚠️ GRAZED ${label} · SLOWDOWN ONLY · NO HEART LOST`, '#ff9100');
     this.ui.showFloatingFeedback('⚠️ STUMBLED! -25% SPEED', this.player.position, '#ff9100');
   }
 
@@ -3540,29 +3549,39 @@ export class Game {
     chunkGroup.updateMatrixWorld(true);
     const inverse = new THREE.Matrix4().copy(chunkGroup.matrixWorld).invert();
     const buckets = new Map();
-    const getBucket = (side, slab) => {
-      const id = side + '|' + slab;
-      if (!buckets.has(id)) buckets.set(id, { side, slab, group: new THREE.Group(), groups: new Map() });
+    const getBucket = (side, slab, roadSurface) => {
+      const id = side + '|' + slab + '|' + roadSurface;
+      if (!buckets.has(id)) {
+        const group = new THREE.Group();
+        chunkGroup.add(group);
+        buckets.set(id, { side, slab, roadSurface, group, groups: new Map() });
+      }
       return buckets.get(id);
     };
     const slabOf = (min, max) => (max - min >= 40
       ? 'full'
       : THREE.MathUtils.clamp(Math.floor(((min + max) / 2 + 30) / 6), 0, 9));
     const meshes = [];
-    chunkGroup.traverse(object => { if (object.isMesh) meshes.push(object); });
+    chunkGroup.traverse(object => { if (object.isMesh || object.isLine || object.isSprite) meshes.push(object); });
     const tmpPos = new THREE.Vector3();
-    const box = new THREE.Box3();
-    meshes.forEach(mesh => {
+    // Snapshot transforms before detaching parents that contain other renderables.
+    const renderables = meshes.map(mesh => ({
+      mesh,
+      rel: new THREE.Matrix4().multiplyMatrices(inverse, mesh.matrixWorld),
+      box: new THREE.Box3().setFromObject(mesh).applyMatrix4(inverse)
+    }));
+    renderables.forEach(({ mesh, rel, box }) => {
       const material = mesh.material;
-      const rel = new THREE.Matrix4().multiplyMatrices(inverse, mesh.matrixWorld);
+      const roadSurface = !!mesh.userData.isRoadSurface ||
+        (mesh.isMesh && box.max.y <= 0.1 && box.min.x >= -6.5 && box.max.x <= 6.5);
       tmpPos.setFromMatrixPosition(rel);
       const side = tmpPos.x < -7.2 ? 'left' : tmpPos.x > 7.2 ? 'right' : 'core';
-      const mergeable = !mesh.isSkinnedMesh && !mesh.isInstancedMesh && !Array.isArray(material) &&
+      const mergeable = mesh.isMesh && !mesh.isSkinnedMesh && !mesh.isInstancedMesh && !Array.isArray(material) &&
         material && !material.transparent && !material.vertexColors && rel.determinant() > 0 &&
         mesh.geometry?.attributes?.position && !mesh.userData.keepSeparate;
       if (!mergeable) {
-        box.setFromObject(mesh).applyMatrix4(inverse);
-        getBucket(side, slabOf(box.min.z, box.max.z)).group.attach(mesh);
+        getBucket(side, slabOf(box.min.z, box.max.z), roadSurface).group.add(mesh);
+        rel.decompose(mesh.position, mesh.quaternion, mesh.scale);
         return;
       }
       let geo = mesh.geometry.clone().applyMatrix4(rel);
@@ -3574,7 +3593,7 @@ export class Game {
         if (!['position', 'normal', 'uv'].includes(name)) geo.deleteAttribute(name);
       });
       geo.computeBoundingBox();
-      const bucket = getBucket(side, slabOf(geo.boundingBox.min.z, geo.boundingBox.max.z));
+      const bucket = getBucket(side, slabOf(geo.boundingBox.min.z, geo.boundingBox.max.z), roadSurface);
       const key = [material.type, material.color?.getHex(), material.map?.uuid, material.emissive?.getHex(),
         material.emissiveIntensity, material.side, mesh.castShadow, mesh.receiveShadow, mesh.visible].join('|');
       let entry = bucket.groups.get(key);
@@ -3606,28 +3625,25 @@ export class Game {
       });
       if (!bucket.group.children.length) return;
       bucket.group.name = `Merged ${bucket.side} ${bucket.slab}`;
-      const zBox = new THREE.Box3().setFromObject(bucket.group).applyMatrix4(inverse);
-      bucket.group.userData = { side: bucket.side, slab: bucket.slab, zMin: zBox.min.z, zMax: zBox.max.z };
       chunkGroup.add(bucket.group);
+      const zBox = new THREE.Box3().setFromObject(bucket.group).applyMatrix4(inverse);
+      bucket.group.userData = {
+        side: bucket.side, slab: bucket.slab, roadSurface: bucket.roadSurface,
+        zMin: zBox.min.z, zMax: zBox.max.z
+      };
       slabs.push(bucket.group);
     });
     chunkGroup.userData.slabs = slabs;
   }
 
   // Hides straight-corridor slabs that overlap a cross-road zone (world z range). Pass null to restore.
-  // When turnDir is specified, ONLY hide the turn-opening side so opposite barriers/walls stay intact!
-  setCorridorZoneHidden(minZ, maxZ, turnDir = null) {
+  setCorridorZoneHidden(minZ, maxZ) {
     (this.corridorChunks || []).forEach(chunk => {
       (chunk.userData.slabs || []).forEach(slab => {
-        if (slab.userData.slab === 'full') return;
-        if (turnDir !== null) {
-          const side = slab.userData.side;
-          if (turnDir === -1 && side !== 'left') return;
-          if (turnDir === 1 && side !== 'right') return;
-        }
+        if (slab.userData.roadSurface) return;
         const lo = chunk.position.z + slab.userData.zMin;
         const hi = chunk.position.z + slab.userData.zMax;
-        slab.visible = !(minZ !== null && hi > minZ && lo < maxZ);
+        slab.visible = !chunk.userData.turnExitClearance && !(minZ !== null && hi > minZ && lo < maxZ);
       });
     });
   }
@@ -3645,7 +3661,8 @@ export class Game {
       RUNNER_POTHOLE_RIM_GEOMETRY, RUNNER_POTHOLE_RIM_MATERIAL,
       RUNNER_POTHOLE_WARNING_RING_GEOMETRY, RUNNER_POTHOLE_WARNING_RING_MATERIAL,
       RUNNER_POTHOLE_WATER_GEOMETRY, RUNNER_POTHOLE_WATER_MATERIAL,
-      RUNNER_POTHOLE_ARROW_GEOMETRY, RUNNER_POTHOLE_ARROW_MATERIAL
+      RUNNER_POTHOLE_ARROW_GEOMETRY, RUNNER_POTHOLE_ARROW_MATERIAL,
+      RUNNER_DIRECTION_ARROW_GEOMETRY
     ]);
     Object.values(KarachiModels.materials).forEach(material => {
       if (material.isMaterial) {
@@ -3679,6 +3696,7 @@ export class Game {
    * Spawn a Ceremonial Karachi Milestone Welcome Arch across all 3 lanes
    */
   spawnMilestoneArchAhead(name, archZ) {
+    if (this.isRunnerJunctionZone(archZ)) return;
     const archGroup = new THREE.Group();
     archGroup.position.set(0, 0, archZ);
 
@@ -4129,45 +4147,7 @@ export class Game {
     if (this.ui) {
       this.ui.updateRunnerHazardWarning(this.runnerObstacles, this.runnerTraffic, pPos.z);
     }
-    for (let i = this.runnerCoins.length - 1; i >= 0; i--) {
-      const coin = this.runnerCoins[i];
-      if (!coin || !coin.mesh) continue;
-
-      coin.mesh.rotation.y += dt * 3.5;
-
-      // Burns Road Biryani Magnet Pull
-      if (this.magnetTimer > 0) {
-        const dToPlayer = coin.mesh.position.distanceTo(pPos);
-        if (dToPlayer < 20.0) {
-          coin.mesh.position.lerp(pPos, dt * 8.5);
-        }
-      }
-
-      const dist = coin.mesh.position.distanceTo(pPos);
-      const pathDistSq = runnerSegmentDistanceSquared3D(coin.mesh.position, previousRunnerPosition, pPos);
-      if (dist < 1.45 || pathDistSq < 1.45 * 1.45) {
-        const coinMultiplier = (this.doubleCoinsTimer > 0) ? 2 : 1;
-        const earnedCoins = (coin.value || 50) * coinMultiplier;
-        this.coins += earnedCoins;
-        this.awardRunnerXP(100);
-        if (this.coins >= 1000) this.unlockRunnerBadge('clean_green');
-        this.score += 100 * coinMultiplier;
-
-        const nowCoin = performance.now();
-        if (nowCoin - (this.lastCoinPickupTime || 0) < 650) {
-          this.coinComboCount = Math.min(8, (this.coinComboCount || 0) + 1);
-        } else {
-          this.coinComboCount = 1;
-        }
-        this.lastCoinPickupTime = nowCoin;
-        audio.playMelodicCoin(this.coinComboCount);
-
-        this.particles.createDevourSparkles(coin.mesh.position, 8, 0xffd700);
-        this.ui.showFloatingFeedback(`+${earnedCoins} Rs${coinMultiplier > 1 ? ' (2X!)' : ''}`, coin.mesh.position, '#ffd700');
-        this.disposeRunnerObject(coin.mesh);
-        this.runnerCoins.splice(i, 1);
-      }
-    }
+    this.updateRunnerCoins(dt, previousRunnerPosition);
 
     // 10. Collect Power-Ups
     for (let i = this.runnerPowerups.length - 1; i >= 0; i--) {
@@ -8243,7 +8223,7 @@ export class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.15',
+            appVersion: '2.2.16',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };
@@ -9031,6 +9011,7 @@ export class Game {
   }
 
   spawnRunnerSectionExtras(z) {
+    if (this.isRunnerJunctionZone(z)) return;
     const section = this.runnerSection;
     if (!section) return;
     if (section.type === 'flyover') {
@@ -9083,6 +9064,54 @@ export class Game {
     return ['N', 'W', 'S', 'E'][((this.runnerHeading || 0) % 4 + 4) % 4];
   }
 
+  updateRunnerCoins(dt, previousPosition) {
+    const position = this.player.position;
+    for (let i = this.runnerCoins.length - 1; i >= 0; i--) {
+      const coin = this.runnerCoins[i];
+      if (!coin?.mesh) continue;
+      coin.mesh.quaternion.copy(this.camera.quaternion);
+      if (this.magnetTimer > 0 && coin.mesh.position.distanceTo(position) < 20) {
+        coin.mesh.position.lerp(position, Math.min(1, dt * 8.5));
+      }
+      if (runnerSegmentDistanceSquared3D(coin.mesh.position, previousPosition, position) >= 1.45 * 1.45) continue;
+      const multiplier = this.doubleCoinsTimer > 0 ? 2 : 1;
+      const earned = (coin.value || 50) * multiplier;
+      this.coins += earned;
+      this.awardRunnerXP(100);
+      if (this.coins >= 1000) this.unlockRunnerBadge('clean_green');
+      this.score += 100 * multiplier;
+      const now = performance.now();
+      this.coinComboCount = now - (this.lastCoinPickupTime || 0) < 650
+        ? Math.min(8, (this.coinComboCount || 0) + 1) : 1;
+      this.lastCoinPickupTime = now;
+      audio.playMelodicCoin(this.coinComboCount);
+      this.particles.createDevourSparkles(coin.mesh.position, 8, 0xffd700);
+      this.ui.showFloatingFeedback(`+${earned} Rs${multiplier > 1 ? ' (2X!)' : ''}`, coin.mesh.position, '#ffd700');
+      this.disposeRunnerObject(coin.mesh);
+      this.runnerCoins.splice(i, 1);
+    }
+  }
+
+  isRunnerJunctionZone(z) {
+    return !!this.runnerJunction && z >= this.runnerJunction.z - 35 && z <= this.runnerJunction.z + 80;
+  }
+
+  clearRunnerJunctionApproach() {
+    for (const key of ['runnerObstacles', 'runnerTraffic', 'surfingBuses', 'runnerPowerups', 'runnerBoostPads', 'runnerReviveTokens']) {
+      this[key] = (this[key] || []).filter(item => {
+        if (!item?.mesh || !this.isRunnerJunctionZone(item.mesh.position.z)) return true;
+        if (key === 'surfingBuses' && this.isBusSurfing) this.exitBusSurfing();
+        this.disposeRunnerObject(item.mesh);
+        return false;
+      });
+    }
+    this.runnerSectionDecor = (this.runnerSectionDecor || []).filter(mesh => {
+      if (!this.isRunnerJunctionZone(mesh.position.z)) return true;
+      this.disposeRunnerObject(mesh);
+      return false;
+    });
+  }
+
   buildRunnerJunctionMesh(kind, dir) {
     const group = new THREE.Group();
     const mat = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, ...extra });
@@ -9094,7 +9123,7 @@ export class Game {
       board.position.set(x, y, -5.8);
       if (turnSign) board.userData.runnerTurnSign = true;
       group.add(board);
-      const arrow = new THREE.Mesh(RUNNER_POTHOLE_ARROW_GEOMETRY, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
+      const arrow = new THREE.Mesh(RUNNER_DIRECTION_ARROW_GEOMETRY, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
       arrow.scale.setScalar(turnSign ? 1.8 : kind === 'fork' ? 2.4 : 3.4);
       arrow.rotation.z = arrowRotation;
       arrow.position.set(x, y, -5.62);
@@ -9158,10 +9187,10 @@ export class Game {
       // Glowing directional chevrons on overhead sign
       [-2.2, 0, 2.2].forEach(cx => {
         const gArrow = new THREE.Mesh(
-          RUNNER_POTHOLE_ARROW_GEOMETRY,
+          RUNNER_DIRECTION_ARROW_GEOMETRY,
           new THREE.MeshBasicMaterial({ color: 0xffeb3b, side: THREE.DoubleSide })
         );
-        gArrow.scale.setScalar(2.0);
+        gArrow.scale.setScalar(1.15);
         gArrow.rotation.z = dir === -1 ? Math.PI / 2 : -Math.PI / 2;
         gArrow.position.set(cx, 5.3, -5.45);
         group.add(gArrow);
@@ -9170,7 +9199,7 @@ export class Game {
       // 3D Road-Surface Projector Chevrons on Approach Asphalt
       [14, 28, 42].forEach(aheadDist => {
         const floorArrow = new THREE.Mesh(
-          RUNNER_POTHOLE_ARROW_GEOMETRY,
+          RUNNER_DIRECTION_ARROW_GEOMETRY,
           new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.75, side: THREE.DoubleSide })
         );
         floorArrow.rotation.x = -Math.PI / 2;
@@ -9201,39 +9230,26 @@ export class Game {
     this.scene.add(group);
     this.runnerJunction = { kind, dir, z, group, resolved: false };
 
-    // Obstacle & traffic purge in approach runway: 100% clean, hurdle-free approach
-    if (this.runnerObstacles) {
-      this.runnerObstacles = this.runnerObstacles.filter(obs => {
-        if (obs && obs.z >= z - 25.0 && obs.z <= z + 65.0) {
-          if (obs.mesh) this.disposeRunnerObject(obs.mesh);
-          return false;
-        }
-        return true;
-      });
-    }
-    if (this.runnerTraffic) {
-      this.runnerTraffic = this.runnerTraffic.filter(vehicle => {
-        if (vehicle?.mesh && vehicle.mesh.position.z >= z - 25.0 && vehicle.mesh.position.z <= z + 65.0) {
-          this.disposeRunnerObject(vehicle.mesh);
-          return false;
-        }
-        return true;
-      });
-    }
+    this.clearRunnerJunctionApproach();
+    this.runnerCoins = this.runnerCoins.filter(coin => {
+      if (!this.isRunnerJunctionZone(coin.mesh.position.z)) return true;
+      this.disposeRunnerObject(coin.mesh);
+      return false;
+    });
 
     if (kind === 'turn') {
       // A real cross-road built from corridor chunks so the corner already looks like the street.
       const turnGroup = new THREE.Group();
       turnGroup.position.set(0, 0.012, z);
       turnGroup.rotation.y = dir === -1 ? Math.PI / 2 : -Math.PI / 2;
-      const innerSide = dir === -1 ? 'left' : 'right';
       const turnChunks = [];
       for (let i = 0; i < 3; i++) {
         const chunk = this.createCorridorChunk(z - i * 60, 'FLAT', 0);
         chunk.position.set(0, 0, -i * 60);
         if (i === 0) {
+          chunk.userData.turnExitClearance = true;
           chunk.userData.slabs.forEach(slab => {
-            if (slab.userData.side === innerSide) slab.visible = false;
+            if (!slab.userData.roadSurface) slab.visible = false;
           });
         }
         turnGroup.add(chunk);
@@ -9242,7 +9258,7 @@ export class Game {
       this.scene.add(turnGroup);
       this.runnerJunction.turnGroup = turnGroup;
       this.runnerJunction.turnChunks = turnChunks;
-      this.setCorridorZoneHidden(z - 26, z + 7, dir);
+      this.setCorridorZoneHidden(z - 32, z + 45);
     }
 
     // Guide coins: a neat arc of gold coins showing the player the clean path into the turn
@@ -9332,6 +9348,15 @@ export class Game {
       radius,
       duration: THREE.MathUtils.clamp(1.57 * radius / Math.max(12, this.getRunnerSpeed()), 1.05, 1.5)
     };
+    for (let i = 1; i <= 8; i++) {
+      const theta = i / 9 * Math.PI / 2;
+      const x = this.runnerTurn.startX + dir * radius * (1 - Math.cos(theta));
+      const z = junction.z + radius * (1 - Math.sin(theta));
+      const coin = KarachiModels.createRupeeCoin(50);
+      coin.position.set(x, 0.7, z);
+      this.scene.add(coin);
+      this.runnerCoins.push({ mesh: coin, value: 50, x, z });
+    }
     if (this.player.avatarMesh) this.player.avatarMesh.visible = true;
     this.isSliding = false;
     this.slideTimer = 0;
@@ -9344,6 +9369,7 @@ export class Game {
   updateRunnerTurnAnimation(dt) {
     const turn = this.runnerTurn;
     const player = this.player;
+    const previousPosition = player.position.clone();
     turn.t = Math.min(1, turn.t + dt / turn.duration);
     const p = turn.t;
     const theta = p * Math.PI / 2;
@@ -9393,6 +9419,7 @@ export class Game {
     const lookZ = z + (fz * 16.0);
     this.camera.position.set(camX, (this.player.position.y || 0) + 2.85 + lift, camZ);
     this.camera.lookAt(lookX, (this.player.position.y || 0) + 1.25, lookZ);
+    this.updateRunnerCoins(dt, previousPosition);
 
     if (this.playerBlobShadow) {
       this.playerBlobShadow.visible = true;
@@ -9448,7 +9475,7 @@ export class Game {
         junction.turnGroup.remove(chunk);
         chunk.position.set(0, 0, junctionZ + R - i * 60);
         chunk.rotation.set(0, 0, 0);
-        chunk.userData.slabs.forEach(slab => { slab.visible = true; });
+        if (i > 0) chunk.userData.slabs.forEach(slab => { slab.visible = true; });
         this.scene.add(chunk);
       });
       junction.turnChunks = [];
@@ -9547,6 +9574,12 @@ export class Game {
   }
 
   updateRunnerNavigation(dt) {
+    if (this.runnerJunction) {
+      this.clearRunnerJunctionApproach();
+      if (this.runnerJunction.kind === 'turn') {
+        this.setCorridorZoneHidden(this.runnerJunction.z - 32, this.runnerJunction.z + 45);
+      }
+    }
     const profile = this.getRunnerNavProfile();
     if (!this.runnerJunction && !this.runnerSection && this.distanceMeters >= this.nextJunctionAt - 170) {
       const i = this.runnerJunctionIndex || 0;
@@ -9558,9 +9591,6 @@ export class Game {
 
     const junction = this.runnerJunction;
     if (junction) {
-      if (junction.kind === 'turn' && !junction.resolved) {
-        this.setCorridorZoneHidden(junction.z - 26, junction.z + 7, junction.dir);
-      }
       const ahead = this.player.position.z - junction.z;
       if (junction.kind === 'turn' && junction.turnQueued && ahead <= RUNNER_TURN_ENTRY_METERS && ahead > -3) {
         junction.resolved = true;
@@ -9578,13 +9608,6 @@ export class Game {
         }
       }
       if (junction.kind === 'fork' && junction.resolved && ahead < -14) this.removeRunnerJunction();
-    this.runnerTraffic = (this.runnerTraffic || []).filter(vehicle => {
-      if (vehicle?.mesh && vehicle.mesh.position.z <= junction.z + 65.0 && vehicle.mesh.position.z >= junction.z - 30.0) {
-        this.disposeRunnerObject(vehicle.mesh);
-        return false;
-      }
-      return true;
-    });
   }
 
   const section = this.runnerSection;

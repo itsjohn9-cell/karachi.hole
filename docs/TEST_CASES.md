@@ -15,9 +15,13 @@ This document specifies the formal test cases and testing architecture for **KAR
 - **TC-57**: Boundary inputs cannot release a drafting boost; the real bus-boarding update does not throw; immediate crash/restart cancels old animation and transient movement state.
 - **TC-58**: Repeated pickup cleanup and corridor disposal return GPU geometry/texture counts to baseline without disposing shared city materials.
 - **TC-59**: Runner HUD and pause menu show current-run score rather than career XP; classic mode retains player score; new runs clear score, power-ups and vertical motion.
+- **TC-60**: Repeated close police grazes never kill or remove hearts; real hazards still damage; keyboard/swipe jump and slide work without traversal buttons; horn has activation feedback.
+- **TC-61**: Both turn directions in all three scenery styles have clear approaches, including overhead wires and moving traffic. Stored clearance bounds match actual rendered geometry, asphalt remains correctly positioned, direction signs use arrows, and camera-facing coins can be collected throughout the arc. Structures do not pop back at the exit.
+- **TC-62**: Home Shop opens above the menu, charges the career wallet once, persists purchases, rolls back a real storage failure with visible feedback, closes with Escape, and preserves active/paused run state. Unbanked run coins cannot be spent.
+- **TC-63**: Home Shop/title placement and help/progress/shop text containment at 320x568, 568x320, 768x1024 and 1280x800.
 
 Run the focused checks with
-`node scripts/test_runner.js --only=TC-53,TC-54,TC-55,TC-56,TC-57,TC-58,TC-59`.
+`node scripts/test_runner.js --only=TC-53,TC-54,TC-55,TC-56,TC-57,TC-58,TC-59,TC-60,TC-61,TC-62,TC-63`.
 TC-01 and TC-02 always execute, including the production build and Android asset-copy check.
 Browser tests use isolated Chrome profiles but temporarily inject the working
 `index.html`; do not run them concurrently with an interactive gameplay audit.
@@ -79,7 +83,7 @@ node scripts/test_runner.js --port=5173 --screenshot-dir=./test_reports
 | **TC-29** | Karachi Patrol Area Scenery | Runner / World | Distinct Soldier Bazar / PECHS, Lyari and Saddar landmarks and route-only challenges | ~3500ms |
 | **TC-30** | Runner Reward Persistence | Progression / Save System | Runner XP persistence, area unlock, district-clear rewards | ~3500ms |
 | **TC-31** | Runner Startup Isolation | Runner / Startup | Runner-only scene, route objects and physics events | ~3500ms |
-| **TC-32** | Runner Touch Controls & Feedback Layout | Runner / UI | Mobile button layout, hidden legacy controls, non-overlapping notifications | ~3000ms |
+| **TC-32** | Runner Touch Controls & Feedback Layout | Runner / UI | Horn-only mobile button layout, removed traversal controls, non-overlapping notifications | ~3000ms |
 | **TC-33** | Rescue Token Collection & Quick Revive Cost | Runner / Progression | Rare token drops, persistence, revive consumption and no-token rejection | ~3500ms |
 | **TC-34** | Home-Screen Help & Career Progress | Runner / UI | Home-screen controls guide, career records, collections and achievements | ~1100ms |
 | **TC-35** | Monsoon Potholes & Unified Master/Dev Console | Runner / Weather / Developer Tools | Rain-to-pothole gameplay, fair lane availability, shared console routing and single command transport | ~5000ms |
