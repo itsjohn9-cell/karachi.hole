@@ -81,5 +81,15 @@ Web deployment target: GitHub Pages at
 https://itsjohn9-cell.github.io/karachi.hole/.
 
 The user approved pushing the tested source to `main` and publishing the web
-bundle to `gh-pages`. Live asset verification follows deployment. No Android
-release bundle, Play Console upload or track publication is part of this release.
+bundle to `gh-pages`.
+
+- Source gameplay commit: `2942d8446fd1c86511bf8d57dc1edff8cdd1c65f`.
+- Pages deployment commit: `3e75c2ed36bcbad1ebd07d19138bde9552981a7f`.
+- GitHub Pages build: `built`, matching the deployment commit.
+- Live HTML and `assets/main-CM3JoPWT.js`: HTTP 200; SHA-256 hashes exactly
+  matched the local production build.
+- All seven directly referenced relative script/link assets: HTTP 200.
+- Live-browser smoke: onboarding, tutorial dismissal, start, lane switching,
+  jump/fast-fall/slide and current-run score verified; no runtime errors captured.
+
+No Android release bundle, Play Console upload or track publication was performed.
