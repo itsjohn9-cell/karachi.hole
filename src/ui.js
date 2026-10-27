@@ -3887,7 +3887,7 @@ export class UIManager {
       const lvlEl = document.getElementById('menu-level-badge');
       if (lvlEl) lvlEl.textContent = `LV ${p.level || 1}`;
       const scoreEl = document.getElementById('menu-score-badge');
-      if (scoreEl) scoreEl.textContent = `SCORE: ${p.score || 0}`;
+      if (scoreEl) scoreEl.textContent = `SCORE: ${(window.game.isTempleRun ? window.game.score : p.score) || 0}`;
       const distEl = document.getElementById('menu-district-badge');
       if (distEl) distEl.textContent = `District ${window.game.currentDistrictLevel || 1}`;
       const summaryEl = document.getElementById('menu-hero-summary');
@@ -3984,6 +3984,7 @@ export class UIManager {
     routeProgress = null,
     activePowerUp = null,
     distanceMeters = 0,
+    runScore = 0,
     coins = 0,
     hearts = 3,
     currentMilestone = 'Soldier Bazar',
@@ -4279,7 +4280,7 @@ export class UIManager {
     }
 
     // Score & Level
-    const rawScore = Number(player?.score ?? this.game?.score ?? 0);
+    const rawScore = Number(isRunnerMode ? runScore : player?.score ?? 0);
     const scoreValEl = document.getElementById('hud-score');
     if (scoreValEl) {
       scoreValEl.textContent = (Number.isFinite(rawScore) ? rawScore : 0).toLocaleString();

@@ -183,6 +183,16 @@ export class Game {
     this.runnerDifficulty = 'standard';
     this.isSliding = false;
     this.slideTimer = 0;
+    this.isFastFalling = false;
+    this.playerBlobShadow = null;
+    this.chaserBlobShadow = null;
+    this.laneChangeTimer = 0.18;
+    this.laneChangeDuration = 0.18;
+    this.laneChangeStartX = 0;
+    this.skyDome = null;
+    this.skylineBackdrop = null;
+    this.speedWindLines = null;
+    this.nearMissCount = 0;
     this.runSpeed = RUNNER_SPEEDS.standard;
     this.runnerObstacles = [];
     this.runnerCoins = [];
@@ -271,6 +281,16 @@ export class Game {
     this.scene.background = new THREE.Color(0xd2c6b2);
     this.scene.fog = new THREE.FogExp2(0xd2c6b2, 0.0065);
 
+    // Stylized Gradient Sky Dome & Distant Karachi Skyline Parallax Backdrop
+    this.skyDome = this.createSkyDome();
+    if (this.skyDome) this.scene.add(this.skyDome);
+
+    this.skylineBackdrop = this.createDistantSkylineBackdrop();
+    if (this.skylineBackdrop) this.scene.add(this.skylineBackdrop);
+
+    this.speedWindLines = this.createSpeedWindLines();
+    if (this.speedWindLines) this.scene.add(this.speedWindLines);
+
     // Camera - Subway Surfers / GTA street-level chase perspective (Zoomed out for wide urban visibility)
     this.camera = new THREE.PerspectiveCamera(
       65,
@@ -321,7 +341,7 @@ export class Game {
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       try {
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.type = THREE.PCFShadowMap;
       } catch (e) {}
       canvasContainer.appendChild(this.renderer.domElement);
     }
@@ -394,6 +414,11 @@ export class Game {
     this.player.politiciansDevoured = 0;
     this.player.turboTimer = 0;
     this.holes.push(this.player);
+
+    if (!this.playerBlobShadow) {
+      this.playerBlobShadow = this.createBlobShadow(1.3, 1.3);
+      if (this.playerBlobShadow) this.scene.add(this.playerBlobShadow);
+    }
 
     // 5 AI Bots with Kid-Friendly tuning (Slow, Non-aggressive)
     const botConfigs = [
@@ -562,6 +587,7 @@ export class Game {
   }
 
   returnToMainMenu() {
+    this.cancelRunnerDeathAnimation();
     this.persistRunnerRun();
     this.pauseGame();
     this.isGameStarted = false;
@@ -589,7 +615,7 @@ export class Game {
    * Agile Street Parkour Traversal Jump Mechanic (Space / Mobile Jump)
    */
   performJump() {
-    if (!this.player || this.isPaused) return;
+    if (!this.player || this.isPaused || this.isGameOver) return;
     if (!this.isGameStarted) this.startGame();
 
     // Fluid Jump/Slide cancellation: cancel active slide immediately when jumping
@@ -690,7 +716,7 @@ export class Game {
               obs.mesh.position.x += (obs.mesh.position.x >= 0 ? 6.5 : -6.5);
               obs.mesh.rotation.z += 0.5;
             } else {
-              this.scene.remove(obs.mesh);
+              this.disposeRunnerObject(obs.mesh);
             }
             this.awardRunnerXP(250);
             this.score += 250;
@@ -706,10 +732,17 @@ export class Game {
   performSlide() {
     if (!this.player || this.isPaused || this.isGameOver) return;
     if (!this.isGameStarted) this.startGame();
-    
-    // If airborne, immediately dive down to slide under incoming wires
-    if (!this.player.isGrounded) {
-      const groundY = this.isTempleRun ? this.getCorridorGroundHeight(this.player.position.z, this.player.position.x) : 0;
+
+    const groundY = this.isTempleRun ? this.getCorridorGroundHeight(this.player.position.z, this.player.position.x) : 0;
+    const isAirborne = !this.player.isGrounded || ((this.player.position.y || 0) > groundY + 0.08);
+
+    if (isAirborne) {
+      // Subway Surfers Fast-Fall Dive: plunge immediately toward road instead of 1-frame teleport
+      this.isFastFalling = true;
+      this.player.velocityY = Math.min(this.player.velocityY || 0, -20.0);
+      this.particles?.createSkidSmoke?.(this.player.position, 4);
+    } else {
+      this.isFastFalling = false;
       this.player.position.y = groundY;
       this.player.velocityY = 0;
       this.player.isGrounded = true;
@@ -723,7 +756,7 @@ export class Game {
       this.player.avatarMesh.position.y = -0.32;
     }
     this.particles.createSkidSmoke(this.player.position, 6);
-    this.ui.showFloatingFeedback('⚡ SLIDE!', this.player.position, '#00e5ff');
+    this.ui.showFloatingFeedback(isAirborne ? '⚡ FAST-FALL!' : '⚡ SLIDE!', this.player.position, '#00e5ff');
   }
 
   /**
@@ -734,6 +767,8 @@ export class Game {
     if (!this.isGameStarted) this.startGame();
     if (this.runnerTurn) return;
     if (!this._autoLaneChange && this.attemptRunnerTurn(dir)) return;
+    const nextLane = Math.max(-1, Math.min(1, this.currentLane + dir));
+    if (nextLane === this.currentLane) return;
 
     // Check if NASCAR Slingshot Boost was primed from drafting behind a vehicle!
     if ((this.draftCharge || 0) >= 0.72) {
@@ -751,11 +786,13 @@ export class Game {
       audio.playClick();
     }
 
-    this.currentLane = Math.max(-1, Math.min(1, this.currentLane + dir));
+    this.laneChangeStartX = this.player.position.x;
+    this.currentLane = nextLane;
     this.targetLaneX = this.currentLane * this.laneWidth;
+    this.laneChangeTimer = 0.0;
 
     // Stock-Car dynamic lateral banking roll into turns + asphalt tire skid
-    this.targetBankRoll = -dir * 0.16;
+    this.targetBankRoll = -dir * 0.20;
     audio.playTireScreech();
     this.particles.createSkidSmoke(this.player.position, 4);
   }
@@ -764,45 +801,49 @@ export class Game {
    * Clear all active runner 3D obstacles, coins, traffic and power-ups from scene
    */
   clearRunnerObjects() {
+    this.cancelRunnerDeathAnimation();
+    this.isFastFalling = false;
+    this.laneChangeTimer = this.laneChangeDuration || 0.18;
+    this.laneChangeStartX = 0;
     if (this.runnerObstacles) {
       this.runnerObstacles.forEach(obs => {
-        if (obs && obs.mesh) this.scene.remove(obs.mesh);
+        if (obs && obs.mesh) this.disposeRunnerObject(obs.mesh);
       });
       this.runnerObstacles = [];
     }
     if (this.runnerCoins) {
       this.runnerCoins.forEach(coin => {
-        if (coin && coin.mesh) this.scene.remove(coin.mesh);
+        if (coin && coin.mesh) this.disposeRunnerObject(coin.mesh);
       });
       this.runnerCoins = [];
     }
     if (this.runnerPowerups) {
       this.runnerPowerups.forEach(p => {
-        if (p && p.mesh) this.scene.remove(p.mesh);
+        if (p && p.mesh) this.disposeRunnerObject(p.mesh);
       });
       this.runnerPowerups = [];
     }
     if (this.runnerReviveTokens) {
       this.runnerReviveTokens.forEach(token => {
-        if (token?.mesh) this.scene.remove(token.mesh);
+        if (token?.mesh) this.disposeRunnerObject(token.mesh);
       });
       this.runnerReviveTokens = [];
     }
     if (this.runnerTraffic) {
       this.runnerTraffic.forEach(v => {
-        if (v && v.mesh) this.scene.remove(v.mesh);
+        if (v && v.mesh) this.disposeRunnerObject(v.mesh);
       });
       this.runnerTraffic = [];
     }
     if (this.runnerBoostPads) {
       this.runnerBoostPads.forEach(b => {
-        if (b && b.mesh) this.scene.remove(b.mesh);
+        if (b && b.mesh) this.disposeRunnerObject(b.mesh);
       });
       this.runnerBoostPads = [];
     }
     if (this.surfingBuses) {
       this.surfingBuses.forEach(b => {
-        if (b && b.mesh) this.scene.remove(b.mesh);
+        if (b && b.mesh) this.disposeRunnerObject(b.mesh);
       });
       this.surfingBuses = [];
     }
@@ -884,7 +925,7 @@ export class Game {
       this.ui.showFloatingFeedback('🛺 RAMMED! +1000', this.player.position, '#ffd600');
       this.awardRunnerXP(1000);
       this.score += 1000;
-      if (obstacle.mesh) this.scene.remove(obstacle.mesh);
+      if (obstacle.mesh) this.disposeRunnerObject(obstacle.mesh);
       return;
     }
 
@@ -896,7 +937,7 @@ export class Game {
       this.ui.showAnnouncement(`💥 CNG NITRO SMASH! Obliterated ${reason}! +500 XP`, '#ff9100');
       this.awardRunnerXP(500);
       this.score += 500;
-      if (obstacle.mesh) this.scene.remove(obstacle.mesh);
+      if (obstacle.mesh) this.disposeRunnerObject(obstacle.mesh);
       return;
     }
 
@@ -911,7 +952,7 @@ export class Game {
       this.particles.createSkidSmoke(this.player.position, 10);
       this.ui.showAnnouncement(`🛡️ WATER TANKER SHIELD BROKE! Absorbed Impact on ${reason}! (2s Grace)`, '#00e5ff');
       this.ui.showFloatingFeedback('🛡️ SHIELD BROKE!', this.player.position, '#00e5ff');
-      if (obstacle.mesh) this.scene.remove(obstacle.mesh);
+      if (obstacle.mesh) this.disposeRunnerObject(obstacle.mesh);
       return;
     }
 
@@ -931,7 +972,7 @@ export class Game {
     this.particles.createSkidSmoke(this.player.position, 12);
 
     // Deflect and remove the hit obstacle so player never gets trapped behind it
-    if (obstacle.mesh) this.scene.remove(obstacle.mesh);
+    if (obstacle.mesh) this.disposeRunnerObject(obstacle.mesh);
 
     if (this.hearts > 0) {
       // Alert and bring Chaser (Pursuer) close
@@ -1115,6 +1156,7 @@ export class Game {
    * followed by the camera looking down into the hole.
    */
   executeGutterDeathResolution() {
+    this.cancelRunnerDeathAnimation();
     audio.playWaterSplash();
     audio.playGameOver();
 
@@ -1151,7 +1193,7 @@ export class Game {
     const targetLookY = holeY - 4.2;
     const targetLookZ = holeZ - 0.2;
 
-    const animInterval = setInterval(() => {
+    this.runnerDeathAnimation = setInterval(() => {
       elapsed += 0.033;
       const t = Math.min(1.0, elapsed / duration);
       const easeT = t * t; // accelerating gravity drop
@@ -1178,7 +1220,7 @@ export class Game {
       }
 
       if (t >= 1.0) {
-        clearInterval(animInterval);
+        this.cancelRunnerDeathAnimation();
       }
     }, 33);
   }
@@ -1188,6 +1230,7 @@ export class Game {
    * and the camera jolts violently.
    */
   executeVehicleCrashDeathResolution() {
+    this.cancelRunnerDeathAnimation();
     audio.playCrash();
     audio.playGameOver();
 
@@ -1218,7 +1261,7 @@ export class Game {
     let elapsed = 0;
     const duration = 1.0;
 
-    const animInterval = setInterval(() => {
+    this.runnerDeathAnimation = setInterval(() => {
       elapsed += 0.033;
       const t = Math.min(1.0, elapsed / duration);
       const easeOut = Math.sin(t * Math.PI * 0.5);
@@ -1245,7 +1288,7 @@ export class Game {
       }
 
       if (t >= 1.0) {
-        clearInterval(animInterval);
+        this.cancelRunnerDeathAnimation();
       }
     }, 33);
   }
@@ -1255,6 +1298,7 @@ export class Game {
    * revealing the Pursuer (Police Mobile / Rival) looming over them.
    */
   executeChaserCaptureDeathResolution() {
+    this.cancelRunnerDeathAnimation();
     audio.playBrakeScreech();
     audio.playGameOver();
 
@@ -1294,7 +1338,7 @@ export class Game {
     let elapsed = 0;
     const duration = 1.2;
 
-    const animInterval = setInterval(() => {
+    this.runnerDeathAnimation = setInterval(() => {
       elapsed += 0.033;
       const t = Math.min(1.0, elapsed / duration);
       const easeWhip = 1 - Math.pow(1 - t, 3); // cubic whip transition
@@ -1311,9 +1355,16 @@ export class Game {
       }
 
       if (t >= 1.0) {
-        clearInterval(animInterval);
+        this.cancelRunnerDeathAnimation();
       }
     }, 33);
+  }
+
+  cancelRunnerDeathAnimation() {
+    if (this.runnerDeathAnimation !== undefined) {
+      clearInterval(this.runnerDeathAnimation);
+      this.runnerDeathAnimation = undefined;
+    }
   }
 
   /**
@@ -1327,6 +1378,12 @@ export class Game {
       return false;
     }
 
+    this.cancelRunnerDeathAnimation();
+    this.isFastFalling = false;
+    this.isSliding = false;
+    this.slideTimer = 0;
+    this.laneChangeTimer = this.laneChangeDuration || 0.18;
+    this.laneChangeStartX = 0;
     audio.playPowerUp();
     audio.playChaiSip();
     audio.resumeAudio();
@@ -1342,15 +1399,16 @@ export class Game {
     this.targetLaneX = 0;
     this.player.position.x = 0;
     this.player.isGrounded = true;
-    this.player.position.y = 0;
+    this.player.position.y = this.getCorridorGroundHeight(this.player.position.z, 0);
     this.player.velocityY = 0;
     if (this.player.group) {
       this.player.group.position.x = 0;
-      this.player.group.position.y = 0;
+      this.player.group.position.y = this.player.position.y;
     }
     if (this.player.avatarMesh) {
       this.player.avatarMesh.visible = true;
       this.player.avatarMesh.scale.set(1, 1, 1);
+      this.player.avatarMesh.position.y = 0;
       if (typeof AvatarBuilder !== 'undefined' && AvatarBuilder.resetDeathAnimation) {
         AvatarBuilder.resetDeathAnimation(this.player.avatarMesh);
       }
@@ -1365,7 +1423,7 @@ export class Game {
       for (let i = this.runnerObstacles.length - 1; i >= 0; i--) {
         const obs = this.runnerObstacles[i];
         if (obs && Math.abs(obs.z - pZ) < 45.0) {
-          if (obs.mesh) this.scene.remove(obs.mesh);
+          if (obs.mesh) this.disposeRunnerObject(obs.mesh);
           this.runnerObstacles.splice(i, 1);
         }
       }
@@ -1374,7 +1432,7 @@ export class Game {
       for (let i = this.runnerTraffic.length - 1; i >= 0; i--) {
         const v = this.runnerTraffic[i];
         if (v && v.mesh && Math.abs(v.mesh.position.z - pZ) < 45.0) {
-          this.scene.remove(v.mesh);
+          this.disposeRunnerObject(v.mesh);
           this.runnerTraffic.splice(i, 1);
         }
       }
@@ -2106,7 +2164,7 @@ export class Game {
       const clearLaneIdx = Math.floor(Math.random() * 3);
       const toRemove = fullBlockOccupiedLanes.get(clearLaneIdx);
       if (toRemove) {
-        if (toRemove.mesh) this.scene.remove(toRemove.mesh);
+        if (toRemove.mesh) this.disposeRunnerObject(toRemove.mesh);
         const obsIdx = this.runnerObstacles.indexOf(toRemove);
         if (obsIdx !== -1) this.runnerObstacles.splice(obsIdx, 1);
         const trafIdx = this.runnerTraffic.indexOf(toRemove);
@@ -2260,6 +2318,229 @@ export class Game {
     this.recordGameOpsEvent?.('runner.w11_surfing_end', { distanceMeters: Math.round(this.distanceMeters) });
   }
 
+  /**
+   * Subway Surfers Ground Contact Blob Shadow (Soft radial ambient occlusion mesh)
+   */
+  createBlobShadow(width = 1.3, length = 1.3) {
+    if (typeof document === 'undefined') return null;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      const grad = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+      grad.addColorStop(0, 'rgba(0, 0, 0, 0.72)');
+      grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.38)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 64, 64);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const geo = new THREE.PlaneGeometry(width, length);
+      geo.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.72,
+        depthWrite: false
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.renderOrder = 3;
+      mesh.visible = false;
+      return mesh;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Evaluates runner collision bounding box dimensions with slide compression
+   */
+  getRunnerHitbox() {
+    if (!this.player) return null;
+    const pPos = this.player.position;
+    const isSlide = !!this.isSliding;
+    const height = isSlide ? 0.72 : 1.85;
+    const radius = isSlide ? 0.42 : 0.48;
+    return {
+      minX: pPos.x - radius,
+      maxX: pPos.x + radius,
+      minY: pPos.y,
+      maxY: pPos.y + height,
+      minZ: pPos.z - radius,
+      maxZ: pPos.z + radius,
+      height,
+      radius,
+      isSliding: isSlide,
+      isFastFalling: !!this.isFastFalling
+    };
+  }
+
+  /**
+   * Stylized Sky Hemisphere Dome with vertical sky gradient & drifting clouds
+   */
+  createSkyDome() {
+    if (typeof document === 'undefined') return null;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 0, 256);
+      grad.addColorStop(0.0, '#10528c');
+      grad.addColorStop(0.35, '#2980b9');
+      grad.addColorStop(0.65, '#60a5fa');
+      grad.addColorStop(0.85, '#fed7aa');
+      grad.addColorStop(1.0, '#fef08a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 128, 256);
+
+      // Stylized fluffy clouds
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
+      ctx.beginPath();
+      ctx.arc(35, 140, 22, 0, Math.PI * 2);
+      ctx.arc(60, 135, 30, 0, Math.PI * 2);
+      ctx.arc(88, 142, 20, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.32)';
+      ctx.beginPath();
+      ctx.arc(80, 80, 18, 0, Math.PI * 2);
+      ctx.arc(102, 75, 24, 0, Math.PI * 2);
+      ctx.fill();
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const skyGeo = new THREE.SphereGeometry(450, 24, 16);
+      const skyMat = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.BackSide,
+        depthWrite: false,
+        fog: false
+      });
+      const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+      skyMesh.name = 'Stylized-Sky-Dome';
+      skyMesh.userData.isSkyDome = true;
+      return skyMesh;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Distant Karachi Skyline Parallax Backdrop (Habib Bank Plaza, Port Cranes, Mazar Dome)
+   */
+  createDistantSkylineBackdrop() {
+    const group = new THREE.Group();
+    group.name = 'Distant-Karachi-Skyline';
+    group.userData.isDistantSkyline = true;
+    const silMat = new THREE.MeshBasicMaterial({
+      color: 0x8a7e72,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+      fog: false
+    });
+
+    // 1. Habib Bank Plaza Silhouette (Iconic 1960s triangular crown tower)
+    const hbp = new THREE.Mesh(new THREE.BoxGeometry(26, 120, 20), silMat);
+    hbp.position.set(-85, 50, -180);
+    group.add(hbp);
+    const hbpTop = new THREE.Mesh(new THREE.ConeGeometry(15, 24, 4), silMat);
+    hbpTop.position.set(-85, 118, -180);
+    hbpTop.rotation.y = Math.PI / 4;
+    group.add(hbpTop);
+
+    // 2. Port of Karachi Gantry Container Cranes
+    [-140, 130].forEach(cx => {
+      const craneGantry = new THREE.Mesh(new THREE.BoxGeometry(26, 4, 6), silMat);
+      craneGantry.position.set(cx, 65, -190);
+      group.add(craneGantry);
+      const craneLegL = new THREE.Mesh(new THREE.BoxGeometry(3, 65, 3), silMat);
+      craneLegL.position.set(cx - 10, 32.5, -190);
+      group.add(craneLegL);
+      const craneLegR = new THREE.Mesh(new THREE.BoxGeometry(3, 65, 3), silMat);
+      craneLegR.position.set(cx + 10, 32.5, -190);
+      group.add(craneLegR);
+    });
+
+    // 3. Mazar-e-Quaid Distant Marble Dome
+    const mazarBase = new THREE.Mesh(new THREE.BoxGeometry(45, 35, 45), silMat);
+    mazarBase.position.set(70, 17.5, -200);
+    group.add(mazarBase);
+    const mazarDome = new THREE.Mesh(new THREE.SphereGeometry(18, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), silMat);
+    mazarDome.position.set(70, 35, -200);
+    group.add(mazarDome);
+
+    // 4. Radio transmission tower with blinking aviation red beacon
+    const towerMast = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 3.5, 95, 6), silMat);
+    towerMast.position.set(0, 47.5, -210);
+    group.add(towerMast);
+    const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0033, fog: false });
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(2.0, 8, 8), beaconMat);
+    beacon.position.set(0, 95, -210);
+    group.add(beacon);
+    group.userData.beacon = beacon;
+
+    return group;
+  }
+
+  /**
+   * Semi-transparent projected vehicle headlight beam cone
+   */
+  createHeadlightBeam(color = 0xfffae0, length = 14.0, radius = 1.4) {
+    const geo = new THREE.CylinderGeometry(0.18, radius, length, 12, 1, true);
+    geo.rotateX(Math.PI / 2);
+    geo.translate(0, 0, -length * 0.5);
+    const mat = new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.16,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const beam = new THREE.Mesh(geo, mat);
+    beam.userData.isHeadlightBeam = true;
+    return beam;
+  }
+
+  /**
+   * Peripheral Speed Wind Lines (Tunnel Rush FX during High Velocity / Nitro)
+   */
+  createSpeedWindLines() {
+    const group = new THREE.Group();
+    group.name = 'Speed-Wind-Lines';
+    group.userData.isSpeedWindLines = true;
+    const lineMat = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.0,
+      depthWrite: false
+    });
+
+    const lines = [];
+    const count = 24;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const radius = 3.2 + (i % 3) * 0.8;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius * 0.65 + 1.8;
+      const zStart = -2.0 - (i % 4) * 3.0;
+      const length = 5.0 + (i % 3) * 3.0;
+
+      const geo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x, y, zStart),
+        new THREE.Vector3(x, y, zStart + length)
+      ]);
+      const line = new THREE.Line(geo, lineMat.clone());
+      line.userData = { angle, radius, baseZ: zStart, length, speedFactor: 1.0 + (i % 3) * 0.3 };
+      group.add(line);
+      lines.push(line);
+    }
+    group.userData.lines = lines;
+    group.visible = false;
+    return group;
+  }
+
   createChaserPoliceMobile() {
     const group = new THREE.Group();
     group.name = 'Chaser-Police-Mobile';
@@ -2330,6 +2611,17 @@ export class Game {
     hRight.position.set(0.68, 0.68, -1.71);
     group.add(hRight);
 
+    // 5b. Headlight Projected Light Cones onto Asphalt
+    const beamL = this.createHeadlightBeam(0xfffae0, 14.0, 1.6);
+    beamL.position.set(-0.68, 0.65, -1.72);
+    beamL.rotation.x = -0.04;
+    group.add(beamL);
+
+    const beamR = this.createHeadlightBeam(0xfffae0, 14.0, 1.6);
+    beamR.position.set(0.68, 0.65, -1.72);
+    beamR.rotation.x = -0.04;
+    group.add(beamR);
+
     // 6. 4 Wheels
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1f2421, roughness: 0.9, transparent: true, opacity: 0 });
     const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 12);
@@ -2364,7 +2656,7 @@ export class Game {
 
   initRunnerChaser() {
     if (this.chaserEntity) {
-      this.scene.remove(this.chaserEntity);
+      this.disposeRunnerObject(this.chaserEntity);
       this.chaserEntity = null;
     }
     this.chaserEntity = this.createChaserPoliceMobile();
@@ -2382,6 +2674,11 @@ export class Game {
     this.chaserEntity.visible = false;
     this.setMeshOpacity(this.chaserEntity, 0.0);
     this.scene.add(this.chaserEntity);
+
+    if (!this.chaserBlobShadow) {
+      this.chaserBlobShadow = this.createBlobShadow(2.1, 3.6);
+      if (this.chaserBlobShadow) this.scene.add(this.chaserBlobShadow);
+    }
   }
 
   triggerRunnerStumble(obstacle, label) {
@@ -2750,16 +3047,8 @@ export class Game {
   initCorridorTerrain() {
     if (!this.chaserEntity) this.initRunnerChaser();
     const baseZ = this.player?.position.z ?? 60.0;
-    if (this.corridorChunks && this.corridorChunks.length > 0 &&
-        this.corridorDistrictLevel === this.currentDistrictLevel) {
-      this.corridorChunks.forEach((chunk, index) => {
-        chunk.position.z = baseZ - (index * 60.0);
-        this.scene.add(chunk);
-      });
-      return;
-    }
     if (this.corridorChunks) {
-      this.corridorChunks.forEach(chunk => this.scene.remove(chunk));
+      this.corridorChunks.forEach(chunk => this.disposeCorridorChunk(chunk));
     }
     this.corridorChunks = [];
     this.corridorChunkSerial = 0;
@@ -3298,9 +3587,9 @@ export class Game {
     });
     // Drop emptied containers so only merged slabs and leftovers remain.
     [...chunkGroup.children].forEach(child => {
-      if (child.isMesh) return;
+      if (child.isMesh || child.isLine) return;
       let hasContent = false;
-      child.traverse(o => { if (o !== child && (o.isMesh || o.isLight)) hasContent = true; });
+      child.traverse(o => { if (o !== child && (o.isMesh || o.isLight || o.isLine)) hasContent = true; });
       if (!hasContent) chunkGroup.remove(child);
     });
     const slabs = [];
@@ -3343,10 +3632,47 @@ export class Game {
     });
   }
 
-  disposeCorridorChunk(chunk) {
-    chunk.traverse(o => {
-      if (o.isMesh && o.userData.merged) o.geometry?.dispose();
+  disposeRunnerObject(object) {
+    this.disposedRunnerObjects ||= new WeakSet();
+    if (this.disposedRunnerObjects.has(object)) return;
+    this.disposedRunnerObjects.add(object);
+    object.removeFromParent();
+
+    // Model factories share these assets across chunks and the classic city.
+    const shared = new Set([
+      ...Object.values(KarachiModels.materials),
+      CityGenerator._cachedAsphaltTexture,
+      RUNNER_POTHOLE_RIM_GEOMETRY, RUNNER_POTHOLE_RIM_MATERIAL,
+      RUNNER_POTHOLE_WARNING_RING_GEOMETRY, RUNNER_POTHOLE_WARNING_RING_MATERIAL,
+      RUNNER_POTHOLE_WATER_GEOMETRY, RUNNER_POTHOLE_WATER_MATERIAL,
+      RUNNER_POTHOLE_ARROW_GEOMETRY, RUNNER_POTHOLE_ARROW_MATERIAL
+    ]);
+    Object.values(KarachiModels.materials).forEach(material => {
+      if (material.isMaterial) {
+        Object.values(material).forEach(value => {
+          if (value?.isTexture) shared.add(value);
+        });
+      }
     });
+    const resources = new Set();
+    object.traverse(child => {
+      if (child.geometry && !child.isSprite) resources.add(child.geometry);
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.filter(Boolean).forEach(material => {
+        if (shared.has(material)) return;
+        resources.add(material);
+        Object.values(material).forEach(value => {
+          if (value?.isTexture) resources.add(value);
+        });
+      });
+    });
+    resources.forEach(resource => {
+      if (!shared.has(resource)) resource.dispose();
+    });
+  }
+
+  disposeCorridorChunk(chunk) {
+    this.disposeRunnerObject(chunk);
   }
 
   /**
@@ -3497,24 +3823,29 @@ export class Game {
     const rpm = Math.round(2500 + ((kmh - gearMin) / Math.max(1, gearMax - gearMin)) * 5500);
     this.currentRpm = rpm;
 
-    // 2. Discrete 3-Lane Movement & Snapping (Temple Run 2 feel)
-    // Strictly restrict X-axis movement to 3 discrete lanes (-1, 0, 1)
+    // 2. Fixed-Duration 180ms Eased Lane Switching (Subway Surfers signature snappiness)
     if (this.isAutoPilotActive) this.executeRunnerAutoPilot(dt);
     this.currentLane = THREE.MathUtils.clamp(Math.round(this.currentLane || 0), -1, 1);
     this.laneWidth = 3.2;
     this.targetLaneX = this.currentLane * this.laneWidth;
-    this.player.position.x = THREE.MathUtils.lerp(
-      this.player.position.x,
-      this.targetLaneX,
-      Math.min(1.0, dt * 16.0)
-    );
 
-    // Dynamic banking roll (rotation.z) during lane changes that settles back to 0
-    const laneDiff = this.targetLaneX - this.player.position.x;
-    const targetRoll = THREE.MathUtils.clamp(laneDiff * -0.065, -0.22, 0.22);
-    this.currentBankRoll = THREE.MathUtils.lerp(this.currentBankRoll || 0, targetRoll, Math.min(1.0, dt * 14.0));
-    if (Math.abs(laneDiff) < 0.035) {
-      this.currentBankRoll = THREE.MathUtils.lerp(this.currentBankRoll, 0, Math.min(1.0, dt * 12.0));
+    if ((this.laneChangeTimer || 0) < (this.laneChangeDuration || 0.18)) {
+      this.laneChangeTimer = Math.min(this.laneChangeDuration || 0.18, (this.laneChangeTimer || 0) + dt);
+      const t = this.laneChangeTimer / (this.laneChangeDuration || 0.18);
+      // Smooth cubic ease-out curve
+      const s = 1.0 - Math.pow(1.0 - t, 3);
+      this.player.position.x = (this.laneChangeStartX || 0) + (this.targetLaneX - (this.laneChangeStartX || 0)) * s;
+
+      // Dynamic athletic banking roll peaking at midpoint
+      const rollFactor = Math.sin(t * Math.PI);
+      this.currentBankRoll = (this.targetBankRoll || 0) * rollFactor;
+    } else {
+      this.player.position.x = THREE.MathUtils.lerp(
+        this.player.position.x,
+        this.targetLaneX,
+        Math.min(1.0, dt * 25.0)
+      );
+      this.currentBankRoll = THREE.MathUtils.lerp(this.currentBankRoll || 0, 0, Math.min(1.0, dt * 16.0));
     }
 
     // Update Runner Invulnerability Grace Timer & Blinking Mesh
@@ -3604,6 +3935,46 @@ export class Game {
         this.camera.position.z = targetCamZ;
         this.camera.lookAt(targetLookX, targetLookY, targetLookZ);
       }
+
+      // Parallax Backdrop & Sky Dome Synchronization
+      if (this.skyDome) {
+        this.skyDome.position.set(this.player.position.x * 0.1, (this.player.position.y || 0) * 0.1, this.player.position.z);
+      }
+      if (this.skylineBackdrop) {
+        this.skylineBackdrop.position.set(this.player.position.x * 0.15, 0, this.player.position.z);
+        if (this.skylineBackdrop.userData.beacon) {
+          // Aviation red beacon blinks every 800ms
+          this.skylineBackdrop.userData.beacon.visible = Math.floor(Date.now() / 800) % 2 === 0;
+        }
+      }
+
+      // Dynamic Speed Wind Lines (Subway Surfers tunnel rush FX)
+      if (this.speedWindLines) {
+        const isHighSpeed = speed > 21.0 || (this.nitroTimer > 0) || (this.chingchiTimer > 0) || (this.turboTimer > 0);
+        if (isHighSpeed && this.camera) {
+          this.speedWindLines.visible = true;
+          this.speedWindLines.position.copy(this.camera.position);
+          this.speedWindLines.rotation.copy(this.camera.rotation);
+          const targetOpacity = Math.min(0.48, (speed - 16.0) * 0.03 + ((this.nitroTimer > 0) ? 0.25 : 0));
+          this.speedWindLines.children.forEach(line => {
+            if (line.material) line.material.opacity = targetOpacity;
+            line.position.z += dt * speed * (line.userData.speedFactor || 1.0);
+            if (line.position.z > 8.0) line.position.z = -12.0;
+          });
+        } else {
+          this.speedWindLines.visible = false;
+        }
+      }
+
+      // Breathing Emissive Pulse on Neon Signage (Gantry chevrons, beacons)
+      if (this.runnerJunction && this.runnerJunction.group) {
+        const pulse = 0.45 + Math.sin(Date.now() * 0.006) * 0.25;
+        this.runnerJunction.group.traverse(child => {
+          if (child.isMesh && child.material && child.material.emissiveIntensity !== undefined) {
+            child.material.emissiveIntensity = pulse;
+          }
+        });
+      }
     }
 
     // 5. Update Vertical Traversal (Jump gravity & arc, Jetpack sky flight, Sloped Terrain Grounding, Roof Surfing)
@@ -3617,14 +3988,21 @@ export class Game {
       this.player.group.position.y = this.player.position.y;
       this.particles.createSkidSmoke(new THREE.Vector3(this.player.position.x, this.player.position.y - 0.4, this.player.position.z + 0.3), 1);
       this.particles.createDevourSparkles(new THREE.Vector3(this.player.position.x, this.player.position.y - 0.4, this.player.position.z + 0.3), 2, 0x00e5ff);
-    } else if (!this.player.isGrounded || this.player.position.y > groundY + 0.05 || this.player.velocityY !== 0) {
-      const gravity = 18.0;
+    } else if (!this.player.isGrounded || (this.player.position.y || 0) > groundY + 0.05 || this.player.velocityY !== 0) {
+      const gravity = this.isFastFalling ? 45.0 : 18.0;
       this.player.velocityY -= gravity * dt;
       this.player.position.y += this.player.velocityY * dt;
       if (this.player.position.y <= groundY) {
         this.player.position.y = groundY;
         this.player.velocityY = 0;
         this.player.isGrounded = true;
+        if (this.isFastFalling) {
+          this.isFastFalling = false;
+          this.isSliding = true;
+          this.slideTimer = Math.max(this.slideTimer || 0, 0.65);
+          this.particles?.createSkidSmoke?.(this.player.position, 8);
+          audio?.playSlide?.();
+        }
       }
       this.player.group.position.y = this.player.position.y;
     } else {
@@ -3636,7 +4014,43 @@ export class Game {
       );
       this.player.velocityY = 0;
       this.player.isGrounded = true;
+      this.isFastFalling = false;
       this.player.group.position.y = this.player.position.y;
+    }
+
+    // 5b. Ground Contact Blob Shadows (Subway Surfers Contact Grounding)
+    if (this.playerBlobShadow) {
+      if (this.player && this.player.isAlive && !this.isGameOver) {
+        this.playerBlobShadow.visible = true;
+        this.playerBlobShadow.position.set(this.player.position.x, groundY + 0.03, this.player.position.z);
+        const jumpElevation = Math.max(0, (this.player.position.y || 0) - groundY);
+        if (this.isSliding) {
+          this.playerBlobShadow.scale.set(1.15, 1, 1.45);
+          this.playerBlobShadow.material.opacity = 0.75;
+        } else if (jumpElevation > 0.05) {
+          const shrinkFactor = Math.max(0.35, 1.0 - jumpElevation * 0.16);
+          this.playerBlobShadow.scale.set(shrinkFactor, 1, shrinkFactor);
+          this.playerBlobShadow.material.opacity = Math.max(0.12, 0.65 - jumpElevation * 0.18);
+        } else {
+          this.playerBlobShadow.scale.set(1.0, 1, 1.0);
+          this.playerBlobShadow.material.opacity = 0.70;
+        }
+      } else {
+        this.playerBlobShadow.visible = false;
+      }
+    }
+
+    if (this.chaserBlobShadow) {
+      if (this.chaserEntity && this.chaserEntity.visible && (this.chaserOpacity || 0) > 0.05) {
+        this.chaserBlobShadow.visible = true;
+        const chaserZ = this.chaserEntity.position.z;
+        const chaserX = this.chaserEntity.position.x;
+        const chaserGroundY = this.getCorridorGroundHeight(chaserZ, chaserX);
+        this.chaserBlobShadow.position.set(chaserX, chaserGroundY + 0.03, chaserZ);
+        this.chaserBlobShadow.material.opacity = Math.min(0.65, (this.chaserOpacity || 0) * 0.7);
+      } else {
+        this.chaserBlobShadow.visible = false;
+      }
     }
 
     if (this.chingchiTimer > 0) {
@@ -3750,7 +4164,7 @@ export class Game {
 
         this.particles.createDevourSparkles(coin.mesh.position, 8, 0xffd700);
         this.ui.showFloatingFeedback(`+${earnedCoins} Rs${coinMultiplier > 1 ? ' (2X!)' : ''}`, coin.mesh.position, '#ffd700');
-        this.scene.remove(coin.mesh);
+        this.disposeRunnerObject(coin.mesh);
         this.runnerCoins.splice(i, 1);
       }
     }
@@ -3858,7 +4272,7 @@ export class Game {
         }
 
         this.particles.createDevourSparkles(p.mesh.position, 14, 0x00e5ff);
-        this.scene.remove(p.mesh);
+        this.disposeRunnerObject(p.mesh);
         this.runnerPowerups.splice(i, 1);
       }
     }
@@ -3882,7 +4296,7 @@ export class Game {
           console.error('[SAVE] Could not persist collected runner Rescue Token.');
           this.ui.showAnnouncement('Could not save this Rescue Token. Check device storage.', '#ff5252');
         }
-        this.scene.remove(token.mesh);
+        this.disposeRunnerObject(token.mesh);
         this.runnerReviveTokens.splice(i, 1);
       }
     }
@@ -3896,6 +4310,13 @@ export class Game {
         // Shrink obstacle bounding box by 20% relative to visual meshes (1.4 -> 1.12)
         const crossesObstacle = runnerSegmentCrossesZ(obs.z, previousRunnerPosition.z, pPos.z, 1.12);
         const crossesVisualZ = runnerSegmentCrossesZ(obs.z, previousRunnerPosition.z, pPos.z, 1.40);
+        const isLowHazard = obs.hazardType === 'LOW_HAZARD' ||
+          ['gutter', 'digging', 'sewage', 'pothole', 'football', 'combined_roadwork'].includes(obs.type);
+        const obstacleGroundY = this.getCorridorGroundHeight(obs.z, obs.laneX || 0);
+        const clearsLowHazard = isLowHazard && (
+          (!this.player.isGrounded && pPos.y > obstacleGroundY + 0.28) ||
+          previousRunnerPosition.y > obstacleGroundY + 0.28
+        );
         if (crossesObstacle) {
           if (obs.type === 'overhead_bridge_sign') {
             if (!this.isBusSurfing) {
@@ -3981,7 +4402,7 @@ export class Game {
                           : '🌊 Sewage Overflow';
                 this.handleRunnerHit(obs, label);
               }
-            } else if (laneDistanceSq < 1.35 * 1.35 && !obs.isGrazed) {
+            } else if (laneDistanceSq < 1.35 * 1.35 && !obs.isGrazed && !clearsLowHazard) {
               // Collision forgiveness window saves player from heart loss -> trigger stumble
               obs.isGrazed = true;
               const label = obs.type === 'gutter'
@@ -4049,7 +4470,7 @@ export class Game {
               previousRunnerPosition,
               pPos
             );
-            if (laneDistanceSq < 1.35 * 1.35) {
+            if (laneDistanceSq < 1.35 * 1.35 && !clearsLowHazard) {
               obs.isGrazed = true;
               const label = obs.type === 'gutter'
                 ? '🕳️ Open Gutter'
@@ -4072,6 +4493,26 @@ export class Game {
                                 : '🚧 Road Hazard';
               this.triggerRunnerStumble(obs, label);
             }
+          }
+        }
+        if (previousRunnerPosition.z >= obs.z && pPos.z <= obs.z &&
+            !obs.nearMissRewarded && !obs.isHit && !obs.isGrazed && !this.isBusSurfing &&
+            obs.hazardType !== 'HIGH_HAZARD' && obs.type !== 'wire' &&
+            obs.type !== 'heritage_scaffold' && obs.type !== 'overhead_bridge_sign') {
+          const dz = previousRunnerPosition.z - pPos.z;
+          const t = dz > 0 ? (previousRunnerPosition.z - obs.z) / dz : 0;
+          const crossingX = THREE.MathUtils.lerp(previousRunnerPosition.x, pPos.x, t);
+          const lateralDist = Math.abs((obs.laneX || 0) - crossingX);
+          if (lateralDist > 1.35 && lateralDist < 3.4) {
+            obs.nearMissRewarded = true;
+            this.score += 250;
+            this.awardRunnerXP(250);
+            this.runnerNearMissCount = (this.runnerNearMissCount || 0) + 1;
+            this.nearMissCount = (this.nearMissCount || 0) + 1;
+            if (this.runnerNearMissCount >= 5) this.unlockRunnerBadge('road_safety');
+            this.particles.createDevourSparkles(this.player.position, 8, 0xffd700);
+            audio.playNearMiss();
+            this.ui.showFloatingFeedback('⚡ NEAR MISS! +250 PTS', this.player.position, '#ffd700');
           }
         }
       }
@@ -4136,7 +4577,7 @@ export class Game {
               this.ui.showFloatingFeedback('🛺 RAMMED! +1000', this.player.position, '#ffd600');
               this.awardRunnerXP(1000);
               this.score += 1000;
-              this.scene.remove(v.mesh);
+              this.disposeRunnerObject(v.mesh);
             } else if (this.nitroTimer > 0) {
               v.isHit = true;
               audio.playCrash();
@@ -4144,7 +4585,7 @@ export class Game {
               this.ui.showAnnouncement(`💥 TRAFFIC CRASH! ${v.label} CLEARED! +500 PTS`, '#ff9100');
               this.awardRunnerXP(500);
               this.score += 500;
-              this.scene.remove(v.mesh);
+              this.disposeRunnerObject(v.mesh);
             } else {
               this.handleRunnerHit(v, v.label);
             }
@@ -4155,12 +4596,13 @@ export class Game {
           } else if (
             ((absDz < 1.5 && distX >= 1.04 && distX <= 2.2) ||
               (sweptDistanceSq >= 1.04 * 1.04 && sweptDistanceSq <= 2.2 * 2.2)) &&
-            !v.nearMissAwarded && kmh >= 75
+            !v.nearMissAwarded && !v.isGrazed && kmh >= 75
           ) {
             v.nearMissAwarded = true;
             audio.playNearMiss();
             this.awardRunnerXP(250);
             this.runnerNearMissCount++;
+            this.nearMissCount = (this.nearMissCount || 0) + 1;
             if (this.runnerNearMissCount >= 5) this.unlockRunnerBadge('road_safety');
             this.score += 250;
             this.ui.showFloatingFeedback('⚡ DRAFT OVERTAKE! +250 XP', pPos, '#00e5ff');
@@ -4210,7 +4652,7 @@ export class Game {
           bus.mesh.position.z -= (bus.speed || 6.0) * dt;
           bus.mesh.position.x += 1.8 * dt; // Pull aside to shoulder
           if (bus.mesh.position.z > pPos.z + 30 || bus.mesh.position.z < pPos.z - 90) {
-            this.scene.remove(bus.mesh);
+            this.disposeRunnerObject(bus.mesh);
             this.surfingBuses.splice(i, 1);
           }
           continue;
@@ -4243,7 +4685,7 @@ export class Game {
               this.player.isGrounded = true;
 
               audio.playPowerUp();
-              audio.playChingchiHorn();
+              audio.playMusicalHorn();
               this.particles?.createCelebrationConfetti?.(this.player.position, 40);
               this.ui?.showAnnouncement?.('🏄 W-11 MINIBUS SURFING! +50% SPEED BOOST!', '#00e5ff');
               this.ui?.showFloatingFeedback?.('🏄 ROOF SURFING! +50% SPEED', this.player.position, '#00e5ff');
@@ -4277,8 +4719,11 @@ export class Game {
     }
 
     if (this.camera) {
-      const targetFov = 60 + Math.min(18, Math.max(0, (kmh - 60) * 0.15)) + (this.nitroTimer > 0 ? 6 : 0);
-      this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, dt * 4.0);
+      const baseSpeed = 13.5;
+      const speedNorm = THREE.MathUtils.clamp((speed - baseSpeed) / 14.5, 0, 1);
+      const targetFov = 62.0 + (speedNorm * 5.0) + (this.nitroTimer > 0 ? 2.5 : 0.0);
+      const clampedFov = THREE.MathUtils.clamp(targetFov, 60.0, 70.0);
+      this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, clampedFov, Math.min(1.0, dt * 4.0));
       this.camera.updateProjectionMatrix();
 
       const rollAngle = (this.targetLaneX - this.player.position.x) * -0.015;
@@ -4357,28 +4802,28 @@ export class Game {
     for (let i = this.runnerObstacles.length - 1; i >= 0; i--) {
       const obs = this.runnerObstacles[i];
       if (obs && obs.z > pPos.z + 28.0) {
-        if (obs.mesh) this.scene.remove(obs.mesh);
+        if (obs.mesh) this.disposeRunnerObject(obs.mesh);
         this.runnerObstacles.splice(i, 1);
       }
     }
     for (let i = this.runnerCoins.length - 1; i >= 0; i--) {
       const c = this.runnerCoins[i];
       if (c && c.z > pPos.z + 28.0) {
-        if (c.mesh) this.scene.remove(c.mesh);
+        if (c.mesh) this.disposeRunnerObject(c.mesh);
         this.runnerCoins.splice(i, 1);
       }
     }
     for (let i = this.runnerPowerups.length - 1; i >= 0; i--) {
       const p = this.runnerPowerups[i];
       if (p && p.z > pPos.z + 28.0) {
-        if (p.mesh) this.scene.remove(p.mesh);
+        if (p.mesh) this.disposeRunnerObject(p.mesh);
         this.runnerPowerups.splice(i, 1);
       }
     }
     for (let i = this.runnerReviveTokens.length - 1; i >= 0; i--) {
       const token = this.runnerReviveTokens[i];
       if (token && token.z > pPos.z + 28.0) {
-        if (token.mesh) this.scene.remove(token.mesh);
+        if (token.mesh) this.disposeRunnerObject(token.mesh);
         this.runnerReviveTokens.splice(i, 1);
       }
     }
@@ -4386,7 +4831,7 @@ export class Game {
       for (let i = this.runnerTraffic.length - 1; i >= 0; i--) {
         const v = this.runnerTraffic[i];
         if (v && v.mesh && v.mesh.position.z > pPos.z + 32.0) {
-          this.scene.remove(v.mesh);
+          this.disposeRunnerObject(v.mesh);
           this.runnerTraffic.splice(i, 1);
         }
       }
@@ -4395,7 +4840,7 @@ export class Game {
       for (let i = this.surfingBuses.length - 1; i >= 0; i--) {
         const b = this.surfingBuses[i];
         if (b && b.mesh && !this.isBusSurfing && b.mesh.position.z > pPos.z + 32.0) {
-          this.scene.remove(b.mesh);
+          this.disposeRunnerObject(b.mesh);
           this.surfingBuses.splice(i, 1);
         }
       }
@@ -4404,7 +4849,7 @@ export class Game {
       for (let i = this.runnerBoostPads.length - 1; i >= 0; i--) {
         const b = this.runnerBoostPads[i];
         if (b && b.mesh && b.z > pPos.z + 32.0) {
-          this.scene.remove(b.mesh);
+          this.disposeRunnerObject(b.mesh);
           this.runnerBoostPads.splice(i, 1);
         }
       }
@@ -4591,6 +5036,30 @@ export class Game {
     audio.resumeAudio();
 
     if (this.isTempleRun) {
+      this.clearRunnerObjects();
+      this.score = 0;
+      this.magnetTimer = 0;
+      this.turboTimer = 0;
+      this.nitroTimer = 0;
+      this.shieldTimer = 0;
+      this.superJumpTimer = 0;
+      this.chingchiTimer = 0;
+      this.jetpackTimer = 0;
+      this.runnerInvulnerableTimer = 0;
+      this.activePowerUp = null;
+      this.coinComboCount = 0;
+      this.lastCoinPickupTime = 0;
+      this.isNascarSuperSpeed = false;
+      this.isBoosting = false;
+      this.isSliding = false;
+      this.slideTimer = 0;
+      this.currentBankRoll = 0;
+      this.targetBankRoll = 0;
+      this.passedMilestoneIndices = new Set([0]);
+      this.player.velocityY = 0;
+      this.player.isGrounded = true;
+      this.player.isShielded = false;
+      if (this.player.avatarMesh) this.player.avatarMesh.position.y = 0;
       this.distanceMeters = 0;
       this.lastFunnelMeters = 0;
       this.runnerRouteComplete = false;
@@ -4608,6 +5077,7 @@ export class Game {
       this.runnerWaveCount = 0;
       this.runnerPowerupDropCount = 0;
       this.runnerNearMissCount = 0;
+      this.nearMissCount = 0;
       this.currentLane = 0;
       this.targetLaneX = 0;
       this.nextRunnerWaveZ = 40.0; // safe coin-only warmup ahead
@@ -4763,6 +5233,7 @@ export class Game {
     this.runnerWaveCount = 0;
     this.runnerPowerupDropCount = 0;
     this.runnerNearMissCount = 0;
+    this.nearMissCount = 0;
     this.currentLane = 0;
     this.targetLaneX = 0;
     this.isSliding = false;
@@ -7694,6 +8165,7 @@ export class Game {
           routeProgress,
           activePowerUp: this.activePowerUp,
           distanceMeters: this.distanceMeters,
+          runScore: this.score,
           coins: this.coins,
           hearts: this.hearts,
           currentMilestone: this.currentMilestone,
@@ -8117,7 +8589,7 @@ export class Game {
     let cleared = 0;
     this.runnerObstacles = this.runnerObstacles.filter(obstacle => {
       if (!obstacle?.isTestObstacle) return true;
-      if (obstacle.mesh) this.scene.remove(obstacle.mesh);
+      if (obstacle.mesh) this.disposeRunnerObject(obstacle.mesh);
       cleared += 1;
       return false;
     });
@@ -8516,12 +8988,12 @@ export class Game {
   clearAllRunnerHazards() {
     let cleared = 0;
     (this.runnerObstacles || []).forEach(obstacle => {
-      if (obstacle?.mesh) this.scene.remove(obstacle.mesh);
+      if (obstacle?.mesh) this.disposeRunnerObject(obstacle.mesh);
       cleared += 1;
     });
     this.runnerObstacles = [];
     (this.runnerTraffic || []).forEach(vehicle => {
-      if (vehicle?.mesh) this.scene.remove(vehicle.mesh);
+      if (vehicle?.mesh) this.disposeRunnerObject(vehicle.mesh);
       cleared += 1;
     });
     this.runnerTraffic = [];
@@ -8582,7 +9054,7 @@ export class Game {
 
   resetRunnerNavigation() {
     this.removeRunnerJunction();
-    (this.runnerSectionDecor || []).forEach(mesh => this.scene?.remove(mesh));
+    (this.runnerSectionDecor || []).forEach(mesh => this.disposeRunnerObject(mesh));
     this.runnerSectionDecor = [];
     this.runnerHeading = 0;
     this.runnerTurn = null;
@@ -8597,13 +9069,7 @@ export class Game {
 
   removeRunnerJunction() {
     if (this.runnerJunction?.group) {
-      this.scene?.remove(this.runnerJunction.group);
-      this.runnerJunction.group.traverse(o => {
-        if (o.isMesh) {
-          if (o.geometry !== RUNNER_POTHOLE_ARROW_GEOMETRY) o.geometry?.dispose();
-          if (o.material !== RUNNER_POTHOLE_ARROW_MATERIAL) o.material?.dispose();
-        }
-      });
+      this.disposeRunnerObject(this.runnerJunction.group);
     }
     if (this.runnerJunction?.turnGroup) {
       this.scene?.remove(this.runnerJunction.turnGroup);
@@ -8739,7 +9205,7 @@ export class Game {
     if (this.runnerObstacles) {
       this.runnerObstacles = this.runnerObstacles.filter(obs => {
         if (obs && obs.z >= z - 25.0 && obs.z <= z + 65.0) {
-          if (obs.mesh) this.scene.remove(obs.mesh);
+          if (obs.mesh) this.disposeRunnerObject(obs.mesh);
           return false;
         }
         return true;
@@ -8748,7 +9214,7 @@ export class Game {
     if (this.runnerTraffic) {
       this.runnerTraffic = this.runnerTraffic.filter(vehicle => {
         if (vehicle?.mesh && vehicle.mesh.position.z >= z - 25.0 && vehicle.mesh.position.z <= z + 65.0) {
-          this.scene.remove(vehicle.mesh);
+          this.disposeRunnerObject(vehicle.mesh);
           return false;
         }
         return true;
@@ -8928,6 +9394,21 @@ export class Game {
     this.camera.position.set(camX, (this.player.position.y || 0) + 2.85 + lift, camZ);
     this.camera.lookAt(lookX, (this.player.position.y || 0) + 1.25, lookZ);
 
+    if (this.playerBlobShadow) {
+      this.playerBlobShadow.visible = true;
+      const turnGroundY = this.getCorridorGroundHeight(z, x);
+      this.playerBlobShadow.position.set(x, turnGroundY + 0.03, z);
+      this.playerBlobShadow.scale.set(1.0, 1, 1.0);
+      this.playerBlobShadow.material.opacity = 0.70;
+    }
+
+    if (this.skyDome) {
+      this.skyDome.position.set(x * 0.1, 0, z);
+    }
+    if (this.skylineBackdrop) {
+      this.skylineBackdrop.position.set(x * 0.15, 0, z);
+    }
+
     if (this.chaserEntity && this.isChaserClose) {
       this.chaserEntity.visible = true;
       const turnFlankSign = this.chaserFlankSign || 1;
@@ -9099,7 +9580,7 @@ export class Game {
       if (junction.kind === 'fork' && junction.resolved && ahead < -14) this.removeRunnerJunction();
     this.runnerTraffic = (this.runnerTraffic || []).filter(vehicle => {
       if (vehicle?.mesh && vehicle.mesh.position.z <= junction.z + 65.0 && vehicle.mesh.position.z >= junction.z - 30.0) {
-        this.scene.remove(vehicle.mesh);
+        this.disposeRunnerObject(vehicle.mesh);
         return false;
       }
       return true;
@@ -9113,7 +9594,7 @@ export class Game {
 
   (this.runnerSectionDecor || []).forEach((mesh, index, list) => {
     if (mesh.position.z > this.player.position.z + 20) {
-      this.scene.remove(mesh);
+      this.disposeRunnerObject(mesh);
       list[index] = null;
     }
   });

@@ -6,6 +6,22 @@ This document specifies the formal test cases and testing architecture for **KAR
 
 ## 1. Test Automation Architecture
 
+### Gameplay audit regressions (2026-10-27)
+
+- **TC-53**: Contact shadows, fast-fall landing, slide hitbox dimensions and road decals.
+- **TC-54**: Skyline/sky, 180 ms lane interpolation, speed FOV and headlight beams.
+- **TC-55**: Near-miss feedback, speed wind lines, magnet attraction and emissive signage.
+- **TC-56**: Airborne low-hazard grazes do not cause stumbles; boost-speed near misses reward exactly once and unlock Road Safety.
+- **TC-57**: Boundary inputs cannot release a drafting boost; the real bus-boarding update does not throw; immediate crash/restart cancels old animation and transient movement state.
+- **TC-58**: Repeated pickup cleanup and corridor disposal return GPU geometry/texture counts to baseline without disposing shared city materials.
+- **TC-59**: Runner HUD and pause menu show current-run score rather than career XP; classic mode retains player score; new runs clear score, power-ups and vertical motion.
+
+Run the focused checks with
+`node scripts/test_runner.js --only=TC-53,TC-54,TC-55,TC-56,TC-57,TC-58,TC-59`.
+TC-01 and TC-02 always execute, including the production build and Android asset-copy check.
+Browser tests use isolated Chrome profiles but temporarily inject the working
+`index.html`; do not run them concurrently with an interactive gameplay audit.
+
 The test suite is powered by `scripts/test_runner.js` and can be invoked directly from the command line:
 
 ```bash

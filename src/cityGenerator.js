@@ -261,7 +261,7 @@ export class CityGenerator {
     });
 
     // 4. Elevated 16 City Block Pedestrian Platforms (Paved Sidewalk level)
-    const blockPlazaMat = new THREE.MeshLambertMaterial({ color: 0x333842, roughness: 0.85 });
+    const blockPlazaMat = new THREE.MeshLambertMaterial({ color: 0x333842 });
     blockCenters.forEach(bx => {
       blockCenters.forEach(bz => {
         const plazaGeo = new THREE.PlaneGeometry(blockLength - 0.2, blockLength - 0.2);
@@ -560,7 +560,7 @@ export class CityGenerator {
     const containerColors = [0xd32f2f, 0x1976d2, 0x388e3c, 0xfbc02d];
     for (let cx = -5; cx <= 12; cx += 5.5) {
       for (let cy = 0; cy < 2; cy++) {
-        const cMat = new THREE.MeshLambertMaterial({ color: containerColors[(Math.abs(cx) + cy * 2) % 4] });
+        const cMat = new THREE.MeshLambertMaterial({ color: containerColors[Math.floor(Math.abs(cx) + cy * 2) % containerColors.length] });
         const cBox = new THREE.Mesh(new THREE.BoxGeometry(5.0, 2.2, 5.8), cMat);
         cBox.position.set(cx, 4.3 + cy * 2.3, 0);
         group.add(cBox);
@@ -1602,6 +1602,107 @@ export class CityGenerator {
   }
 
   /**
+   * Procedural Asphalt Surface Texture with road grain, dark tarmac tones and tar micro-fissures.
+   */
+  static getAsphaltTexture() {
+    if (this._cachedAsphaltTexture) return this._cachedAsphaltTexture;
+    if (typeof document === 'undefined') return null;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#1e242d';
+      ctx.fillRect(0, 0, 128, 128);
+
+      const imgData = ctx.getImageData(0, 0, 128, 128);
+      const data = imgData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const noise = (Math.random() - 0.5) * 30;
+        data[i] = Math.min(255, Math.max(0, data[i] + noise));
+        data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise));
+        data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise));
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      // Micro tar crack fissure
+      ctx.strokeStyle = 'rgba(10, 14, 18, 0.55)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(12, 18);
+      ctx.lineTo(44, 58);
+      ctx.lineTo(58, 112);
+      ctx.stroke();
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(4, 15);
+      this._cachedAsphaltTexture = tex;
+      return tex;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Cast-iron roadside stormwater drain / manhole cover
+   */
+  static createManholeCover() {
+    const group = new THREE.Group();
+    group.userData.isManhole = true;
+    group.userData.keepSeparate = true;
+    const rimGeo = new THREE.CylinderGeometry(0.52, 0.52, 0.04, 16);
+    const rimMat = new THREE.MeshStandardMaterial({
+      color: 0x2b333e,
+      roughness: 0.75,
+      metalness: 0.45
+    });
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    rim.userData.isManhole = true;
+    rim.userData.keepSeparate = true;
+    group.add(rim);
+
+    const innerGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.045, 16);
+    const innerMat = new THREE.MeshStandardMaterial({
+      color: 0x1f262f,
+      roughness: 0.65,
+      metalness: 0.6
+    });
+    const inner = new THREE.Mesh(innerGeo, innerMat);
+    inner.userData.isManhole = true;
+    inner.userData.keepSeparate = true;
+    group.add(inner);
+    return group;
+  }
+
+  /**
+   * Rubber tire braking skid marks decal
+   */
+  static createTireSkidMarks(length = 6.0) {
+    const group = new THREE.Group();
+    group.userData.isSkidMark = true;
+    group.userData.keepSeparate = true;
+    const markGeo = new THREE.PlaneGeometry(0.24, length);
+    markGeo.rotateX(-Math.PI / 2);
+    const markMat = new THREE.MeshBasicMaterial({
+      color: 0x05070a,
+      transparent: true,
+      opacity: 0.38,
+      depthWrite: false
+    });
+    [-0.65, 0.65].forEach(ox => {
+      const mark = new THREE.Mesh(markGeo, markMat);
+      mark.userData.isSkidMark = true;
+      mark.userData.keepSeparate = true;
+      mark.position.x = ox;
+      mark.position.y = 0.028;
+      group.add(mark);
+    });
+    return group;
+  }
+
+  /**
    * Modular 60-unit road chunk builder for runner corridor mode with verticality.
    * Supports three elevation profiles: FLAT, RAMP_UP (+5m), RAMP_DOWN (-5m).
    * Generates subdivided asphalt roadway, painted dividers, curbs, and sidewalks.
@@ -1644,7 +1745,15 @@ export class CityGenerator {
     }
     roadGeo.computeVertexNormals();
 
-    const roadMat = new THREE.MeshLambertMaterial({ color: roadColor });
+    const asphaltTex = CityGenerator.getAsphaltTexture();
+    const roadMat = asphaltTex
+      ? new THREE.MeshStandardMaterial({
+          color: roadColor,
+          map: asphaltTex,
+          roughness: 0.92,
+          metalness: 0.04
+        })
+      : new THREE.MeshLambertMaterial({ color: roadColor });
     const roadMesh = new THREE.Mesh(roadGeo, roadMat);
     roadMesh.position.y = 0.02;
     roadMesh.receiveShadow = true;
@@ -1688,6 +1797,18 @@ export class CityGenerator {
       group.add(bLine);
     });
 
+    // 3b. Roadside Manhole Drain Cover on outer shoulder
+    const manholeZ = -14.0;
+    const manhole = CityGenerator.createManholeCover();
+    manhole.position.set(-4.2, getLocalY(manholeZ) + 0.026, manholeZ);
+    group.add(manhole);
+
+    // 3c. Braking Rubber Skid Marks Decals
+    const skidZ = 12.0;
+    const skid = CityGenerator.createTireSkidMarks(5.5);
+    skid.position.set(0, getLocalY(skidZ) + 0.005, skidZ);
+    group.add(skid);
+
     // 4. Sidewalks
     [-8.0, 8.0].forEach(sideX => {
       const walkMat = new THREE.MeshLambertMaterial({ color: sidewalkColor });
@@ -1704,6 +1825,38 @@ export class CityGenerator {
         walk.receiveShadow = true;
         group.add(walk);
       }
+    });
+
+    // 4b. Overhead Tangled Karachi Catenary Wires & Fluttering Bunting Pennants
+    [-20, 10].forEach(wz => {
+      const wireCurve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(-6.5, getLocalY(wz) + 6.8, wz),
+        new THREE.Vector3(0, getLocalY(wz) + 6.2, wz), // 0.6m natural catenary sag, well above buses and player
+        new THREE.Vector3(6.5, getLocalY(wz) + 6.8, wz)
+      );
+      const wirePoints = wireCurve.getPoints(12);
+      const wireGeo = new THREE.BufferGeometry().setFromPoints(wirePoints);
+      const wireMat = new THREE.LineBasicMaterial({ color: 0x1a202c });
+      const wireLine = new THREE.Line(wireGeo, wireMat);
+      wireLine.userData.isOverheadWire = true;
+      wireLine.userData.keepSeparate = true;
+      group.add(wireLine);
+
+      // Fluttering festive triangular green & white pennant bunting
+      [-3.2, -1.6, 0, 1.6, 3.2].forEach((bx, idx) => {
+        const by = wireCurve.getPoint((bx + 6.5) / 13.0).y;
+        const bGeo = new THREE.ConeGeometry(0.18, 0.32, 3);
+        bGeo.rotateX(Math.PI);
+        const bMat = new THREE.MeshBasicMaterial({
+          color: idx % 2 === 0 ? 0x008037 : 0xffffff, // Green & White Pakistan flag livery
+          side: THREE.DoubleSide
+        });
+        const flag = new THREE.Mesh(bGeo, bMat);
+        flag.position.set(bx, by - 0.16, wz);
+        flag.userData.isOverheadFlag = true;
+        flag.userData.keepSeparate = true;
+        group.add(flag);
+      });
     });
 
     return group;

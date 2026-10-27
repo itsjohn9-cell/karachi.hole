@@ -3827,6 +3827,486 @@ async function runTestSuite() {
   recordTest('TC-52', 'Runner Turn Overhaul Audit (Visibility, Runway Clearance & Animation)', res52.success ? 'PASSED' : 'FAILED', Date.now() - t52Start, res52.success ? 'Verified high-visibility overhead gantry, clean hurdle-free runway, active avatar banking/animation and smooth post-turn alignment' : res52.error);
 
   // -------------------------------------------------------------------------
+  // Test Case 53: Phase 1 Grounding, Fast-Fall Dive Roll & Slide Hitbox Audit
+  // -------------------------------------------------------------------------
+  const t53Start = Date.now();
+  const res53 = await runChromeTest({
+    testId: 'TC-53',
+    screenshotName: 'tc53_phase1_audit.png',
+    windowSize: '667,375',
+    extraStyle: '#modal-start-mission, #modal-pause, #modal-tutorial { display: none !important; }',
+    waitMs: 3000,
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        if (!game?.player) throw new Error('Game or player not initialized');
+        document.getElementById('btn-start-patrol')?.click();
+        game.isTempleRun = true;
+        game.isGameStarted = true;
+        game.isPaused = false;
+        game.clearRunnerObjects();
+        game.initCorridorTerrain();
+
+        // 1. Audit Ground Contact Blob Shadows
+        if (!game.playerBlobShadow) throw new Error('playerBlobShadow mesh was not initialized');
+        game.updateTempleRunCorridor(0.016);
+        const groundY = game.getCorridorGroundHeight(game.player.position.z, game.player.position.x);
+        const shadowY = game.playerBlobShadow.position.y;
+        if (Math.abs(shadowY - (groundY + 0.03)) > 0.08) {
+          throw new Error('playerBlobShadow is not pinned to the road surface: ' + shadowY + ' vs ' + (groundY + 0.03));
+        }
+        if (Number.isNaN(shadowY) || Number.isNaN(game.playerBlobShadow.position.x)) {
+          throw new Error('playerBlobShadow has NaN coordinates');
+        }
+
+        // 2. Audit Fast-Fall Dive Roll Mechanic
+        // Put player in high jump
+        game.player.position.y = groundY + 2.5;
+        game.player.velocityY = 4.0;
+        game.player.isGrounded = false;
+
+        // Trigger slide while airborne
+        game.performSlide();
+        if (!game.isFastFalling) throw new Error('Fast-fall dive did not activate during airborne slide');
+        if (game.player.velocityY > -18.0) throw new Error('Fast-fall downward velocity plunge insufficient: ' + game.player.velocityY);
+
+        // Step simulation forward until landing
+        let framesToLand = 0;
+        while (!game.player.isGrounded && framesToLand < 40) {
+          game.updateTempleRunCorridor(0.016);
+          framesToLand++;
+        }
+        if (!game.player.isGrounded) throw new Error('Fast-fall did not ground player within expected timeframe');
+        if (!game.isSliding) throw new Error('Fast-fall landing did not transition to slide crouch state');
+        if (game.isFastFalling) throw new Error('isFastFalling was not cleared upon landing');
+
+        // 3. Audit Hitbox Height Reduction during Slide
+        const slideHitbox = game.getRunnerHitbox();
+        if (!slideHitbox) throw new Error('getRunnerHitbox returned null');
+        if (slideHitbox.height > 0.85) throw new Error('Slide hitbox height was not compressed: ' + slideHitbox.height);
+        if (!slideHitbox.isSliding) throw new Error('Hitbox isSliding flag does not match game state');
+
+        // Step through remainder of slide
+        for (let i = 0; i < 60 && game.isSliding; i++) {
+          game.updateTempleRunCorridor(0.016);
+        }
+        const standHitbox = game.getRunnerHitbox();
+        if (standHitbox.height < 1.7) throw new Error('Standing hitbox height was not restored: ' + standHitbox.height);
+
+        // 4. Audit Modular Road Surface Textures, Manholes & Skid Marks
+        if (!game.corridorChunks || game.corridorChunks.length === 0) throw new Error('No corridor chunks active');
+        const chunk = game.corridorChunks[0];
+        let foundManhole = false;
+        let foundSkid = false;
+        const types = [];
+        chunk.traverse(child => {
+          if (child.userData?.isManhole) foundManhole = true;
+          if (child.userData?.isSkidMark) foundSkid = true;
+          if (child.userData && Object.keys(child.userData).length > 0) types.push(Object.keys(child.userData).join(','));
+        });
+        if (!foundManhole) throw new Error('Chunk does not contain roadside manhole drain cover. Found: ' + types.slice(0, 10).join(' | '));
+        if (!foundSkid) throw new Error('Chunk does not contain braking tire skid marks');
+
+        window.__phase1AuditDone = true;
+      })();
+    `
+  });
+  recordTest('TC-53', 'Phase 1 Audit (Ground Blob Shadow, Fast-Fall Dive Roll & Slide Hitbox)', res53.success ? 'PASSED' : 'FAILED', Date.now() - t53Start, res53.success ? 'Verified ground blob shadows, subway surfers fast-fall dive roll, slide hitbox compression, and textured road decals' : res53.error);
+
+  // -------------------------------------------------------------------------
+  // Test Case 54: Phase 2 Atmosphere, Urban Polish & Lane Fluidity Audit
+  // -------------------------------------------------------------------------
+  const t54Start = Date.now();
+  const res54 = await runChromeTest({
+    testId: 'TC-54',
+    screenshotName: 'tc54_phase2_audit.png',
+    windowSize: '667,375',
+    extraStyle: '#modal-start-mission, #modal-pause, #modal-tutorial { display: none !important; }',
+    waitMs: 3000,
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        if (!game?.player) throw new Error('Game or player not initialized');
+        document.getElementById('btn-start-patrol')?.click();
+        game.isTempleRun = true;
+        game.isGameStarted = true;
+        game.isPaused = false;
+        game.clearRunnerObjects();
+        game.initCorridorTerrain();
+
+        // 1. Audit Stylized Sky Dome & Distant Karachi Skyline Parallax Backdrop
+        if (!game.skyDome) throw new Error('skyDome was not initialized');
+        if (!game.skylineBackdrop) throw new Error('skylineBackdrop was not initialized');
+        if (!game.skylineBackdrop.userData?.isDistantSkyline) throw new Error('skylineBackdrop missing isDistantSkyline flag');
+        if (!game.skylineBackdrop.userData?.beacon) throw new Error('skylineBackdrop missing aviation beacon');
+
+        // 2. Audit 180ms Fixed-Duration Eased Lane Switching
+        game.currentLane = 0;
+        game.targetLaneX = 0;
+        game.player.position.x = 0;
+        game.laneChangeTimer = 0.18;
+
+        // Initiate right lane switch
+        game.changeLane(1);
+        if (game.currentLane !== 1) throw new Error('Target lane was not updated to 1');
+        if (game.laneChangeTimer !== 0.0) throw new Error('laneChangeTimer was not reset on lane change');
+
+        // Step simulation forward by 90ms (50% progress)
+        game.updateTempleRunCorridor(0.09);
+        const midX = game.player.position.x;
+        // Cubic ease-out at t=0.5 yields s = 1 - (1-0.5)^3 = 0.875 -> ~2.8m out of 3.2m
+        if (midX < 2.2 || midX > 3.0) throw new Error('Mid-point cubic lane position out of expected bounds: ' + midX);
+        if (Math.abs(game.currentBankRoll) < 0.06) throw new Error('Banking roll was not applied during lane change: ' + game.currentBankRoll);
+
+        // Step simulation forward by another 90ms (100% completion)
+        game.updateTempleRunCorridor(0.09);
+        if (Math.abs(game.player.position.x - 3.2) > 0.05) throw new Error('Player did not arrive cleanly at target lane: ' + game.player.position.x);
+
+        // Step another frame to let banking roll settle
+        game.updateTempleRunCorridor(0.05);
+        if (Math.abs(game.currentBankRoll) > 0.05) throw new Error('Banking roll did not settle back to 0: ' + game.currentBankRoll);
+
+        // 3. Audit Dynamic Speed FOV Scaling
+        for (let i = 0; i < 30; i++) game.updateTempleRunCorridor(0.016);
+        const normalFOV = game.camera.fov;
+        // Boost speed to super speed
+        game.nitroTimer = 5.0;
+        for (let i = 0; i < 30; i++) game.updateTempleRunCorridor(0.016);
+        const boostedFOV = game.camera.fov;
+        if (boostedFOV <= normalFOV + 0.8) throw new Error('Camera FOV did not expand under high speed: ' + boostedFOV + ' vs ' + normalFOV);
+        if (boostedFOV > 71.0) throw new Error('Camera FOV exceeded maximum threshold: ' + boostedFOV);
+
+        // 4. Audit Vehicle Headlight Cones & Overhead Catenary Wires
+        game.initRunnerChaser();
+        let foundHeadlightBeam = false;
+        game.chaserEntity.traverse(child => {
+          if (child.userData?.isHeadlightBeam) foundHeadlightBeam = true;
+        });
+        if (!foundHeadlightBeam) throw new Error('Police mobile chaser is missing projected headlight beam cones');
+
+        const chunk = game.corridorChunks[0];
+        let foundWire = false;
+        let foundFlag = false;
+        chunk.traverse(child => {
+          if (child.userData?.isOverheadWire) foundWire = true;
+          if (child.userData?.isOverheadFlag) foundFlag = true;
+        });
+        if (!foundWire) throw new Error('Chunk missing overhead catenary wires');
+        if (!foundFlag) throw new Error('Chunk missing festive green/white bunting pennants');
+
+        window.__phase2AuditDone = true;
+      })();
+    `
+  });
+  recordTest('TC-54', 'Phase 2 Audit (Atmosphere, Skyline Parallax, 180ms Lane Easing & Headlight Cones)', res54.success ? 'PASSED' : 'FAILED', Date.now() - t54Start, res54.success ? 'Verified stylized sky gradient, distant Karachi skyline backdrop, 180ms cubic lane easing, dynamic speed FOV, and vehicle headlight cones' : res54.error);
+
+  // -------------------------------------------------------------------------
+  // Test Case 55: Phase 3 Near-Miss Stunt Feedback, Speed Wind Lines & Visual Polish Audit
+  // -------------------------------------------------------------------------
+  const t55Start = Date.now();
+  const res55 = await runChromeTest({
+    testId: 'TC-55',
+    screenshotName: 'tc55_phase3_audit.png',
+    windowSize: '667,375',
+    extraStyle: '#modal-start-mission, #modal-pause, #modal-tutorial { display: none !important; }',
+    waitMs: 3000,
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        if (!game?.player) throw new Error('Game or player not initialized');
+        document.getElementById('btn-start-patrol')?.click();
+        game.isTempleRun = true;
+        game.isGameStarted = true;
+        game.isPaused = false;
+        game.clearRunnerObjects();
+        game.initCorridorTerrain();
+
+        // 1. Audit Near-Miss Stunt Feedback System
+        game.player.position.set(3.2, 0, 0); // Lane 1
+        game.currentLane = 1;
+        game.targetLaneX = 3.2;
+        game.score = 1000;
+        game.nearMissCount = 0;
+        const initialHearts = game.hearts;
+
+        // Spawn pothole hazard in adjacent Lane 0 at Z = -15
+        game.spawnRunnerTestObstacle('pothole', 0);
+        const obs = game.runnerObstacles[game.runnerObstacles.length - 1];
+        if (!obs || !obs.mesh) throw new Error('Could not spawn test pothole obstacle');
+        obs.z = -15;
+        obs.mesh.position.z = -15;
+        obs.laneX = 0;
+        obs.mesh.position.x = 0;
+
+        // Step player past the obstacle from Z = 0 to Z = -25
+        for (let i = 0; i < 40 && game.player.position.z > -25; i++) {
+          game.updateTempleRunCorridor(0.03);
+        }
+
+        if (game.hearts < initialHearts) throw new Error('Player took damage from adjacent obstacle: ' + game.hearts + ' vs ' + initialHearts);
+        if (obs.isHit) throw new Error('Adjacent obstacle was erroneously marked as isHit');
+        if (obs.isGrazed) throw new Error('Adjacent obstacle was erroneously marked as isGrazed');
+        if (!obs.nearMissRewarded) throw new Error('Adjacent obstacle near-miss reward was not triggered');
+        if (game.nearMissCount !== 1) throw new Error('nearMissCount was not incremented: ' + game.nearMissCount);
+        if (game.score < 1250) throw new Error('Score did not increase by near-miss reward: ' + game.score);
+
+        // 2. Audit Speed Wind Lines / Tunnel Rush FX
+        if (!game.speedWindLines) throw new Error('speedWindLines group was not initialized');
+        game.nitroTimer = 0;
+        game.chingchiTimer = 0;
+        game.turboTimer = 0;
+        game.isBoosting = false;
+        game.isNascarSuperSpeed = false;
+        game.updateTempleRunCorridor(0.016);
+        if (game.speedWindLines.visible) throw new Error('Speed wind lines should not be visible at base speed');
+
+        // Activate CNG Turbo Nitro
+        game.nitroTimer = 5.0;
+        game.updateTempleRunCorridor(0.016);
+        if (!game.speedWindLines.visible) throw new Error('Speed wind lines did not activate under nitro boost');
+        const firstLine = game.speedWindLines.userData?.lines?.[0];
+        if (!firstLine || firstLine.material.opacity <= 0) throw new Error('Wind line mesh opacity was not intensified during boost');
+
+        // 3. Audit Biryani Magnet Trailing Attraction
+        const coin = window.KarachiModels.createRupeeCoin(50);
+        coin.position.set(-3.2, 0.7, game.player.position.z - 12);
+        game.scene.add(coin);
+        const coinObj = { mesh: coin, x: -3.2, z: game.player.position.z - 12, value: 50 };
+        game.runnerCoins.push(coinObj);
+        game.magnetTimer = 8.0;
+
+        const startDist = coin.position.distanceTo(game.player.position);
+        for (let i = 0; i < 20; i++) game.updateTempleRunCorridor(0.016);
+        const endDist = coin.position.distanceTo(game.player.position);
+        if (endDist >= startDist) throw new Error('Coin did not get magnetically attracted towards runner: ' + endDist + ' >= ' + startDist);
+
+        // 4. Audit Breathing Emissive Pulse on Neon Signage
+        game.removeRunnerJunction?.();
+        if (!game.spawnRunnerJunction('turn', -1, game.player.position.z - 60)) throw new Error('Failed to spawn junction for emissive audit');
+        const gantry = game.runnerJunction.group;
+        let foundEmissive = false;
+        gantry.traverse(child => {
+          if (child.material && child.material.emissiveIntensity !== undefined) foundEmissive = true;
+        });
+        if (!foundEmissive) throw new Error('Gantry has no emissive materials for neon breathing pulse');
+
+        window.__phase3AuditDone = true;
+      })();
+    `
+  });
+  recordTest('TC-55', 'Phase 3 Audit (Near-Miss Stunt Feedback, Speed Wind Lines, Magnet Trails & Neon Breathing)', res55.success ? 'PASSED' : 'FAILED', Date.now() - t55Start, res55.success ? 'Verified near-miss stunt reward and telemetry, peripheral speed wind lines, coin magnet attraction curves, and breathing emissive neon signage' : res55.error);
+
+  // -------------------------------------------------------------------------
+  // TC-56: Fair swept collisions and frame-rate-independent stunt rewards.
+  const t56Start = Date.now();
+  const res56 = await runChromeTest({
+    testId: 'TC-56',
+    beforeAppScript: "localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true');",
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        game.startGame();
+        game.clearRunnerObjects();
+        game.removeRunnerJunction();
+        game.nextJunctionAt = Infinity;
+        game.nextRunnerWaveZ = -10000;
+        game.player.position.set(0, 0.8, 0);
+        game.player.isGrounded = false;
+        game.player.velocityY = 0;
+        game.spawnRunnerTestObstacle('pothole', 0);
+        const hazard = game.runnerObstacles.at(-1);
+        hazard.z = -1.6;
+        hazard.mesh.position.z = hazard.z;
+        const hearts = game.hearts;
+        game.updateTempleRunCorridor(0.016);
+        if (hazard.isGrazed || game.runnerStumbleTimer > 0) {
+          throw new Error('Valid airborne jump triggered a premature graze stumble');
+        }
+        game.updateTempleRunCorridor(0.016);
+        if (!hazard.isHit || game.hearts !== hearts) throw new Error('Jump did not safely clear low hazard');
+
+        game.clearRunnerObjects();
+        game.player.position.set(3.2, 0, 0);
+        game.player.isGrounded = true;
+        game.player.velocityY = 0;
+        game.currentLane = 1;
+        game.targetLaneX = 3.2;
+        game.nitroTimer = 5;
+        game.spawnRunnerTestObstacle('pothole', 0);
+        const adjacent = game.runnerObstacles.at(-1);
+        adjacent.z = -0.5;
+        adjacent.mesh.position.z = adjacent.z;
+        game.runnerNearMissCount = 4;
+        game.nearMissCount = 4;
+        const badges = [];
+        game.unlockRunnerBadge = id => badges.push(id);
+        const score = game.score;
+        game.updateTempleRunCorridor(0.05);
+        if (!adjacent.nearMissRewarded || game.nearMissCount !== 5 ||
+            game.runnerNearMissCount !== 5 || game.score !== score + 250 ||
+            !badges.includes('road_safety')) {
+          throw new Error('Boost-speed swept near miss lost reward, counter or badge');
+        }
+        game.updateTempleRunCorridor(0.05);
+        if (game.score !== score + 250) throw new Error('Near miss rewarded more than once');
+        game.isPaused = true;
+      })();
+    `
+  });
+  recordTest('TC-56', 'Fair Airborne Grazes & Swept Near-Miss Rewards', res56.success ? 'PASSED' : 'FAILED', Date.now() - t56Start, res56.error || 'Valid jumps avoid stumbles; boost-speed passes reward once and unlock Road Safety');
+
+  const t57Start = Date.now();
+  const res57 = await runChromeTest({
+    testId: 'TC-57',
+    beforeAppScript: "localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true');",
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        game.startGame();
+        game.clearRunnerObjects();
+        game.removeRunnerJunction();
+        game.nextJunctionAt = Infinity;
+        game.nextRunnerWaveZ = -10000;
+        game.currentLane = 1;
+        game.targetLaneX = 3.2;
+        game.player.position.x = 3.2;
+        game.draftCharge = 1;
+        game.laneChangeTimer = 0.18;
+        const score = game.score;
+        game.changeLane(1);
+        if (game.score !== score || game.draftCharge !== 1 || game.laneChangeTimer !== 0.18) {
+          throw new Error('Blocked lane input incorrectly triggered boost or restarted interpolation');
+        }
+
+        // Exercise the real bus boarding path, not a copy of the trigger math.
+        game.currentLane = 0;
+        game.targetLaneX = 0;
+        game.player.position.set(0, 0, 0);
+        const busMesh = new game.player.group.constructor();
+        busMesh.position.z = -2.5;
+        game.scene.add(busMesh);
+        game.surfingBuses = [{ mesh: busMesh, speed: 0, laneX: 0, isSurfed: false }];
+        game.updateTempleRunCorridor(0.016);
+        if (!game.isBusSurfing) throw new Error('Bus boarding did not activate surfing');
+
+        game.isGameOver = true;
+        game.executeVehicleCrashDeathResolution();
+        if (game.runnerDeathAnimation === undefined) throw new Error('Crash animation did not start');
+        game.isFastFalling = true;
+        game.laneChangeStartX = -3.2;
+        game.laneChangeTimer = 0.01;
+        game.nearMissCount = 7;
+        game.corridorChunks[0].userData.startElevation = 5;
+        game.restartGame();
+        if (game.runnerDeathAnimation !== undefined || game.isFastFalling ||
+            game.laneChangeTimer !== 0.18 || game.nearMissCount !== 0) {
+          throw new Error('Restart retained crash, fast-fall, lane or near-miss state');
+        }
+        if (game.corridorChunks[0].userData.startElevation !== 0 ||
+            Math.abs(game.getCorridorGroundHeight(60, 0)) > 0.08) {
+          throw new Error('Restart reused elevated terrain instead of the flat launch runway');
+        }
+        game.isPaused = true;
+        const position = game.player.position.clone();
+        setTimeout(() => {
+          if (game.player.position.distanceTo(position) > 0.001 ||
+              Math.abs(game.player.avatarMesh.rotation.x) > 0.001) {
+            throw new Error('Old death animation mutated a restarted run');
+          }
+        }, 200);
+      })();
+    `
+  });
+  recordTest('TC-57', 'Lane Boundary, Bus Boarding & Crash Restart Isolation', res57.success ? 'PASSED' : 'FAILED', Date.now() - t57Start, res57.error || 'Real surfing update and immediate crash/restart lifecycle verified');
+
+  const t58Start = Date.now();
+  const res58 = await runChromeTest({
+    testId: 'TC-58',
+    beforeAppScript: "localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true');",
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        game.startGame();
+        game.isPaused = true;
+        game.clearRunnerObjects();
+        game.removeRunnerJunction();
+        game.renderer.render(game.scene, game.camera);
+        const baseline = { ...game.renderer.info.memory };
+        for (let cycle = 0; cycle < 8; cycle++) {
+          const coin = window.KarachiModels.createRupeeCoin(50);
+          coin.position.set(0, 0, game.player.position.z - 10);
+          game.scene.add(coin);
+          game.runnerCoins.push({ mesh: coin, z: coin.position.z, value: 50 });
+          game.renderer.render(game.scene, game.camera);
+          game.clearRunnerObjects();
+          game.renderer.render(game.scene, game.camera);
+        }
+        const after = game.renderer.info.memory;
+        if (after.geometries > baseline.geometries || after.textures > baseline.textures) {
+          throw new Error('Pickup cleanup leaked GPU resources: ' + JSON.stringify({baseline, after}));
+        }
+        const chunk = game.createCorridorChunk(game.player.position.z - 60, 'FLAT');
+        game.scene.add(chunk);
+        game.renderer.render(game.scene, game.camera);
+        const shared = window.KarachiModels.materials.whiteMarble;
+        let sharedDisposed = false;
+        const onDispose = () => { sharedDisposed = true; };
+        shared.addEventListener('dispose', onDispose);
+        game.disposeCorridorChunk(chunk);
+        shared.removeEventListener('dispose', onDispose);
+        game.renderer.render(game.scene, game.camera);
+        if (sharedDisposed) throw new Error('Chunk disposal destroyed a shared city material');
+        if (game.renderer.info.memory.textures > baseline.textures ||
+            game.renderer.info.memory.geometries > baseline.geometries) {
+          throw new Error('Recycled chunk leaked geometry or sign textures');
+        }
+      })();
+    `
+  });
+  recordTest('TC-58', 'GPU Pickup & Corridor Resource Recycling', res58.success ? 'PASSED' : 'FAILED', Date.now() - t58Start, res58.error || 'GPU allocations return to baseline; shared city materials remain intact');
+
+  const t59Start = Date.now();
+  const res59 = await runChromeTest({
+    testId: 'TC-59',
+    beforeAppScript: "localStorage.setItem('karachi_runner_tutorial_seen_v1', 'true');",
+    scriptInjection: `
+      (() => {
+        const game = window.game;
+        game.startGame();
+        game.score = 250;
+        game.player.score = 12000;
+        const stats = { player: game.player, timeLeft: 240, rankedHoles: [game.player],
+          gameMode: 'battleRoyale', runScore: game.score };
+        game.ui.updateHUD({ ...stats, isRunnerMode: true });
+        if (document.getElementById('hud-score').textContent !== (250).toLocaleString()) {
+          throw new Error('Runner HUD displayed career XP instead of run score');
+        }
+        game.ui.showGameMenuModal();
+        if (document.getElementById('menu-score-badge').textContent !== 'SCORE: 250') {
+          throw new Error('Runner menu displayed career XP instead of run score');
+        }
+        game.ui.updateHUD({ ...stats, isRunnerMode: false });
+        if (document.getElementById('hud-score').textContent !== (12000).toLocaleString()) {
+          throw new Error('Classic HUD no longer displays player score');
+        }
+        game.ui.setRunnerMode(true);
+        game.nitroTimer = 4;
+        game.shieldTimer = 4;
+        game.jetpackTimer = 4;
+        game.isSliding = true;
+        game.player.velocityY = -20;
+        game.player.isGrounded = false;
+        game.isGameStarted = false;
+        game.startGame();
+        if (game.score !== 0 || game.nitroTimer !== 0 || game.shieldTimer !== 0 ||
+            game.jetpackTimer !== 0 || game.isSliding || game.player.velocityY !== 0 ||
+            !game.player.isGrounded) throw new Error('Fresh run inherited score, buffs or motion');
+        game.isPaused = true;
+      })();
+    `
+  });
+  recordTest('TC-59', 'Run Score HUD, Classic Score & Fresh-Run Isolation', res59.success ? 'PASSED' : 'FAILED', Date.now() - t59Start, res59.error || 'Runner HUD/menu use run score; classic score is preserved; fresh runs reset buffs and motion');
+
   // Summary Report Output
   // -------------------------------------------------------------------------
   const totalDuration = Date.now() - startTime;
