@@ -245,5 +245,16 @@ then tested and the entire real-time audit repeated in isolated Chrome:
   and confirmed the uploaded bundle hash above. Beta and production remain empty.
 - Google review, processing and tester availability may still be pending despite
   the API `completed` release status.
-- GitHub source and Pages deployment verification will be appended after their
-  approved publication completes.
+- Source pushed to GitHub `main`:
+  `e8261f2009bde75cfe85e973e32b09bd5d191193`.
+- Pages deployment:
+  `cbc085168e132132600a5d9d22706ef4c15df98d`. GitHub Pages reported `built`
+  for that exact commit.
+- Live HTML and all seven directly referenced relative script/link assets:
+  HTTP 200 and exact SHA-256 parity with the local production build. The same
+  20 web application files still match the published Android bundle.
+- Live-browser smoke passed no-pursuer checks, queued-turn preservation during
+  lane changes, completing a turn, and a one-heart damage notice that cannot be
+  overwritten by a reward. Initial lane-input smoke was attempted while paused
+  and correctly rejected; the active-play check passed.
+- Live URL: https://itsjohn9-cell.github.io/karachi.hole/?release=cbc0851.
