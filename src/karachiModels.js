@@ -6009,6 +6009,349 @@ export const KarachiModels = {
   },
 
   // ---------------------------------------------------------------------------
+  // KARACHI TRAFFIC POLICE HAVALDAR ON CD-70 MOTORCYCLE CHASER
+  // ---------------------------------------------------------------------------
+  createHavaldarMotorcycle() {
+    const group = new THREE.Group();
+    group.name = 'Havaldar_CD70_Chaser';
+
+    const bikeBlackMat = new THREE.MeshStandardMaterial({ color: 0x181a1d, roughness: 0.35, metalness: 0.5 });
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.1, metalness: 0.9 });
+    const rubberMat = new THREE.MeshStandardMaterial({ color: 0x121214, roughness: 0.9 });
+    const khakiMat = new THREE.MeshStandardMaterial({ color: 0x8d775f, roughness: 0.7 });
+    const capWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.4 });
+    const vestLimeMat = new THREE.MeshStandardMaterial({ color: 0x76ff03, roughness: 0.3, emissive: 0x225500 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xb5825a, roughness: 0.6 });
+    const sirenBlueMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    const sirenRedMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
+
+    // 1. CD-70 Bike Chassis & Frame
+    const frameGeo = new THREE.BoxGeometry(0.32, 0.45, 1.4);
+    const frame = new THREE.Mesh(frameGeo, bikeBlackMat);
+    frame.position.set(0, 0.55, 0);
+    group.add(frame);
+
+    // Fuel Tank (Red or Classic Black with stripe)
+    const tankGeo = new THREE.CylinderGeometry(0.22, 0.2, 0.65, 8);
+    tankGeo.rotateX(Math.PI / 2);
+    const tankMat = new THREE.MeshStandardMaterial({ color: 0xc62828, roughness: 0.25, metalness: 0.4 });
+    const tank = new THREE.Mesh(tankGeo, tankMat);
+    tank.position.set(0, 0.82, -0.15);
+    group.add(tank);
+
+    // Engine Block
+    const engineGeo = new THREE.BoxGeometry(0.38, 0.32, 0.42);
+    const engine = new THREE.Mesh(engineGeo, chromeMat);
+    engine.position.set(0, 0.42, 0.05);
+    group.add(engine);
+
+    // Exhaust Pipe (Right side)
+    const exhaustGeo = new THREE.CylinderGeometry(0.045, 0.055, 1.1, 8);
+    exhaustGeo.rotateX(Math.PI / 2);
+    const exhaust = new THREE.Mesh(exhaustGeo, chromeMat);
+    exhaust.position.set(0.24, 0.28, 0.45);
+    group.add(exhaust);
+
+    // Front Fork & Handlebars
+    const forkGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.85, 8);
+    const forkL = new THREE.Mesh(forkGeo, chromeMat);
+    forkL.position.set(-0.16, 0.65, -0.65);
+    forkL.rotation.x = -0.22;
+    group.add(forkL);
+
+    const forkR = forkL.clone();
+    forkR.position.x = 0.16;
+    group.add(forkR);
+
+    const handleBarGeo = new THREE.BoxGeometry(0.78, 0.045, 0.045);
+    const handleBar = new THREE.Mesh(handleBarGeo, chromeMat);
+    handleBar.position.set(0, 0.98, -0.58);
+    group.add(handleBar);
+
+    // Front Headlight (Round vintage headlight)
+    const headlightGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.12, 12);
+    headlightGeo.rotateX(Math.PI / 2);
+    const headlightMat = new THREE.MeshBasicMaterial({ color: 0xfff9c4 });
+    const headlight = new THREE.Mesh(headlightGeo, headlightMat);
+    headlight.position.set(0, 0.88, -0.72);
+    group.add(headlight);
+
+    // Wheels (Front & Rear)
+    const wheelGeo = new THREE.TorusGeometry(0.34, 0.075, 8, 16);
+    const spokeMat = new THREE.MeshBasicMaterial({ color: 0x9e9e9e, wireframe: true });
+
+    const frontWheel = new THREE.Mesh(wheelGeo, rubberMat);
+    frontWheel.position.set(0, 0.34, -0.72);
+    const frontSpokes = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 12), spokeMat);
+    frontSpokes.rotation.x = Math.PI / 2;
+    frontWheel.add(frontSpokes);
+    group.add(frontWheel);
+
+    const rearWheel = new THREE.Mesh(wheelGeo, rubberMat);
+    rearWheel.position.set(0, 0.34, 0.62);
+    const rearSpokes = frontSpokes.clone();
+    rearWheel.add(rearSpokes);
+    group.add(rearWheel);
+
+    // Flashing Strobe Police Sirens (Handlebar mounted)
+    const sirenGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.14, 8);
+    const sirenL = new THREE.Mesh(sirenGeo, sirenBlueMat);
+    sirenL.position.set(-0.35, 1.08, -0.56);
+    group.add(sirenL);
+
+    const sirenR = new THREE.Mesh(sirenGeo, sirenRedMat);
+    sirenR.position.set(0.35, 1.08, -0.56);
+    group.add(sirenR);
+
+    // Rear High Strobe Beacon Pole
+    const poleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.65, 6);
+    const pole = new THREE.Mesh(poleGeo, chromeMat);
+    pole.position.set(0.22, 0.88, 0.72);
+    group.add(pole);
+
+    const rearSiren = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), sirenBlueMat);
+    rearSiren.position.set(0.22, 1.24, 0.72);
+    group.add(rearSiren);
+
+    // 2. Havaldar Character Model
+    // Torso (Khaki shirt with high-vis belt)
+    const torsoGeo = new THREE.BoxGeometry(0.48, 0.58, 0.28);
+    const torso = new THREE.Mesh(torsoGeo, khakiMat);
+    torso.position.set(0, 1.25, 0.05);
+    torso.rotation.x = 0.24; // Leaning slightly forward into riding posture
+    group.add(torso);
+
+    // Reflective Crossed Lime Belt (Sindh Traffic Police uniform)
+    const beltGeo = new THREE.BoxGeometry(0.50, 0.12, 0.30);
+    const belt = new THREE.Mesh(beltGeo, vestLimeMat);
+    belt.position.set(0, 1.24, 0.05);
+    belt.rotation.x = 0.24;
+    group.add(belt);
+
+    // Head & Police Cap
+    const headGeo = new THREE.SphereGeometry(0.16, 12, 12);
+    const head = new THREE.Mesh(headGeo, skinMat);
+    head.position.set(0, 1.66, -0.06);
+    group.add(head);
+
+    // Aviator Sunglasses
+    const glassesGeo = new THREE.BoxGeometry(0.24, 0.06, 0.08);
+    const glassesMat = new THREE.MeshBasicMaterial({ color: 0x111116 });
+    const glasses = new THREE.Mesh(glassesGeo, glassesMat);
+    glasses.position.set(0, 1.66, -0.21);
+    group.add(glasses);
+
+    // White Peaked Cap (Karachi Traffic Police Officer)
+    const capGeo = new THREE.CylinderGeometry(0.22, 0.18, 0.14, 12);
+    const cap = new THREE.Mesh(capGeo, capWhiteMat);
+    cap.position.set(0, 1.78, -0.06);
+    const visorGeo = new THREE.BoxGeometry(0.24, 0.025, 0.14);
+    const visor = new THREE.Mesh(visorGeo, glassesMat);
+    visor.position.set(0, -0.05, -0.16);
+    cap.add(visor);
+    group.add(cap);
+
+    // Arms reaching for handlebars
+    const armGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.48, 8);
+    const armL = new THREE.Mesh(armGeo, khakiMat);
+    armL.position.set(-0.28, 1.22, -0.22);
+    armL.rotation.set(0.9, -0.25, -0.2);
+    group.add(armL);
+
+    const armR = new THREE.Mesh(armGeo, khakiMat);
+    armR.position.set(0.28, 1.22, -0.22);
+    armR.rotation.set(0.9, 0.25, 0.2);
+    group.add(armR);
+
+    // Legs on footrests
+    const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.52, 8);
+    const legL = new THREE.Mesh(legGeo, khakiMat);
+    legL.position.set(-0.22, 0.72, 0.12);
+    legL.rotation.set(0.65, 0, -0.2);
+    group.add(legL);
+
+    const legR = new THREE.Mesh(legGeo, khakiMat);
+    legR.position.set(0.22, 0.72, 0.12);
+    legR.rotation.set(0.65, 0, 0.2);
+    group.add(legR);
+
+    group.userData = {
+      isHavaldarChaser: true,
+      frontWheel,
+      rearWheel,
+      sirenL,
+      sirenR,
+      rearSiren,
+      exhaustPos: new THREE.Vector3(0.24, 0.28, 0.95)
+    };
+
+    return group;
+  },
+
+  // ---------------------------------------------------------------------------
+  // 3D FLOATING KARACHI WORD HUNT LETTER
+  // ---------------------------------------------------------------------------
+  createWordLetter(letter = 'K') {
+    const group = new THREE.Group();
+    group.name = `WordLetter_${letter}`;
+
+    // 1. Outer Rotating Crystal Gem
+    const gemGeo = new THREE.OctahedronGeometry(0.85, 0);
+    const gemMat = new THREE.MeshStandardMaterial({
+      color: 0xffd700,
+      emissive: 0xffa000,
+      emissiveIntensity: 0.35,
+      metalness: 0.85,
+      roughness: 0.2,
+      transparent: true,
+      opacity: 0.78
+    });
+    const gem = new THREE.Mesh(gemGeo, gemMat);
+    gem.scale.set(1.1, 1.3, 0.8);
+    group.add(gem);
+
+    // 2. Letter Billboard Canvas Texture (High resolution bold letter)
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.clearRect(0, 0, 128, 128);
+
+    // Glowing border and letter
+    ctx.font = '900 86px Outfit, Impact, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = '#050b14';
+    ctx.strokeText(letter, 64, 64);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(letter, 64, 64);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const planeGeo = new THREE.PlaneGeometry(0.9, 0.9);
+    const planeMat = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    const letterPlate = new THREE.Mesh(planeGeo, planeMat);
+    letterPlate.position.set(0, 0, 0.05);
+    group.add(letterPlate);
+
+    const backPlate = letterPlate.clone();
+    backPlate.position.z = -0.05;
+    backPlate.rotation.y = Math.PI;
+    group.add(backPlate);
+
+    // Glowing halo ring around letter
+    const ringGeo = new THREE.RingGeometry(0.72, 0.85, 24);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide });
+    const halo = new THREE.Mesh(ringGeo, ringMat);
+    halo.rotation.x = Math.PI / 2;
+    group.add(halo);
+
+    group.userData = { isWordLetter: true, letter, gem, halo };
+    return group;
+  },
+
+  // ---------------------------------------------------------------------------
+  // 🏏 TAPE-BALL CRICKET MASTER BAT POWER-UP PICKUP
+  // ---------------------------------------------------------------------------
+  createCricketBatPickup() {
+    const group = new THREE.Group();
+    group.name = 'PowerUp_CricketBat';
+
+    // 1. Blade of the Bat (Carved willow shape)
+    const bladeGeo = new THREE.BoxGeometry(0.24, 0.88, 0.1);
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.5, metalness: 0.1 });
+    const blade = new THREE.Mesh(bladeGeo, woodMat);
+    blade.position.set(0, 0.44, 0);
+    group.add(blade);
+
+    // Pakistani Green Grip Tape on blade shoulder
+    const stickerGeo = new THREE.BoxGeometry(0.245, 0.22, 0.105);
+    const stickerMat = new THREE.MeshStandardMaterial({ color: 0x00695c, roughness: 0.3 });
+    const sticker = new THREE.Mesh(stickerGeo, stickerMat);
+    sticker.position.set(0, 0.68, 0);
+    group.add(sticker);
+
+    // 2. Handle
+    const handleGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.45, 10);
+    const gripMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.8 });
+    const handle = new THREE.Mesh(handleGeo, gripMat);
+    handle.position.set(0, 1.08, 0);
+    group.add(handle);
+
+    // Rubber Grip Rings
+    const ringGeo = new THREE.TorusGeometry(0.048, 0.012, 6, 12);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xffeb3b });
+    const r1 = new THREE.Mesh(ringGeo, ringMat);
+    r1.rotation.x = Math.PI / 2;
+    r1.position.set(0, 0.95, 0);
+    handle.add(r1);
+
+    // 3. Orbiting Classic Red Taped Tennis Ball
+    const ballGeo = new THREE.SphereGeometry(0.12, 12, 12);
+    const ballMat = new THREE.MeshStandardMaterial({ color: 0xd50000, roughness: 0.4 });
+    const ball = new THREE.Mesh(ballGeo, ballMat);
+    ball.position.set(0.42, 0.55, 0);
+
+    // White electric tape seam around ball
+    const tapeSeam = new THREE.Mesh(new THREE.TorusGeometry(0.122, 0.015, 6, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    ball.add(tapeSeam);
+    group.add(ball);
+
+    // Aura ring
+    const auraGeo = new THREE.RingGeometry(0.65, 0.78, 24);
+    const auraMat = new THREE.MeshBasicMaterial({ color: 0x76ff03, side: THREE.DoubleSide });
+    const aura = new THREE.Mesh(auraGeo, auraMat);
+    aura.rotation.x = Math.PI / 2;
+    aura.position.y = 0.05;
+    group.add(aura);
+
+    group.userData = { isCricketBat: true, ball, aura };
+    return group;
+  },
+
+  // ---------------------------------------------------------------------------
+  // 🛹 QINGQI HOVER-SURFER SKATEBOARD
+  // ---------------------------------------------------------------------------
+  createHoverboardMesh() {
+    const group = new THREE.Group();
+    group.name = 'Qingqi_Hoverboard';
+
+    // Deck: Aerodynamic rounded board with truck art colors
+    const deckGeo = new THREE.BoxGeometry(0.68, 0.06, 1.7);
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, roughness: 0.25, metalness: 0.6 });
+    const deck = new THREE.Mesh(deckGeo, deckMat);
+    deck.position.set(0, 0.12, 0);
+    group.add(deck);
+
+    // Center Gold Accent Strip
+    const stripGeo = new THREE.BoxGeometry(0.18, 0.065, 1.72);
+    const stripMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.2, metalness: 0.8 });
+    const strip = new THREE.Mesh(stripGeo, stripMat);
+    strip.position.set(0, 0.12, 0);
+    group.add(strip);
+
+    // Dual Neon Repulsor Thruster Rings (Front & Back underneath)
+    const thrusterGeo = new THREE.CylinderGeometry(0.18, 0.14, 0.1, 16);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+
+    const frontThruster = new THREE.Mesh(thrusterGeo, glowMat);
+    frontThruster.position.set(0, 0.04, -0.55);
+    group.add(frontThruster);
+
+    const rearThruster = frontThruster.clone();
+    rearThruster.position.z = 0.55;
+    group.add(rearThruster);
+
+    group.userData = { isHoverboard: true, frontThruster, rearThruster };
+    return group;
+  },
+
+  // ---------------------------------------------------------------------------
   // NASCAR AERODYNAMIC SLIPSTREAM STREAMLINE RIBBONS
   // ---------------------------------------------------------------------------
   createSlipstreamRibbons(width = 1.6, length = 7.0) {

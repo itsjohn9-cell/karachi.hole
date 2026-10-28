@@ -484,6 +484,117 @@ html, body {
   100% { transform: scale(1.08); }
 }
 
+/* Karachi Runner Extra Dock (Word Hunt, Junoon Fever, Qingqi Hoverboard) */
+.hud-runner-extra-dock {
+  position: fixed;
+  left: 12px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: auto;
+  z-index: 55;
+}
+
+body:not(.mode-runner) .hud-runner-extra-dock {
+  display: none !important;
+}
+
+/* Karachi Word Hunt Letter Pill */
+.word-hunt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 215, 0, 0.45);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  backdrop-filter: blur(8px);
+}
+.word-hunt-pill .wh-label {
+  color: #ffd700;
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
+}
+.word-hunt-pill .wh-letters {
+  display: flex;
+  gap: 3px;
+}
+.word-hunt-pill .wh-char {
+  color: rgba(255, 255, 255, 0.35);
+  font-family: monospace;
+  font-weight: 900;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+}
+.word-hunt-pill .wh-char.is-collected {
+  color: #ffd700;
+  text-shadow: 0 0 8px #ffd700;
+  transform: scale(1.15);
+}
+
+/* Junoon Fever Rush Bar */
+.fever-meter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(10, 16, 26, 0.85);
+  border: 1px solid #00e5ff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #00e5ff;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+}
+.fever-meter-pill .fever-track {
+  width: 50px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.fever-meter-pill .fever-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00e5ff, #76ff03);
+  border-radius: 999px;
+  transition: width 0.15s ease-out;
+}
+.fever-meter-pill.is-fever-active {
+  border-color: #ffd700;
+  color: #ffd700;
+  animation: pulseFever 0.35s infinite alternate ease-in-out;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.7);
+}
+@keyframes pulseFever {
+  0% { transform: scale(0.96); filter: brightness(1); }
+  100% { transform: scale(1.08); filter: brightness(1.3); }
+}
+
+/* Qingqi Hover-Surfer Deploy Button */
+.hoverboard-pill .hoverboard-btn {
+  background: linear-gradient(135deg, #00e5ff, #00b0ff);
+  color: #050b14;
+  font-size: 0.72rem;
+  font-weight: 900;
+  border: none;
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+}
+.hoverboard-pill .hoverboard-btn.is-active {
+  background: linear-gradient(135deg, #76ff03, #00e676);
+  box-shadow: 0 0 14px rgba(118, 255, 3, 0.6);
+  animation: pulseCombo 0.4s infinite alternate;
+}
+
 /* Right: Leaderboard */
 .hud-right {
   display: flex;
@@ -3718,6 +3829,32 @@ html, body {
   .combo-pill {
     padding: 2px 6px !important;
     font-size: 0.68rem !important;
+  }
+
+  .word-hunt-pill {
+    padding: 1px 5px !important;
+    font-size: 0.65rem !important;
+    gap: 2px !important;
+  }
+
+  .word-hunt-pill .wh-char {
+    font-size: 0.65rem !important;
+  }
+
+  .fever-meter-pill {
+    padding: 1px 5px !important;
+    font-size: 0.65rem !important;
+    gap: 3px !important;
+  }
+
+  .fever-meter-pill .fever-track {
+    width: 28px !important;
+    height: 4px !important;
+  }
+
+  .hoverboard-pill .hoverboard-btn {
+    padding: 2px 6px !important;
+    font-size: 0.65rem !important;
   }
 
   .hud-top-controls {

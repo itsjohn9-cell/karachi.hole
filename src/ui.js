@@ -1187,6 +1187,37 @@ export class UIManager {
         <span class="runner-hazard-alert-distance" id="hud-runner-hazard-distance"></span>
       </div>
 
+      <!-- Bottom-Left Dedicated Runner Dock (Word Hunt, Fever Bar, Hoverboard) -->
+      <div class="hud-runner-extra-dock" id="hud-runner-extra-dock">
+        <!-- Karachi Word Hunt (K-A-R-A-C-H-I) -->
+        <div class="word-hunt-pill" id="hud-word-hunt" style="display: none;" title="Karachi Street Word Hunt">
+          <span class="wh-label">WORD</span>
+          <div class="wh-letters" id="hud-wh-letters">
+            <span class="wh-char" data-char="K">K</span>
+            <span class="wh-char" data-char="A">A</span>
+            <span class="wh-char" data-char="R">R</span>
+            <span class="wh-char" data-char="A">A</span>
+            <span class="wh-char" data-char="C">C</span>
+            <span class="wh-char" data-char="H">H</span>
+            <span class="wh-char" data-char="I">I</span>
+          </div>
+        </div>
+
+        <!-- Junoon Fever Adrenaline Bar -->
+        <div class="fever-meter-pill" id="hud-fever-meter" style="display: none;" title="Junoon Fever Bar: Stunts & coins charge invincible Rush!">
+          <span class="fever-icon">⚡</span>
+          <div class="fever-track">
+            <div class="fever-fill" id="hud-fever-fill" style="width: 0%"></div>
+          </div>
+          <span class="fever-tag" id="hud-fever-tag">JUNOON</span>
+        </div>
+
+        <!-- Qingqi Hover-Surfer Deploy -->
+        <div class="hoverboard-pill" id="hud-hoverboard-pill" style="display: none;">
+          <button class="hoverboard-btn ui-interactive" id="btn-deploy-hoverboard" title="Deploy Qingqi Hoverboard (Double Tap or 'B')">🛹 SURF</button>
+        </div>
+      </div>
+
       <!-- Left Panel: District Missions Checklist Card (Collapsible, top: 72px, left: 16px) -->
       <div class="hud-mission-card collapsed" id="district-mission-banner">
         <div class="mission-card-header" id="mission-card-header-toggle" title="Tap to expand/collapse missions">
@@ -3212,6 +3243,14 @@ export class UIManager {
       });
     }
 
+    // Deploy Qingqi Hoverboard button
+    const btnDeployHoverboard = document.getElementById('btn-deploy-hoverboard');
+    if (btnDeployHoverboard) {
+      btnDeployHoverboard.addEventListener('click', () => {
+        if (this.onDeployHoverboard) this.onDeployHoverboard();
+      });
+    }
+
     // Auto-Resume button on pause modal
     const btnAutoResume = document.getElementById('btn-auto-resume');
     if (btnAutoResume) {
@@ -3603,7 +3642,7 @@ export class UIManager {
         }
         const runnerControlKeys = [
           'KeyS', 'ArrowDown', 'KeyA', 'ArrowLeft', 'KeyD', 'ArrowRight',
-          'KeyW', 'ArrowUp', 'Space', 'KeyH'
+          'KeyW', 'ArrowUp', 'Space', 'KeyH', 'KeyB'
         ];
         if (!runnerControlKeys.includes(e.code)) return;
         e.preventDefault();
@@ -3624,6 +3663,9 @@ export class UIManager {
         } else if (e.code === 'KeyH') {
           this.hideRunnerTutorial();
           if (this.onHorn) this.onHorn();
+        } else if (e.code === 'KeyB') {
+          this.hideRunnerTutorial();
+          if (this.onDeployHoverboard) this.onDeployHoverboard();
         }
       }
     });
@@ -3665,6 +3707,14 @@ export class UIManager {
             if (dy < 0 && this.onJump) this.onJump();
             else if (dy > 0 && this.onSlide) this.onSlide();
           }
+        } else if (Math.abs(dx) <= 22 && Math.abs(dy) <= 22) {
+          const now = Date.now();
+          if (now - (this.lastTapTime || 0) < 320) {
+            this.lastTapTime = 0;
+            if (this.onDoubleTap) this.onDoubleTap();
+          } else {
+            this.lastTapTime = now;
+          }
         }
       }
     }, { passive: true });
@@ -3700,6 +3750,14 @@ export class UIManager {
           } else {
             if (dy < 0 && this.onJump) this.onJump();
             else if (dy > 0 && this.onSlide) this.onSlide();
+          }
+        } else if (Math.abs(dx) <= 22 && Math.abs(dy) <= 22) {
+          const now = Date.now();
+          if (now - (this.lastTapTime || 0) < 320) {
+            this.lastTapTime = 0;
+            if (this.onDoubleTap) this.onDoubleTap();
+          } else {
+            this.lastTapTime = now;
           }
         }
       }
@@ -4849,6 +4907,58 @@ export class UIManager {
     flash.classList.remove('active');
     void flash.offsetWidth;
     flash.classList.add('active');
+  }
+
+  updateWordHunt(lettersCollected = []) {
+    const huntEl = document.getElementById('hud-word-hunt');
+    if (!huntEl) return;
+    if (window.game?.isTempleRun && window.game.isGameStarted) {
+      huntEl.style.display = 'flex';
+      const chars = huntEl.querySelectorAll('.wh-char');
+      chars.forEach((span, idx) => {
+        const isCollected = idx < lettersCollected.length;
+        span.classList.toggle('is-collected', isCollected);
+      });
+    } else {
+      huntEl.style.display = 'none';
+    }
+  }
+
+  updateFeverMeter(percent = 0, isActive = false) {
+    const feverEl = document.getElementById('hud-fever-meter');
+    const fillEl = document.getElementById('hud-fever-fill');
+    const tagEl = document.getElementById('hud-fever-tag');
+    if (!feverEl || !fillEl) return;
+    if (window.game?.isTempleRun && window.game.isGameStarted) {
+      feverEl.style.display = 'flex';
+      const bounded = Math.max(0, Math.min(100, Math.round(percent)));
+      fillEl.style.width = `${bounded}%`;
+      feverEl.classList.toggle('is-fever-active', isActive);
+      if (tagEl) tagEl.textContent = isActive ? '🔥 RUSH!' : 'JUNOON';
+    } else {
+      feverEl.style.display = 'none';
+    }
+  }
+
+  updateHoverboard(timer = 0, cooldown = 0) {
+    const pill = document.getElementById('hud-hoverboard-pill');
+    const btn = document.getElementById('btn-deploy-hoverboard');
+    if (!pill || !btn) return;
+    if (window.game?.isTempleRun && window.game.isGameStarted) {
+      pill.style.display = 'flex';
+      if (timer > 0) {
+        btn.textContent = `🛹 ${Math.ceil(timer)}s`;
+        btn.classList.add('is-active');
+      } else if (cooldown > 0) {
+        btn.textContent = `⏳ ${Math.ceil(cooldown)}s`;
+        btn.classList.remove('is-active');
+      } else {
+        btn.textContent = '🛹 SURF';
+        btn.classList.remove('is-active');
+      }
+    } else {
+      pill.style.display = 'none';
+    }
   }
 
   updateRunnerHazardWarning(obstacles = [], traffic = [], playerZ = 0) {

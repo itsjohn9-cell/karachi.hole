@@ -1938,6 +1938,232 @@ class AudioManager {
     osc.stop(t + 0.36);
   }
 
+  // Authentic Traffic Police Double Whistle Trill (Ruk jaa bhai!)
+  playPoliceWhistle() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    [0.0, 0.14].forEach(offset => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const lfo = this.ctx.createOscillator();
+      const lfoGain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(2600, t + offset);
+
+      // Whistle pea vibrato trill
+      lfo.frequency.setValueAtTime(32, t + offset);
+      lfoGain.gain.setValueAtTime(380, t + offset);
+      lfo.connect(osc.frequency);
+
+      gain.gain.setValueAtTime(0.35, t + offset);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + offset + 0.12);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain || this.ctx.destination);
+
+      lfo.start(t + offset);
+      osc.start(t + offset);
+      lfo.stop(t + offset + 0.13);
+      osc.stop(t + offset + 0.13);
+    });
+
+    this.vibrate([35, 20, 45]);
+  }
+
+  // Flashing Police Motorcycle Siren Wailing Burst
+  playPoliceSiren() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(650, t);
+    osc.frequency.linearRampToValueAtTime(1150, t + 0.22);
+    osc.frequency.linearRampToValueAtTime(700, t + 0.44);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1600, t);
+
+    gain.gain.setValueAtTime(0.22, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.48);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain || this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.5);
+  }
+
+  // Ascending Pentatonic Chime for Word Hunt Letters (K-A-R-A-C-H-I)
+  playLetterChime(index = 0) {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const scale = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66]; // C5 to D6
+    const pitch = scale[Math.max(0, Math.min(scale.length - 1, index))];
+
+    const osc = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(pitch, t);
+    osc.frequency.exponentialRampToValueAtTime(pitch * 1.5, t + 0.18);
+
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(pitch * 2, t);
+
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+
+    osc.connect(gain);
+    osc2.connect(gain);
+    gain.connect(this.masterGain || this.ctx.destination);
+
+    osc.start(t);
+    osc2.start(t);
+    osc.stop(t + 0.3);
+    osc2.stop(t + 0.3);
+    this.vibrate(25);
+  }
+
+  // Triumphant Karachi Word Complete Fanfare
+  playWordComplete() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const chords = [
+      { f: 523.25, start: 0.00, dur: 0.12 },
+      { f: 659.25, start: 0.10, dur: 0.12 },
+      { f: 783.99, start: 0.20, dur: 0.14 },
+      { f: 1046.50, start: 0.32, dur: 0.45 },
+      { f: 1318.51, start: 0.34, dur: 0.45 }
+    ];
+
+    chords.forEach(c => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(c.f, t + c.start);
+      gain.gain.setValueAtTime(0.38, t + c.start);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + c.start + c.dur);
+      osc.connect(gain);
+      gain.connect(this.masterGain || this.ctx.destination);
+      osc.start(t + c.start);
+      osc.stop(t + c.start + c.dur + 0.02);
+    });
+
+    this.vibrate([60, 30, 80, 40, 150]);
+  }
+
+  // Authentic Solid Wooden Tape-Ball Cricket Bat Impact
+  playCricketCrack() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+
+    // 1. High transient crack
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1400, t);
+    osc.frequency.exponentialRampToValueAtTime(280, t + 0.08);
+    gain.gain.setValueAtTime(0.65, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    osc.connect(gain);
+    gain.connect(this.masterGain || this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.15);
+
+    // 2. Hollow wood resonance
+    const woodOsc = this.ctx.createOscillator();
+    const woodGain = this.ctx.createGain();
+    woodOsc.type = 'sine';
+    woodOsc.frequency.setValueAtTime(440, t);
+    woodOsc.frequency.exponentialRampToValueAtTime(110, t + 0.22);
+    woodGain.gain.setValueAtTime(0.5, t);
+    woodGain.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
+    woodOsc.connect(woodGain);
+    woodGain.connect(this.masterGain || this.ctx.destination);
+    woodOsc.start(t);
+    woodOsc.stop(t + 0.25);
+
+    this.vibrate([90, 40, 120]);
+  }
+
+  // Junoon Fever Rush Riser & Bass Impact
+  playFeverRush() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(220, t);
+    osc.frequency.exponentialRampToValueAtTime(880, t + 0.35);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(500, t);
+    filter.frequency.exponentialRampToValueAtTime(3200, t + 0.35);
+
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.42);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain || this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.45);
+    this.vibrate([50, 30, 80, 40, 100]);
+  }
+
+  // Futuristic Qingqi Hover-Surfer Ignition
+  playHoverboardDeploy() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(260, t);
+    osc.frequency.exponentialRampToValueAtTime(920, t + 0.22);
+    osc.frequency.exponentialRampToValueAtTime(580, t + 0.35);
+
+    gain.gain.setValueAtTime(0.32, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.38);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain || this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.4);
+    this.vibrate(30);
+  }
+
   playScore() {
     if (!this.soundEnabled || this.isPaused) return;
     this.initContext();

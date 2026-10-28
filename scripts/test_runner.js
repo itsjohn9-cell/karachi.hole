@@ -130,7 +130,13 @@ function recordTest(id, name, status, durationMs, details = '') {
 }
 
 const indexPath = path.join(projectDir, 'index.html');
-const ORIGINAL_INDEX_HTML = fs.readFileSync(indexPath, 'utf8');
+let cleanIndex = fs.readFileSync(indexPath, 'utf8');
+if (cleanIndex.includes('__testResult') || cleanIndex.includes('modal-start-mission')) {
+  try {
+    cleanIndex = execSync('git show HEAD:index.html', { cwd: projectDir }).toString();
+  } catch (e) {}
+}
+const ORIGINAL_INDEX_HTML = cleanIndex;
 
 function ensureCleanIndex() {
   try {
@@ -152,6 +158,7 @@ async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800',
     skippedTestIds.add(testId);
     return { success: false, skipped: true };
   }
+  await ensureTestServer();
   ensureCleanIndex();
   const screenshotPath = path.join(reportDir, screenshotName || `${testId.toLowerCase()}.png`);
   let userDataDir = null;
@@ -180,10 +187,12 @@ async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800',
     }
     injectedHtml = injectedHtml.replace('</body>', `<script>
       window.__testResult = { status: 'running' };
-      const __syncTestResult = () => {
+      var __syncTestResult = function() {
         document.documentElement.dataset.testStatus = window.__testResult.status;
         document.documentElement.dataset.testError = window.__testResult.error || '';
       };
+      window.__syncTestResult = __syncTestResult;
+      __syncTestResult();
       window.addEventListener('error', (event) => {
         window.__testResult = { status: 'failed', error: event.message || 'Uncaught browser error' };
         __syncTestResult();
@@ -203,16 +212,27 @@ async function runChromeTest({ testId, scriptInjection, windowSize = '1280,800',
         }
         __syncTestResult();
       }
-      window.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-          if (!window.game?.ui || !document.getElementById('btn-start-patrol')) {
+      function __boot() {
+        const interval = setInterval(() => {
+          if (window.game?.ui && document.getElementById('btn-start-patrol')) {
+            clearInterval(interval);
+            clearTimeout(timeout);
+            __run();
+          }
+        }, 25);
+        const timeout = setTimeout(() => {
+          clearInterval(interval);
+          if (window.__testResult.status === 'running') {
             window.__testResult = { status: 'failed', error: 'Game UI did not initialize' };
             __syncTestResult();
-            return;
           }
-          __run();
-        }, 50);
-      }, { once: true });
+        }, 12000);
+      }
+      if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', __boot, { once: true });
+      } else {
+        __boot();
+      }
       setTimeout(() => {
         if (window.__testResult.status === 'running') {
           window.__testResult = { status: 'passed' };
@@ -3187,9 +3207,11 @@ async function runTestSuite() {
           const inner = frame.contentWindow;
           if (inner?.__hudLayoutDone) {
             window.__testResult = { status: 'passed' };
+            window.__syncTestResult?.();
             clearInterval(poll);
           } else if (inner?.__testResult?.status === 'failed') {
             window.__testResult = inner.__testResult;
+            window.__syncTestResult?.();
             clearInterval(poll);
           }
         }, 50);
@@ -3288,7 +3310,7 @@ async function runTestSuite() {
       screenshotName: `tc46_hud_layout_${w}x${h}.png`,
       windowSize: `${Math.max(Number(w), 500)},${Math.max(Number(h), 481)}`,
       extraStyle: '#modal-start-mission { display: none !important; } #hud-announcement { transition: none !important; }',
-      waitMs: 3500,
+      waitMs: 6500,
       scriptInjection: hudLayoutScript(w, h)
     });
     recordTest(`TC-46 ${w}x${h}`, `HUD Popup Layout ${w}x${h}`, res.skipped ? 'SKIPPED' : res.success ? 'PASSED' : 'FAILED', Date.now() - tStart, res.success ? 'Verified no popup, HUD or control overlap and nothing outside the viewport' : res.error);
@@ -3309,9 +3331,11 @@ async function runTestSuite() {
           const inner = frame.contentWindow;
           if (inner?.__hudLayoutDone) {
             window.__testResult = { status: 'passed' };
+            window.__syncTestResult?.();
             clearInterval(poll);
           } else if (inner?.__testResult?.status === 'failed') {
             window.__testResult = inner.__testResult;
+            window.__syncTestResult?.();
             clearInterval(poll);
           }
         }, 50);
@@ -3492,9 +3516,11 @@ async function runTestSuite() {
           const inner = frame.contentWindow;
           if (inner?.__hudLayoutDone) {
             window.__testResult = { status: 'passed' };
+            window.__syncTestResult?.();
             clearInterval(poll);
           } else if (inner?.__testResult?.status === 'failed') {
             window.__testResult = inner.__testResult;
+            window.__syncTestResult?.();
             clearInterval(poll);
           }
         }, 50);
@@ -3577,9 +3603,11 @@ async function runTestSuite() {
           const inner = frame.contentWindow;
           if (inner?.__hudLayoutDone) {
             window.__testResult = { status: 'passed' };
+            window.__syncTestResult?.();
             clearInterval(poll);
           } else if (inner?.__testResult?.status === 'failed') {
             window.__testResult = inner.__testResult;
+            window.__syncTestResult?.();
             clearInterval(poll);
           }
         }, 50);

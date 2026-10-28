@@ -247,6 +247,38 @@ export class Game {
     ];
     this.passedMilestoneIndices = new Set([0]);
 
+    // 3D Police Havaldar CD-70 Chaser System
+    this.chaserMesh = null;
+    this.chaserDistance = 12.0;
+    this.targetChaserDistance = 12.0;
+    this.isChaserClose = false;
+    this.chaserStumbleGraceTimer = 0;
+
+    // Karachi Word Hunt (K-A-R-A-C-H-I)
+    this.wordHuntTarget = 'KARACHI';
+    this.wordHuntCollected = [];
+    this.wordHuntNextIndex = 0;
+    this.runnerWordLetters = [];
+    this.nextWordLetterZ = -140.0;
+
+    // Junoon Fever Rush (Adrenaline Bar)
+    this.feverCharge = 0;
+    this.feverTimer = 0.0;
+    this.isFeverActive = false;
+
+    // 🏏 Tape-Ball Cricket Master Bat
+    this.cricketBatTimer = 0.0;
+    this.cricketBatMesh = null;
+
+    // 🛹 Qingqi Hover-Surfer Skateboard
+    this.hoverboardTimer = 0.0;
+    this.hoverboardMesh = null;
+    this.hoverboardCooldown = 0.0;
+
+    // Dynamic Combo Streak Multiplier
+    this.runnerComboStreak = 1;
+    this.runnerComboTimer = 0.0;
+
     // Master Mode & AI Auto-Pilot State (Renamed from God Mode per user directive)
     this.isMasterImmortal = false;
     this.isGodImmortal = false; // Alias for backward compatibility
@@ -573,6 +605,12 @@ export class Game {
       onReturnToMainMenu: () => {
         this.returnToMainMenu();
       },
+      onDeployHoverboard: () => {
+        this.deployHoverboard();
+      },
+      onDoubleTap: () => {
+        this.deployHoverboard();
+      },
       onQuickRevive: () => {
         return this.quickReviveWithChai();
       }
@@ -872,6 +910,37 @@ export class Game {
     this.draftCharge = 0;
     this.runnerStumbleTimer = 0;
     this.doubleCoinsTimer = 0;
+    if (this.runnerWordLetters) {
+      this.runnerWordLetters.forEach(l => {
+        if (l && l.mesh) this.disposeRunnerObject(l.mesh);
+      });
+      this.runnerWordLetters = [];
+    }
+    if (this.chaserMesh) {
+      this.disposeRunnerObject(this.chaserMesh);
+      this.chaserMesh = null;
+    }
+    if (this.cricketBatMesh && this.player?.group) {
+      this.player.group.remove(this.cricketBatMesh);
+      this.disposeRunnerObject(this.cricketBatMesh);
+      this.cricketBatMesh = null;
+    }
+    if (this.hoverboardMesh) {
+      this.disposeRunnerObject(this.hoverboardMesh);
+      this.hoverboardMesh = null;
+    }
+    this.feverTimer = 0;
+    this.isFeverActive = false;
+    this.feverCharge = 0;
+    this.cricketBatTimer = 0;
+    this.hoverboardTimer = 0;
+    this.runnerComboStreak = 1;
+    this.runnerComboTimer = 0;
+    this.wordHuntCollected = [];
+    this.wordHuntNextIndex = 0;
+    if (this.ui?.updateWordHunt) this.ui.updateWordHunt([]);
+    if (this.ui?.updateFeverMeter) this.ui.updateFeverMeter(0, false);
+    if (this.ui?.updateHoverboard) this.ui.updateHoverboard(0, 0);
     if (typeof audio !== 'undefined' && audio.resetMusicPitch) {
       audio.resetMusicPitch();
     }
@@ -899,6 +968,71 @@ export class Game {
     this.ui?.showAnnouncement(`🏅 RUNNER ACHIEVEMENT: ${badgeId.replaceAll('_', ' ').toUpperCase()}!`, '#ffd700');
   }
 
+  deployHoverboard() {
+    if (!this.player || !this.isTempleRun || !this.isGameStarted || this.isGameOver || this.isPaused) return;
+    if (this.hoverboardTimer > 0) return;
+    if (this.hoverboardCooldown > 0) {
+      this.ui?.showAnnouncement?.(`🛹 Hoverboard cooling down (${Math.ceil(this.hoverboardCooldown)}s)`, '#ffd700');
+      return;
+    }
+    this.hoverboardTimer = 22.0;
+    audio?.playHoverboardDeploy?.();
+    this.particles?.createDevourSparkles?.(this.player.position, 24, 0x00e5ff);
+    if (!this.hoverboardMesh) {
+      this.hoverboardMesh = KarachiModels.createHoverboardMesh();
+      this.scene.add(this.hoverboardMesh);
+    }
+    this.hoverboardMesh.visible = true;
+    this.ui?.showAnnouncement?.('🛹 QINGQI HOVER-SURFER DEPLOYED! 1 Crash Shield Active! ✨', '#00e5ff');
+    this.ui?.showFloatingFeedback?.('🛹 HOVER-SURFER!', this.player.position, '#00e5ff');
+  }
+
+  addFeverCharge(amount) {
+    if (this.isFeverActive) return;
+    this.feverCharge = Math.min(100, Math.max(0, (this.feverCharge || 0) + amount));
+    if (this.ui?.updateFeverMeter) {
+      this.ui.updateFeverMeter(this.feverCharge, false);
+    }
+    if (this.feverCharge >= 100) {
+      this.triggerJunoonFever();
+    }
+  }
+
+  triggerJunoonFever() {
+    this.isFeverActive = true;
+    this.feverTimer = 8.5;
+    this.feverCharge = 100;
+    audio?.playFeverRush?.();
+    audio?.playMusicalHorn?.();
+    this.cameraShakeTimer = 0.35;
+    this.particles?.createCelebrationConfetti?.(this.player.position, 50);
+    this.ui?.showAnnouncement?.('🔥 JUNOON FEVER RUSH! UNSTOPPABLE HYPER SPEED & COIN VORTEX! ⚡', '#00e5ff');
+    this.ui?.showFloatingFeedback?.('⚡ JUNOON FEVER!', this.player.position, '#00e5ff');
+    if (this.ui?.updateFeverMeter) {
+      this.ui.updateFeverMeter(100, true);
+    }
+  }
+
+  recordRunnerStunt(stuntName, bonusScore = 150) {
+    this.runnerComboStreak = Math.min(10, (this.runnerComboStreak || 1) + 1);
+    this.runnerComboTimer = 4.0;
+    const mult = this.runnerComboStreak;
+    const finalScore = bonusScore * mult;
+    this.score += finalScore;
+    this.awardRunnerXP(finalScore);
+    audio?.playMelodicCoin?.(mult);
+    this.ui?.showFloatingFeedback?.(`${stuntName} (x${mult}!)`, this.player.position, mult >= 5 ? '#ff1744' : '#ffd700');
+    if (mult === 3) this.ui?.showAnnouncement?.('🔥 3X COMBO STREAK! KEEP FLYING!', '#ffd700');
+    else if (mult === 5) this.ui?.showAnnouncement?.('⚡ 5X UNSTOPPABLE STUNT RUNNER! 🚀', '#00e5ff');
+    else if (mult === 10) this.ui?.showAnnouncement?.('👑 10X MAXIMUM KARACHI KING! 🔥', '#ff1744');
+    const comboEl = document.getElementById('hud-combo');
+    if (comboEl) {
+      comboEl.style.display = 'block';
+      const val = document.getElementById('hud-combo-val');
+      if (val) val.textContent = String(mult);
+    }
+  }
+
   /**
    * Handle obstacle collision during Karachi Temple Run
    */
@@ -917,6 +1051,53 @@ export class Game {
 
     // Sky Flight Jetpack (Flies safely above ground obstacles)
     if (this.jetpackTimer > 0 && !isTurnMistake) {
+      return;
+    }
+
+    // Check Junoon Fever Rush (Unstoppable Hyper Speed Smash)
+    if (this.isFeverActive && !isTurnMistake) {
+      obstacle.isHit = true;
+      audio?.playSmashObstacle?.();
+      this.cameraShakeTimer = 0.25;
+      this.particles?.createCelebrationConfetti?.(obstacle.mesh?.position || this.player.position, 28);
+      this.particles?.createImpactDust?.(this.player.position, 14);
+      this.ui?.showAnnouncement?.(`🔥 JUNOON FEVER SMASH! Obliterated ${reason}! +500 PTS`, '#00e5ff');
+      this.ui?.showFloatingFeedback?.('🔥 FEVER SMASH! +500', this.player.position, '#00e5ff');
+      this.awardRunnerXP(500);
+      this.score += 500;
+      if (obstacle.mesh) this.disposeRunnerObject(obstacle.mesh);
+      return;
+    }
+
+    // Check 🏏 Tape-Ball Cricket Master Bat (Smash Obstacle Out of the Park for SIX!)
+    if (this.cricketBatTimer > 0 && !isTurnMistake) {
+      obstacle.isHit = true;
+      audio?.playCricketCrack?.();
+      audio?.playMusicalHorn?.();
+      this.cameraShakeTimer = 0.35;
+      this.particles?.createCelebrationConfetti?.(obstacle.mesh?.position || this.player.position, 35);
+      this.particles?.createImpactDust?.(this.player.position, 18);
+      this.recordRunnerStunt('🏏 SIXER! HIT OUT OF THE PARK!', 600);
+      this.addFeverCharge(15);
+      if (obstacle.mesh) this.disposeRunnerObject(obstacle.mesh);
+      return;
+    }
+
+    // Check 🛹 Qingqi Hover-Surfer Skateboard (Crash Absorption)
+    if (this.hoverboardTimer > 0 && !isTurnMistake) {
+      obstacle.isHit = true;
+      audio?.playCrash?.();
+      this.hoverboardTimer = 0;
+      this.hoverboardCooldown = 15.0;
+      if (this.hoverboardMesh) {
+        this.hoverboardMesh.visible = false;
+      }
+      this.runnerInvulnerableTimer = 2.5;
+      this.cameraShakeTimer = 0.3;
+      this.particles?.createDevourSparkles?.(this.player.position, 30, 0x00e5ff);
+      this.ui?.showAnnouncement?.(`🛹 HOVERBOARD CRASH SHIELD! Saved from ${reason}! (2.5s Grace)`, '#00e5ff');
+      this.ui?.showFloatingFeedback?.('🛹 HOVER SHIELD SAVED YOU!', this.player.position, '#00e5ff');
+      if (obstacle.mesh) this.disposeRunnerObject(obstacle.mesh);
       return;
     }
 
@@ -1518,6 +1699,14 @@ export class Game {
       return group;
     }
 
+    if (type === 'cricket_bat') {
+      const bat = KarachiModels.createCricketBatPickup();
+      bat.position.y = 0.85;
+      group.add(bat);
+      group.userData = { powerupType: type, isCricketBat: true };
+      return group;
+    }
+
     let color = 0x00e5ff;
     if (type === 'cng') color = 0x00e5ff;
     else if (type === 'shield') color = 0x00bcd4;
@@ -2067,7 +2256,7 @@ export class Game {
 
     this.runnerWaveCount += 1;
     if (this.runnerWaveCount % 3 === 0) {
-      const pTypes = ['cng', 'shield', 'magnet', 'chai', 'jump'];
+      const pTypes = ['cng', 'shield', 'magnet', 'chai', 'jump', 'cricket_bat', 'mystery_box'];
       const chosenType = pTypes[this.runnerPowerupDropCount % pTypes.length];
       const blockedLanes = [
         ...this.runnerObstacles.slice(obstacleStartIndex)
@@ -2442,10 +2631,15 @@ export class Game {
       return;
     }
 
-    if (this.jetpackTimer > 0 || this.chingchiTimer > 0 || this.nitroTimer > 0) return;
+    if (this.jetpackTimer > 0 || this.chingchiTimer > 0 || this.nitroTimer > 0 || this.isFeverActive) return;
 
-    // Trigger Stumble:
+    // Trigger Non-Lethal Stumble (Speed slowdown & Havaldar tailing tension):
     this.runnerStumbleTimer = 1.5;  // 1.5s 25% speed reduction
+    this.targetChaserDistance = 2.4; // Havaldar surges right up behind player with siren & whistle!
+    this.isChaserClose = true;
+    this.chaserStumbleGraceTimer = 4.5;
+    audio?.playPoliceWhistle?.();
+    audio?.playPoliceSiren?.();
 
     if (typeof AvatarBuilder !== 'undefined' && AvatarBuilder.triggerStumble && this.player?.avatarMesh) {
       AvatarBuilder.triggerStumble(this.player.avatarMesh, 1.5);
@@ -2454,8 +2648,8 @@ export class Game {
     audio.playTireScreech();
     this.cameraShakeTimer = 0.25;
     this.particles.createSkidSmoke(this.player.position, 10);
-    this.ui.showAnnouncement(`⚠️ GRAZED ${label} · SLOWDOWN ONLY · NO HEART LOST`, '#ff9100');
-    this.ui.showFloatingFeedback('⚠️ STUMBLED! -25% SPEED', this.player.position, '#ff9100');
+    this.ui.showAnnouncement(`🚨 GRAZED ${label} · TRAFFIC HAVALDAR ON YOUR TAIL! DON'T STUMBLE!`, '#ff1744');
+    this.ui.showFloatingFeedback('⚠️ STUMBLED! HAVALDAR CLOSING IN!', this.player.position, '#ff1744');
   }
 
   createRunnerPotholeMesh() {
@@ -2627,6 +2821,17 @@ export class Game {
         this.ui?.refreshProgressionContent();
       }
       this.corridorDistrictLevel = this.currentDistrictLevel;
+    if (this.isTempleRun) {
+      if (!this.chaserMesh) {
+        this.chaserMesh = KarachiModels.createHavaldarMotorcycle();
+        this.scene.add(this.chaserMesh);
+      }
+      this.chaserDistance = 12.0;
+      this.targetChaserDistance = 12.0;
+      this.isChaserClose = false;
+      const playerZ = this.player?.position?.z ?? 60.0;
+      this.chaserMesh.position.set(0, 0, playerZ + 12.0);
+    }
       if (this.corridorChunks && this.corridorChunks.length > 0) {
         this.corridorChunks.forEach(chunk => {
           chunk.userData.patrolAreaLevel = this.currentDistrictLevel;
@@ -2793,6 +2998,16 @@ export class Game {
       this.corridorChunks.push(chunk);
     }
     this.corridorDistrictLevel = this.currentDistrictLevel;
+    if (this.isTempleRun) {
+      if (!this.chaserMesh) {
+        this.chaserMesh = KarachiModels.createHavaldarMotorcycle();
+        this.scene.add(this.chaserMesh);
+      }
+      this.chaserDistance = 12.0;
+      this.targetChaserDistance = 12.0;
+      this.isChaserClose = false;
+      this.chaserMesh.position.set(0, 0, baseZ + 12.0);
+    }
   }
 
   /**
@@ -3510,6 +3725,9 @@ export class Game {
 
     // 1. Calculate Forward Running Speed
     let speed = this.getRunnerSpeed();
+    if (this.isFeverActive) {
+      speed *= 1.85;
+    }
     if (this.isNascarSuperSpeed) {
       speed *= 2.2;
     }
@@ -3861,12 +4079,73 @@ export class Game {
       this.nextRunnerWaveZ -= waveSpacing;
     }
 
+    // 8b. Karachi Word Hunt (K-A-R-A-C-H-I) Letters Spawning Ahead
+    if (this.nextWordLetterZ > this.player.position.z - 20.0) {
+      this.nextWordLetterZ = this.player.position.z - 45.0;
+    }
+    while (this.nextWordLetterZ > this.player.position.z - 130.0) {
+      if (this.runnerJunction && Math.abs(this.nextWordLetterZ - this.runnerJunction.z) < 40.0) {
+        this.nextWordLetterZ -= 90.0;
+        continue;
+      }
+      if (this.wordHuntCollected.length < this.wordHuntTarget.length) {
+        const char = this.wordHuntTarget[this.wordHuntCollected.length];
+        const letterMesh = KarachiModels.createWordLetter(char);
+        const laneX = [-3.2, 0, 3.2][Math.floor(Math.random() * 3)];
+        const groundY = this.getCorridorGroundHeight(this.nextWordLetterZ, laneX);
+        letterMesh.position.set(laneX, groundY + 1.25, this.nextWordLetterZ);
+        this.scene.add(letterMesh);
+        this.runnerWordLetters.push({ mesh: letterMesh, char, z: this.nextWordLetterZ, laneX });
+      }
+      this.nextWordLetterZ -= 95.0;
+    }
+
     // 9. Collect Rupee Coins
     const pPos = this.player.position;
     if (this.ui) {
       this.ui.updateRunnerHazardWarning(this.runnerObstacles, this.runnerTraffic, pPos.z);
     }
     this.updateRunnerCoins(dt, previousRunnerPosition);
+
+    // 9b. Collect Word Hunt Letters
+    if (this.runnerWordLetters && this.runnerWordLetters.length > 0) {
+      for (let i = this.runnerWordLetters.length - 1; i >= 0; i--) {
+        const item = this.runnerWordLetters[i];
+        if (!item || !item.mesh) continue;
+        item.mesh.rotation.y += dt * 3.0;
+        item.mesh.position.y += Math.sin(Date.now() * 0.005 + i) * 0.005;
+
+        const dist = item.mesh.position.distanceTo(pPos);
+        const pathDistSq = runnerSegmentDistanceSquared3D(item.mesh.position, previousRunnerPosition, pPos);
+        if (dist < 1.65 || pathDistSq < 1.65 * 1.65) {
+          const char = item.char;
+          audio?.playLetterChime?.(this.wordHuntCollected.length);
+          this.wordHuntCollected.push(char);
+          this.particles?.createCelebrationConfetti?.(item.mesh.position, 28);
+          this.addFeverCharge(20);
+          this.recordRunnerStunt(`🔤 LETTER '${char}'!`, 350);
+          if (this.ui?.updateWordHunt) {
+            this.ui.updateWordHunt(this.wordHuntCollected);
+          }
+          if (this.wordHuntCollected.length >= this.wordHuntTarget.length) {
+            audio?.playWordComplete?.();
+            this.particles?.createCelebrationConfetti?.(this.player.position, 80);
+            this.coins += 5000;
+            this.score += 5000;
+            this.awardRunnerXP(5000);
+            this.ui?.showAnnouncement?.('🎉 WORD HUNT COMPLETE: K-A-R-A-C-H-I! 5,000 RS JACKPOT! 🏆', '#ffd700');
+            this.ui?.showFloatingFeedback?.('🏆 5,000 RS JACKPOT!', this.player.position, '#ffd700');
+            this.wordHuntCollected = [];
+            if (this.ui?.updateWordHunt) this.ui.updateWordHunt([]);
+          }
+          this.disposeRunnerObject(item.mesh);
+          this.runnerWordLetters.splice(i, 1);
+        } else if (item.z > pPos.z + 28.0) {
+          this.disposeRunnerObject(item.mesh);
+          this.runnerWordLetters.splice(i, 1);
+        }
+      }
+    }
 
     // 10. Collect Power-Ups
     for (let i = this.runnerPowerups.length - 1; i >= 0; i--) {
@@ -3968,6 +4247,21 @@ export class Game {
           this.activePowerUp = { title: 'Hydraulic Jump Springs 👟', timer: 8.0 };
           audio.playJump();
           this.ui.showAnnouncement('👟 HYDRAULIC JUMP SPRINGS! Super High Jumps! 🏙️', '#76ff03');
+        } else if (type === 'cricket_bat') {
+          this.cricketBatTimer = 18.0;
+          this.activePowerUp = { title: '🏏 Tape-Ball Cricket Bat', timer: 18.0 };
+          audio?.playCricketCrack?.();
+          audio?.playMusicalHorn?.();
+          this.cameraShakeTimer = 0.2;
+          this.particles?.createCelebrationConfetti?.(this.player.position, 30);
+          if (!this.cricketBatMesh && this.player?.group) {
+            this.cricketBatMesh = KarachiModels.createCricketBatPickup();
+            this.cricketBatMesh.position.set(0.65, 0.75, 0.15);
+            this.cricketBatMesh.rotation.set(0.4, 0.2, -0.5);
+            this.player.group.add(this.cricketBatMesh);
+          }
+          this.ui?.showAnnouncement?.('🏏 TAPE-BALL CRICKET BAT! Hit obstacles for SIX! 🚀 (18s)', '#76ff03');
+          this.ui?.showFloatingFeedback?.('🏏 SIXER BAT!', this.player.position, '#76ff03');
         }
 
         this.particles.createDevourSparkles(p.mesh.position, 14, 0x00e5ff);
@@ -4420,13 +4714,128 @@ export class Game {
     if (this.camera) {
       const baseSpeed = 13.5;
       const speedNorm = THREE.MathUtils.clamp((speed - baseSpeed) / 14.5, 0, 1);
-      const targetFov = 62.0 + (speedNorm * 5.0) + (this.nitroTimer > 0 ? 2.5 : 0.0);
-      const clampedFov = THREE.MathUtils.clamp(targetFov, 60.0, 70.0);
+      const feverBonus = this.isFeverActive ? 8.0 : 0.0;
+      const targetFov = 62.0 + (speedNorm * 5.0) + (this.nitroTimer > 0 ? 3.5 : 0.0) + feverBonus;
+      const clampedFov = THREE.MathUtils.clamp(targetFov, 60.0, 75.0);
       this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, clampedFov, Math.min(1.0, dt * 4.0));
       this.camera.updateProjectionMatrix();
 
       const rollAngle = (this.targetLaneX - this.player.position.x) * -0.015;
       this.camera.rotation.z = THREE.MathUtils.lerp(this.camera.rotation.z, rollAngle, dt * 6.0);
+    }
+
+    // 11e. Update Havaldar CD-70 Chaser System
+    if (this.chaserMesh) {
+      if (this.chaserStumbleGraceTimer > 0) {
+        this.chaserStumbleGraceTimer = Math.max(0, this.chaserStumbleGraceTimer - dt);
+        if (this.chaserStumbleGraceTimer <= 0) {
+          this.targetChaserDistance = 12.0;
+        }
+      }
+      if (this.targetChaserDistance > 9.0 && this.chaserDistance > 8.0) {
+        this.isChaserClose = false;
+      }
+      this.chaserDistance = THREE.MathUtils.lerp(
+        this.chaserDistance,
+        this.targetChaserDistance,
+        Math.min(1.0, dt * 2.5)
+      );
+
+      const targetChaserX = THREE.MathUtils.lerp(this.chaserMesh.position.x, this.player.position.x, Math.min(1.0, dt * 7.0));
+      const chaserZ = this.player.position.z + this.chaserDistance;
+      const chaserGroundY = this.getCorridorGroundHeight(chaserZ, targetChaserX);
+      this.chaserMesh.position.set(targetChaserX, chaserGroundY, chaserZ);
+
+      if (this.chaserMesh.userData?.frontWheel) {
+        this.chaserMesh.userData.frontWheel.rotation.x -= dt * (speed / 0.35);
+      }
+      if (this.chaserMesh.userData?.rearWheel) {
+        this.chaserMesh.userData.rearWheel.rotation.x -= dt * (speed / 0.35);
+      }
+      if (this.chaserMesh.userData?.blueSiren && this.chaserMesh.userData?.redSiren) {
+        const strobe = (Math.floor(Date.now() / 120) % 2 === 0);
+        this.chaserMesh.userData.blueSiren.material.emissiveIntensity = strobe ? 2.0 : 0.1;
+        this.chaserMesh.userData.redSiren.material.emissiveIntensity = strobe ? 0.1 : 2.0;
+      }
+      if (Math.random() < 0.25) {
+        this.particles?.createSkidSmoke?.(new THREE.Vector3(targetChaserX, chaserGroundY + 0.15, chaserZ + 0.9), 1);
+      }
+    }
+
+    // 11f. Update Qingqi Hover-Surfer Skateboard
+    if (this.hoverboardTimer > 0) {
+      this.hoverboardTimer = Math.max(0, this.hoverboardTimer - dt);
+      if (this.hoverboardMesh) {
+        this.hoverboardMesh.visible = true;
+        this.hoverboardMesh.position.set(this.player.position.x, this.player.position.y + 0.12, this.player.position.z);
+        this.hoverboardMesh.rotation.y = this.player.group.rotation.y;
+        this.hoverboardMesh.rotation.z = this.currentBankRoll || 0;
+        if (Math.random() < 0.3) {
+          this.particles?.createDevourSparkles?.(this.hoverboardMesh.position, 1, 0x00e5ff);
+        }
+      }
+      if (this.hoverboardTimer <= 0) {
+        this.hoverboardCooldown = 12.0;
+        if (this.hoverboardMesh) this.hoverboardMesh.visible = false;
+        this.ui?.showAnnouncement?.('🛹 Hover-Surfer Expired', '#ffd700');
+      }
+    } else {
+      if (this.hoverboardMesh) this.hoverboardMesh.visible = false;
+      if (this.hoverboardCooldown > 0) {
+        this.hoverboardCooldown = Math.max(0, this.hoverboardCooldown - dt);
+      }
+    }
+    if (this.ui?.updateHoverboard) {
+      this.ui.updateHoverboard(this.hoverboardTimer, this.hoverboardCooldown);
+    }
+
+    // 11g. Update 🏏 Tape-Ball Cricket Master Bat
+    if (this.cricketBatTimer > 0) {
+      this.cricketBatTimer = Math.max(0, this.cricketBatTimer - dt);
+      if (this.cricketBatMesh) {
+        this.cricketBatMesh.visible = true;
+        this.cricketBatMesh.rotation.x = 0.4 + Math.sin(Date.now() * 0.012) * 0.35;
+      }
+      if (this.cricketBatTimer <= 0) {
+        if (this.cricketBatMesh && this.player?.group) {
+          this.player.group.remove(this.cricketBatMesh);
+          this.disposeRunnerObject(this.cricketBatMesh);
+          this.cricketBatMesh = null;
+        }
+        this.ui?.showAnnouncement?.('🏏 Cricket Bat Expired', '#ffd700');
+      }
+    }
+
+    // 11h. Update Junoon Fever Rush
+    if (this.isFeverActive) {
+      this.feverTimer = Math.max(0, this.feverTimer - dt);
+      if (Math.random() < 0.4) {
+        this.particles?.createDevourSparkles?.(this.player.position, 2, 0x00e5ff);
+      }
+      if (this.ui?.updateFeverMeter) {
+        this.ui.updateFeverMeter((this.feverTimer / 8.5) * 100, true);
+      }
+      if (this.feverTimer <= 0) {
+        this.isFeverActive = false;
+        this.feverCharge = 0;
+        if (this.ui?.updateFeverMeter) this.ui.updateFeverMeter(0, false);
+        this.ui?.showAnnouncement?.('⚡ Junoon Fever Rush Ended', '#ffd700');
+      }
+    } else {
+      if (this.feverCharge > 0) {
+        this.feverCharge = Math.max(0, this.feverCharge - dt * 1.5);
+        if (this.ui?.updateFeverMeter) this.ui.updateFeverMeter(this.feverCharge, false);
+      }
+    }
+
+    // 11i. Update Combo Streak Multiplier
+    if (this.runnerComboTimer > 0) {
+      this.runnerComboTimer = Math.max(0, this.runnerComboTimer - dt);
+      if (this.runnerComboTimer <= 0) {
+        this.runnerComboStreak = 1;
+        const comboEl = document.getElementById('hud-combo');
+        if (comboEl) comboEl.style.display = 'none';
+      }
     }
 
     // 12. Despawn Passed Objects Behind Player (> 28m)
@@ -8721,23 +9130,27 @@ export class Game {
       const coin = this.runnerCoins[i];
       if (!coin?.mesh) continue;
       coin.mesh.quaternion.copy(this.camera.quaternion);
-      if (this.magnetTimer > 0 && coin.mesh.position.distanceTo(position) < 20) {
-        coin.mesh.position.lerp(position, Math.min(1, dt * 8.5));
+      const dist = coin.mesh.position.distanceTo(position);
+      if ((this.magnetTimer > 0 || this.isFeverActive) && dist < (this.isFeverActive ? 28 : 20)) {
+        coin.mesh.position.lerp(position, Math.min(1, dt * (this.isFeverActive ? 14.0 : 8.5)));
       }
       if (runnerSegmentDistanceSquared3D(coin.mesh.position, previousPosition, position) >= 1.45 * 1.45) continue;
-      const multiplier = this.doubleCoinsTimer > 0 ? 2 : 1;
+      const streakMult = Math.max(1, this.runnerComboStreak || 1);
+      const multiplier = (this.doubleCoinsTimer > 0 ? 2 : 1) * streakMult;
       const earned = (coin.value || 50) * multiplier;
       this.coins += earned;
-      this.awardRunnerXP(100);
+      this.awardRunnerXP(100 * streakMult);
       if (this.coins >= 1000) this.unlockRunnerBadge('clean_green');
       this.score += 100 * multiplier;
+      this.addFeverCharge(3.0);
+      this.runnerComboTimer = 3.5;
       const now = performance.now();
       this.coinComboCount = now - (this.lastCoinPickupTime || 0) < 650
         ? Math.min(8, (this.coinComboCount || 0) + 1) : 1;
       this.lastCoinPickupTime = now;
       audio.playMelodicCoin(this.coinComboCount);
       this.particles.createDevourSparkles(coin.mesh.position, 8, 0xffd700);
-      this.ui.showFloatingFeedback(`+${earned} Rs${multiplier > 1 ? ' (2X!)' : ''}`, coin.mesh.position, '#ffd700');
+      this.ui.showFloatingFeedback(`+${earned} Rs${multiplier > 1 ? ` (${multiplier}X!)` : ''}`, coin.mesh.position, '#ffd700');
       this.disposeRunnerObject(coin.mesh);
       this.runnerCoins.splice(i, 1);
     }
