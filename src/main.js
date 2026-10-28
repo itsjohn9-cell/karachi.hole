@@ -164,6 +164,8 @@ export class Game {
     this.chingchiTimer = 0;
     this.jetpackTimer = 0;
     this.doubleCoinsTimer = 0;
+    this.hornCooldownTimer = 0;
+    this.maxHornCooldown = 8.0;
     this.coinComboCount = 0;
     this.lastCoinPickupTime = 0;
     this.activePowerUp = null;
@@ -537,8 +539,18 @@ export class Game {
         this.runSpeed = RUNNER_SPEEDS[this.runnerDifficulty];
         this.loadDistrictLevel(1, false);
         this.startGame();
-        audio.startMusic();
-        this.ui.showAnnouncement('🏃 KARACHI RUNNER · STARTING IN SOLDIER BAZAR', '#00e5ff');
+        audio?.startMusic?.();
+        audio?.playPoliceWhistle?.();
+        audio?.playMusicalHorn?.();
+        if (this.camera) {
+          this.cameraSmoothPos = this.camera.position.clone();
+          this.cameraSmoothLookAt = new THREE.Vector3(0, 1.25, (this.player?.position?.z || 0) - 3.0);
+          this.cameraSmoothTimer = 0.65;
+        }
+        if (this.particles && this.player) {
+          this.particles.createSkidSmoke(this.player.position, 12);
+        }
+        this.ui?.showAnnouncement?.('🚀 BHAG KARACHI BHAG! · SOLDIER BAZAR', '#ffd700');
       },
       onSelectVersion: (versionId, source = 'main') => {
         this.setMajorGameVersion(versionId, true, source);
@@ -687,7 +699,7 @@ export class Game {
       return;
     }
 
-    const jumpStrength = (this.superJumpTimer > 0) ? 10.5 : 6.2;
+    const jumpStrength = (this.superJumpTimer > 0) ? 11.5 : 6.2;
     const jumped = this.player.jump(jumpStrength);
     if (jumped) {
       audio.playJump();
@@ -696,12 +708,35 @@ export class Game {
   }
 
   /**
+   * Calculate King Pressure Horn cooldown duration based on selected pace/difficulty:
+   * Easy: 4.0s (casual & forgiving)
+   * Standard: 8.0s (balanced arcade rhythm)
+   * Hard: 14.0s (tactical & high stakes)
+   */
+  getHornCooldownDuration() {
+    const pace = this.runnerDifficulty || 'standard';
+    if (pace === 'easy') return 4.0;
+    if (pace === 'hard') return 14.0;
+    return 8.0;
+  }
+
+  /**
    * Authentic Karachi King Pressure Horn (بادشاہ پریشر ہارن) [H]
-   * Emits supersonic acoustic shockwave, stuns robbers, scatters traffic
+   * Emits supersonic acoustic shockwave, stuns robbers, scatters traffic & clears mobile debris.
+   * Enforces pace-dependent cooldown and preserves structural hazards (wires, gutters, bridge signs).
    */
   triggerKingPressureHorn() {
     if (!this.player || this.isPaused || this.isGameOver) return;
     if (!this.isGameStarted) this.startGame();
+
+    // Check cooldown
+    if (this.hornCooldownTimer > 0) {
+      const remaining = Math.ceil(this.hornCooldownTimer);
+      this.ui?.showAnnouncement?.(`📢 HORN RECHARGING... (${remaining}s remaining)`, '#ffd600');
+      audio?.playClick?.();
+      return;
+    }
+
     const hornButton = document.getElementById('btn-horn');
     if (hornButton) {
       hornButton.classList.remove('is-honking');
@@ -711,6 +746,16 @@ export class Game {
     audio.playKingPressureHorn();
     audio.vibrate([60, 30, 80]);
     this.cameraShakeTimer = 0.35;
+
+    // Apply pace-dependent cooldown
+    const cooldownDuration = this.getHornCooldownDuration();
+    this.hornCooldownTimer = cooldownDuration;
+    this.maxHornCooldown = cooldownDuration;
+    if (hornButton) {
+      hornButton.classList.add('is-cooling-down');
+      const hint = hornButton.querySelector('.horn-hint');
+      if (hint) hint.textContent = `${Math.ceil(this.hornCooldownTimer)}s`;
+    }
 
     // Supersonic visual shockwave expanding from player position
     this.particles.createLevelUpShockwave(this.player.position, 24);
@@ -745,6 +790,44 @@ export class Game {
       });
     }
 
+    // Supersonic wave clears nearby movable runner obstacles ahead
+    if (this.runnerObstacles) {
+      this.runnerObstacles.forEach(obs => {
+        if (!obs.isHit && obs.mesh) {
+          const dz = this.player.position.z - obs.z;
+          if (dz > 0 && dz < 30.0) {
+            // Immovable structural hazards: high-voltage overhead wires, open sewer gutters/potholes, bridge signs
+            const isImmovableStructure = (
+              obs.type === 'wire' ||
+              obs.type === 'gutter' ||
+              obs.type === 'pothole' ||
+              obs.type === 'digging' ||
+              obs.type === 'overhead_bridge_sign' ||
+              obs.hazardType === 'HIGH_HAZARD'
+            );
+
+            if (isImmovableStructure) {
+              // Acoustic shockwave ripples against the barrier with a visual spark deflection
+              this.particles.createDevourSparkles(obs.mesh.position, 6, 0x00e5ff);
+              return;
+            }
+
+            // Movable/mobile obstacles are repelled or blasted aside
+            obs.isHit = true;
+            this.particles.createDevourSparkles(obs.mesh.position, 12, 0xffd700);
+            if (obs.type === 'snatcher' || obs.type === 'rickshaw' || obs.type === 'motorcycle') {
+              obs.mesh.position.x += (obs.mesh.position.x >= 0 ? 6.5 : -6.5);
+              obs.mesh.rotation.z += 0.5;
+            } else {
+              this.disposeRunnerObject(obs.mesh);
+            }
+            this.awardRunnerXP(250);
+            this.score += 250;
+          }
+        }
+      });
+    }
+
     if (stunnedCount > 0) {
       const pts = stunnedCount * 300;
       this.score = (this.score || 0) + pts;
@@ -757,27 +840,6 @@ export class Game {
       }
     } else {
       this.ui.showAnnouncement('📢 KING PRESSURE HORN BLAST! Traffic Cleared!', '#ffd600');
-    }
-
-    // Supersonic wave clears nearby runner obstacles ahead
-    if (this.runnerObstacles) {
-      this.runnerObstacles.forEach(obs => {
-        if (!obs.isHit && obs.mesh) {
-          const dz = this.player.position.z - obs.z;
-          if (dz > 0 && dz < 30.0) {
-            obs.isHit = true;
-            this.particles.createDevourSparkles(obs.mesh.position, 12, 0xffd700);
-            if (obs.type === 'snatcher' || obs.type === 'rickshaw') {
-              obs.mesh.position.x += (obs.mesh.position.x >= 0 ? 6.5 : -6.5);
-              obs.mesh.rotation.z += 0.5;
-            } else {
-              this.disposeRunnerObject(obs.mesh);
-            }
-            this.awardRunnerXP(250);
-            this.score += 250;
-          }
-        }
-      });
     }
   }
 
@@ -1820,8 +1882,8 @@ export class Game {
     }
 
     // Periodic "W-11 Minibus Surfing" Set-Piece Chunk (Trigger ramp + moving W-11 + bridge signs)
-    if (this.distanceMeters >= (this.nextSurfingBusDist || 260) && !this.isBusSurfing && (!this.surfingBuses || this.surfingBuses.length === 0) && !this.runnerJunction) {
-      this.nextSurfingBusDist = this.distanceMeters + 450;
+    if (this.distanceMeters >= (this.nextSurfingBusDist || 130) && !this.isBusSurfing && (!this.surfingBuses || this.surfingBuses.length === 0) && !this.runnerJunction) {
+      this.nextSurfingBusDist = this.distanceMeters + 260;
       this.spawnW11SurfingSetPiece(waveZ);
       alignWaveGroundY();
       return;
@@ -2048,25 +2110,29 @@ export class Game {
         this.runnerCoins.push({ mesh: coin, value: 50, x: freeLaneX, z: waveZ + zOff });
       });
     } else if (archetype === 7) {
-      // 8. NASCAR Asphalt Nitro Chevron Boost Pad (Instant Turbo Catapult!)
+      // 8. NASCAR Asphalt Boost Pad OR Hydraulic Spring Trampoline Launch Pad
       const padLaneIdx = Math.floor(Math.random() * 3);
       const padLaneX = lanes[padLaneIdx];
-      const pad = KarachiModels.createAsphaltBoostPad(2.4, 4.2);
+      const isSpring = Math.random() < 0.5;
+      const pad = isSpring
+        ? KarachiModels.createSpringLaunchPad(2.4, 3.8)
+        : KarachiModels.createAsphaltBoostPad(2.4, 4.2);
       pad.position.set(padLaneX, 0.02, waveZ);
       this.scene.add(pad);
       this.runnerBoostPads.push({
         mesh: pad,
         laneX: padLaneX,
         z: waveZ,
-        isUsed: false
+        isUsed: false,
+        isSpringPad: isSpring
       });
 
-      // Line of high-value golden coins along the boost pad
+      // Line of high-value golden coins along the boost/spring pad trajectory
       [-2.0, 0, 2.0].forEach(zOff => {
         const coin = KarachiModels.createRupeeCoin(100);
-        coin.position.set(padLaneX, 0.8, waveZ + zOff);
+        coin.position.set(padLaneX, isSpring ? 2.8 : 0.8, waveZ + zOff);
         this.scene.add(coin);
-        this.runnerCoins.push({ mesh: coin, value: 100, x: padLaneX, z: waveZ + zOff });
+        this.runnerCoins.push({ mesh: coin, value: 100, x: padLaneX, z: waveZ + zOff, isRoofCoin: isSpring });
       });
     } else if (archetype === 'soldier_tanker') {
       const laneX = lanes[Math.floor(Math.random() * lanes.length)];
@@ -2256,7 +2322,7 @@ export class Game {
 
     this.runnerWaveCount += 1;
     if (this.runnerWaveCount % 3 === 0) {
-      const pTypes = ['cng', 'shield', 'magnet', 'chai', 'jump', 'cricket_bat', 'mystery_box'];
+      const pTypes = ['cng', 'shield', 'magnet', 'chai', 'jump', 'jetpack', 'cricket_bat', 'mystery_box'];
       const chosenType = pTypes[this.runnerPowerupDropCount % pTypes.length];
       const blockedLanes = [
         ...this.runnerObstacles.slice(obstacleStartIndex)
@@ -4243,10 +4309,23 @@ export class Game {
           this.ui.showAnnouncement('🫖 DOODH PATTI CHAI! Restored 1 Heart ❤️!', '#00e676');
           this.ui.showFloatingFeedback('+1 ❤️ CHAI HEAL', this.player.position, '#00e676');
         } else if (type === 'jump') {
-          this.superJumpTimer = 8.0;
-          this.activePowerUp = { title: 'Hydraulic Jump Springs 👟', timer: 8.0 };
+          this.superJumpTimer = 10.0;
+          this.activePowerUp = { title: 'Hydraulic Jump Springs 👟', timer: 10.0 };
           audio.playJump();
-          this.ui.showAnnouncement('👟 HYDRAULIC JUMP SPRINGS! Super High Jumps! 🏙️', '#76ff03');
+          this.player.jump(11.5);
+          this.cameraShakeTimer = 0.2;
+          this.particles.createCelebrationConfetti(this.player.position, 30);
+          this.ui.showAnnouncement('👟 HYDRAULIC JUMP SPRINGS! High Aerial Clearance! 🏙️', '#76ff03');
+          this.ui.showFloatingFeedback('🚀 SUPER JUMP!', this.player.position, '#76ff03');
+          // Spawn overhead arc of high-value Rupee coins across the sky
+          for (let s = 1; s <= 7; s++) {
+            const skyZ = pPos.z - s * 5.2;
+            const arcY = 4.2 + Math.sin((s / 7) * Math.PI) * 2.0;
+            const skyCoin = KarachiModels.createRupeeCoin(100);
+            skyCoin.position.set(this.targetLaneX, arcY, skyZ);
+            this.scene.add(skyCoin);
+            this.runnerCoins.push({ mesh: skyCoin, x: this.targetLaneX, z: skyZ, value: 100, isRoofCoin: true });
+          }
         } else if (type === 'cricket_bat') {
           this.cricketBatTimer = 18.0;
           this.activePowerUp = { title: '🏏 Tape-Ball Cricket Bat', timer: 18.0 };
@@ -4623,14 +4702,35 @@ export class Game {
         );
         if ((absDz < 1.9 && distX < 1.3) || pathDistanceSq < 1.3 * 1.3) {
           b.isUsed = true;
-          audio.playBoostPad();
-          this.nitroTimer = Math.max(this.nitroTimer, 3.8);
-          this.cameraShakeTimer = 0.3;
-          this.awardRunnerXP(300);
-          this.score += 300;
-          this.particles.createDevourSparkles(b.mesh.position, 22, 0x00e5ff);
-          this.ui.showAnnouncement('🚀 STREET BOOST PAD! 180+ KM/H!', '#76ff03');
-          this.ui.showFloatingFeedback('⚡ SPEED BOOST!', pPos, '#76ff03');
+          if (b.isSpringPad) {
+            audio.playJump();
+            this.player.jump(12.5);
+            this.superJumpTimer = Math.max(this.superJumpTimer || 0, 6.0);
+            this.cameraShakeTimer = 0.25;
+            this.awardRunnerXP(300);
+            this.score += 300;
+            this.particles.createCelebrationConfetti(b.mesh.position, 28);
+            this.ui.showAnnouncement('👟 HYDRAULIC TRAMPOLINE! Mega Aerial Launch! 🏙️', '#76ff03');
+            this.ui.showFloatingFeedback('🚀 AERIAL LAUNCH!', pPos, '#76ff03');
+            // High sky coin trail ahead
+            for (let s = 1; s <= 6; s++) {
+              const skyZ = pPos.z - s * 5.5;
+              const arcY = 4.5 + Math.sin((s / 6) * Math.PI) * 2.2;
+              const skyCoin = KarachiModels.createRupeeCoin(100);
+              skyCoin.position.set(b.laneX, arcY, skyZ);
+              this.scene.add(skyCoin);
+              this.runnerCoins.push({ mesh: skyCoin, x: b.laneX, z: skyZ, value: 100, isRoofCoin: true });
+            }
+          } else {
+            audio.playBoostPad();
+            this.nitroTimer = Math.max(this.nitroTimer, 3.8);
+            this.cameraShakeTimer = 0.3;
+            this.awardRunnerXP(300);
+            this.score += 300;
+            this.particles.createDevourSparkles(b.mesh.position, 22, 0x00e5ff);
+            this.ui.showAnnouncement('🚀 STREET BOOST PAD! 180+ KM/H!', '#76ff03');
+            this.ui.showFloatingFeedback('⚡ SPEED BOOST!', pPos, '#76ff03');
+          }
         }
       }
     }
@@ -5083,6 +5183,13 @@ export class Game {
       this.nitroTimer = 0;
       this.shieldTimer = 0;
       this.superJumpTimer = 0;
+      this.hornCooldownTimer = 0;
+      const hornButton = document.getElementById('btn-horn');
+      if (hornButton) {
+        hornButton.classList.remove('is-cooling-down', 'is-recharged');
+        const hint = hornButton.querySelector('.horn-hint');
+        if (hint) hint.textContent = 'TAP / H';
+      }
       this.chingchiTimer = 0;
       this.jetpackTimer = 0;
       this.runnerInvulnerableTimer = 0;
@@ -5286,6 +5393,13 @@ export class Game {
     this.nitroTimer = 0;
     this.shieldTimer = 0;
     this.superJumpTimer = 0;
+    this.hornCooldownTimer = 0;
+    const hornButton = document.getElementById('btn-horn');
+    if (hornButton) {
+      hornButton.classList.remove('is-cooling-down', 'is-recharged');
+      const hint = hornButton.querySelector('.horn-hint');
+      if (hint) hint.textContent = 'TAP / H';
+    }
     this.chingchiTimer = 0;
     this.jetpackTimer = 0;
     this.coinComboCount = 0;
@@ -6539,6 +6653,24 @@ export class Game {
     if (this.superJumpTimer > 0) {
       this.superJumpTimer -= dt;
     }
+    if (this.hornCooldownTimer > 0) {
+      this.hornCooldownTimer = Math.max(0, this.hornCooldownTimer - dt);
+      const hornButton = document.getElementById('btn-horn');
+      if (hornButton) {
+        if (this.hornCooldownTimer > 0) {
+          hornButton.classList.add('is-cooling-down');
+          const hint = hornButton.querySelector('.horn-hint');
+          if (hint) hint.textContent = `${Math.ceil(this.hornCooldownTimer)}s`;
+        } else {
+          hornButton.classList.remove('is-cooling-down');
+          hornButton.classList.add('is-recharged');
+          setTimeout(() => hornButton.classList.remove('is-recharged'), 500);
+          const hint = hornButton.querySelector('.horn-hint');
+          if (hint) hint.textContent = 'TAP / H';
+          audio?.playHornReady?.();
+        }
+      }
+    }
     if (this.activePowerUp && this.activePowerUp.timer > 0) {
       this.activePowerUp.timer -= dt;
     } else {
@@ -6546,7 +6678,10 @@ export class Game {
     }
 
     if (this.isTempleRun) {
-      if (!this.isGameStarted) return;
+      if (!this.isGameStarted) {
+        this.updateMenuShowcase(dt);
+        return;
+      }
       this.updateTempleRunCorridor(dt);
       this.player.update(dt);
       this.particles.update(dt);
@@ -8037,15 +8172,69 @@ export class Game {
     });
   }
 
+  updateMenuShowcase(dt) {
+    if (!this.player || !this.camera) return;
+
+    if (!this.corridorChunks || this.corridorChunks.length === 0) {
+      this.initCorridorTerrain();
+    }
+
+    const time = (this.menuShowcaseTimer = (this.menuShowcaseTimer || 0) + dt);
+    const pZ = this.player.position.z || 0;
+
+    // 1. Cinematic 3D Camera Orbit showcase looking at runner
+    const camX = Math.sin(time * 0.45) * 1.5;
+    const camY = 1.95 + Math.sin(time * 0.35) * 0.12;
+    const camZ = pZ + 4.2 + Math.cos(time * 0.45) * 0.35;
+    this.camera.position.set(camX, camY, camZ);
+    this.camera.lookAt(0, 1.25, pZ - 3.0);
+
+    // 2. Ground and animate runner avatar idle breathing bounce
+    const groundY = this.getCorridorGroundHeight(pZ, 0);
+    this.player.position.set(0, groundY, pZ);
+    if (this.player.group) {
+      this.player.group.position.set(0, groundY, pZ);
+      this.player.group.rotation.y = Math.PI + Math.sin(time * 0.7) * 0.08;
+      this.player.group.rotation.z = 0;
+    }
+    if (this.player.avatarMesh) {
+      this.player.avatarMesh.position.y = Math.sin(time * 3.2) * 0.035;
+    }
+
+    // 3. Havaldar CD-70 Chaser motorcycle parked in background with pulsing sirens
+    if (this.chaserMesh) {
+      const chaserZ = pZ + 12.0;
+      const chaserY = this.getCorridorGroundHeight(chaserZ, 0);
+      this.chaserMesh.position.set(0, chaserY, chaserZ);
+      if (this.chaserMesh.userData?.blueSiren && this.chaserMesh.userData?.redSiren) {
+        const strobe = (Math.floor(Date.now() / 200) % 2 === 0);
+        this.chaserMesh.userData.blueSiren.material.emissiveIntensity = strobe ? 1.5 : 0.05;
+        this.chaserMesh.userData.redSiren.material.emissiveIntensity = strobe ? 0.05 : 1.5;
+      }
+    }
+
+    // 4. Parallax backdrop synchronization
+    if (this.skyDome) {
+      this.skyDome.position.set(0, 0, pZ);
+    }
+    if (this.skylineBackdrop) {
+      this.skylineBackdrop.position.set(0, 0, pZ);
+    }
+  }
+
   animate() {
     requestAnimationFrame(this.animate);
 
     try {
       const dt = Math.min(this.clock.getDelta(), 0.1);
 
-      if (!this.isGameOver && !this.isPaused) {
-        this.updatePhysics(dt);
-        this.updateMatchTimer(dt);
+      if (!this.isGameOver) {
+        if (!this.isGameStarted && this.isTempleRun) {
+          this.updateMenuShowcase(dt);
+        } else if (!this.isPaused) {
+          this.updatePhysics(dt);
+          this.updateMatchTimer(dt);
+        }
       }
 
       // Dynamic Arabian Sea wave motion and coastal bay buoy bobbing
@@ -8282,7 +8471,7 @@ export class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.19',
+            appVersion: '2.2.20',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };

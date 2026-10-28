@@ -224,10 +224,18 @@ export class UIManager {
     this.startModal.innerHTML = `
       <div class="modal-card start-mission-card">
         <div class="start-hero-header">
-          <h1 class="start-title">KARACHI RUNNER</h1>
-          <button class="secondary-btn ui-interactive home-shop-btn" id="btn-home-shop" aria-label="Open upgrade shop">
-            <span aria-hidden="true">🛒</span> SHOP
-          </button>
+          <div class="start-logo-wrap">
+            <span class="start-crest-badge">🇵🇰 KARACHI</span>
+            <h1 class="start-title">KARACHI RUNNER</h1>
+            <span class="start-urdu-sub">کراچی رنر · بھاگ کراچی بھاگ!</span>
+          </div>
+          <div class="start-career-strip">
+            <span class="career-pill" title="All-Time High Score">👑 <strong id="start-best-score">0</strong></span>
+            <span class="career-pill" title="Total Banked Rupees">🪙 <strong id="start-total-coins">0</strong> Rs</span>
+            <button class="secondary-btn ui-interactive home-shop-btn" id="btn-home-shop" aria-label="Open upgrade shop">
+              <span aria-hidden="true">🛒</span> SHOP
+            </button>
+          </div>
         </div>
 
         <div class="start-form-section">
@@ -781,6 +789,12 @@ export class UIManager {
   }
 
   refreshProgressionContent() {
+    const rStats = saveManager.get().runnerStats || {};
+    const bestScoreEl = document.getElementById('start-best-score');
+    if (bestScoreEl) bestScoreEl.textContent = Number(rStats.bestScore || 0).toLocaleString();
+    const totalCoinsEl = document.getElementById('start-total-coins');
+    if (totalCoinsEl) totalCoinsEl.textContent = Number(rStats.totalRupees || 0).toLocaleString();
+
     document.querySelectorAll('#start-district-grid .district-card').forEach(card => {
       const level = Number(card.dataset.level);
       const unlocked = saveManager.isDistrictUnlocked(level);
@@ -3620,6 +3634,18 @@ export class UIManager {
             if (this.onRestartGame) this.onRestartGame();
             return;
           }
+        }
+      }
+
+      if (this.startModal && this.startModal.style.display !== 'none' && !window.game?.isGameStarted) {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          const activeEl = document.activeElement;
+          if (activeEl && (activeEl.id === 'btn-home-help' || activeEl.id === 'btn-home-progress' || activeEl.id === 'btn-home-shop')) {
+            return;
+          }
+          e.preventDefault();
+          document.getElementById('btn-start-patrol')?.click();
+          return;
         }
       }
 

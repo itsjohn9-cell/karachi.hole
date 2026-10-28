@@ -1148,6 +1148,25 @@ class AudioManager {
     this.vibrate([60, 30, 80]);
   }
 
+  // King Pressure Horn Recharged Chime (dual bright pleasant harmonic chime)
+  playHornReady() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(523.25, t); // C5
+    osc.frequency.setValueAtTime(659.25, t + 0.08); // E5
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    osc.connect(gain);
+    gain.connect(this.masterGain || this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.22);
+  }
+
   // Muddy Sewer / Gutter Trap Splash Sound
   playGutterSplash() {
     if (!this.soundEnabled || this.isPaused) return;

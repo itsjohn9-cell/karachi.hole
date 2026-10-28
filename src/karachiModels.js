@@ -6009,6 +6009,63 @@ export const KarachiModels = {
   },
 
   // ---------------------------------------------------------------------------
+  // HYDRAULIC SPRING TRAMPOLINE LAUNCH PAD (Aerial Leap & Skyline Canopy)
+  // ---------------------------------------------------------------------------
+  createSpringLaunchPad(width = 2.4, length = 3.6) {
+    const group = new THREE.Group();
+
+    // Dark steel platform base
+    const baseGeo = new THREE.PlaneGeometry(width, length);
+    baseGeo.rotateX(-Math.PI / 2);
+    const baseMat = new THREE.MeshStandardMaterial({
+      color: 0x0a192f,
+      roughness: 0.7,
+      metalness: 0.5
+    });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.02;
+    base.receiveShadow = true;
+    group.add(base);
+
+    // Glowing Spring Trampoline Ring
+    const ringGeo = new THREE.RingGeometry(0.75, 1.05, 24);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x76ff03, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.y = 0.035;
+    group.add(ring);
+
+    // Chrome Spring Coil indicator in center
+    const coilGeo = new THREE.TorusGeometry(0.48, 0.08, 8, 20);
+    coilGeo.rotateX(Math.PI / 2);
+    const coilMat = new THREE.MeshStandardMaterial({ color: 0xffd600, metalness: 0.8, roughness: 0.2 });
+    const coil = new THREE.Mesh(coilGeo, coilMat);
+    coil.position.y = 0.04;
+    group.add(coil);
+
+    // Upward-pointing Neon Chevron
+    const arrowGeo = new THREE.ConeGeometry(0.35, 0.6, 3);
+    arrowGeo.rotateX(Math.PI / 2);
+    const arrowMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+    arrow.position.set(0, 0.045, -0.2);
+    group.add(arrow);
+
+    // Pulsing outer edge safety guides
+    const edgeGeo = new THREE.BoxGeometry(0.08, 0.04, length);
+    const edgeMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    const edgeL = new THREE.Mesh(edgeGeo, edgeMat);
+    edgeL.position.set(-width * 0.48, 0.03, 0);
+    const edgeR = new THREE.Mesh(edgeGeo, edgeMat);
+    edgeR.position.set(width * 0.48, 0.03, 0);
+    group.add(edgeL);
+    group.add(edgeR);
+
+    group.userData = { isSpringPad: true, isBoostPad: true };
+    return group;
+  },
+
+  // ---------------------------------------------------------------------------
   // KARACHI TRAFFIC POLICE HAVALDAR ON CD-70 MOTORCYCLE CHASER
   // ---------------------------------------------------------------------------
   createHavaldarMotorcycle() {
