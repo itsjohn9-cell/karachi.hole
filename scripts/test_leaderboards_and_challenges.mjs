@@ -144,3 +144,17 @@ test('LeaderboardService: Cloud sync configuration & Firebase URL compatibility'
   assert.equal(service.getCloudStatus().configured, false);
 });
 
+test('LeaderboardService: Master Mode complete and reset controls', () => {
+  const service = new LeaderboardService();
+  const resetState = service.resetDailyChallenges();
+  assert.equal(resetState.challenges.length, 3);
+  assert.equal(resetState.challenges.every(c => !c.completed), true);
+
+  const completedState = service.completeAllDailyChallenges();
+  assert.equal(completedState.challenges.every(c => c.completed), true);
+  assert.equal(completedState.challenges.every(c => c.current === c.target), true);
+
+  const freshReset = service.resetDailyChallenges();
+  assert.equal(freshReset.challenges.every(c => !c.completed), true);
+});
+

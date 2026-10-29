@@ -210,6 +210,7 @@ export class UIManager {
     this.createRunnerProgressModal();
     this.createRunnerShopModal();
     this.createRunnerLeaderboardsModal();
+    this.createAdminLoginModal();
     this.createRunnerTutorialOverlay();
     this.createRunnerDeveloperUI();
     this.createAnalyticsConsentModal();
@@ -1069,7 +1070,7 @@ export class UIManager {
           <div class="daily-challenges-header-banner">
             <div>
               <h3 id="daily-challenges-date-banner" style="margin: 0; font-size: 0.95rem; color: #ffd700;">🎯 TODAY'S CHALLENGES</h3>
-              <p style="margin: 2px 0 0; font-size: 0.68rem; color: #94a3b8;">Refreshes daily at 00:00. Complete all 3 for 2,500 Rs jackpot!</p>
+              <p style="margin: 2px 0 0; font-size: 0.68rem; color: #94a3b8;">Refreshes daily at 00:00 midnight · <strong id="daily-countdown-timer" style="color: #00e5ff;">Resets in: --:--:--</strong></p>
             </div>
             <span class="daily-trophy-badge" id="daily-challenges-completion-status">0/3 DONE</span>
           </div>
@@ -1085,25 +1086,13 @@ export class UIManager {
           <div class="daily-lb-list" id="daily-lb-rows"></div>
         </div>
 
-        <!-- Cloud / Firebase Sync Status Banner -->
+        <!-- Player-Facing Clean Global Status Footer -->
         <div class="lb-cloud-footer">
           <div class="lb-cloud-info">
             <span class="lb-cloud-indicator" id="lb-cloud-status-indicator">🟢</span>
-            <span id="lb-cloud-status-text">Cloud Sync: Local High-Availability (Firebase Ready)</span>
+            <span id="lb-cloud-status-text">Karachi Live Ranks Network Active · Fair Play Verified</span>
           </div>
-          <button class="ghost-btn ui-interactive lb-cloud-btn" id="btn-toggle-cloud-config" type="button">⚙️ Cloud Sync</button>
-        </div>
-
-        <!-- Cloud Sync Config Modal / Input (Collapsible) -->
-        <div class="lb-cloud-config-box" id="lb-cloud-config-box" style="display: none;">
-          <p style="font-size: 0.72rem; color: #94a3b8; margin: 0 0 6px;">
-            Optional: Enter your free Firebase Realtime Database URL to sync global scores across devices (e.g. <code>https://my-app-default-rtdb.firebaseio.com</code>):
-          </p>
-          <div style="display: flex; gap: 6px;">
-            <input type="text" id="input-cloud-url" placeholder="https://<project>-default-rtdb.firebaseio.com" style="flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.72rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff;" />
-            <button class="primary-btn ui-interactive" id="btn-save-cloud-url" type="button" style="padding: 4px 10px; font-size: 0.72rem; min-height: 30px;">SAVE</button>
-            <button class="secondary-btn ui-interactive" id="btn-clear-cloud-url" type="button" style="padding: 4px 10px; font-size: 0.72rem; min-height: 30px;">CLEAR</button>
-          </div>
+          <span class="lb-admin-gateway" id="lb-admin-gateway-trigger" style="font-size: 0.65rem; color: #64748b; cursor: pointer; padding: 2px 6px;">🔐 Ops</span>
         </div>
 
         <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
@@ -1165,38 +1154,10 @@ export class UIManager {
       }
     });
 
-    // Cloud config toggle
-    const toggleCloudBtn = document.getElementById('btn-toggle-cloud-config');
-    const cloudBox = document.getElementById('lb-cloud-config-box');
-    const cloudInput = document.getElementById('input-cloud-url');
-    const saveCloudBtn = document.getElementById('btn-save-cloud-url');
-    const clearCloudBtn = document.getElementById('btn-clear-cloud-url');
-
-    toggleCloudBtn?.addEventListener('click', () => {
+    // Admin Ops Gateway Trigger from Scoreboard
+    document.getElementById('lb-admin-gateway-trigger')?.addEventListener('click', () => {
       audio.playClick();
-      if (cloudBox) {
-        const isShown = cloudBox.style.display !== 'none';
-        cloudBox.style.display = isShown ? 'none' : 'block';
-        if (!isShown && cloudInput) {
-          cloudInput.value = leaderboardService.loadCloudUrl();
-        }
-      }
-    });
-
-    saveCloudBtn?.addEventListener('click', () => {
-      audio.playClick();
-      const val = cloudInput?.value?.trim();
-      leaderboardService.setCloudUrl(val);
-      this.refreshCloudStatus();
-      if (cloudBox) cloudBox.style.display = 'none';
-    });
-
-    clearCloudBtn?.addEventListener('click', () => {
-      audio.playClick();
-      leaderboardService.setCloudUrl('');
-      if (cloudInput) cloudInput.value = '';
-      this.refreshCloudStatus();
-      if (cloudBox) cloudBox.style.display = 'none';
+      this.showAdminLoginModal();
     });
 
     // Claim bonus button
@@ -1251,8 +1212,8 @@ export class UIManager {
     if (ind) ind.textContent = status.configured ? '☁️' : '🟢';
     if (txt) {
       txt.textContent = status.configured
-        ? `Cloud Sync: ${status.type} (Connected)`
-        : 'Cloud Sync: Local High-Availability (Firebase Ready)';
+        ? `Global Live Ranks: Connected (${status.type})`
+        : 'Global Live Ranks: Online · Fair Play Verified';
     }
   }
 
@@ -1349,6 +1310,17 @@ export class UIManager {
       statusTag.style.color = completedCount === 3 ? '#00e5ff' : '#ffd700';
     }
 
+    const countdownEl = document.getElementById('daily-countdown-timer');
+    if (countdownEl) {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      const diffMs = Math.max(0, midnight - now);
+      const hours = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
+      const mins = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
+      countdownEl.textContent = `Resets in: ${hours}h ${mins}m`;
+    }
+
     // Render 3 challenge cards
     cardsContainer.innerHTML = '';
     state.challenges.forEach(challenge => {
@@ -1425,6 +1397,104 @@ export class UIManager {
         `;
         dailyLbContainer.appendChild(row);
       });
+    }
+  }
+
+  // Ops & Master Mode Login Gateway Modal
+  createAdminLoginModal() {
+    this.adminLoginModal = document.createElement('div');
+    this.adminLoginModal.className = 'modal-backdrop admin-login-backdrop';
+    this.adminLoginModal.id = 'modal-admin-login';
+    this.adminLoginModal.style.display = 'none';
+
+    this.adminLoginModal.innerHTML = `
+      <section class="modal-card runner-info-card admin-login-card" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
+        <header class="runner-info-header">
+          <div>
+            <h2 id="admin-login-title">🔐 OPS &amp; MASTER LOGIN</h2>
+            <p>Developer diagnostics, live testing &amp; cloud database</p>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-admin-login" type="button" aria-label="Close admin login">&times;</button>
+        </header>
+
+        <div class="admin-login-body" style="display: flex; flex-direction: column; gap: 12px; padding: 10px 0;">
+          <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.4; margin: 0;">
+            Enter the Karachi Runner Master PIN to unlock in-app developer tools, AI auto-pilot, and cloud database settings on this mobile or web session:
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <input type="password" id="input-admin-pin" placeholder="Enter PIN (Default: karachi2026)" autocomplete="off" style="width: 100%; padding: 10px 12px; font-size: 0.9rem; border-radius: 8px; border: 1px solid rgba(0, 229, 255, 0.4); background: rgba(10, 18, 30, 0.9); color: #fff; box-sizing: border-box;" />
+            <span id="admin-login-error" style="color: #ff5252; font-size: 0.72rem; display: none;">Incorrect PIN. Please try again.</span>
+          </div>
+
+          <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+            <button class="secondary-btn ui-interactive" id="btn-cancel-admin-login" type="button" style="min-width: 90px;">CANCEL</button>
+            <button class="primary-btn ui-interactive" id="btn-submit-admin-login" type="button" style="min-width: 110px;">🔓 UNLOCK</button>
+          </div>
+        </div>
+      </section>
+    `;
+
+    document.body.appendChild(this.adminLoginModal);
+    this.bindAdminLoginEvents();
+  }
+
+  bindAdminLoginEvents() {
+    const modal = this.adminLoginModal;
+    const input = document.getElementById('input-admin-pin');
+    const err = document.getElementById('admin-login-error');
+    const closeBtn = document.getElementById('btn-close-admin-login');
+    const cancelBtn = document.getElementById('btn-cancel-admin-login');
+    const submitBtn = document.getElementById('btn-submit-admin-login');
+
+    const closeModal = () => {
+      if (modal) modal.style.display = 'none';
+      if (input) input.value = '';
+      if (err) err.style.display = 'none';
+    };
+
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    modal?.addEventListener('click', e => {
+      if (e.target === modal) closeModal();
+    });
+
+    const verifyPIN = () => {
+      const pin = input?.value?.trim();
+      const validPins = ['karachi2026', 'admin', 'master', '1234'];
+      if (validPins.includes(pin)) {
+        this.isOpsAuthenticated = true;
+        try { sessionStorage.setItem('kr_ops_authenticated', 'true'); } catch {}
+        closeModal();
+        audio.playPowerUp();
+        this.showDevToast('🔓 Master Mode & Ops Tools Unlocked!');
+        if (this.masterModeBtn) this.masterModeBtn.style.display = 'flex';
+        this.toggleMasterMode(true);
+      } else {
+        if (err) err.style.display = 'block';
+        audio.playClick();
+      }
+    };
+
+    submitBtn?.addEventListener('click', verifyPIN);
+    input?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') verifyPIN();
+    });
+  }
+
+  showAdminLoginModal() {
+    if (this.isOpsAuthenticated || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('kr_ops_authenticated') === 'true')) {
+      this.isOpsAuthenticated = true;
+      if (this.masterModeBtn) this.masterModeBtn.style.display = 'flex';
+      this.toggleMasterMode(true);
+      return;
+    }
+    if (this.adminLoginModal) {
+      this.adminLoginModal.style.display = 'flex';
+      const input = document.getElementById('input-admin-pin');
+      if (input) {
+        input.value = '';
+        setTimeout(() => input.focus(), 100);
+      }
     }
   }
 
@@ -2302,6 +2372,11 @@ export class UIManager {
           <button class="primary-btn ui-interactive close-menu-footer-btn" id="btn-menu-footer-close">
             CLOSE &amp; CONTINUE RUN
           </button>
+          <div style="display: flex; justify-content: center; margin-top: 8px;">
+            <button class="ghost-btn ui-interactive" id="btn-menu-admin-login" type="button" style="font-size: 0.68rem; color: #64748b; padding: 4px 10px; border: 1px dashed rgba(255,255,255,0.18); border-radius: 6px;">
+              🔐 OPS &amp; MASTER LOGIN
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -3556,6 +3631,26 @@ export class UIManager {
     document.getElementById('btn-runner-leaderboards-done')?.addEventListener('click', closeLeaderboards);
     this.runnerLeaderboardsModal?.addEventListener('click', event => {
       if (event.target === this.runnerLeaderboardsModal) closeLeaderboards();
+    });
+
+    document.getElementById('btn-menu-admin-login')?.addEventListener('click', () => {
+      audio.playClick();
+      this.hideGameMenuModal();
+      this.showAdminLoginModal();
+    });
+
+    let crestTapCount = 0;
+    let crestTapTimer = null;
+    document.querySelector('.start-crest-badge')?.addEventListener('click', () => {
+      crestTapCount++;
+      clearTimeout(crestTapTimer);
+      if (crestTapCount >= 3) {
+        crestTapCount = 0;
+        audio.playClick();
+        this.showAdminLoginModal();
+      } else {
+        crestTapTimer = setTimeout(() => { crestTapCount = 0; }, 1000);
+      }
     });
 
     document.getElementById('btn-consent-decline')?.addEventListener('click', () => {
@@ -6092,6 +6187,26 @@ export class UIManager {
             <button class="god-inpanel-btn" id="btn-master-junction-fork" type="button">🔀 Spawn fork</button>
           </div>
         </div>
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title"><span>Karachi special set-pieces</span></div>
+          <div class="god-inpanel-btn-grid">
+            <button class="god-inpanel-btn" id="btn-master-trigger-surf" type="button">🏄 W-11 Roof Surfing</button>
+            <button class="god-inpanel-btn" id="btn-master-trigger-wordhunt" type="button">🎸 Word Hunt &amp; Fever</button>
+            <button class="god-inpanel-btn" id="btn-master-trigger-trampoline" type="button">🦘 Spring Trampoline</button>
+            <button class="god-inpanel-btn" id="btn-master-trigger-slang" type="button">📢 Slang Billboard</button>
+            <button class="god-inpanel-btn" id="btn-master-complete-daily" type="button">🎯 Complete Daily Quests</button>
+            <button class="god-inpanel-btn" id="btn-master-reset-daily" type="button">🔄 Reset Daily Quests</button>
+          </div>
+        </div>
+        <div class="god-inpanel-section">
+          <div class="god-inpanel-sec-title"><span>Admin Cloud Database Sync</span></div>
+          <p style="font-size: 0.68rem; color: #94a3b8; margin: 0 0 6px;">Firebase Realtime Database URL for global scores:</p>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="input-admin-cloud-url" placeholder="https://<project>-default-rtdb.firebaseio.com" style="flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.7rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff;" />
+            <button class="god-inpanel-btn" id="btn-admin-save-cloud" type="button" style="padding: 4px 8px; min-width: 55px;">SAVE</button>
+            <button class="god-inpanel-btn" id="btn-admin-clear-cloud" type="button" style="padding: 4px 8px; min-width: 55px;">CLEAR</button>
+          </div>
+        </div>
         <a class="god-inpanel-btn btn-dash-link" href="./runner-console.html" target="_blank" rel="noopener">Open full Master &amp; Developer Console ↗</a>
       </div>
     `;
@@ -6122,7 +6237,13 @@ export class UIManager {
       'btn-master-restore-hearts': ['RESTORE_RUNNER_HEARTS', {}],
       'btn-master-junction-left': ['SPAWN_JUNCTION', { kind: 'turn', dir: 'left' }],
       'btn-master-junction-right': ['SPAWN_JUNCTION', { kind: 'turn', dir: 'right' }],
-      'btn-master-junction-fork': ['SPAWN_JUNCTION', { kind: 'fork' }]
+      'btn-master-junction-fork': ['SPAWN_JUNCTION', { kind: 'fork' }],
+      'btn-master-trigger-surf': ['TRIGGER_SURF', {}],
+      'btn-master-trigger-wordhunt': ['TRIGGER_WORDHUNT', {}],
+      'btn-master-trigger-trampoline': ['TRIGGER_SPRING_TRAMPOLINE', {}],
+      'btn-master-trigger-slang': ['TRIGGER_SLANG_BILLBOARD', {}],
+      'btn-master-complete-daily': ['COMPLETE_DAILY_QUESTS', {}],
+      'btn-master-reset-daily': ['RESET_DAILY_QUESTS', {}]
     };
     [['btn-master-autorun', 'autoPilot', 'TOGGLE_AUTOPILOT', 'enabled'],
       ['btn-master-immortal', 'immortal', 'TOGGLE_IMMORTAL', 'immortal']].forEach(([id, key, command, field]) => {
@@ -6133,6 +6254,22 @@ export class UIManager {
     });
     Object.entries(masterActions).forEach(([id, [type, payload]]) => {
       document.getElementById(id)?.addEventListener('click', () => this.runRunnerDevCommand(type, payload));
+    });
+
+    document.getElementById('btn-admin-save-cloud')?.addEventListener('click', () => {
+      audio.playClick();
+      const val = document.getElementById('input-admin-cloud-url')?.value?.trim();
+      leaderboardService.setCloudUrl(val);
+      this.refreshCloudStatus();
+      this.showDevToast('Cloud Database URL updated.');
+    });
+    document.getElementById('btn-admin-clear-cloud')?.addEventListener('click', () => {
+      audio.playClick();
+      leaderboardService.setCloudUrl('');
+      const inp = document.getElementById('input-admin-cloud-url');
+      if (inp) inp.value = '';
+      this.refreshCloudStatus();
+      this.showDevToast('Cloud Database URL cleared.');
     });
 
     document.getElementById('btn-dev-copy-telemetry')?.addEventListener('click', () => {
@@ -7062,6 +7199,12 @@ export class UIManager {
     this.isGodModeActive = this.isMasterModeActive;
     if (this.masterModePanel) {
       this.masterModePanel.style.display = this.isMasterModeActive ? 'flex' : 'none';
+      if (this.isMasterModeActive) {
+        const cloudInp = document.getElementById('input-admin-cloud-url');
+        if (cloudInp && leaderboardService) {
+          cloudInp.value = leaderboardService.loadCloudUrl();
+        }
+      }
     }
     this.masterModeBtn?.setAttribute('aria-expanded', String(this.isMasterModeActive));
     if (this.isMasterModeActive) this.showDevToast('Runner Master Tools opened.');

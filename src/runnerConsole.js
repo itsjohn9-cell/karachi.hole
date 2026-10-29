@@ -745,6 +745,48 @@ class RunnerOpsConsole {
       this.showToast('🌦️ Natural Weather Cycle Restored');
     });
 
+    // 9. Karachi Special Set-Pieces & Daily Quests
+    const specialActions = {
+      'btn-master-trigger-surf': ['TRIGGER_SURF', {}, '🏄 W-11 Minibus roof surfing spawned ahead!'],
+      'btn-master-trigger-wordhunt': ['TRIGGER_WORDHUNT', {}, '🎸 KARACHI Word Complete & Junoon Fever activated!'],
+      'btn-master-trigger-trampoline': ['TRIGGER_SPRING_TRAMPOLINE', {}, '🦘 Hydraulic Spring Trampoline pad deployed ahead!'],
+      'btn-master-trigger-slang': ['TRIGGER_SLANG_BILLBOARD', {}, '📢 Karachi slang billboard spawned ahead!'],
+      'btn-master-complete-daily': ['COMPLETE_DAILY_QUESTS', {}, '🎯 All daily challenges completed!'],
+      'btn-master-reset-daily': ['RESET_DAILY_QUESTS', {}, '🔄 Daily challenges reset to fresh seed!']
+    };
+    Object.entries(specialActions).forEach(([id, [command, payload, msg]]) => {
+      document.getElementById(id)?.addEventListener('click', () => {
+        this.sendCommand(command, payload);
+        this.recordOpsEvent('master.command', { command, ...payload });
+        this.showToast(msg);
+      });
+    });
+
+    // 10. Admin Cloud Sync Configuration
+    const cloudInp = document.getElementById('input-dash-cloud-url');
+    if (cloudInp) {
+      try {
+        cloudInp.value = localStorage.getItem('karachi_runner_cloud_url_v1') || '';
+      } catch (_) {}
+    }
+    document.getElementById('btn-dash-save-cloud')?.addEventListener('click', () => {
+      const val = cloudInp?.value?.trim() || '';
+      try {
+        if (val) localStorage.setItem('karachi_runner_cloud_url_v1', val);
+        else localStorage.removeItem('karachi_runner_cloud_url_v1');
+        this.showToast(val ? '☁️ Cloud Database URL saved.' : '☁️ Cloud URL cleared.');
+      } catch (e) {
+        this.showToast('Could not save cloud URL.');
+      }
+    });
+    document.getElementById('btn-dash-clear-cloud')?.addEventListener('click', () => {
+      if (cloudInp) cloudInp.value = '';
+      try {
+        localStorage.removeItem('karachi_runner_cloud_url_v1');
+        this.showToast('☁️ Cloud Database URL cleared.');
+      } catch (_) {}
+    });
+
     // Obstacle Master tab actions
     document.getElementById('btn-spawn-test-obstacle')?.addEventListener('click', () => {
       const type = document.getElementById('ops-obstacle-type')?.value;

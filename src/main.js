@@ -9067,6 +9067,93 @@ export class Game {
         if (this.ui?.showDevToast) this.ui.showDevToast('🏎️ Highway Traffic Convoy Deployed!');
         break;
 
+      case 'TRIGGER_SURF':
+        if (!this.isTempleRun || !this.isGameStarted || this.isPaused || this.isGameOver) {
+          this.ui?.showDevToast('Start an active Runner session first.');
+          break;
+        }
+        this.spawnW11SurfingSetPiece();
+        this.ui?.showDevToast('🏄 W-11 Minibus Roof Surfing Spawned Ahead!');
+        break;
+
+      case 'TRIGGER_WORDHUNT':
+        if (!this.isTempleRun || !this.isGameStarted || this.isPaused || this.isGameOver) {
+          this.ui?.showDevToast('Start an active Runner session first.');
+          break;
+        }
+        this.wordHuntCollected = ['K', 'A', 'R', 'A', 'C', 'H', 'I'];
+        this.coins += 5000;
+        this.score += 5000;
+        this.awardRunnerXP(5000);
+        this.activateJunoonFever();
+        if (this.ui?.updateWordHunt) this.ui.updateWordHunt(['K', 'A', 'R', 'A', 'C', 'H', 'I']);
+        this.ui?.showAnnouncement('🎉 WORD COMPLETE: K-A-R-A-C-H-I! 5,000 RS + JUNOON FEVER RUSH! 🎸🔥', '#ffd700');
+        this.ui?.showDevToast('🎸 KARACHI Word Complete & Junoon Fever Rush Triggered!');
+        break;
+
+      case 'TRIGGER_SPRING_TRAMPOLINE':
+        if (!this.isTempleRun || !this.isGameStarted || this.isPaused || this.isGameOver) {
+          this.ui?.showDevToast('Start an active Runner session first.');
+          break;
+        }
+        {
+          const laneX = [-this.laneWidth, 0, this.laneWidth][(this.currentLane || 0) + 1] || 0;
+          const pz = this.player ? this.player.position.z - 20.0 : -30.0;
+          const pad = KarachiModels.createSpringLaunchPad(2.4, 3.8);
+          pad.position.set(laneX, 0.02, pz);
+          this.scene.add(pad);
+          this.runnerBoostPads.push({
+            mesh: pad,
+            laneX,
+            z: pz,
+            isUsed: false,
+            isSpringPad: true
+          });
+          [-2.0, 0, 2.0].forEach(zOff => {
+            const coin = KarachiModels.createRupeeCoin(100);
+            coin.position.set(laneX, 2.8, pz + zOff);
+            this.scene.add(coin);
+            this.runnerCoins.push({ mesh: coin, value: 100, x: laneX, z: pz + zOff, isRoofCoin: true });
+          });
+          this.ui?.showDevToast('🦘 Hydraulic Spring Trampoline Pad Spawned Ahead!');
+        }
+        break;
+
+      case 'TRIGGER_SLANG_BILLBOARD':
+        if (!this.isTempleRun || !this.isGameStarted || this.isPaused || this.isGameOver) {
+          this.ui?.showDevToast('Start an active Runner session first.');
+          break;
+        }
+        {
+          const pz = this.player ? this.player.position.z - 25.0 : -30.0;
+          const side = Math.random() < 0.5 ? -1 : 1;
+          const slangBoard = KarachiModels.createSlangBillboard?.(Math.floor(Math.random() * 8));
+          if (slangBoard) {
+            const groundY = typeof this.getCorridorGroundHeight === 'function' ? this.getCorridorGroundHeight(pz, side * 9.5) : 0;
+            slangBoard.position.set(side * 9.5, groundY, pz);
+            this.scene.add(slangBoard);
+            this.scenery.push(slangBoard);
+          }
+          this.ui?.showDevToast('📢 Karachi Slang Billboard Spawned Ahead!');
+        }
+        break;
+
+      case 'COMPLETE_DAILY_QUESTS':
+        if (leaderboardService.completeAllDailyChallenges) {
+          leaderboardService.completeAllDailyChallenges();
+          this.ui?.renderDailyChallenges?.();
+          this.ui?.showDevToast('🎯 All 3 Daily Challenges Completed!');
+        }
+        break;
+
+      case 'RESET_DAILY_QUESTS':
+        if (leaderboardService.resetDailyChallenges) {
+          leaderboardService.resetDailyChallenges();
+          this.ui?.renderDailyChallenges?.();
+          this.ui?.showDevToast('🔄 Daily Challenges Reset to Fresh Seed!');
+        }
+        break;
+
       case 'TOGGLE_NASCAR_SPEED':
         this.isNascarSuperSpeed = !this.isNascarSuperSpeed;
         if (this.ui?.showDevToast) this.ui.showDevToast(this.isNascarSuperSpeed ? '🏁 HIGH-SPEED MODE ACTIVE!' : '🏎️ STANDARD SPEED ACTIVE');

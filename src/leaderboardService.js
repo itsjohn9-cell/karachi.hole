@@ -515,6 +515,30 @@ export class LeaderboardService {
     };
   }
 
+  completeAllDailyChallenges(date = new Date()) {
+    const state = this.getDailyChallenges(date);
+    state.challenges.forEach(c => {
+      c.current = c.target;
+      c.completed = true;
+      c.completedAt = Date.now();
+    });
+    this.saveDailyChallengesState(state);
+    return state;
+  }
+
+  resetDailyChallenges(date = new Date()) {
+    const dateKey = this.getDateSeed(date);
+    const challenges = this.generateChallengesForDate(dateKey);
+    const state = {
+      dateKey,
+      challenges,
+      claimed: {},
+      allCompletedBonusClaimed: false
+    };
+    this.saveDailyChallengesState(state);
+    return state;
+  }
+
   // --- Daily Challenge Leaderboards ---
   getDailyChallengeLeaderboard() {
     const dateKey = this.getDateSeed();
