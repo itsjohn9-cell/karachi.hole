@@ -942,7 +942,7 @@ export class Game {
   /**
    * Clear all active runner 3D obstacles, coins, traffic and power-ups from scene
    */
-  clearRunnerObjects() {
+  clearRunnerObjects(keepPlayerStatus = false) {
     this.cancelRunnerDeathAnimation();
     this.isFastFalling = false;
     this.laneChangeTimer = this.laneChangeDuration || 0.18;
@@ -983,56 +983,59 @@ export class Game {
       });
       this.runnerBoostPads = [];
     }
-    if (this.surfingBuses) {
-      this.surfingBuses.forEach(b => {
-        if (b && b.mesh) this.disposeRunnerObject(b.mesh);
-      });
-      this.surfingBuses = [];
-    }
-    this.isBusSurfing = false;
-    this.busSurfingTimer = 0.0;
-    this.surfingBus = null;
-    this.nextSurfingBusDist = 260;
-    this.isDrafting = false;
-    this.draftCharge = 0;
-    this.runnerStumbleTimer = 0;
-    this.doubleCoinsTimer = 0;
     if (this.runnerWordLetters) {
       this.runnerWordLetters.forEach(l => {
         if (l && l.mesh) this.disposeRunnerObject(l.mesh);
       });
       this.runnerWordLetters = [];
     }
-    if (this.chaserMesh) {
-      this.disposeRunnerObject(this.chaserMesh);
-      this.chaserMesh = null;
-    }
-    if (this.cricketBatMesh && this.player?.group) {
-      this.player.group.remove(this.cricketBatMesh);
-      this.disposeRunnerObject(this.cricketBatMesh);
-      this.cricketBatMesh = null;
-    }
-    if (this.hoverboardMesh) {
-      this.disposeRunnerObject(this.hoverboardMesh);
-      this.hoverboardMesh = null;
-    }
-    this.feverTimer = 0;
-    this.isFeverActive = false;
-    this.feverCharge = 0;
-    this.cricketBatTimer = 0;
-    this.hoverboardTimer = 0;
-    this.runnerComboStreak = 1;
-    this.runnerComboTimer = 0;
-    this.wordHuntCollected = [];
-    this.wordHuntNextIndex = 0;
-    if (this.ui?.updateWordHunt) this.ui.updateWordHunt([]);
-    if (this.ui?.updateFeverMeter) this.ui.updateFeverMeter(0, false);
-    if (this.ui?.updateHoverboard) this.ui.updateHoverboard(0, 0);
-    if (typeof audio !== 'undefined' && audio.resetMusicPitch) {
-      audio.resetMusicPitch();
-    }
-    if (typeof AvatarBuilder !== 'undefined' && AvatarBuilder.resetDeathAnimation && this.player?.avatarMesh) {
-      AvatarBuilder.resetDeathAnimation(this.player.avatarMesh);
+
+    if (!keepPlayerStatus) {
+      if (this.surfingBuses) {
+        this.surfingBuses.forEach(b => {
+          if (b && b.mesh) this.disposeRunnerObject(b.mesh);
+        });
+        this.surfingBuses = [];
+      }
+      this.isBusSurfing = false;
+      this.busSurfingTimer = 0.0;
+      this.surfingBus = null;
+      this.nextSurfingBusDist = 260;
+      this.isDrafting = false;
+      this.draftCharge = 0;
+      this.runnerStumbleTimer = 0;
+      this.doubleCoinsTimer = 0;
+      if (this.chaserMesh) {
+        this.disposeRunnerObject(this.chaserMesh);
+        this.chaserMesh = null;
+      }
+      if (this.cricketBatMesh && this.player?.group) {
+        this.player.group.remove(this.cricketBatMesh);
+        this.disposeRunnerObject(this.cricketBatMesh);
+        this.cricketBatMesh = null;
+      }
+      if (this.hoverboardMesh) {
+        this.disposeRunnerObject(this.hoverboardMesh);
+        this.hoverboardMesh = null;
+      }
+      this.feverTimer = 0;
+      this.isFeverActive = false;
+      this.feverCharge = 0;
+      this.cricketBatTimer = 0;
+      this.hoverboardTimer = 0;
+      this.runnerComboStreak = 1;
+      this.runnerComboTimer = 0;
+      this.wordHuntCollected = [];
+      this.wordHuntNextIndex = 0;
+      if (this.ui?.updateWordHunt) this.ui.updateWordHunt([]);
+      if (this.ui?.updateFeverMeter) this.ui.updateFeverMeter(0, false);
+      if (this.ui?.updateHoverboard) this.ui.updateHoverboard(0, 0);
+      if (typeof audio !== 'undefined' && audio.resetMusicPitch) {
+        audio.resetMusicPitch();
+      }
+      if (typeof AvatarBuilder !== 'undefined' && AvatarBuilder.resetDeathAnimation && this.player?.avatarMesh) {
+        AvatarBuilder.resetDeathAnimation(this.player.avatarMesh);
+      }
     }
   }
 
@@ -9922,7 +9925,8 @@ export class Game {
       }
     }
     this.removeRunnerJunction();
-    this.clearRunnerObjects();
+    this.clearRunnerObjects(true);
+    this.nextWordLetterZ = junctionZ - 30.0;
     this.corridorElevation = 0.0;
     if (!crossChunks.length) this.initCorridorTerrain();
     const preservedLane = Math.max(-1, Math.min(1, turn?.incomingLane ?? this.currentLane ?? 0));

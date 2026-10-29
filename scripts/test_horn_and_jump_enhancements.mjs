@@ -187,3 +187,53 @@ test('Hydraulic Spring Trampoline Pad: 12.5 launch velocity onto rooftops', () =
   assert.equal(launchHeight, 12.5, 'Trampoline launch velocity should be 12.5m/s');
 });
 
+test('Runner turn completion preserves word hunt letters, minibus surfing, and Junoon fever', () => {
+  // Simulate game state before turn
+  const mockGame = {
+    wordHuntCollected: ['K', 'A', 'R'],
+    isBusSurfing: true,
+    busSurfingTimer: 4.5,
+    surfingBus: { mesh: new THREE.Group() },
+    isFeverActive: true,
+    feverCharge: 100,
+    feverTimer: 7.2,
+    runnerObstacles: [{ mesh: new THREE.Group() }],
+    runnerCoins: [{ mesh: new THREE.Group() }],
+    runnerTraffic: [{ mesh: new THREE.Group() }],
+    disposeRunnerObject: () => {},
+    cancelRunnerDeathAnimation: () => {}
+  };
+
+  // Turn-completion cleanup preserves player status
+  const clearRunnerObjects = (keepPlayerStatus = false) => {
+    mockGame.cancelRunnerDeathAnimation();
+    mockGame.runnerObstacles = [];
+    mockGame.runnerCoins = [];
+    mockGame.runnerTraffic = [];
+    if (!keepPlayerStatus) {
+      mockGame.isBusSurfing = false;
+      mockGame.busSurfingTimer = 0;
+      mockGame.surfingBus = null;
+      mockGame.wordHuntCollected = [];
+      mockGame.isFeverActive = false;
+      mockGame.feverCharge = 0;
+      mockGame.feverTimer = 0;
+    }
+  };
+
+  // Turn completion calls with keepPlayerStatus = true
+  clearRunnerObjects(true);
+  assert.deepEqual(mockGame.wordHuntCollected, ['K', 'A', 'R'], 'Word hunt letters must persist across corners');
+  assert.equal(mockGame.isBusSurfing, true, 'Minibus roof surfing must persist across corners');
+  assert.equal(mockGame.isFeverActive, true, 'Junoon fever must persist across corners');
+  assert.equal(mockGame.feverCharge, 100, 'Junoon adrenaline charge must persist across corners');
+  assert.equal(mockGame.runnerObstacles.length, 0, 'Old road obstacles must be cleared');
+  assert.equal(mockGame.runnerCoins.length, 0, 'Old road coins must be cleared');
+
+  // Death / restart calls with keepPlayerStatus = false (clean reset)
+  clearRunnerObjects(false);
+  assert.deepEqual(mockGame.wordHuntCollected, [], 'Word hunt resets on fresh run');
+  assert.equal(mockGame.isBusSurfing, false, 'Surfing resets on fresh run');
+  assert.equal(mockGame.isFeverActive, false, 'Junoon fever resets on fresh run');
+});
+

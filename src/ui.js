@@ -6110,7 +6110,7 @@ export class UIManager {
         <div class="dev-header-title"><span>🛠️</span><span>RUNNER LIVE DIAGNOSTICS</span></div>
         <div class="dev-header-actions">
           <button class="dev-icon-btn" id="btn-dev-minimize" title="Minimize diagnostics">_</button>
-          <button class="dev-icon-btn" id="btn-dev-close" title="Close diagnostics">&times;</button>
+          <button class="god-close-btn" id="btn-dev-close" title="Close diagnostics" aria-label="Close diagnostics">✕</button>
         </div>
       </header>
       <div class="dev-panel-body" id="dev-panel-body">
@@ -6131,6 +6131,7 @@ export class UIManager {
         <div class="dev-actions-grid runner-dev-actions">
           <button class="dev-btn" id="btn-dev-copy-telemetry" type="button">Copy live telemetry</button>
           <button class="dev-btn" id="btn-dev-pin-note" type="button">Pin a bug note [F4]</button>
+          <button class="dev-btn ui-interactive" id="btn-dev-footer-close" type="button" style="background: rgba(255,255,255,0.14); font-weight: 700;">✕ Close Diagnostics</button>
           <a class="dev-btn btn-dash-link" href="./runner-console.html" target="_blank" rel="noopener">Open Master &amp; Developer Console</a>
         </div>
       </div>
@@ -6152,7 +6153,7 @@ export class UIManager {
     this.masterModePanel.innerHTML = `
       <header class="god-inpanel-header">
         <div class="god-inpanel-title"><span>🧰</span><span>RUNNER MASTER TOOLS</span></div>
-        <button class="dev-icon-btn" id="btn-close-master-mode" type="button" title="Close Master Tools">&times;</button>
+        <button class="god-close-btn ui-interactive" id="btn-close-master-mode" type="button" title="Close Master Tools" aria-label="Close Master Tools">✕</button>
       </header>
       <div class="god-inpanel-body">
         <p class="runner-master-notice">Local test controls affect this game session. Use the full console for telemetry, snapshots and progression testing.</p>
@@ -6208,6 +6209,16 @@ export class UIManager {
           </div>
         </div>
         <a class="god-inpanel-btn btn-dash-link" href="./runner-console.html" target="_blank" rel="noopener">Open full Master &amp; Developer Console ↗</a>
+        <div class="god-inpanel-footer-actions" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.15);">
+          <button class="primary-btn ui-interactive" id="btn-master-footer-close" type="button" style="width: 100%; min-height: 44px; font-weight: 700; background: #00e5ff; color: #050b14; border-radius: 8px; font-size: 0.9rem;">
+            ✕ CLOSE MASTER TOOLS
+          </button>
+          <div style="display: flex; justify-content: center; margin-top: 6px;">
+            <button class="ghost-btn ui-interactive" id="btn-master-lock-exit" type="button" style="font-size: 0.78rem; color: #ff5252; padding: 6px 12px; border: 1px dashed rgba(255,82,82,0.4); border-radius: 8px;">
+              🔒 Lock &amp; Hide Master Controls
+            </button>
+          </div>
+        </div>
       </div>
     `;
     document.body.appendChild(this.masterModePanel);
@@ -6216,12 +6227,15 @@ export class UIManager {
     this.createDevFeedbackModal();
     this.devToggleBtn.addEventListener('click', () => this.toggleDevMode());
     document.getElementById('btn-dev-close')?.addEventListener('click', () => this.toggleDevMode(false));
+    document.getElementById('btn-dev-footer-close')?.addEventListener('click', () => this.toggleDevMode(false));
     document.getElementById('btn-dev-minimize')?.addEventListener('click', () => {
       const body = document.getElementById('dev-panel-body');
       if (body) body.hidden = !body.hidden;
     });
     this.masterModeBtn.addEventListener('click', () => this.toggleMasterMode());
     document.getElementById('btn-close-master-mode')?.addEventListener('click', () => this.toggleMasterMode(false));
+    document.getElementById('btn-master-footer-close')?.addEventListener('click', () => this.toggleMasterMode(false));
+    document.getElementById('btn-master-lock-exit')?.addEventListener('click', () => this.lockAndExitMasterMode());
 
     const masterActions = {
       'btn-master-force-rain': ['SET_RUNNER_RAIN', { enabled: true }],
@@ -7208,6 +7222,14 @@ export class UIManager {
     }
     this.masterModeBtn?.setAttribute('aria-expanded', String(this.isMasterModeActive));
     if (this.isMasterModeActive) this.showDevToast('Runner Master Tools opened.');
+  }
+
+  lockAndExitMasterMode() {
+    this.toggleMasterMode(false);
+    this.isOpsAuthenticated = false;
+    try { sessionStorage.removeItem('kr_ops_authenticated'); } catch {}
+    if (this.masterModeBtn) this.masterModeBtn.style.display = 'none';
+    this.showDevToast('🔒 Master Mode Locked & Hidden.');
   }
 
   // Backward-compatible alias
