@@ -228,7 +228,7 @@ export class UIManager {
       <div class="modal-card start-mission-card">
         <div class="start-hero-header">
           <div class="start-logo-wrap">
-            <span class="start-crest-badge">🇵🇰 KARACHI</span>
+            <span class="start-crest-badge" title="Karachi Runner">🇵🇰 KARACHI</span>
             <h1 class="start-title">KARACHI RUNNER</h1>
             <span class="start-urdu-sub">کراچی رنر · بھاگ کراچی بھاگ!</span>
           </div>
@@ -244,7 +244,7 @@ export class UIManager {
         <div class="start-form-section">
           <!-- Patrol District Selection -->
           <div class="form-group start-district-group">
-              <label class="form-label">📍 KARACHI LOOP · 200 NEIGHBORHOODS</label>
+            <label class="form-label menu-section-title">📍 KARACHI LOOP · 200 NEIGHBORHOODS</label>
             <div class="district-selection-grid" id="start-district-grid">
               <div class="district-card active ui-interactive" data-level="1" id="start-dist-1">
                 <div class="d-header-row">
@@ -274,7 +274,7 @@ export class UIManager {
           </div>
 
           <div class="form-group start-age-group">
-            <label class="form-label" for="runner-difficulty-grid">🏃 CHOOSE YOUR PACE:</label>
+            <label class="form-label menu-section-title" for="runner-difficulty-grid">🏃 CHOOSE YOUR PACE:</label>
             <div class="age-selection-grid" id="runner-difficulty-grid" aria-label="Runner pace">
               <div class="age-card ui-interactive" role="button" tabindex="0" aria-pressed="false" aria-label="Easy pace. Scenic route with no turns." data-runner-difficulty="easy">
                 <span class="age-card-icon">🌱</span>
@@ -294,9 +294,27 @@ export class UIManager {
             </div>
           </div>
 
+          <!-- Hero & Audio Settings Strip (Source of Truth: Pause Menu) -->
+          <div class="menu-hero-card start-hero-card" id="start-hero-card">
+            <div class="menu-hero-badge" id="start-avatar-icon">🏃</div>
+            <div class="menu-hero-details">
+              <div class="menu-hero-name-row">
+                <span class="menu-hero-name" id="start-player-name">Karachi Hero</span>
+                <span class="menu-badge" id="start-level-badge">LV 1</span>
+              </div>
+              <div class="menu-hero-badges-row">
+                <span class="menu-tag" id="start-district-badge">AREA 1: SOLDIER BAZAR</span>
+                <button class="setting-pill-toggle ui-interactive active" id="btn-home-toggle-sfx" type="button" title="Toggle Sound Effects">🔊 SFX: ON</button>
+                <button class="setting-pill-toggle ui-interactive active" id="btn-home-toggle-music" type="button" title="Toggle Background Music">🎵 MUSIC: ON</button>
+                <button class="setting-pill-toggle ui-interactive" id="btn-home-leaderboards" type="button" title="Global Leaderboards & Challenges" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">🏆 CHARTS</button>
+                <button class="setting-pill-toggle ui-interactive" id="btn-home-settings" type="button" title="Open Game Menu & Settings">⚙️ MENU</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Karachi Getup Selection -->
           <div class="form-group start-avatar-group">
-            <label class="form-label">👕 CHOOSE A GETUP:</label>
+            <label class="form-label menu-section-title">👕 CHOOSE A GETUP:</label>
             <div class="avatar-selection-grid" id="start-avatar-grid" aria-label="Avatar clothing">
               <div class="avatar-card active ui-interactive" data-avatar="tariq">
                 <span class="avatar-card-outfit">Green shalwar kameez · waistcoat</span>
@@ -965,6 +983,33 @@ export class UIManager {
         ? `Run in patrol area ${level}`
         : `Locked. ${DISTRICT_UNLOCK_HINTS[level] || 'Earn more patrol achievements to unlock this area.'}.`;
     });
+
+    const startPlayerName = document.getElementById('start-player-name');
+    if (startPlayerName) {
+      const save = saveManager.get();
+      startPlayerName.textContent = save?.playerName || 'Karachi Hero';
+    }
+    const startLevelBadge = document.getElementById('start-level-badge');
+    if (startLevelBadge) {
+      startLevelBadge.textContent = `LV ${saveManager.getCareerLevel()}`;
+    }
+    const startAvatarIcon = document.getElementById('start-avatar-icon');
+    if (startAvatarIcon) {
+      const avatarIcons = { tariq: '👕', ayesha: '🧣', farooq: '🚦', bilal: '🩺', zain: '🎒' };
+      startAvatarIcon.textContent = avatarIcons[this.selectedAvatar] || '🏃';
+    }
+    const startSfx = document.getElementById('btn-home-toggle-sfx');
+    if (startSfx) {
+      const sOn = audio.soundEnabled;
+      startSfx.textContent = sOn ? '🔊 SFX: ON' : '🔇 SFX: OFF';
+      startSfx.classList.toggle('active', sOn);
+    }
+    const startMusic = document.getElementById('btn-home-toggle-music');
+    if (startMusic) {
+      const mOn = audio.musicEnabled;
+      startMusic.textContent = mOn ? '🎵 MUSIC: ON' : '⏹ MUSIC: OFF';
+      startMusic.classList.toggle('active', mOn);
+    }
   }
 
   openGetupPicker() {
@@ -3563,6 +3608,32 @@ export class UIManager {
     document.getElementById('btn-home-settings')?.addEventListener('click', () => {
       audio.playClick();
       this.showGameMenuModal();
+    });
+    document.getElementById('btn-home-toggle-sfx')?.addEventListener('click', () => {
+      const enabled = audio.toggleSound();
+      const homeSfx = document.getElementById('btn-home-toggle-sfx');
+      if (homeSfx) {
+        homeSfx.textContent = enabled ? '🔊 SFX: ON' : '🔇 SFX: OFF';
+        homeSfx.classList.toggle('active', enabled);
+      }
+      const menuSfx = document.getElementById('btn-menu-toggle-sfx');
+      if (menuSfx) {
+        menuSfx.textContent = enabled ? '🔊 SFX: ON' : '🔇 SFX: OFF';
+        menuSfx.classList.toggle('active', enabled);
+      }
+    });
+    document.getElementById('btn-home-toggle-music')?.addEventListener('click', () => {
+      const enabled = audio.toggleMusic();
+      const homeMus = document.getElementById('btn-home-toggle-music');
+      if (homeMus) {
+        homeMus.textContent = enabled ? '🎵 MUSIC: ON' : '⏹ MUSIC: OFF';
+        homeMus.classList.toggle('active', enabled);
+      }
+      const menuMus = document.getElementById('btn-menu-toggle-music');
+      if (menuMus) {
+        menuMus.textContent = enabled ? '🎵 MUSIC: ON' : '⏹ MUSIC: OFF';
+        menuMus.classList.toggle('active', enabled);
+      }
     });
     document.getElementById('btn-progress-reset-career')?.addEventListener('click', () => {
       audio.playClick();

@@ -98,18 +98,18 @@ test('LeaderboardService: Daily Challenge progress & reward claiming', () => {
   const daily = service.getDailyChallenges(date);
 
   // Record progress
-  service.recordChallengeProgress('collect_coins', daily.challenges[1].target);
+  service.recordChallengeProgress('collect_coins', daily.challenges[1].target, date);
   const updatedDaily = service.getDailyChallenges(date);
   assert.equal(updatedDaily.challenges[1].completed, true);
 
   // Claim reward
-  const claimRes = service.claimChallengeReward(updatedDaily.challenges[1].id);
+  const claimRes = service.claimChallengeReward(updatedDaily.challenges[1].id, date);
   assert.ok(claimRes.success);
   assert.equal(claimRes.rewardRupees, updatedDaily.challenges[1].rewardRupees);
   assert.equal(fakeSave.rupeesAdded, updatedDaily.challenges[1].rewardRupees);
 
   // Cannot claim twice
-  const doubleClaim = service.claimChallengeReward(updatedDaily.challenges[1].id);
+  const doubleClaim = service.claimChallengeReward(updatedDaily.challenges[1].id, date);
   assert.equal(doubleClaim.success, false);
 });
 
