@@ -1,11 +1,108 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#071b22"/>
-  <circle cx="256" cy="256" r="220" fill="#10332f" stroke="#ffc857" stroke-width="16"/>
-  <path d="M118 512 205 286h102l87 226z" fill="#172326"/>
-  <path d="m256 315-10 49h20zm-20 91-13 63h26zm42 0 13 63h-26z" fill="#ffc857"/>
-  <circle cx="287" cy="132" r="35" fill="#ffc857"/>
-  <path d="m270 177 49 13 42 45-22 20-38-36-24 48 57 37-17 24-73-41-29-52-32 43-23-16 46-67c17-24 38-29 64-18z" fill="#e8fff7"/>
-  <path d="m278 301-48 68-43 31 17 22 57-29 50-61zm34-1 38 61 43 37 19-21-44-54-29-47z" fill="#36d399"/>
-  <path d="m214 213-45 14-28 36 20 17 34-27 38 8 18-27z" fill="#e8fff7"/>
-  <path d="m347 218 39 1 26 24-17 19-23-15-30 8-18-22z" fill="#36d399"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="skyGlow" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#00695c"/>
+      <stop offset="60%" stop-color="#00332c"/>
+      <stop offset="100%" stop-color="#071b22"/>
+    </radialGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff59d"/>
+      <stop offset="50%" stop-color="#ffd700"/>
+      <stop offset="100%" stop-color="#ff8f00"/>
+    </linearGradient>
+    <linearGradient id="roadGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App Icon Background with Rounded Corners -->
+  <rect width="512" height="512" rx="115" fill="url(#skyGlow)"/>
+
+  <!-- Truck-Art Radiant Rays -->
+  <g opacity="0.25">
+    <polygon points="256,230 180,0 230,0" fill="#ffd700"/>
+    <polygon points="256,230 282,0 332,0" fill="#ffd700"/>
+    <polygon points="256,230 380,0 430,30" fill="#ffd700"/>
+    <polygon points="256,230 82,30 132,0" fill="#ffd700"/>
+    <polygon points="256,230 512,120 512,170" fill="#ffd700"/>
+    <polygon points="256,230 0,120 0,170" fill="#ffd700"/>
+  </g>
+
+  <!-- Ornate Truck-Art Outer Border -->
+  <circle cx="256" cy="256" r="236" fill="none" stroke="url(#goldGrad)" stroke-width="14" stroke-dasharray="16, 12"/>
+  <circle cx="256" cy="256" r="222" fill="none" stroke="#00e5ff" stroke-width="3"/>
+
+  <!-- Perspective 3-Lane Highway of Karachi -->
+  <polygon points="120,512 216,280 296,280 392,512" fill="url(#roadGrad)"/>
+  <!-- Lane Divider Dashes -->
+  <line x1="243" y1="285" x2="200" y2="512" stroke="#ffffff" stroke-width="5" stroke-dasharray="18, 14" opacity="0.9"/>
+  <line x1="269" y1="285" x2="312" y2="512" stroke="#ffffff" stroke-width="5" stroke-dasharray="18, 14" opacity="0.9"/>
+  <!-- Gold Curb Edges -->
+  <line x1="216" y1="280" x2="120" y2="512" stroke="#ffd700" stroke-width="6"/>
+  <line x1="296" y1="280" x2="392" y2="512" stroke="#ffd700" stroke-width="6"/>
+
+  <!-- Mazar-e-Quaid (White Marble Dome & Arched Portal) -->
+  <g transform="translate(196, 150)">
+    <!-- Base plinth -->
+    <rect x="0" y="70" width="120" height="20" rx="3" fill="#e2e8f0"/>
+    <!-- Main Marble Chamber -->
+    <path d="M10 70 L25 15 Q60 0 95 15 L110 70 Z" fill="#ffffff" filter="drop-shadow(0 4px 12px rgba(0,0,0,0.4))"/>
+    <!-- Grand Arched Portal -->
+    <path d="M42 70 L42 38 Q60 22 78 38 L78 70 Z" fill="#00332c"/>
+    <path d="M48 70 L48 44 Q60 32 72 44 L72 70 Z" fill="#0f172a"/>
+    <line x1="60" y1="70" x2="60" y2="34" stroke="#ffd700" stroke-width="2"/>
+    <!-- Dome Finial -->
+    <circle cx="60" cy="5" r="4" fill="#ffd700"/>
+    <line x1="60" y1="1" x2="60" y2="6" stroke="#ffd700" stroke-width="3"/>
+  </g>
+
+  <!-- Golden Crescent and Five-Point Star -->
+  <g transform="translate(325, 75)">
+    <circle cx="28" cy="28" r="24" fill="#ffd700"/>
+    <circle cx="36" cy="24" r="22" fill="#00332c"/>
+    <polygon points="38,8 41,17 50,17 43,22 46,31 38,26 31,31 33,22 27,17 36,17" fill="#ffd700"/>
+  </g>
+
+  <!-- Dynamic Leaping Karachi Runner Silhouette with Gold Aura -->
+  <g transform="translate(230, 260) scale(1.15)">
+    <!-- Motion Speed Lines -->
+    <path d="M -70 110 L -15 90" stroke="#00e5ff" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+    <path d="M -85 70 L -25 60" stroke="#ffd700" stroke-width="5" stroke-linecap="round" opacity="0.8"/>
+    <path d="M -60 30 L -10 35" stroke="#76ff03" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+
+    <!-- Runner Head -->
+    <circle cx="28" cy="10" r="16" fill="#ffd700"/>
+    <!-- Headband / Cap -->
+    <path d="M 12 8 Q 28 0 44 8 L 44 14 Q 28 6 12 14 Z" fill="#008037"/>
+
+    <!-- Runner Torso (Pakistani Green Waistcoat / Jersey) -->
+    <path d="M 16 28 L 42 22 L 34 68 L 10 65 Z" fill="#008037" stroke="#ffd700" stroke-width="2"/>
+    <!-- Ajrak Pattern Accent Scarf -->
+    <path d="M 24 24 L 38 42 L 32 46 L 18 28 Z" fill="#b91c1c"/>
+
+    <!-- Leaping Legs -->
+    <!-- Front Lead Leg -->
+    <path d="M 32 64 L 56 86 L 68 116 L 82 122" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Gold Sneaker -->
+    <path d="M 66 116 L 88 120 L 86 128 L 62 124 Z" fill="#ffd700"/>
+
+    <!-- Back Trailing Leg -->
+    <path d="M 14 64 L -12 78 L -36 82 L -48 76" stroke="#ffffff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M -36 82 L -54 74 L -50 68 L -32 76 Z" fill="#ffd700"/>
+
+    <!-- Arms -->
+    <!-- Front Arm -->
+    <path d="M 36 30 L 64 24 L 80 42" stroke="#ffd700" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Back Arm -->
+    <path d="M 16 34 L -14 44 L -30 28" stroke="#ffd700" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <!-- Karachi Truck Art Floral Corner Rosettes -->
+  <g fill="#ff007f" stroke="#ffd700" stroke-width="2">
+    <circle cx="68" cy="68" r="14"/>
+    <circle cx="444" cy="68" r="14"/>
+    <circle cx="68" cy="444" r="14"/>
+    <circle cx="444" cy="444" r="14"/>
+  </g>
 </svg>

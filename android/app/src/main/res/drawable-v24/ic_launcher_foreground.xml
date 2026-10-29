@@ -3,19 +3,54 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Mazar-e-Quaid Marble Chamber & Dome Silhouette in Background -->
     <path
-        android:fillColor="#FFC857"
-        android:pathData="M61,28a8,8 0,1 0,0.1 0z" />
+        android:fillColor="#104D40"
+        android:pathData="M38,58 L45,36 C50,30 58,30 63,36 L70,58 Z" />
     <path
-        android:fillColor="#E8FFF7"
-        android:pathData="M55,39l10,2 10,10 -5,5 -9,-8 -5,11 12,8 -4,6 -16,-9 -6,-11 -7,9 -5,-4 10,-14c4,-6 9,-7 15,-5z" />
+        android:fillColor="#E2E8F0"
+        android:pathData="M40,58 L46,38 C50,33 58,33 62,38 L68,58 Z" />
     <path
-        android:fillColor="#36D399"
-        android:pathData="M56,61l-10,14 -9,7 4,5 12,-6 11,-13zM63,62l8,13 9,8 5,-5 -10,-11 -6,-10z" />
+        android:fillColor="#0A2620"
+        android:pathData="M49,58 L49,46 C51,43 57,43 59,46 L59,58 Z" />
+    <!-- Crescent & Star -->
     <path
-        android:fillColor="#E8FFF7"
-        android:pathData="M47,45l-10,3 -6,8 5,4 7,-6 8,2 4,-6z" />
+        android:fillColor="#FFD700"
+        android:pathData="M72,28 C76,28 80,32 80,36 C80,39 78,42 75,43 C78,41 80,37 79,33 C77,29 73,28 72,28 Z" />
     <path
-        android:fillColor="#36D399"
-        android:pathData="M72,46l9,1 6,6 -4,4 -5,-4 -7,2 -4,-5z" />
+        android:fillColor="#FFD700"
+        android:pathData="M78,28 L79,30 L81,30 L79.5,31 L80,33 L78.5,32 L77,33 L77.5,31 L76,30 L78,30 Z" />
+    <!-- 3-Lane Road Perspective Lines -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M34,108 L48,68 L60,68 L74,108 Z" />
+    <path
+        android:strokeColor="#FFD700"
+        android:strokeWidth="1.5"
+        android:pathData="M48,68 L34,108 M60,68 L74,108" />
+    <!-- Runner Figure: Head, Torso, Limbs -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M58,45a6,6 0,1 0,0.1 0z" />
+    <path
+        android:fillColor="#008037"
+        android:pathData="M52,52 L62,49 L58,68 L48,66 Z" />
+    <path
+        android:fillColor="#B91C1C"
+        android:pathData="M54,51 L60,59 L57,61 L52,53 Z" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M57,66 L66,76 L71,90 L76,92" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M50,66 L40,73 L32,75 L27,72" />
+    <path
+        android:strokeColor="#FFD700"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M58,53 L68,50 L75,58 M52,54 L42,58 L37,51" />
 </vector>

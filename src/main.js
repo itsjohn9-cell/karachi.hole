@@ -10,6 +10,7 @@ import { audio } from './audio.js';
 import { KarachiModels } from './karachiModels.js';
 import { MAX_REVIVE_TOKENS, saveManager } from './saveManager.js';
 import { CITIZEN_DIALOGUES } from './dialogueSystem.js';
+import { leaderboardService } from './leaderboardService.js';
 import { AvatarBuilder } from './avatar.js';
 import { getNextSafeRenderScale, PortableGameOpsEngine } from './game-ops-engine.js';
 import { getKarachiNeighborhoodName } from './karachi-neighborhoods.js';
@@ -76,7 +77,7 @@ const RUNNER_AREA_NAMES = [
   'Lyari · Chakiwara Cultural District'
 ];
 const RUNNER_AREA_THRESHOLDS = [3300, 6700, 10000, 13400, 16700, 20000];
-const RUNNER_SPEEDS = { easy: 15, standard: 19, hard: 22 };
+const RUNNER_SPEEDS = { easy: 14.5, cruiser: 16.5, standard: 19, hard: 22 };
 const RUNNER_TURN_INPUT_METERS = 45;
 const RUNNER_TURN_ENTRY_METERS = 14;
 const RUNNER_TURN_LAST_INPUT_METERS = 6.5;
@@ -207,7 +208,8 @@ export class Game {
     this.skylineBackdrop = null;
     this.speedWindLines = null;
     this.nearMissCount = 0;
-    this.runSpeed = RUNNER_SPEEDS.standard;
+    this.runnerDifficulty = 'cruiser';
+    this.runSpeed = RUNNER_SPEEDS.cruiser;
     this.runnerObstacles = [];
     this.runnerCoins = [];
     this.runnerPowerups = [];
@@ -230,7 +232,7 @@ export class Game {
     this.busSurfingTimer = 0.0;
     this.surfingBus = null;
     this.surfingBuses = [];
-    this.nextSurfingBusDist = 260;
+    this.nextSurfingBusDist = 60;
     this.nextRunnerWaveZ = 45.0;
     this.runnerJunction = null;
     this.runnerTurn = null;
@@ -261,7 +263,7 @@ export class Game {
     this.wordHuntCollected = [];
     this.wordHuntNextIndex = 0;
     this.runnerWordLetters = [];
-    this.nextWordLetterZ = -140.0;
+    this.nextWordLetterZ = -30.0;
 
     // Junoon Fever Rush (Adrenaline Bar)
     this.feverCharge = 0;
@@ -535,7 +537,7 @@ export class Game {
           this.ui.showAnnouncement('Could not save your profile. Check device storage.', '#ff5252');
         }
         this.difficulty = ageTier === 'kids' ? 'kidsEasy' : 'classic';
-        this.runnerDifficulty = Object.hasOwn(RUNNER_SPEEDS, runnerDifficulty) ? runnerDifficulty : 'standard';
+        this.runnerDifficulty = Object.hasOwn(RUNNER_SPEEDS, runnerDifficulty) ? runnerDifficulty : 'cruiser';
         this.runSpeed = RUNNER_SPEEDS[this.runnerDifficulty];
         this.loadDistrictLevel(1, false);
         this.startGame();
@@ -627,6 +629,14 @@ export class Game {
         return this.quickReviveWithChai();
       }
     });
+
+    const splash = document.getElementById('karachi-starter-splash');
+    if (splash) {
+      setTimeout(() => {
+        splash.classList.add('is-hidden');
+        setTimeout(() => splash.remove(), 400);
+      }, 400);
+    }
   }
 
   pauseGame() {
@@ -668,6 +678,18 @@ export class Game {
       return false;
     }
     this.runnerRunRecorded = true;
+    try {
+      leaderboardService.submitRunScore({
+        score: this.score,
+        distance: this.distanceMeters,
+        rupees: this.coins,
+        district: this.currentNeighborhood?.name || 'Soldier Bazar',
+        pace: this.runnerDifficulty || 'cruiser'
+      });
+      leaderboardService.recordChallengeProgress('distance_single_run', this.distanceMeters);
+    } catch (e) {
+      console.warn('[Leaderboard] Score submission non-fatal notice:', e.message);
+    }
     this.ui?.refreshRunnerProgress();
     return true;
   }
@@ -714,10 +736,13 @@ export class Game {
    * Hard: 14.0s (tactical & high stakes)
    */
   getHornCooldownDuration() {
-    const pace = this.runnerDifficulty || 'standard';
-    if (pace === 'easy') return 4.0;
-    if (pace === 'hard') return 14.0;
-    return 8.0;
+    const pace = this.runnerDifficulty || 'cruiser';
+    let base = 8.0;
+    if (pace === 'easy') base = 4.0;
+    else if (pace === 'cruiser') base = 6.0;
+    else if (pace === 'hard') base = 14.0;
+    const hornLvl = saveManager.getPowerUpUpgradeLevel?.('horn') || 1;
+    return Math.max(2.0, base - (hornLvl - 1) * 0.75);
   }
 
   /**
@@ -1868,22 +1893,15 @@ export class Game {
       return;
     }
 
-    // Safety approach & junction zone: Never spawn any obstacles immediately around an active junction (65m runway)!
+    // Safety approach & junction zone: 100% hurdle-free and coin-free asphalt runway for ultra-smooth turning!
     if (this.isRunnerJunctionZone(waveZ)) {
-      // Clean asphalt runway with smooth central coins - 100% hurdle-free approach and turn!
-      [-3.0, 0, 3.0].forEach(zOff => {
-        const coin = KarachiModels.createRupeeCoin(50);
-        coin.position.set(0, 0.7, waveZ + zOff);
-        this.scene.add(coin);
-        this.runnerCoins.push({ mesh: coin, value: 50, x: 0, z: waveZ + zOff });
-      });
       alignWaveGroundY();
       return;
     }
 
     // Periodic "W-11 Minibus Surfing" Set-Piece Chunk (Trigger ramp + moving W-11 + bridge signs)
-    if (this.distanceMeters >= (this.nextSurfingBusDist || 130) && !this.isBusSurfing && (!this.surfingBuses || this.surfingBuses.length === 0) && !this.runnerJunction) {
-      this.nextSurfingBusDist = this.distanceMeters + 260;
+    if (this.distanceMeters >= (this.nextSurfingBusDist || 60) && !this.isBusSurfing && (!this.surfingBuses || this.surfingBuses.length === 0) && !this.runnerJunction) {
+      this.nextSurfingBusDist = this.distanceMeters + 180;
       this.spawnW11SurfingSetPiece(waveZ);
       alignWaveGroundY();
       return;
@@ -2837,7 +2855,9 @@ export class Game {
   }
 
   getRunnerWaveSpacing(distance = this.distanceMeters) {
-    return Math.max(24, 28 - Math.floor(Math.max(0, distance) / 5000));
+    const pace = this.runnerDifficulty || 'cruiser';
+    const paceBonus = pace === 'easy' ? 6 : (pace === 'cruiser' ? 3 : (pace === 'hard' ? -2 : 0));
+    return Math.max(22, 28 + paceBonus - Math.floor(Math.max(0, distance) / 5000));
   }
 
   getRunnerSpeed(distance = this.distanceMeters) {
@@ -3137,6 +3157,20 @@ export class Game {
       palm.position.set(side * 9.6, palmY, pz);
       chunkGroup.add(palm);
     });
+
+    if (serial % 2 === 0) {
+      const slangSide = serial % 4 === 0 ? -1 : 1;
+      const slangBoard = KarachiModels.createSlangBillboard?.(Math.floor(serial / 2));
+      if (slangBoard) {
+        const bz = (serial % 3 - 1) * 8;
+        const bY = chunkGroup.userData?.startElevation !== undefined
+          ? CityGenerator.getSegmentElevation(chunkGroup.userData, bz, 60.0)
+          : 0;
+        slangBoard.position.set(slangSide * 11.5, bY, bz);
+        chunkGroup.add(slangBoard);
+        names.push('createSlangBillboard');
+      }
+    }
 
     chunkGroup.userData.landmarks = names;
     return occupied;
@@ -4146,24 +4180,25 @@ export class Game {
     }
 
     // 8b. Karachi Word Hunt (K-A-R-A-C-H-I) Letters Spawning Ahead
-    if (this.nextWordLetterZ > this.player.position.z - 20.0) {
-      this.nextWordLetterZ = this.player.position.z - 45.0;
+    if (!this.nextWordLetterZ || this.nextWordLetterZ > this.player.position.z - 15.0) {
+      this.nextWordLetterZ = this.player.position.z - 30.0;
     }
-    while (this.nextWordLetterZ > this.player.position.z - 130.0) {
-      if (this.runnerJunction && Math.abs(this.nextWordLetterZ - this.runnerJunction.z) < 40.0) {
-        this.nextWordLetterZ -= 90.0;
+    while (this.nextWordLetterZ > this.player.position.z - 120.0) {
+      if (this.runnerJunction && Math.abs(this.nextWordLetterZ - this.runnerJunction.z) < 35.0) {
+        this.nextWordLetterZ -= 50.0;
         continue;
       }
       if (this.wordHuntCollected.length < this.wordHuntTarget.length) {
         const char = this.wordHuntTarget[this.wordHuntCollected.length];
         const letterMesh = KarachiModels.createWordLetter(char);
-        const laneX = [-3.2, 0, 3.2][Math.floor(Math.random() * 3)];
+        const laneIdx = (this.wordHuntCollected.length * 2 + 1) % 3;
+        const laneX = [-3.2, 0, 3.2][laneIdx];
         const groundY = this.getCorridorGroundHeight(this.nextWordLetterZ, laneX);
         letterMesh.position.set(laneX, groundY + 1.25, this.nextWordLetterZ);
         this.scene.add(letterMesh);
         this.runnerWordLetters.push({ mesh: letterMesh, char, z: this.nextWordLetterZ, laneX });
       }
-      this.nextWordLetterZ -= 95.0;
+      this.nextWordLetterZ -= 55.0;
     }
 
     // 9. Collect Rupee Coins
@@ -4188,7 +4223,7 @@ export class Game {
           audio?.playLetterChime?.(this.wordHuntCollected.length);
           this.wordHuntCollected.push(char);
           this.particles?.createCelebrationConfetti?.(item.mesh.position, 28);
-          this.addFeverCharge(20);
+          this.addFeverCharge(25);
           this.recordRunnerStunt(`🔤 LETTER '${char}'!`, 350);
           if (this.ui?.updateWordHunt) {
             this.ui.updateWordHunt(this.wordHuntCollected);
@@ -4199,8 +4234,9 @@ export class Game {
             this.coins += 5000;
             this.score += 5000;
             this.awardRunnerXP(5000);
-            this.ui?.showAnnouncement?.('🎉 WORD HUNT COMPLETE: K-A-R-A-C-H-I! 5,000 RS JACKPOT! 🏆', '#ffd700');
-            this.ui?.showFloatingFeedback?.('🏆 5,000 RS JACKPOT!', this.player.position, '#ffd700');
+            this.activateJunoonFever();
+            this.ui?.showAnnouncement?.('🎉 WORD COMPLETE: K-A-R-A-C-H-I! 5,000 RS + JUNOON FEVER RUSH! 🎸🔥', '#ffd700');
+            this.ui?.showFloatingFeedback?.('🔥 JUNOON FEVER RUSH!', this.player.position, '#ffd700');
             this.wordHuntCollected = [];
             if (this.ui?.updateWordHunt) this.ui.updateWordHunt([]);
           }
@@ -4309,13 +4345,16 @@ export class Game {
           this.ui.showAnnouncement('🫖 DOODH PATTI CHAI! Restored 1 Heart ❤️!', '#00e676');
           this.ui.showFloatingFeedback('+1 ❤️ CHAI HEAL', this.player.position, '#00e676');
         } else if (type === 'jump') {
-          this.superJumpTimer = 10.0;
-          this.activePowerUp = { title: 'Hydraulic Jump Springs 👟', timer: 10.0 };
+          const jumpLvl = saveManager.getPowerUpUpgradeLevel('jump');
+          const duration = 10.0 * (1.0 + (jumpLvl - 1) * 0.25);
+          const jumpPower = 11.5 + (jumpLvl - 1) * 1.5;
+          this.superJumpTimer = duration;
+          this.activePowerUp = { title: `Hydraulic Jump Springs 👟 (Lvl ${jumpLvl})`, timer: duration };
           audio.playJump();
-          this.player.jump(11.5);
+          this.player.jump(jumpPower);
           this.cameraShakeTimer = 0.2;
           this.particles.createCelebrationConfetti(this.player.position, 30);
-          this.ui.showAnnouncement('👟 HYDRAULIC JUMP SPRINGS! High Aerial Clearance! 🏙️', '#76ff03');
+          this.ui.showAnnouncement(`👟 HYDRAULIC JUMP SPRINGS! High Aerial Clearance! 🏙️ (${duration.toFixed(1)}s)`, '#76ff03');
           this.ui.showFloatingFeedback('🚀 SUPER JUMP!', this.player.position, '#76ff03');
           // Spawn overhead arc of high-value Rupee coins across the sky
           for (let s = 1; s <= 7; s++) {
@@ -4327,8 +4366,10 @@ export class Game {
             this.runnerCoins.push({ mesh: skyCoin, x: this.targetLaneX, z: skyZ, value: 100, isRoofCoin: true });
           }
         } else if (type === 'cricket_bat') {
-          this.cricketBatTimer = 18.0;
-          this.activePowerUp = { title: '🏏 Tape-Ball Cricket Bat', timer: 18.0 };
+          const batLvl = saveManager.getPowerUpUpgradeLevel('cricket_bat');
+          const duration = 18.0 * (1.0 + (batLvl - 1) * 0.25);
+          this.cricketBatTimer = duration;
+          this.activePowerUp = { title: `🏏 Tape-Ball Cricket Bat (Lvl ${batLvl})`, timer: duration };
           audio?.playCricketCrack?.();
           audio?.playMusicalHorn?.();
           this.cameraShakeTimer = 0.2;
@@ -4339,7 +4380,7 @@ export class Game {
             this.cricketBatMesh.rotation.set(0.4, 0.2, -0.5);
             this.player.group.add(this.cricketBatMesh);
           }
-          this.ui?.showAnnouncement?.('🏏 TAPE-BALL CRICKET BAT! Hit obstacles for SIX! 🚀 (18s)', '#76ff03');
+          this.ui?.showAnnouncement?.(`🏏 TAPE-BALL CRICKET BAT! Hit obstacles for SIX! 🚀 (${duration.toFixed(1)}s)`, '#76ff03');
           this.ui?.showFloatingFeedback?.('🏏 SIXER BAT!', this.player.position, '#76ff03');
         }
 
@@ -4760,12 +4801,13 @@ export class Game {
           const distX = Math.abs(pPos.x - bus.laneX);
 
           // 1. The Trigger: Rear Ramp attached to back of moving W-11 minibus
-          if (distX < 1.45) {
-            if (distZ <= 7.5 && distZ >= 3.1) {
+          if (distX < 2.0) {
+            if (distZ <= 8.5 && distZ >= 3.1) {
               // Running up the ramp
-              const rampProgress = (7.5 - distZ) / 4.4; // 0 at bottom, 1 at top
+              const rampProgress = (8.5 - distZ) / 5.4; // 0 at bottom, 1 at top
               const targetRampY = bus.mesh.position.y + 0.05 + rampProgress * 3.07;
               this.player.position.y = Math.max(this.player.position.y, targetRampY);
+              this.player.position.x = THREE.MathUtils.lerp(this.player.position.x, bus.laneX, 0.12);
               this.player.isGrounded = true;
             } else if (distZ < 3.1 && distZ > -3.5) {
               // Snaps to the roof of the bus!
@@ -4784,6 +4826,7 @@ export class Game {
               this.ui?.showFloatingFeedback?.('🏄 ROOF SURFING! +50% SPEED', this.player.position, '#00e5ff');
               this.awardRunnerXP(500);
               this.score += 500;
+              try { leaderboardService.recordChallengeProgress('surf_minibus', 1); } catch {}
               this.recordGameOpsEvent?.('runner.w11_surfing_start', { distanceMeters: Math.round(this.distanceMeters) });
             }
           }
@@ -5208,6 +5251,16 @@ export class Game {
       this.player.isShielded = false;
       if (this.player.avatarMesh) this.player.avatarMesh.position.y = 0;
       this.distanceMeters = 0;
+      if (saveManager.data?.hasHeadstart > 0) {
+        saveManager.data.hasHeadstart--;
+        saveManager.save();
+        this.distanceMeters = 500;
+        this.nitroTimer = 8.0;
+        this.runnerInvulnerableTimer = 8.0;
+        this.isBoosting = true;
+        if (this.player) this.player.isBoosting = true;
+        this.ui?.showAnnouncement?.('🚀 HEADSTART ENGAGED! 500M ROCKET LAUNCH!', '#00e5ff');
+      }
       this.lastFunnelMeters = 0;
       this.runnerRouteComplete = false;
       this.runnerNeighborhoodIndex = 1;
@@ -5227,7 +5280,11 @@ export class Game {
       this.nearMissCount = 0;
       this.currentLane = 0;
       this.targetLaneX = 0;
-      this.nextRunnerWaveZ = 40.0; // safe coin-only warmup ahead
+      this.nextRunnerWaveZ = 40.0;
+    this.nextWordLetterZ = -30.0;
+    this.wordHuntCollected = [];
+    this.nextSurfingBusDist = 60.0;
+    if (this.ui?.updateWordHunt) this.ui.updateWordHunt([]); // safe coin-only warmup ahead
       if (this.camera) {
         this.camera.position.set(0, 2.85, 65.2);
         this.camera.lookAt(0, 1.25, 42.0);
@@ -5386,6 +5443,10 @@ export class Game {
     this.isSliding = false;
     this.slideTimer = 0;
     this.nextRunnerWaveZ = 40.0;
+    this.nextWordLetterZ = -30.0;
+    this.wordHuntCollected = [];
+    this.nextSurfingBusDist = 60.0;
+    if (this.ui?.updateWordHunt) this.ui.updateWordHunt([]);
     this.currentMilestone = getKarachiNeighborhoodName(1);
     this.passedMilestoneIndices = new Set([0]);
     this.magnetTimer = 0;
@@ -6490,6 +6551,10 @@ export class Game {
     this.isSliding = false;
     this.slideTimer = 0;
     this.nextRunnerWaveZ = 40.0;
+    this.nextWordLetterZ = -30.0;
+    this.wordHuntCollected = [];
+    this.nextSurfingBusDist = 60.0;
+    if (this.ui?.updateWordHunt) this.ui.updateWordHunt([]);
     this.player.targetRadius = 1.45;
     if (!isFinite(this.player.baseSpeed) || this.player.baseSpeed <= 0) {
       this.player.baseSpeed = 13.5;
@@ -8471,7 +8536,7 @@ export class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.20',
+            appVersion: '2.2.21',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };
@@ -9328,6 +9393,7 @@ export class Game {
       const multiplier = (this.doubleCoinsTimer > 0 ? 2 : 1) * streakMult;
       const earned = (coin.value || 50) * multiplier;
       this.coins += earned;
+      try { leaderboardService.recordChallengeProgress('collect_coins', 1); } catch {}
       this.awardRunnerXP(100 * streakMult);
       if (this.coins >= 1000) this.unlockRunnerBadge('clean_green');
       this.score += 100 * multiplier;
@@ -9646,7 +9712,7 @@ export class Game {
       const x = this.runnerTurn.startX + dir * radius * (1 - Math.cos(theta));
       const z = z0 - radius * Math.sin(theta);
       const coin = KarachiModels.createRupeeCoin(50);
-      coin.position.set(x, 0.7, z);
+      coin.position.set(x, 0.32, z);
       this.scene.add(coin);
       this.runnerCoins.push({ mesh: coin, value: 50, x, z });
     }
@@ -9853,10 +9919,11 @@ export class Game {
   getRunnerNavProfile() {
     const profiles = {
       easy: { turns: false, firstAt: 200, gap: 640, chainGap: 640, sectionMeters: 500, forkEvery: 1 },
+      cruiser: { turns: true, firstAt: 175, gap: 560, chainGap: 360, sectionMeters: 600, forkEvery: 2 },
       standard: { turns: true, firstAt: 150, gap: 480, chainGap: 260, sectionMeters: 700, forkEvery: 3 },
       hard: { turns: true, firstAt: 120, gap: 360, chainGap: 200, sectionMeters: 800, forkEvery: 3 }
     };
-    return profiles[this.runnerDifficulty] || profiles.standard;
+    return profiles[this.runnerDifficulty] || profiles.cruiser;
   }
 
   updateRunnerNavigation(dt) {

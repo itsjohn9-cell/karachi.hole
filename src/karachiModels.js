@@ -6434,6 +6434,100 @@ export const KarachiModels = {
 
     group.visible = false;
     return group;
+  },
+
+  // ---------------------------------------------------------------------------
+  // AUTHENTIC WHOLESOME KARACHI STREET SLANGS & TRUCK ART NEON BILLBOARD
+  // ---------------------------------------------------------------------------
+  createSlangBillboard(phraseIndex = 0) {
+    const group = new THREE.Group();
+    group.name = "Karachi-Slang-Billboard";
+
+    const slangs = [
+      { en: "SCENE ON HAI JANI!", ur: "سین آن ہے جانی", color: "#ff007f", sub: "FULL TENSION FREE" },
+      { en: "USTAAD! CHILL KAR!", ur: "استاد! چل کر", color: "#00e5ff", sub: "SPEED KAM, SWAG ZYADA" },
+      { en: "FIT FAAT · HERO!", ur: "فٹ فاٹ کراچی ہیرو", color: "#76ff03", sub: "DIL DIL KARACHI" },
+      { en: "DEKH MAGAR PYAR SE!", ur: "دیکھ مگر پیار سے", color: "#ffd700", sub: "TRUCK ART SPECIAL" },
+      { en: "HORN DO, RASTA LO!", ur: "ہارن دو راستہ لو", color: "#ff6d00", sub: "W-11 RULE OF ROAD" },
+      { en: "BIRYANI ZINDABAD!", ur: "بریانی زندہ باد", color: "#ff1744", sub: "BURNS ROAD ORIGINAL" },
+      { en: "ROK SAKO TO ROK LO!", ur: "روک سکو تو روک لو", color: "#d500f9", sub: "SUPER FAST EXPRESS" }
+    ];
+
+    const slang = slangs[Math.abs(phraseIndex) % slangs.length];
+
+    // Dual steel support posts
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x37474f, metalness: 0.8, roughness: 0.3 });
+    [-2.0, 2.0].forEach(px => {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 7.5, 8), steelMat);
+      pole.position.set(px, 3.75, 0);
+      group.add(pole);
+    });
+
+    // Board Frame
+    const frameGeo = new THREE.BoxGeometry(5.2, 2.4, 0.3);
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x111827, metalness: 0.5, roughness: 0.4 });
+    const frame = new THREE.Mesh(frameGeo, frameMat);
+    frame.position.set(0, 6.2, 0);
+    group.add(frame);
+
+    // Glowing Neon Border
+    const borderGeo = new THREE.BoxGeometry(5.05, 2.25, 0.32);
+    const borderMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(slang.color) });
+    const border = new THREE.Mesh(borderGeo, borderMat);
+    border.position.set(0, 6.2, 0);
+    group.add(border);
+
+    // Canvas Texture with Neon Billboard Text
+    if (typeof document !== 'undefined') {
+      try {
+        const canvas = document.createElement('canvas');
+        if (canvas && typeof canvas.getContext === 'function') {
+          canvas.width = 512;
+          canvas.height = 256;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, 512, 256);
+
+            // Truck art border pattern
+            ctx.strokeStyle = slang.color;
+            ctx.lineWidth = 10;
+            ctx.strokeRect(12, 12, 488, 232);
+
+            // Header English text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 36px "Segoe UI", Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(slang.en, 256, 72);
+
+            // Urdu script
+            ctx.fillStyle = slang.color;
+            ctx.font = 'bold 44px "Noto Nastaliq Urdu", Arial, sans-serif';
+            ctx.fillText(slang.ur, 256, 148);
+
+            // Subtitle tag
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+            ctx.fillText(`★ ${slang.sub} ★`, 256, 205);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            const signGeo = new THREE.PlaneGeometry(4.8, 2.0);
+            const signMat = new THREE.MeshBasicMaterial({ map: tex });
+            const signFront = new THREE.Mesh(signGeo, signMat);
+            signFront.position.set(0, 6.2, 0.18);
+            group.add(signFront);
+
+            const signBack = signFront.clone();
+            signBack.rotation.y = Math.PI;
+            signBack.position.z = -0.18;
+            group.add(signBack);
+          }
+        }
+      } catch (e) {}
+    }
+
+    group.userData = { isSlangBillboard: true, phrase: slang.en, urdu: slang.ur };
+    return group;
   }
 };
 

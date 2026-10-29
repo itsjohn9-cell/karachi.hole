@@ -1,1 +1,108 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="48" height="46" fill="none" viewBox="0 0 48 46"><path fill="#863bff" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z" style="fill:#863bff;fill:color(display-p3 .5252 .23 1);fill-opacity:1"/><mask id="a" width="48" height="46" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><path fill="#000" d="M25.842 44.938c-.664.844-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.183c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.498 0-3.579-1.842-3.579H1.133c-.92 0-1.456-1.04-.92-1.787L9.91.473c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.578 1.842 3.578h11.377c.943 0 1.473 1.088.89 1.832L25.843 44.94z" style="fill:#000;fill-opacity:1"/></mask><g mask="url(#a)"><g filter="url(#b)"><ellipse cx="5.508" cy="14.704" fill="#ede6ff" rx="5.508" ry="14.704" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -4.47 31.516)"/></g><g filter="url(#c)"><ellipse cx="10.399" cy="29.851" fill="#ede6ff" rx="10.399" ry="29.851" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -39.328 7.883)"/></g><g filter="url(#d)"><ellipse cx="5.508" cy="30.487" fill="#7e14ff" rx="5.508" ry="30.487" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -25.913 -14.639)scale(1 -1)"/></g><g filter="url(#e)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -32.644 -3.334)scale(1 -1)"/></g><g filter="url(#f)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -34.34 30.47)"/></g><g filter="url(#g)"><ellipse cx="14.072" cy="22.078" fill="#ede6ff" rx="14.072" ry="22.078" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="rotate(93.35 24.506 48.493)scale(-1 1)"/></g><g filter="url(#h)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#i)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#j)"><ellipse cx=".387" cy="8.972" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(39.51 .387 8.972)"/></g><g filter="url(#k)"><ellipse cx="47.523" cy="-6.092" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 47.523 -6.092)"/></g><g filter="url(#l)"><ellipse cx="41.412" cy="6.333" fill="#47bfff" rx="5.971" ry="9.665" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 41.412 6.333)"/></g><g filter="url(#m)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#n)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#o)"><ellipse cx="35.651" cy="29.907" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 35.651 29.907)"/></g><g filter="url(#p)"><ellipse cx="38.418" cy="32.4" fill="#47bfff" rx="5.971" ry="15.297" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 38.418 32.4)"/></g></g><defs><filter id="b" width="60.045" height="41.654" x="-19.77" y="16.149" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="c" width="90.34" height="51.437" x="-54.613" y="-7.533" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="d" width="79.355" height="29.4" x="-49.64" y="2.03" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="e" width="79.579" height="29.4" x="-45.045" y="20.029" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="f" width="79.579" height="29.4" x="-43.513" y="21.178" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="g" width="74.749" height="58.852" x="15.756" y="-17.901" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="h" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="i" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="j" width="56.045" height="63.649" x="-27.636" y="-22.853" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="k" width="54.814" height="64.646" x="20.116" y="-38.415" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="l" width="33.541" height="35.313" x="24.641" y="-11.323" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="m" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="n" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="o" width="54.814" height="64.646" x="8.244" y="-2.416" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="p" width="39.409" height="43.623" x="18.713" y="10.588" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter></defs></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="skyGlow" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#00695c"/>
+      <stop offset="60%" stop-color="#00332c"/>
+      <stop offset="100%" stop-color="#071b22"/>
+    </radialGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff59d"/>
+      <stop offset="50%" stop-color="#ffd700"/>
+      <stop offset="100%" stop-color="#ff8f00"/>
+    </linearGradient>
+    <linearGradient id="roadGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App Icon Background with Rounded Corners -->
+  <rect width="512" height="512" rx="115" fill="url(#skyGlow)"/>
+
+  <!-- Truck-Art Radiant Rays -->
+  <g opacity="0.25">
+    <polygon points="256,230 180,0 230,0" fill="#ffd700"/>
+    <polygon points="256,230 282,0 332,0" fill="#ffd700"/>
+    <polygon points="256,230 380,0 430,30" fill="#ffd700"/>
+    <polygon points="256,230 82,30 132,0" fill="#ffd700"/>
+    <polygon points="256,230 512,120 512,170" fill="#ffd700"/>
+    <polygon points="256,230 0,120 0,170" fill="#ffd700"/>
+  </g>
+
+  <!-- Ornate Truck-Art Outer Border -->
+  <circle cx="256" cy="256" r="236" fill="none" stroke="url(#goldGrad)" stroke-width="14" stroke-dasharray="16, 12"/>
+  <circle cx="256" cy="256" r="222" fill="none" stroke="#00e5ff" stroke-width="3"/>
+
+  <!-- Perspective 3-Lane Highway of Karachi -->
+  <polygon points="120,512 216,280 296,280 392,512" fill="url(#roadGrad)"/>
+  <!-- Lane Divider Dashes -->
+  <line x1="243" y1="285" x2="200" y2="512" stroke="#ffffff" stroke-width="5" stroke-dasharray="18, 14" opacity="0.9"/>
+  <line x1="269" y1="285" x2="312" y2="512" stroke="#ffffff" stroke-width="5" stroke-dasharray="18, 14" opacity="0.9"/>
+  <!-- Gold Curb Edges -->
+  <line x1="216" y1="280" x2="120" y2="512" stroke="#ffd700" stroke-width="6"/>
+  <line x1="296" y1="280" x2="392" y2="512" stroke="#ffd700" stroke-width="6"/>
+
+  <!-- Mazar-e-Quaid (White Marble Dome & Arched Portal) -->
+  <g transform="translate(196, 150)">
+    <!-- Base plinth -->
+    <rect x="0" y="70" width="120" height="20" rx="3" fill="#e2e8f0"/>
+    <!-- Main Marble Chamber -->
+    <path d="M10 70 L25 15 Q60 0 95 15 L110 70 Z" fill="#ffffff" filter="drop-shadow(0 4px 12px rgba(0,0,0,0.4))"/>
+    <!-- Grand Arched Portal -->
+    <path d="M42 70 L42 38 Q60 22 78 38 L78 70 Z" fill="#00332c"/>
+    <path d="M48 70 L48 44 Q60 32 72 44 L72 70 Z" fill="#0f172a"/>
+    <line x1="60" y1="70" x2="60" y2="34" stroke="#ffd700" stroke-width="2"/>
+    <!-- Dome Finial -->
+    <circle cx="60" cy="5" r="4" fill="#ffd700"/>
+    <line x1="60" y1="1" x2="60" y2="6" stroke="#ffd700" stroke-width="3"/>
+  </g>
+
+  <!-- Golden Crescent and Five-Point Star -->
+  <g transform="translate(325, 75)">
+    <circle cx="28" cy="28" r="24" fill="#ffd700"/>
+    <circle cx="36" cy="24" r="22" fill="#00332c"/>
+    <polygon points="38,8 41,17 50,17 43,22 46,31 38,26 31,31 33,22 27,17 36,17" fill="#ffd700"/>
+  </g>
+
+  <!-- Dynamic Leaping Karachi Runner Silhouette with Gold Aura -->
+  <g transform="translate(230, 260) scale(1.15)">
+    <!-- Motion Speed Lines -->
+    <path d="M -70 110 L -15 90" stroke="#00e5ff" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+    <path d="M -85 70 L -25 60" stroke="#ffd700" stroke-width="5" stroke-linecap="round" opacity="0.8"/>
+    <path d="M -60 30 L -10 35" stroke="#76ff03" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+
+    <!-- Runner Head -->
+    <circle cx="28" cy="10" r="16" fill="#ffd700"/>
+    <!-- Headband / Cap -->
+    <path d="M 12 8 Q 28 0 44 8 L 44 14 Q 28 6 12 14 Z" fill="#008037"/>
+
+    <!-- Runner Torso (Pakistani Green Waistcoat / Jersey) -->
+    <path d="M 16 28 L 42 22 L 34 68 L 10 65 Z" fill="#008037" stroke="#ffd700" stroke-width="2"/>
+    <!-- Ajrak Pattern Accent Scarf -->
+    <path d="M 24 24 L 38 42 L 32 46 L 18 28 Z" fill="#b91c1c"/>
+
+    <!-- Leaping Legs -->
+    <!-- Front Lead Leg -->
+    <path d="M 32 64 L 56 86 L 68 116 L 82 122" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Gold Sneaker -->
+    <path d="M 66 116 L 88 120 L 86 128 L 62 124 Z" fill="#ffd700"/>
+
+    <!-- Back Trailing Leg -->
+    <path d="M 14 64 L -12 78 L -36 82 L -48 76" stroke="#ffffff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M -36 82 L -54 74 L -50 68 L -32 76 Z" fill="#ffd700"/>
+
+    <!-- Arms -->
+    <!-- Front Arm -->
+    <path d="M 36 30 L 64 24 L 80 42" stroke="#ffd700" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Back Arm -->
+    <path d="M 16 34 L -14 44 L -30 28" stroke="#ffd700" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <!-- Karachi Truck Art Floral Corner Rosettes -->
+  <g fill="#ff007f" stroke="#ffd700" stroke-width="2">
+    <circle cx="68" cy="68" r="14"/>
+    <circle cx="444" cy="68" r="14"/>
+    <circle cx="68" cy="444" r="14"/>
+    <circle cx="444" cy="444" r="14"/>
+  </g>
+</svg>

@@ -1,6 +1,32 @@
 const STORAGE_KEY = 'karachi_hero_save_v2';
 export const MAX_REVIVE_TOKENS = 3;
 
+const memStore = new Map();
+const safeStore = {
+  getItem(k) {
+    try {
+      if (typeof localStorage !== 'undefined') return localStorage.getItem(k);
+    } catch (_) {}
+    return memStore.get(k) || null;
+  },
+  setItem(k, v) {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(k, v);
+      return;
+    }
+    memStore.set(k, String(v));
+  },
+  removeItem(k) {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(k);
+        return;
+      }
+    } catch (_) {}
+    memStore.delete(k);
+  }
+};
+
 export const DEFAULT_SAVE_DATA = {
   version: 2,
   player: {
@@ -45,7 +71,11 @@ export const DEFAULT_SAVE_DATA = {
     magnet: 1,
     shield: 1,
     nitro: 1,
-    double_coins: 1
+    double_coins: 1,
+    jump: 1,
+    horn: 1,
+    cricket_bat: 1,
+    hoverboard: 1
   },
   citizenConversations: {}
 };
@@ -61,7 +91,7 @@ class SaveManager {
 
   load() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = safeStore.getItem(STORAGE_KEY);
       if (!raw) return JSON.parse(JSON.stringify(DEFAULT_SAVE_DATA));
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object') {
@@ -87,7 +117,7 @@ class SaveManager {
         data.runnerStats[key] = Number.isSafeInteger(value) ? Math.max(0, value) : 0;
       });
       if (data.powerUpUpgrades) {
-        ['magnet', 'shield', 'nitro', 'double_coins'].forEach(key => {
+        ['magnet', 'shield', 'nitro', 'double_coins', 'jump', 'horn', 'cricket_bat', 'hoverboard'].forEach(key => {
           const lvl = Number(data.powerUpUpgrades[key]);
           data.powerUpUpgrades[key] = Number.isSafeInteger(lvl) ? Math.max(1, Math.min(5, lvl)) : 1;
         });
@@ -102,7 +132,7 @@ class SaveManager {
   save() {
     try {
       this.data.lastSaved = new Date().toISOString();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+      safeStore.setItem(STORAGE_KEY, JSON.stringify(this.data));
       return true;
     } catch (error) {
       console.error('[SAVE] Could not persist career data.', error);
@@ -118,6 +148,19 @@ class SaveManager {
        this.data.highestDistrictUnlocked > 1 ||
        this.data.districts[1]?.completedMissions?.length > 0)
     );
+  }
+
+  updatePlayerName(name) {
+    if (!name || typeof name !== 'string') return false;
+    const sanitized = name.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().slice(0, 16);
+    if (sanitized.length < 3) return false;
+    this.data.player.name = sanitized;
+    this.save();
+    return sanitized;
+  }
+
+  getGamerName() {
+    return this.data.player?.name || 'Karachi Hero';
   }
 
   getCareerLevel() {
@@ -196,8 +239,72 @@ class SaveManager {
       magnet: this.getPowerUpUpgradeLevel('magnet'),
       shield: this.getPowerUpUpgradeLevel('shield'),
       nitro: this.getPowerUpUpgradeLevel('nitro'),
-      double_coins: this.getPowerUpUpgradeLevel('double_coins')
+      double_coins: this.getPowerUpUpgradeLevel('double_coins'),
+      jump: this.getPowerUpUpgradeLevel('jump'),
+      horn: this.getPowerUpUpgradeLevel('horn'),
+      cricket_bat: this.getPowerUpUpgradeLevel('cricket_bat'),
+      hoverboard: this.getPowerUpUpgradeLevel('hoverboard')
     };
+  }
+
+  buyConsumable(itemKey) {
+    const prices = {
+      mystery_crate: 300,
+      revive_token: 500,
+      headstart: 800
+    };
+    const cost = prices[itemKey];
+    if (!cost) return { success: false, reason: 'Invalid item.' };
+
+    const walletRupees = this.data.runnerStats?.totalRupees || 0;
+    if (walletRupees < cost) {
+      return {
+        success: false,
+        reason: `Insufficient Rupees! Need ${cost.toLocaleString()} Rs (Have ${walletRupees.toLocaleString()} Rs).`
+      };
+    }
+
+    if (itemKey === 'revive_token') {
+      const current = Number(this.data.player?.reviveTokens) || 0;
+      if (current >= MAX_REVIVE_TOKENS) {
+        return { success: false, reason: `Maximum revive tokens reached (${MAX_REVIVE_TOKENS})!` };
+      }
+      this.data.player.reviveTokens = current + 1;
+    } else if (itemKey === 'mystery_crate') {
+      const roll = Math.random();
+      if (roll < 0.5) {
+        const bonusCoins = 400 + Math.floor(Math.random() * 5) * 100;
+        this.data.runnerStats.totalRupees = walletRupees - cost + bonusCoins;
+        this.save();
+        return { success: true, itemKey, rewardType: 'coins', amount: bonusCoins, message: `🎁 Won ${bonusCoins.toLocaleString()} Bonus Rupees!` };
+      } else if (roll < 0.8) {
+        const current = Number(this.data.player?.reviveTokens) || 0;
+        if (current < MAX_REVIVE_TOKENS) {
+          this.data.player.reviveTokens = current + 1;
+          this.data.runnerStats.totalRupees = walletRupees - cost;
+          this.save();
+          return { success: true, itemKey, rewardType: 'token', message: '🎁 Won 1 Edhi Revive Token!' };
+        } else {
+          const bonusCoins = 800;
+          this.data.runnerStats.totalRupees = walletRupees - cost + bonusCoins;
+          this.save();
+          return { success: true, itemKey, rewardType: 'coins', amount: bonusCoins, message: `🎁 Won ${bonusCoins.toLocaleString()} Bonus Rupees!` };
+        }
+      } else {
+        this.data.runnerStats.totalRupees = walletRupees - cost;
+        this.save();
+        return { success: true, itemKey, rewardType: 'fever', message: '🎁 Won Instant JUNOON Adrenaline Charge!' };
+      }
+    } else if (itemKey === 'headstart') {
+      this.data.hasHeadstart = (this.data.hasHeadstart || 0) + 1;
+    }
+
+    this.data.runnerStats.totalRupees = walletRupees - cost;
+    if (!this.save()) {
+      this.data.runnerStats.totalRupees = walletRupees;
+      return { success: false, reason: 'Could not save purchase.' };
+    }
+    return { success: true, itemKey, cost };
   }
 
   upgradePowerUp(type) {

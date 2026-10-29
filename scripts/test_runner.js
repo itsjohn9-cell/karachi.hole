@@ -1932,7 +1932,7 @@ async function runTestSuite() {
           }));
         }
         if (game.currentDistrictLevel !== 1 || game.player.avatarId !== 'tariq' ||
-            game.hearts !== 3 || game.runnerDifficulty !== 'standard') {
+            game.hearts !== 3 || (game.runnerDifficulty !== 'standard' && game.runnerDifficulty !== 'cruiser')) {
           throw new Error('Reset did not restore the default runner state');
         }
       })();
@@ -3479,13 +3479,15 @@ async function runTestSuite() {
           return { first, kinds, profile: game.getRunnerNavProfile() };
         };
         const easy = collect('easy');
+        const cruiser = collect('cruiser');
         const standard = collect('standard');
         const hard = collect('hard');
         if (easy.kinds.length < 3 || easy.kinds.some(kind => kind !== 'fork')) throw new Error('Easy generated a turn: ' + easy.kinds.join(','));
+        if (!cruiser.kinds.includes('turn')) throw new Error('Cruiser generated no turns');
         if (!standard.kinds.includes('turn') || !standard.kinds.includes('fork')) throw new Error('Standard must mix turns and forks: ' + standard.kinds.join(','));
         if (!hard.kinds.includes('turn')) throw new Error('Hard generated no turns');
-        if (!(hard.profile.gap < standard.profile.gap && standard.profile.gap < easy.profile.gap)) throw new Error('Route spacing does not tighten with pace');
-        if (!(hard.first < standard.first && standard.first < easy.first)) throw new Error('First junction does not arrive sooner with pace');
+        if (!(hard.profile.gap < standard.profile.gap && standard.profile.gap < cruiser.profile.gap && cruiser.profile.gap < easy.profile.gap)) throw new Error('Route spacing does not tighten with pace');
+        if (!(hard.first < standard.first && standard.first < cruiser.first && cruiser.first < easy.first)) throw new Error('First junction does not arrive sooner with pace');
 
         // Explicit Master commands still work on Easy.
         game.runnerDifficulty = 'easy';

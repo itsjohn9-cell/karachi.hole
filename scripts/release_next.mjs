@@ -103,12 +103,14 @@ async function autoRelease() {
   fs.copyFileSync(apkPath, latestApk);
 
   const releaseNotes = `Karachi Runner v${nextVer} (Build ${nextCode})\n\n` +
-    `- Dynamic 3D Orbit Menu Showcase with live character idling and Havaldar CD-70 police patrol sirens\n` +
-    `- King Pressure Horn cooldown scaled by pace (Easy: 4s, Standard: 8s, Hard: 14s)\n` +
-    `- Realistic obstacle mechanics: horn clears traffic & street threats while preserving structural hurdles & holes\n` +
-    `- Hydraulic Jump Springs immediate soaring launch & skyline coin canopy\n` +
-    `- Hydraulic Spring Trampoline Launch Pads for high rooftop leaps\n` +
-    `- Chai Rocket Jetpack & frequent W-11 Minibus roof surfing\n\n` +
+    `- Global Scoring Charts: Daily, Weekly, Monthly, Annual, and All-Time leaderboards with Gamer Tag customization\n` +
+    `- Daily Quests System: 3 daily seeded challenges with progress tracking, rupee payouts, and +2,500 Rs jackpot\n` +
+    `- Zero-cost Firebase Realtime DB & REST cloud synchronization with resilient local persistent fallback\n` +
+    `- Cruiser Pace (60 km/h · Moderate): Balanced hurdle spacing, set as default selection\n` +
+    `- Word Hunt (K-A-R-A-C-H-I): 55m letter intervals, 5,000 Rs jackpot + Junoon Fever Rush\n` +
+    `- W-11 Minibus Roof Surfing: 2.0m lateral ramp snapping, +50% speed boost & air launch\n` +
+    `- Authentic Karachi Street Slangs & Truck-Art Neon Billboards across corridors\n` +
+    `- Brand new Karachi Mazar-e-Quaid / crescent app icon & animated starter splash screen\n\n` +
     `Direct APK Download: https://github.com/itsjohn9-cell/karachi.hole/releases/latest/download/karachi-runner-latest.apk`;
 
   try {

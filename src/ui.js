@@ -10,6 +10,7 @@ import {
 } from './educationalChallenges.js';
 import { MAX_REVIVE_TOKENS, saveManager } from './saveManager.js';
 import { CITIZEN_DIALOGUES, dialogueSystem } from './dialogueSystem.js';
+import { leaderboardService } from './leaderboardService.js';
 
 if (typeof window !== 'undefined') {
   window.getChallengeByCategoryAndTier = getChallengeByCategoryAndTier;
@@ -208,6 +209,7 @@ export class UIManager {
     this.createRunnerHelpModal();
     this.createRunnerProgressModal();
     this.createRunnerShopModal();
+    this.createRunnerLeaderboardsModal();
     this.createRunnerTutorialOverlay();
     this.createRunnerDeveloperUI();
     this.createAnalyticsConsentModal();
@@ -278,10 +280,10 @@ export class UIManager {
                 <span class="age-card-title">Easy</span>
                 <span class="age-card-sub">Scenic · no turns</span>
               </div>
-              <div class="age-card active ui-interactive" role="button" tabindex="0" aria-pressed="true" aria-label="Standard pace. Turns and forks." data-runner-difficulty="standard">
-                <span class="age-card-icon">🏃</span>
-                <span class="age-card-title">Standard</span>
-                <span class="age-card-sub">Turns &amp; forks</span>
+              <div class="age-card active ui-interactive" role="button" tabindex="0" aria-pressed="true" aria-label="Cruiser pace. Moderate street speed with gentle hazards." data-runner-difficulty="cruiser">
+                <span class="age-card-icon">⚡</span>
+                <span class="age-card-title">Cruiser</span>
+                <span class="age-card-sub">Moderate · turns</span>
               </div>
               <div class="age-card ui-interactive" role="button" tabindex="0" aria-pressed="false" aria-label="Hard pace. Frequent turns." data-runner-difficulty="hard">
                 <span class="age-card-icon">🔥</span>
@@ -452,6 +454,15 @@ export class UIManager {
             <p>Start in Soldier Bazar, pass named Karachi neighbourhoods, continue through Lyari and Saddar, and face faster, denser hazards as the run grows longer. Follow the city loop back to Soldier Bazar to finish.</p>
           </section>
           <section class="runner-help-section">
+            <h3>🔤 WORD HUNT &amp; JUNOON FEVER RUSH 🔥</h3>
+            <p><strong>K-A-R-A-C-H-I Letters:</strong> Collect glowing letters along the road. Each letter gives +25 Fever Charge. Complete all 7 letters to win a <strong>5,000 Rs Jackpot</strong> and unleash <strong>JUNOON Fever Rush</strong>!</p>
+            <p><strong>Junoon Fever:</strong> Fills your adrenaline bar for invulnerable golden hyper-speed with rock guitar riffs and 3X coin suction!</p>
+          </section>
+          <section class="runner-help-section">
+            <h3>🛹 W-11 MINIBUS ROOF SURFING</h3>
+            <p>Spot the iconic decorated Karachi W-11 Minibus ahead, run up its rear wooden ramp, and surf on the roof across bridges to grab floating sky coin rings!</p>
+          </section>
+          <section class="runner-help-section">
             <h3>✨ PICKUPS &amp; SECOND CHANCES</h3>
             <p>Collect rupees and route power-ups: CNG gives a speed shield, tanker shield absorbs a crash, chai restores a heart, biryani magnet attracts rupees, and jump springs boost jumps.</p>
             <p>Rare golden Rescue Tokens are stored between runs (maximum 3). One token pays for one Quick Revive after a crash. Sprint is provided by route pickups, not a free button.</p>
@@ -535,7 +546,21 @@ export class UIManager {
           <h3>🎒 COLLECTIONS · ROUTES &amp; GETUPS</h3>
           <div class="runner-progress-grid" id="runner-progress-collections"></div>
         </section>
-        <button class="primary-btn ui-interactive runner-info-close" id="btn-runner-progress-done">DONE</button>
+        <section class="runner-info-section" style="text-align: center; background: rgba(0,229,255,0.06); padding: 10px; border-radius: 12px; border: 1px dashed rgba(0,229,255,0.3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <div style="text-align: left;">
+              <h3 style="margin: 0; color: #00e5ff; font-size: 0.85rem;">🏆 GLOBAL LEADERBOARDS &amp; CHALLENGES</h3>
+              <p style="margin: 2px 0 0; font-size: 0.68rem; color: #94a3b8;">Daily, weekly, monthly, annual rankings &amp; quests</p>
+            </div>
+            <button class="primary-btn ui-interactive" id="btn-progress-open-leaderboards" style="padding: 6px 12px; font-size: 0.75rem; min-height: 36px; white-space: nowrap;">VIEW CHARTS ➔</button>
+          </div>
+        </section>
+        <div style="display: flex; gap: 0.75rem; justify-content: space-between; align-items: center; margin-top: 1rem;">
+          <button class="secondary-btn ui-interactive" id="btn-progress-reset-career" style="color: #ff5252; border-color: rgba(255,82,82,0.4);">
+            🔄 RESET CAREER
+          </button>
+          <button class="primary-btn ui-interactive runner-info-close" id="btn-runner-progress-done">DONE</button>
+        </div>
       </section>
     `;
     document.body.appendChild(this.runnerProgressModal);
@@ -694,6 +719,20 @@ export class UIManager {
     }
   }
 
+  handleConsumablePurchase(key) {
+    const res = saveManager.buyConsumable(key);
+    const status = document.getElementById('runner-shop-status');
+    if (res.success) {
+      audio.playPowerUp?.();
+      if (status) status.textContent = res.message || `Purchased ${key.replace('_', ' ')}!`;
+      this.refreshRunnerShop();
+      this.refreshRunnerProgress();
+    } else {
+      audio.playWrongAnswer?.();
+      if (status) status.textContent = res.reason;
+    }
+  }
+
   refreshRunnerShop() {
     if (!this.runnerShopModal) return;
 
@@ -734,10 +773,43 @@ export class UIManager {
         icon: '🪙',
         description: 'Multiplies every collected Rupee coin by 2X (+100 Rs each)!',
         formatStat: (lvl) => `Duration: ${(10.0 * (1.0 + (lvl - 1) * 0.25)).toFixed(1)}s`
+      },
+      {
+        key: 'jump',
+        title: 'Hydraulic Jump Springs',
+        icon: '👟',
+        description: 'Rocket jump sneakers clear high hurdles and sky coin rings.',
+        formatStat: (lvl) => `Airtime: ${(10.0 * (1.0 + (lvl - 1) * 0.25)).toFixed(1)}s`
+      },
+      {
+        key: 'horn',
+        title: 'W-11 Pressure Horn',
+        icon: '📢',
+        description: 'High-decibel blast clears obstacles ahead and recovers faster.',
+        formatStat: (lvl) => `Cooldown: ${(8.0 - (lvl - 1) * 0.75).toFixed(1)}s`
+      },
+      {
+        key: 'cricket_bat',
+        title: 'Tape-Ball Sixer Bat',
+        icon: '🏏',
+        description: 'Smash street barricades and obstacles into the stands for SIX!',
+        formatStat: (lvl) => `Duration: ${(18.0 * (1.0 + (lvl - 1) * 0.25)).toFixed(1)}s`
+      },
+      {
+        key: 'hoverboard',
+        title: 'Lyari Street Hoverboard',
+        icon: '🛹',
+        description: 'Smooth hoverboard with built-in crash protection shield.',
+        formatStat: (lvl) => `Duration: ${(15.0 * (1.0 + (lvl - 1) * 0.25)).toFixed(1)}s`
       }
     ];
 
     container.replaceChildren();
+
+    const upgradeHeader = document.createElement('h3');
+    upgradeHeader.className = 'shop-section-title';
+    upgradeHeader.textContent = '⚡ RUNNER ABILITY UPGRADES';
+    container.appendChild(upgradeHeader);
 
     upgrades.forEach(item => {
       const lvl = saveManager.getPowerUpUpgradeLevel(item.key);
@@ -784,6 +856,62 @@ export class UIManager {
         });
       }
 
+      container.appendChild(card);
+    });
+
+    const consumables = [
+      {
+        key: 'mystery_crate',
+        title: 'Karachi Mystery Crate',
+        icon: '🎁',
+        cost: 300,
+        description: 'Surprise crate! Win bonus Rupees, Revive Tokens, or instant Adrenaline!'
+      },
+      {
+        key: 'revive_token',
+        title: 'Edhi Rescue Revive Token',
+        icon: '💖',
+        cost: 500,
+        description: 'Emergency rescue token! Automatically revive when hearts run out.'
+      },
+      {
+        key: 'headstart',
+        title: 'Rocket Headstart (500m)',
+        icon: '🚀',
+        cost: 800,
+        description: 'Blaze forward 500 meters at supersonic speed with invulnerability!'
+      }
+    ];
+
+    const consumableHeader = document.createElement('h3');
+    consumableHeader.className = 'shop-section-title';
+    consumableHeader.textContent = '🎒 STREET CONSUMABLES';
+    container.appendChild(consumableHeader);
+
+    consumables.forEach(item => {
+      const canAfford = available >= item.cost;
+      const card = document.createElement('div');
+      card.className = 'runner-shop-item shop-consumable-item';
+      card.innerHTML = `
+        <div class="shop-item-icon">${item.icon}</div>
+        <div class="shop-item-details">
+          <div class="shop-item-title-row">
+            <h4>${item.title}</h4>
+            <span class="shop-item-level-tag">SINGLE USE</span>
+          </div>
+          <p class="shop-item-desc">${item.description}</p>
+        </div>
+        <div class="shop-item-action">
+          <button class="primary-btn shop-buy-btn ui-interactive ${canAfford ? 'can-afford' : 'cannot-afford'}" data-consumable="${item.key}">
+            BUY<br><span class="shop-btn-cost">${item.cost.toLocaleString()} Rs</span>
+          </button>
+        </div>
+      `;
+      const btn = card.querySelector(`button[data-consumable="${item.key}"]`);
+      btn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.handleConsumablePurchase(item.key);
+      });
       container.appendChild(card);
     });
   }
@@ -874,6 +1002,430 @@ export class UIManager {
 
   hideTapToStartPrompt() {
     if (this.tapToStartOverlay) this.tapToStartOverlay.style.display = 'none';
+  }
+
+  // Global Scoring Charts & Daily Challenges Modal
+  createRunnerLeaderboardsModal() {
+    this.runnerLeaderboardsModal = document.createElement('div');
+    this.runnerLeaderboardsModal.className = 'modal-backdrop runner-leaderboards-backdrop';
+    this.runnerLeaderboardsModal.id = 'modal-runner-leaderboards';
+    this.runnerLeaderboardsModal.style.display = 'none';
+
+    this.runnerLeaderboardsModal.innerHTML = `
+      <section class="modal-card runner-info-card runner-leaderboards-card" role="dialog" aria-modal="true" aria-labelledby="runner-leaderboards-title">
+        <header class="runner-info-header">
+          <div>
+            <h2 id="runner-leaderboards-title">🏆 GLOBAL CHARTS &amp; CHALLENGES</h2>
+            <p>Live rankings across Karachi &amp; Daily Quests</p>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-runner-leaderboards" aria-label="Close leaderboards">&times;</button>
+        </header>
+
+        <!-- Gamer Tag Profile Strip -->
+        <div class="lb-gamer-profile-strip">
+          <div class="lb-gamer-tag-box">
+            <span class="lb-gamer-label">RUNNER TAG:</span>
+            <strong class="lb-gamer-name" id="lb-gamer-name-display">Karachi_Hero</strong>
+            <button class="secondary-btn ui-interactive lb-edit-tag-btn" id="btn-edit-gamer-tag" type="button">✏️ EDIT</button>
+          </div>
+          <div class="lb-gamer-rank-badges">
+            <span class="lb-rank-badge" id="lb-pill-today-rank">TODAY: <strong>#1</strong></span>
+            <span class="lb-rank-badge" id="lb-pill-alltime-rank">ALL-TIME: <strong>#1</strong></span>
+          </div>
+        </div>
+
+        <!-- Inline Tag Editor -->
+        <div class="lb-tag-editor" id="lb-tag-editor" style="display: none;">
+          <input type="text" id="input-gamer-name" maxlength="16" placeholder="Enter Runner Tag (3-16 chars)..." />
+          <button class="primary-btn ui-interactive" id="btn-save-gamer-tag" type="button">SAVE</button>
+          <button class="secondary-btn ui-interactive" id="btn-cancel-gamer-tag" type="button">CANCEL</button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="lb-tabs-bar" role="tablist">
+          <button class="lb-tab-btn active ui-interactive" data-lb-tab="day" type="button">📅 TODAY</button>
+          <button class="lb-tab-btn ui-interactive" data-lb-tab="week" type="button">🗓️ WEEK</button>
+          <button class="lb-tab-btn ui-interactive" data-lb-tab="month" type="button">📆 MONTH</button>
+          <button class="lb-tab-btn ui-interactive" data-lb-tab="year" type="button">🌟 YEAR</button>
+          <button class="lb-tab-btn ui-interactive" data-lb-tab="all_time" type="button">👑 ALL-TIME</button>
+          <button class="lb-tab-btn ui-interactive" data-lb-tab="challenges" type="button">🎯 DAILY QUESTS</button>
+        </div>
+
+        <!-- View 1: Leaderboard Table -->
+        <div id="lb-table-view" class="lb-view-container">
+          <div class="lb-table-header">
+            <span class="col-rank">RANK</span>
+            <span class="col-runner">RUNNER</span>
+            <span class="col-route">DISTRICT</span>
+            <span class="col-dist">DIST</span>
+            <span class="col-score">SCORE</span>
+          </div>
+          <div class="lb-table-body" id="lb-list-rows"></div>
+          <div class="lb-player-pinned-footer" id="lb-player-pinned-footer" style="display: none;"></div>
+        </div>
+
+        <!-- View 2: Daily Challenges & Daily Standings -->
+        <div id="lb-challenges-view" class="lb-view-container" style="display: none;">
+          <div class="daily-challenges-header-banner">
+            <div>
+              <h3 id="daily-challenges-date-banner" style="margin: 0; font-size: 0.95rem; color: #ffd700;">🎯 TODAY'S CHALLENGES</h3>
+              <p style="margin: 2px 0 0; font-size: 0.68rem; color: #94a3b8;">Refreshes daily at 00:00. Complete all 3 for 2,500 Rs jackpot!</p>
+            </div>
+            <span class="daily-trophy-badge" id="daily-challenges-completion-status">0/3 DONE</span>
+          </div>
+
+          <div class="daily-challenges-list" id="daily-challenges-cards-container"></div>
+
+          <div class="daily-bonus-banner" id="daily-bonus-banner">
+            <span id="daily-bonus-text">🎁 DAILY GRAND PRIZE: Complete all 3 missions to claim +2,500 Rs bonus!</span>
+            <button class="primary-btn ui-interactive" id="btn-claim-daily-bonus" type="button" style="display: none; padding: 4px 10px; font-size: 0.72rem;">CLAIM +2,500 Rs</button>
+          </div>
+
+          <h4 style="margin: 12px 0 6px; color: #ffd700; font-size: 0.85rem;">📊 TODAY'S CHALLENGE LEADERBOARD</h4>
+          <div class="daily-lb-list" id="daily-lb-rows"></div>
+        </div>
+
+        <!-- Cloud / Firebase Sync Status Banner -->
+        <div class="lb-cloud-footer">
+          <div class="lb-cloud-info">
+            <span class="lb-cloud-indicator" id="lb-cloud-status-indicator">🟢</span>
+            <span id="lb-cloud-status-text">Cloud Sync: Local High-Availability (Firebase Ready)</span>
+          </div>
+          <button class="ghost-btn ui-interactive lb-cloud-btn" id="btn-toggle-cloud-config" type="button">⚙️ Cloud Sync</button>
+        </div>
+
+        <!-- Cloud Sync Config Modal / Input (Collapsible) -->
+        <div class="lb-cloud-config-box" id="lb-cloud-config-box" style="display: none;">
+          <p style="font-size: 0.72rem; color: #94a3b8; margin: 0 0 6px;">
+            Optional: Enter your free Firebase Realtime Database URL to sync global scores across devices (e.g. <code>https://my-app-default-rtdb.firebaseio.com</code>):
+          </p>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="input-cloud-url" placeholder="https://<project>-default-rtdb.firebaseio.com" style="flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.72rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff;" />
+            <button class="primary-btn ui-interactive" id="btn-save-cloud-url" type="button" style="padding: 4px 10px; font-size: 0.72rem; min-height: 30px;">SAVE</button>
+            <button class="secondary-btn ui-interactive" id="btn-clear-cloud-url" type="button" style="padding: 4px 10px; font-size: 0.72rem; min-height: 30px;">CLEAR</button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+          <button class="primary-btn ui-interactive runner-info-close" id="btn-runner-leaderboards-done" type="button">DONE</button>
+        </div>
+      </section>
+    `;
+
+    document.body.appendChild(this.runnerLeaderboardsModal);
+    this.bindLeaderboardsEvents();
+  }
+
+  bindLeaderboardsEvents() {
+    this.activeLbTab = 'day';
+
+    // Tabs navigation
+    this.runnerLeaderboardsModal?.querySelectorAll('.lb-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        audio.playClick();
+        const tab = btn.dataset.lbTab;
+        this.setLeaderboardTab(tab);
+      });
+    });
+
+    // Tag Editor
+    const editBtn = document.getElementById('btn-edit-gamer-tag');
+    const editorBox = document.getElementById('lb-tag-editor');
+    const inputTag = document.getElementById('input-gamer-name');
+    const saveBtn = document.getElementById('btn-save-gamer-tag');
+    const cancelBtn = document.getElementById('btn-cancel-gamer-tag');
+
+    editBtn?.addEventListener('click', () => {
+      audio.playClick();
+      if (editorBox && inputTag) {
+        editorBox.style.display = 'flex';
+        inputTag.value = leaderboardService.getGamerName();
+        inputTag.focus();
+      }
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+      audio.playClick();
+      if (editorBox) editorBox.style.display = 'none';
+    });
+
+    saveBtn?.addEventListener('click', () => {
+      audio.playClick();
+      const newName = inputTag?.value?.trim();
+      if (newName) {
+        const saved = leaderboardService.setGamerName(newName);
+        if (saved) {
+          const nameDisplay = document.getElementById('lb-gamer-name-display');
+          if (nameDisplay) nameDisplay.textContent = saved;
+          if (editorBox) editorBox.style.display = 'none';
+          this.refreshLeaderboardsView();
+        } else {
+          alert('Please enter 3-16 letters, numbers, or underscores.');
+        }
+      }
+    });
+
+    // Cloud config toggle
+    const toggleCloudBtn = document.getElementById('btn-toggle-cloud-config');
+    const cloudBox = document.getElementById('lb-cloud-config-box');
+    const cloudInput = document.getElementById('input-cloud-url');
+    const saveCloudBtn = document.getElementById('btn-save-cloud-url');
+    const clearCloudBtn = document.getElementById('btn-clear-cloud-url');
+
+    toggleCloudBtn?.addEventListener('click', () => {
+      audio.playClick();
+      if (cloudBox) {
+        const isShown = cloudBox.style.display !== 'none';
+        cloudBox.style.display = isShown ? 'none' : 'block';
+        if (!isShown && cloudInput) {
+          cloudInput.value = leaderboardService.loadCloudUrl();
+        }
+      }
+    });
+
+    saveCloudBtn?.addEventListener('click', () => {
+      audio.playClick();
+      const val = cloudInput?.value?.trim();
+      leaderboardService.setCloudUrl(val);
+      this.refreshCloudStatus();
+      if (cloudBox) cloudBox.style.display = 'none';
+    });
+
+    clearCloudBtn?.addEventListener('click', () => {
+      audio.playClick();
+      leaderboardService.setCloudUrl('');
+      if (cloudInput) cloudInput.value = '';
+      this.refreshCloudStatus();
+      if (cloudBox) cloudBox.style.display = 'none';
+    });
+
+    // Claim bonus button
+    const claimBonusBtn = document.getElementById('btn-claim-daily-bonus');
+    claimBonusBtn?.addEventListener('click', () => {
+      audio.playPowerUp();
+      const res = leaderboardService.claimChallengeReward('c1_distance'); // fallback or trigger
+      // Add rupees directly
+      saveManager.addRupees(2500);
+      claimBonusBtn.style.display = 'none';
+      const bonusText = document.getElementById('daily-bonus-text');
+      if (bonusText) bonusText.textContent = '🎉 2,500 Rs GRAND BONUS CLAIMED!';
+      this.renderDailyChallenges();
+    });
+  }
+
+  showRunnerLeaderboards(initialTab = 'day') {
+    if (!this.runnerLeaderboardsModal) return;
+    this.wasPausedBeforeLeaderboards = Boolean(window.game?.isPaused);
+    if (window.game?.isGameStarted && !window.game?.isPaused) {
+      window.game.isPaused = true;
+    }
+
+    // Refresh gamer profile
+    const nameDisplay = document.getElementById('lb-gamer-name-display');
+    if (nameDisplay) nameDisplay.textContent = leaderboardService.getGamerName();
+
+    const rankDay = leaderboardService.getPlayerRank('day');
+    const rankAllTime = leaderboardService.getPlayerRank('all_time');
+    const pillDay = document.getElementById('lb-pill-today-rank');
+    const pillAllTime = document.getElementById('lb-pill-alltime-rank');
+    if (pillDay) pillDay.innerHTML = `TODAY: <strong>#${rankDay.rank}</strong>`;
+    if (pillAllTime) pillAllTime.innerHTML = `ALL-TIME: <strong>#${rankAllTime.rank}</strong>`;
+
+    this.refreshCloudStatus();
+    this.setLeaderboardTab(initialTab || 'day');
+    this.runnerLeaderboardsModal.style.display = 'flex';
+  }
+
+  hideRunnerLeaderboards() {
+    if (!this.runnerLeaderboardsModal) return;
+    this.runnerLeaderboardsModal.style.display = 'none';
+    if (window.game?.isGameStarted && !this.wasPausedBeforeLeaderboards && window.game?.isPaused) {
+      window.game.isPaused = false;
+    }
+  }
+
+  refreshCloudStatus() {
+    const status = leaderboardService.getCloudStatus();
+    const ind = document.getElementById('lb-cloud-status-indicator');
+    const txt = document.getElementById('lb-cloud-status-text');
+    if (ind) ind.textContent = status.configured ? '☁️' : '🟢';
+    if (txt) {
+      txt.textContent = status.configured
+        ? `Cloud Sync: ${status.type} (Connected)`
+        : 'Cloud Sync: Local High-Availability (Firebase Ready)';
+    }
+  }
+
+  setLeaderboardTab(tab) {
+    this.activeLbTab = tab;
+    this.runnerLeaderboardsModal?.querySelectorAll('.lb-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lbTab === tab);
+    });
+
+    const tableView = document.getElementById('lb-table-view');
+    const challengesView = document.getElementById('lb-challenges-view');
+
+    if (tab === 'challenges') {
+      if (tableView) tableView.style.display = 'none';
+      if (challengesView) challengesView.style.display = 'block';
+      this.renderDailyChallenges();
+    } else {
+      if (tableView) tableView.style.display = 'block';
+      if (challengesView) challengesView.style.display = 'none';
+      this.renderLeaderboardTab(tab);
+    }
+  }
+
+  refreshLeaderboardsView() {
+    if (this.activeLbTab) {
+      this.setLeaderboardTab(this.activeLbTab);
+    }
+  }
+
+  renderLeaderboardTab(timeframe = 'day') {
+    const container = document.getElementById('lb-list-rows');
+    const pinnedFooter = document.getElementById('lb-player-pinned-footer');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const entries = leaderboardService.getLeaderboard(timeframe);
+    let playerInTop = false;
+
+    entries.forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = `lb-table-row ${item.isCurrentPlayer ? 'is-player-row' : ''}`;
+      if (item.isCurrentPlayer) playerInTop = true;
+
+      let rankDisplay = `${item.rank}`;
+      if (item.rank === 1) rankDisplay = '🥇 1';
+      else if (item.rank === 2) rankDisplay = '🥈 2';
+      else if (item.rank === 3) rankDisplay = '🥉 3';
+
+      row.innerHTML = `
+        <span class="col-rank">${rankDisplay}</span>
+        <span class="col-runner">
+          <strong>${item.gamerName}</strong>
+          ${item.isCurrentPlayer ? '<span class="player-you-pill">YOU</span>' : ''}
+        </span>
+        <span class="col-route">${item.district || 'Karachi'}</span>
+        <span class="col-dist">${(item.distance || 0).toLocaleString()}m</span>
+        <span class="col-score">${(item.score || 0).toLocaleString()}</span>
+      `;
+      container.appendChild(row);
+    });
+
+    // Pinned footer if player is ranked outside visible rows
+    if (pinnedFooter) {
+      const pRank = leaderboardService.getPlayerRank(timeframe);
+      if (!playerInTop && pRank.entry) {
+        pinnedFooter.style.display = 'flex';
+        pinnedFooter.innerHTML = `
+          <span class="col-rank">#${pRank.rank}</span>
+          <span class="col-runner"><strong>${pRank.entry.gamerName}</strong> <span class="player-you-pill">YOU</span></span>
+          <span class="col-route">${pRank.entry.district || 'Karachi'}</span>
+          <span class="col-dist">${(pRank.entry.distance || 0).toLocaleString()}m</span>
+          <span class="col-score">${(pRank.entry.score || 0).toLocaleString()}</span>
+        `;
+      } else {
+        pinnedFooter.style.display = 'none';
+      }
+    }
+  }
+
+  renderDailyChallenges() {
+    const cardsContainer = document.getElementById('daily-challenges-cards-container');
+    const statusTag = document.getElementById('daily-challenges-completion-status');
+    const bonusBanner = document.getElementById('daily-bonus-banner');
+    const claimBonusBtn = document.getElementById('btn-claim-daily-bonus');
+    const dailyLbContainer = document.getElementById('daily-lb-rows');
+
+    if (!cardsContainer) return;
+
+    const state = leaderboardService.getDailyChallenges();
+    const completedCount = state.challenges.filter(c => c.completed).length;
+
+    if (statusTag) {
+      statusTag.textContent = `${completedCount}/3 DONE`;
+      statusTag.style.color = completedCount === 3 ? '#00e5ff' : '#ffd700';
+    }
+
+    // Render 3 challenge cards
+    cardsContainer.innerHTML = '';
+    state.challenges.forEach(challenge => {
+      const card = document.createElement('div');
+      card.className = `daily-challenge-card ${challenge.completed ? 'completed' : ''}`;
+
+      const pct = Math.min(100, Math.round((challenge.current / challenge.target) * 100));
+      const isClaimed = Boolean(state.claimed[challenge.id]);
+
+      let actionHtml = '';
+      if (isClaimed) {
+        actionHtml = `<span class="challenge-claimed-badge">✔ CLAIMED (+${challenge.rewardRupees} Rs)</span>`;
+      } else if (challenge.completed) {
+        actionHtml = `<button class="primary-btn ui-interactive claim-challenge-btn" data-challenge-id="${challenge.id}" type="button">CLAIM ${challenge.rewardRupees} Rs</button>`;
+      } else {
+        actionHtml = `<span class="challenge-progress-text">${challenge.current.toLocaleString()} / ${challenge.target.toLocaleString()} (${pct}%)</span>`;
+      }
+
+      card.innerHTML = `
+        <div class="challenge-icon-box">${challenge.icon}</div>
+        <div class="challenge-content-box">
+          <div class="challenge-title-row">
+            <strong>${challenge.title}</strong>
+            <span class="challenge-reward-tag">+${challenge.rewardRupees} Rs</span>
+          </div>
+          <p class="challenge-desc">${challenge.description}</p>
+          <div class="challenge-progress-bar-bg">
+            <div class="challenge-progress-bar-fill" style="width: ${pct}%;"></div>
+          </div>
+        </div>
+        <div class="challenge-action-box">
+          ${actionHtml}
+        </div>
+      `;
+      cardsContainer.appendChild(card);
+    });
+
+    // Bind claim buttons
+    cardsContainer.querySelectorAll('.claim-challenge-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        audio.playPowerUp();
+        const cid = btn.dataset.challengeId;
+        const res = leaderboardService.claimChallengeReward(cid);
+        if (res.success) {
+          this.refreshRunnerProgress();
+          this.renderDailyChallenges();
+        }
+      });
+    });
+
+    // Grand bonus button
+    if (bonusBanner && claimBonusBtn) {
+      if (completedCount === 3 && !state.allCompletedBonusClaimed) {
+        claimBonusBtn.style.display = 'inline-block';
+      } else if (state.allCompletedBonusClaimed) {
+        claimBonusBtn.style.display = 'none';
+        const bonusText = document.getElementById('daily-bonus-text');
+        if (bonusText) bonusText.textContent = '🎉 2,500 Rs GRAND JACKPOT CLAIMED!';
+      }
+    }
+
+    // Render daily challenge leaderboard
+    if (dailyLbContainer) {
+      dailyLbContainer.innerHTML = '';
+      const dailyStandings = leaderboardService.getDailyChallengeLeaderboard();
+      dailyStandings.forEach(item => {
+        const row = document.createElement('div');
+        row.className = `daily-lb-row ${item.isCurrentPlayer ? 'is-player-row' : ''}`;
+        row.innerHTML = `
+          <span class="col-rank">${item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : item.rank}</span>
+          <span class="col-runner"><strong>${item.gamerName}</strong> ${item.isCurrentPlayer ? '<span class="player-you-pill">YOU</span>' : ''}</span>
+          <span class="col-completed">${item.completed}/3 Quests</span>
+          <span class="col-points">+${(item.points || 0).toLocaleString()} Rs</span>
+        `;
+        dailyLbContainer.appendChild(row);
+      });
+    }
   }
 
   // Subway Surfers / Temple Run Visual Controls Tutorial Overlay
@@ -1546,9 +2098,12 @@ export class UIManager {
           </div>
           <div class="runner-pace-options">
             <button class="runner-pace-option ui-interactive" type="button" data-runner-pace="easy" aria-pressed="false">
-              <strong>EASY</strong><small>54 km/h · Scenic</small>
+              <strong>EASY</strong><small>52 km/h · Scenic</small>
             </button>
-            <button class="runner-pace-option active ui-interactive" type="button" data-runner-pace="standard" aria-pressed="true">
+            <button class="runner-pace-option active ui-interactive" type="button" data-runner-pace="cruiser" aria-pressed="true">
+              <strong>CRUISER</strong><small>60 km/h · Moderate</small>
+            </button>
+            <button class="runner-pace-option ui-interactive" type="button" data-runner-pace="standard" aria-pressed="false">
               <strong>STANDARD</strong><small>68 km/h · Balanced</small>
             </button>
             <button class="runner-pace-option ui-interactive" type="button" data-runner-pace="hard" aria-pressed="false">
@@ -1613,10 +2168,19 @@ export class UIManager {
           </button>
 
           <button class="hub-tile-btn ui-interactive" id="btn-menu-open-runner-progress">
-            <span class="hub-tile-icon">🏆</span>
+            <span class="hub-tile-icon">⭐</span>
             <div class="hub-tile-info">
               <span class="hub-tile-name">My Progress</span>
               <span class="hub-tile-sub">Scores, rupees, routes and achievements</span>
+            </div>
+            <span class="hub-tile-arrow">➔</span>
+          </button>
+
+          <button class="hub-tile-btn ui-interactive" id="btn-menu-open-leaderboards">
+            <span class="hub-tile-icon">🏆</span>
+            <div class="hub-tile-info">
+              <span class="hub-tile-name">Global Charts &amp; Quests</span>
+              <span class="hub-tile-sub">Daily, Weekly, All-Time &amp; Challenges</span>
             </div>
             <span class="hub-tile-arrow">➔</span>
           </button>
@@ -2195,6 +2759,9 @@ export class UIManager {
           </button>
           <button class="secondary-btn ui-interactive" id="btn-play-again">
             🔄 REPLAY DISTRICT
+          </button>
+          <button class="secondary-btn ui-interactive" id="btn-results-leaderboards">
+            🏆 GLOBAL CHARTS
           </button>
           <button class="ghost-btn ui-interactive" id="btn-results-home" style="display: none;">
             🏠 HOME
@@ -2841,7 +3408,7 @@ export class UIManager {
 
   // Bind All Event Listeners
   setRunnerDifficultySelection(difficulty) {
-    if (!['easy', 'standard', 'hard'].includes(difficulty)) return false;
+    if (!['easy', 'cruiser', 'standard', 'hard'].includes(difficulty)) return false;
     this.runnerDifficulty = difficulty;
     document.querySelectorAll('#runner-difficulty-grid .age-card, .runner-pace-option').forEach(option => {
       const optionDifficulty = option.dataset.runnerDifficulty || option.dataset.runnerPace;
@@ -2850,7 +3417,7 @@ export class UIManager {
         option.setAttribute('aria-pressed', String(optionDifficulty === difficulty));
       }
     });
-    const paceNames = { easy: 'EASY · 54 KM/H', standard: 'STANDARD · 68 KM/H', hard: 'HARD · 79 KM/H' };
+    const paceNames = { easy: 'EASY · 52 KM/H', cruiser: 'CRUISER · 60 KM/H', standard: 'STANDARD · 68 KM/H', hard: 'HARD · 79 KM/H' };
     const summary = document.getElementById('menu-runner-pace-summary');
     if (summary) summary.textContent = paceNames[difficulty];
     return true;
@@ -2918,6 +3485,17 @@ export class UIManager {
       if (this.runnerProgressModal) this.runnerProgressModal.style.display = 'none';
     };
     document.getElementById('btn-home-help')?.addEventListener('click', openHelp);
+    document.getElementById('btn-home-settings')?.addEventListener('click', () => {
+      audio.playClick();
+      this.showGameMenuModal();
+    });
+    document.getElementById('btn-progress-reset-career')?.addEventListener('click', () => {
+      audio.playClick();
+      if (confirm('Are you sure you want to reset your career? All unlocked districts, coins, and levels will be reset to default.')) {
+        this.onResetCareer?.();
+        this.hideRunnerProgress();
+      }
+    });
     document.getElementById('btn-menu-open-runner-help')?.addEventListener('click', openHelp);
     document.getElementById('btn-close-runner-help')?.addEventListener('click', closeHelp);
     document.getElementById('btn-runner-help-done')?.addEventListener('click', closeHelp);
@@ -2954,6 +3532,30 @@ export class UIManager {
     document.getElementById('btn-runner-shop-done')?.addEventListener('click', closeShop);
     this.runnerShopModal?.addEventListener('click', event => {
       if (event.target === this.runnerShopModal) closeShop();
+    });
+
+    const openLeaderboards = (tab = 'day') => {
+      audio.playClick();
+      this.showRunnerLeaderboards(tab);
+    };
+    const closeLeaderboards = () => {
+      audio.playClick();
+      this.hideRunnerLeaderboards();
+    };
+    document.getElementById('btn-home-leaderboards')?.addEventListener('click', () => openLeaderboards('day'));
+    document.getElementById('btn-menu-open-leaderboards')?.addEventListener('click', () => {
+      this.hideGameMenuModal();
+      openLeaderboards('day');
+    });
+    document.getElementById('btn-progress-open-leaderboards')?.addEventListener('click', () => {
+      closeProgress();
+      openLeaderboards('day');
+    });
+    document.getElementById('btn-results-leaderboards')?.addEventListener('click', () => openLeaderboards('day'));
+    document.getElementById('btn-close-runner-leaderboards')?.addEventListener('click', closeLeaderboards);
+    document.getElementById('btn-runner-leaderboards-done')?.addEventListener('click', closeLeaderboards);
+    this.runnerLeaderboardsModal?.addEventListener('click', event => {
+      if (event.target === this.runnerLeaderboardsModal) closeLeaderboards();
     });
 
     document.getElementById('btn-consent-decline')?.addEventListener('click', () => {
@@ -3594,6 +4196,8 @@ export class UIManager {
       if (e.key === 'Escape' || e.code === 'Escape') {
         if (this.runnerShopModal && this.runnerShopModal.style.display !== 'none') {
           this.hideRunnerShop();
+        } else if (this.runnerLeaderboardsModal && this.runnerLeaderboardsModal.style.display !== 'none') {
+          this.hideRunnerLeaderboards();
         } else if (this.runnerHelpModal && this.runnerHelpModal.style.display !== 'none') {
           this.runnerHelpModal.style.display = 'none';
         } else if (this.runnerProgressModal && this.runnerProgressModal.style.display !== 'none') {
@@ -3640,7 +4244,7 @@ export class UIManager {
       if (this.startModal && this.startModal.style.display !== 'none' && !window.game?.isGameStarted) {
         if (e.code === 'Space' || e.code === 'Enter') {
           const activeEl = document.activeElement;
-          if (activeEl && (activeEl.id === 'btn-home-help' || activeEl.id === 'btn-home-progress' || activeEl.id === 'btn-home-shop')) {
+          if (activeEl && (activeEl.id === 'btn-home-help' || activeEl.id === 'btn-home-progress' || activeEl.id === 'btn-home-shop' || activeEl.id === 'btn-home-leaderboards' || activeEl.id === 'btn-home-settings')) {
             return;
           }
           e.preventDefault();

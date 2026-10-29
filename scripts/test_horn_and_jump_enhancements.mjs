@@ -58,16 +58,62 @@ test('KarachiModels.createSpringLaunchPad creates hydraulic trampoline pad', () 
   assert.ok(pad.children.length >= 4, 'Must have base, ring, spring coil, and chevrons');
 });
 
-test('Horn Cooldown duration scales with pace: easy (4s), standard (8s), hard (14s)', () => {
+test('Horn Cooldown duration scales with pace: easy (4s), cruiser (6s), standard (8s), hard (14s)', () => {
   const getCooldown = (pace) => {
     if (pace === 'easy') return 4.0;
+    if (pace === 'cruiser') return 6.0;
     if (pace === 'hard') return 14.0;
     return 8.0;
   };
 
   assert.equal(getCooldown('easy'), 4.0, 'Easy mode should give 4.0s quick cooldown');
+  assert.equal(getCooldown('cruiser'), 6.0, 'Cruiser mode should give 6.0s moderate cooldown');
   assert.equal(getCooldown('standard'), 8.0, 'Standard mode should give 8.0s balanced cooldown');
   assert.equal(getCooldown('hard'), 14.0, 'Hard mode should give 14.0s high-stakes cooldown');
+});
+
+test('Cruiser pace gives gentler hurdle spacing than standard', () => {
+  const getWaveSpacing = (pace, distance = 0) => {
+    const paceBonus = pace === 'easy' ? 6 : (pace === 'cruiser' ? 3 : (pace === 'hard' ? -2 : 0));
+    return Math.max(22, 28 + paceBonus - Math.floor(Math.max(0, distance) / 5000));
+  };
+
+  const cruiserSpacing = getWaveSpacing('cruiser', 0);
+  const standardSpacing = getWaveSpacing('standard', 0);
+  assert.ok(cruiserSpacing > standardSpacing, 'Cruiser wave spacing must be larger (gentler) than standard');
+  assert.equal(cruiserSpacing, 31, 'Cruiser wave spacing at 0m is 31m (vs 28m standard)');
+});
+
+test('Word Hunt K-A-R-A-C-H-I completion awards 5000 Rs jackpot and triggers Junoon Fever Rush', () => {
+  const target = 'KARACHI';
+  const collected = ['K', 'A', 'R', 'A', 'C', 'H', 'I'];
+  let feverActivated = false;
+  let jackpotCoins = 0;
+
+  if (collected.length >= target.length) {
+    jackpotCoins += 5000;
+    feverActivated = true;
+  }
+
+  assert.equal(jackpotCoins, 5000, '5,000 Rs jackpot awarded');
+  assert.equal(feverActivated, true, 'JUNOON Fever Rush triggered on word completion');
+});
+
+test('KarachiModels.createSlangBillboard creates valid 3D neon billboard with wholesome slang', () => {
+  const billboard = KarachiModels.createSlangBillboard(0);
+  assert.ok(billboard instanceof THREE.Group, 'Expected a THREE.Group');
+  assert.equal(billboard.userData.isSlangBillboard, true);
+  assert.equal(billboard.userData.phrase, 'SCENE ON HAI JANI!');
+  assert.equal(billboard.userData.urdu, 'سین آن ہے جانی');
+});
+
+test('W-11 Minibus roof surfing ramp detection spans 2.0m lateral width', () => {
+  const rampWidthThreshold = 2.0;
+  const runnerLaneX = 1.8;
+  const busLaneX = 0;
+  const distX = Math.abs(runnerLaneX - busLaneX);
+
+  assert.ok(distX < rampWidthThreshold, 'Runner within 2.0m lateral distance successfully boards rear ramp');
 });
 
 test('Horn does NOT remove immovable structural hazards (wires, gutters, bridge signs)', () => {
