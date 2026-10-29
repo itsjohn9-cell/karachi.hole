@@ -4429,14 +4429,10 @@ async function runTestSuite() {
           game.spawnRunnerWave(junction.z + 30);
           if (game.runnerObstacles.length || game.runnerTraffic.length) throw new Error('Wave repopulated clear runway');
           game.beginRunnerTurn(junction, dir);
-          const beforeCoins = game.coins;
+          if (game.runnerCoins.length > 0) throw new Error('Turn should be clean and coin-free for smooth turning');
           for (let i = 0; i < 9; i++) {
             game.updateRunnerTurnAnimation(game.runnerTurn.duration / 10);
-            for (const coin of game.runnerCoins) {
-              if (Math.abs(coin.mesh.quaternion.dot(game.camera.quaternion)) < 0.99999) throw new Error('Coin turned edge-on during camera turn');
-            }
           }
-          if (game.coins < beforeCoins + 350) throw new Error('Arc coins cannot be collected during turn');
           game.finishRunnerTurn();
           if (game.corridorChunks[0].userData.slabs.some(slab => !slab.userData.roadSurface && slab.visible)) throw new Error('Structures pop back at turn exit');
           game.removeRunnerJunction();
@@ -4445,7 +4441,7 @@ async function runTestSuite() {
       })();
     `
   });
-  recordTest('TC-61', 'Clear Left/Right Turns, Direction Arrows & Facing Coins', res61.success ? 'PASSED' : 'FAILED', Date.now() - t61Start, res61.error || 'Actual scenery/wires and traffic stay clear; asphalt persists; directional arrows and collectable camera-facing arc coins verified');
+  recordTest('TC-61', 'Clear Left/Right Turns, Direction Arrows & Coin-Free Smooth Cornering', res61.success ? 'PASSED' : 'FAILED', Date.now() - t61Start, res61.error || 'Actual scenery/wires and traffic stay clear; asphalt persists; directional arrows and coin-free smooth cornering verified');
 
   const t62Start = Date.now();
   const res62 = await runChromeTest({

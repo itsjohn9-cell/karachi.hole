@@ -1880,6 +1880,12 @@ export class Game {
       }
     };
 
+    // Safety approach & junction zone: 100% hurdle-free and coin-free asphalt runway for ultra-smooth turning!
+    if (this.isRunnerJunctionZone(waveZ)) {
+      alignWaveGroundY();
+      return;
+    }
+
     // 0. Safe Onboarding Warmup Zone (First 50 meters): Spawn ONLY pleasant golden coin paths!
     if (this.distanceMeters < 50) {
       const laneX = lanes[Math.floor(Math.random() * 3)];
@@ -1889,12 +1895,6 @@ export class Game {
         this.scene.add(coin);
         this.runnerCoins.push({ mesh: coin, value: 50, x: laneX, z: waveZ + zOff });
       });
-      alignWaveGroundY();
-      return;
-    }
-
-    // Safety approach & junction zone: 100% hurdle-free and coin-free asphalt runway for ultra-smooth turning!
-    if (this.isRunnerJunctionZone(waveZ)) {
       alignWaveGroundY();
       return;
     }
@@ -9503,7 +9503,7 @@ export class Game {
   }
 
   clearRunnerJunctionApproach() {
-    for (const key of ['runnerObstacles', 'runnerTraffic', 'surfingBuses', 'runnerPowerups', 'runnerBoostPads', 'runnerReviveTokens']) {
+    for (const key of ['runnerObstacles', 'runnerTraffic', 'runnerCoins', 'surfingBuses', 'runnerPowerups', 'runnerBoostPads', 'runnerReviveTokens']) {
       this[key] = (this[key] || []).filter(item => {
         if (!item?.mesh || !this.isRunnerJunctionZone(item.mesh.position.z)) return true;
         if (key === 'surfingBuses' && this.isBusSurfing) this.exitBusSurfing();
@@ -9668,19 +9668,7 @@ export class Game {
       this.setCorridorZoneHidden(z - 32, z + 45);
     }
 
-    // Guide coins: a neat arc of gold coins showing the player the clean path into the turn
-    if (kind === 'turn' && this.runnerCoins) {
-      const turnLaneX = dir === -1 ? -this.laneWidth : this.laneWidth;
-      for (let c = 0; c < 6; c++) {
-        const progress = c / 5;
-        const cz = z + 40 - progress * 32;
-        const cx = turnLaneX * progress;
-        const coin = KarachiModels.createRupeeCoin(50);
-        coin.position.set(cx, 0.7, cz);
-        this.scene.add(coin);
-        this.runnerCoins.push({ mesh: coin, value: 50, x: cx, z: cz });
-      }
-    }
+    // Turns are kept 100% clean and coin-free for ultra-smooth 60fps cornering
     this.recordGameOpsEvent('runner.junction', { kind, dir, distanceMeters: Math.round(this.distanceMeters) });
     return true;
   }
@@ -9794,15 +9782,11 @@ export class Game {
       radius,
       duration: THREE.MathUtils.clamp(1.57 * radius / Math.max(12, this.getRunnerSpeed()), 1.05, 1.5)
     };
-    for (let i = 1; i <= 8; i++) {
-      const theta = i / 9 * Math.PI / 2;
-      const x = this.runnerTurn.startX + dir * radius * (1 - Math.cos(theta));
-      const z = z0 - radius * Math.sin(theta);
-      const coin = KarachiModels.createRupeeCoin(50);
-      coin.position.set(x, 0.32, z);
-      this.scene.add(coin);
-      this.runnerCoins.push({ mesh: coin, value: 50, x, z });
-    }
+    this.runnerCoins = (this.runnerCoins || []).filter(coin => {
+      if (!this.isRunnerJunctionZone(coin.mesh.position.z)) return true;
+      this.disposeRunnerObject(coin.mesh);
+      return false;
+    });
     if (this.player.avatarMesh) this.player.avatarMesh.visible = true;
     this.isSliding = false;
     this.slideTimer = 0;
