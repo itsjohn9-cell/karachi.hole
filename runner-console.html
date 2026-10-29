@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="./assets/runnerConsole-BRb5mipr.js"></script>
+    <script type="module" crossorigin src="./assets/runnerConsole-CfTs3IDy.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
     <link rel="modulepreload" crossorigin href="./assets/game-ops-engine-CkMOLNMf.js">
     <link rel="stylesheet" crossorigin href="./assets/runnerConsole-DoSm1eq7.css">
@@ -254,6 +254,41 @@
               <button class="god-btn btn-amber" id="btn-weather-potholes" type="button">🕳️ Force Rain Potholes</button>
               <button class="god-btn btn-outline" id="btn-weather-clear" type="button">☀️ Force Clear Skies</button>
               <button class="god-btn btn-cyan" id="btn-runner-weather-auto" type="button">🌦️ Natural Cycle</button>
+            </div>
+          </article>
+
+          <!-- 9. Karachi Special Set-Pieces & Daily Quests -->
+          <article class="card">
+            <div class="card-header">
+              <div class="card-title"><span>🏄</span> Karachi Set-Pieces &amp; Daily Quests</div>
+              <span class="card-badge badge-active">SPECIAL</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+              Trigger W-11 rooftop surfing, Junoon fever rush, jump pads, slang billboards, and daily challenge controls.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button class="god-btn btn-green" id="btn-master-trigger-surf" type="button">🏄 W-11 Roof Surfing</button>
+              <button class="god-btn btn-amber" id="btn-master-trigger-wordhunt" type="button">🎸 Word Hunt &amp; Fever</button>
+              <button class="god-btn btn-cyan" id="btn-master-trigger-trampoline" type="button">🦘 Spring Trampoline</button>
+              <button class="god-btn btn-outline" id="btn-master-trigger-slang" type="button">📢 Slang Billboard</button>
+              <button class="god-btn btn-green" id="btn-master-complete-daily" type="button">🎯 Complete Daily Quests</button>
+              <button class="god-btn btn-cyan" id="btn-master-reset-daily" type="button">🔄 Reset Daily Quests</button>
+            </div>
+          </article>
+
+          <!-- 10. Admin Cloud Database & Firebase Sync -->
+          <article class="card" style="border: 1px solid rgba(0, 229, 255, 0.35);">
+            <div class="card-header">
+              <div class="card-title"><span>☁️</span> Admin Cloud Sync Configuration</div>
+              <span class="card-badge badge-active">OPS ONLY</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+              Configure remote Firebase Realtime Database REST API endpoint for global player scores and challenge rankings.
+            </p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="text" class="god-slider" id="input-dash-cloud-url" placeholder="https://<project>-default-rtdb.firebaseio.com" style="flex: 1; min-width: 200px; padding: 6px 10px; font-size: 0.82rem; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff;" />
+              <button class="god-btn btn-green" id="btn-dash-save-cloud" type="button" style="min-width: 90px;">Save URL</button>
+              <button class="god-btn btn-outline" id="btn-dash-clear-cloud" type="button" style="min-width: 90px;">Clear</button>
             </div>
           </article>
         </div>
