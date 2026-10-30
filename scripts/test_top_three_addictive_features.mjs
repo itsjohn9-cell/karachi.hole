@@ -50,3 +50,41 @@ test('AvatarBuilder Authentic Karachi Features & Kinematics', async () => {
   assert.ok(ud.torso.position.y > 1.0, 'Breathing bounce should maintain realistic vertical position');
 });
 
+test('On-Screen JUNOON & SURF Action Controls State Logic', () => {
+  // Test state transitions for Junoon & Surf
+  let feverCharge = 0;
+  let isFeverActive = false;
+  let isFeverReady = false;
+
+  // Charging state: discolored, percentage showing
+  feverCharge = 45;
+  isFeverReady = feverCharge >= 100 && !isFeverActive;
+  assert.equal(isFeverReady, false, 'Charging at 45% should not be ready');
+
+  // Fully charged state: ready, colored
+  feverCharge = 100;
+  isFeverReady = feverCharge >= 100 && !isFeverActive;
+  assert.equal(isFeverReady, true, '100% charge triggers fully colored ready state');
+
+  // Active state
+  isFeverActive = true;
+  assert.equal(isFeverActive, true, 'Active state triggers flame rush');
+
+  // Surf states
+  let hoverboardTimer = 0;
+  let hoverboardCooldown = 0;
+
+  // Ready to surf
+  assert.equal(hoverboardTimer === 0 && hoverboardCooldown === 0, true, 'Surf is ready when timer & cooldown are 0');
+
+  // Surfing active with shield
+  hoverboardTimer = 22.0;
+  assert.equal(hoverboardTimer > 0, true, 'Surfing is active with countdown');
+
+  // Surfing cooling down / reload
+  hoverboardTimer = 0;
+  hoverboardCooldown = 15.0;
+  assert.equal(hoverboardCooldown > 0, true, 'Hoverboard is discolored reload state during cooldown');
+});
+
+

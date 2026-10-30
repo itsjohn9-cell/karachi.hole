@@ -1065,7 +1065,8 @@ export class Game {
     if (!this.player || !this.isTempleRun || !this.isGameStarted || this.isGameOver || this.isPaused) return;
     if (this.hoverboardTimer > 0) return;
     if (this.hoverboardCooldown > 0) {
-      this.ui?.showAnnouncement?.(`🛹 Hoverboard cooling down (${Math.ceil(this.hoverboardCooldown)}s)`, '#ffd700');
+      this.ui?.showAnnouncement?.(`🛹 Hoverboard reloading (${Math.ceil(this.hoverboardCooldown)}s)`, '#ffd700');
+      audio?.playWrongAnswer?.();
       return;
     }
     this.hoverboardTimer = 22.0;
@@ -1078,6 +1079,9 @@ export class Game {
     this.hoverboardMesh.visible = true;
     this.ui?.showAnnouncement?.('🛹 QINGQI HOVER-SURFER DEPLOYED! 1 Crash Shield Active! ✨', '#00e5ff');
     this.ui?.showFloatingFeedback?.('🛹 HOVER-SURFER!', this.player.position, '#00e5ff');
+    if (this.ui?.updateHoverboard) {
+      this.ui.updateHoverboard(this.hoverboardTimer, 0);
+    }
   }
 
   addFeverCharge(amount) {
@@ -1090,7 +1094,7 @@ export class Game {
     }
     if (isReady && oldCharge < 100) {
       audio?.playPowerUp?.();
-      this.ui?.showAnnouncement?.('⚡ JUNOON FEVER READY! Tap Meter or Press [F] to Unleash! 🔥', '#ffd700');
+      this.ui?.showAnnouncement?.('⚡ JUNOON FEVER READY! Tap Button or Press [F] to Unleash! 🔥', '#ffd700');
       this.ui?.showFloatingFeedback?.('⚡ FEVER READY [F]!', this.player.position, '#ffd700');
     }
   }
@@ -1099,7 +1103,9 @@ export class Game {
     if (!this.player || !this.isTempleRun || !this.isGameStarted || this.isGameOver || this.isPaused) return;
     if (this.isFeverActive) return;
     if ((this.feverCharge || 0) < 100 && (this.feverTimer || 0) <= 0) {
-      this.ui?.showAnnouncement?.('⚡ Collect coins & stunts to charge JUNOON Fever!', '#00e5ff');
+      const pct = Math.round(this.feverCharge || 0);
+      this.ui?.showAnnouncement?.(`⚡ JUNOON charging (${pct}%)! Grab coins & do stunts to reload!`, '#ff9100');
+      audio?.playWrongAnswer?.();
       return;
     }
     this.isFeverActive = true;
@@ -8552,7 +8558,7 @@ export class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.26',
+            appVersion: '2.2.27',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };

@@ -2012,19 +2012,11 @@ export class UIManager {
           </div>
         </div>
 
-        <!-- Junoon Fever Adrenaline Bar -->
-        <div class="fever-meter-pill" id="hud-fever-meter" style="display: none;" title="Junoon Fever Bar: Stunts & coins charge invincible Rush!">
-          <span class="fever-icon">⚡</span>
-          <div class="fever-track">
-            <div class="fever-fill" id="hud-fever-fill" style="width: 0%"></div>
-          </div>
+        <!-- Hidden legacy compatibility hooks -->
+        <div class="fever-meter-pill" id="hud-fever-meter" style="display: none;" aria-hidden="true">
           <span class="fever-tag" id="hud-fever-tag">JUNOON</span>
         </div>
-
-        <!-- Qingqi Hover-Surfer Deploy -->
-        <div class="hoverboard-pill" id="hud-hoverboard-pill" style="display: none;">
-          <button class="hoverboard-btn ui-interactive" id="btn-deploy-hoverboard" title="Deploy Qingqi Hoverboard (Double Tap or 'B')">🛹 SURF</button>
-        </div>
+        <div class="hoverboard-pill" id="hud-hoverboard-pill" style="display: none;" aria-hidden="true"></div>
       </div>
 
       <!-- Left Panel: District Missions Checklist Card (Collapsible, top: 72px, left: 16px) -->
@@ -2139,6 +2131,26 @@ export class UIManager {
           <button class="sprint-btn runner-legacy-section ui-interactive" id="btn-sprint" title="Hold to boost speed">⚡ SPRINT</button>
           <button class="journal-btn runner-legacy-section ui-interactive" id="btn-journal" title="Mission Journal & District Gauges [J]">📜 JOURNAL</button>
         </div>
+      </div>
+
+      <!-- Dedicated Runner Action Controls (Right side above Horn: SURF & JUNOON) -->
+      <div class="hud-runner-actions-stack" id="hud-runner-actions-stack">
+        <!-- 🛹 Qingqi Hover-Surfer Skateboard Button -->
+        <button class="runner-action-btn surf-action-btn ui-interactive is-ready" id="btn-deploy-hoverboard" type="button" aria-label="Deploy Qingqi Hover-Surfer" title="Hover-Surfer [B] - 1 Crash Shield">
+          <span class="action-btn-icon">🛹</span>
+          <span class="action-btn-label">SURF</span>
+          <span class="action-btn-status" id="surf-btn-status">READY</span>
+        </button>
+
+        <!-- ⚡ Junoon Fever Rush Button -->
+        <button class="runner-action-btn junoon-action-btn ui-interactive is-charging" id="btn-junoon" type="button" aria-label="Unleash Junoon Fever Rush" title="Junoon Fever Rush [F] - Hyper Speed & Coin Vortex">
+          <span class="action-btn-icon" id="junoon-btn-icon">⚡</span>
+          <span class="action-btn-label" id="junoon-btn-label">JUNOON</span>
+          <span class="action-btn-status" id="junoon-btn-status">0%</span>
+          <div class="action-btn-progress-track">
+            <div class="action-btn-progress-fill" id="hud-fever-fill" style="width: 0%"></div>
+          </div>
+        </button>
       </div>
 
       <!-- Proximity Action Prompt (Appears dynamically when near friendly citizens) -->
@@ -4149,18 +4161,26 @@ export class UIManager {
       });
     }
 
-    // Deploy Qingqi Hoverboard button
+    // Deploy Qingqi Hoverboard button (Dedicated Action Button like Horn)
     const btnDeployHoverboard = document.getElementById('btn-deploy-hoverboard');
     if (btnDeployHoverboard) {
-      btnDeployHoverboard.addEventListener('click', () => {
+      attachInstantTouch(btnDeployHoverboard, () => {
         if (this.onDeployHoverboard) this.onDeployHoverboard();
       });
     }
 
-    // Junoon Fever Rush Bar on-demand tap button
+    // Junoon Fever Rush Button (Dedicated Action Button like Horn)
+    const btnJunoon = document.getElementById('btn-junoon');
+    if (btnJunoon) {
+      attachInstantTouch(btnJunoon, () => {
+        if (this.onTriggerFever) this.onTriggerFever();
+      });
+    }
+
+    // Legacy Fever Meter hook
     const btnFeverMeter = document.getElementById('hud-fever-meter');
     if (btnFeverMeter) {
-      btnFeverMeter.addEventListener('click', () => {
+      attachInstantTouch(btnFeverMeter, () => {
         if (this.onTriggerFever) this.onTriggerFever();
       });
     }
@@ -4168,21 +4188,23 @@ export class UIManager {
     // Sindhi Painted Mystery Trunk triggers & actions
     const btnHomeTrunk = document.getElementById('btn-home-trunk');
     if (btnHomeTrunk) {
-      btnHomeTrunk.addEventListener('click', () => {
+      attachInstantTouch(btnHomeTrunk, () => {
+        audio?.playClick?.();
         this.showMysteryTrunkModal();
       });
     }
 
     const btnCloseTrunk = document.getElementById('btn-close-mystery-trunk');
     if (btnCloseTrunk) {
-      btnCloseTrunk.addEventListener('click', () => {
+      attachInstantTouch(btnCloseTrunk, () => {
+        audio?.playClick?.();
         this.hideMysteryTrunkModal();
       });
     }
 
     const btnTrunkOpen = document.getElementById('btn-trunk-open');
     if (btnTrunkOpen) {
-      btnTrunkOpen.addEventListener('click', () => {
+      attachInstantTouch(btnTrunkOpen, () => {
         const res = saveManager.buyConsumable('mystery_crate');
         const statusMsg = document.getElementById('trunk-status-msg');
         if (res.success) {
@@ -4197,10 +4219,17 @@ export class UIManager {
 
     const btnTrunkCollect = document.getElementById('btn-trunk-collect');
     if (btnTrunkCollect) {
-      btnTrunkCollect.addEventListener('click', () => {
+      attachInstantTouch(btnTrunkCollect, () => {
+        audio?.playClick?.();
         this.hideMysteryTrunkModal();
       });
     }
+
+    this.mysteryTrunkModal?.addEventListener('click', event => {
+      if (event.target === this.mysteryTrunkModal) {
+        this.hideMysteryTrunkModal();
+      }
+    });
 
     // Auto-Resume button on pause modal
     const btnAutoResume = document.getElementById('btn-auto-resume');
@@ -5911,45 +5940,88 @@ export class UIManager {
   }
 
   updateFeverMeter(percent = 0, isActive = false, isReady = false) {
-    const feverEl = document.getElementById('hud-fever-meter');
+    const btnJunoon = document.getElementById('btn-junoon');
     const fillEl = document.getElementById('hud-fever-fill');
+    const statusEl = document.getElementById('junoon-btn-status');
+    const labelEl = document.getElementById('junoon-btn-label');
+    const iconEl = document.getElementById('junoon-btn-icon');
+    const feverEl = document.getElementById('hud-fever-meter');
     const tagEl = document.getElementById('hud-fever-tag');
-    if (!feverEl || !fillEl) return;
-    if (window.game?.isTempleRun && window.game.isGameStarted) {
-      feverEl.style.display = 'flex';
-      const bounded = Math.max(0, Math.min(100, Math.round(percent)));
-      fillEl.style.width = `${bounded}%`;
-      feverEl.classList.toggle('is-fever-active', isActive);
-      const readyState = isReady || (bounded >= 100 && !isActive);
-      feverEl.classList.toggle('is-fever-ready', readyState);
-      if (tagEl) {
-        if (isActive) tagEl.textContent = '🔥 RUSH!';
-        else if (readyState) tagEl.textContent = '⚡ UNLEASH!';
-        else tagEl.textContent = 'JUNOON';
+
+    const bounded = Math.max(0, Math.min(100, Math.round(percent)));
+    const readyState = isReady || (bounded >= 100 && !isActive);
+
+    if (btnJunoon) {
+      if (window.game?.isTempleRun && window.game.isGameStarted) {
+        btnJunoon.style.display = 'flex';
+        btnJunoon.classList.toggle('is-active', isActive);
+        btnJunoon.classList.toggle('is-ready', readyState && !isActive);
+        btnJunoon.classList.toggle('is-charging', !readyState && !isActive);
+
+        if (isActive) {
+          if (iconEl) iconEl.textContent = '🔥';
+          if (labelEl) labelEl.textContent = 'RUSH!';
+          if (statusEl) statusEl.textContent = `${bounded}%`;
+        } else if (readyState) {
+          if (iconEl) iconEl.textContent = '⚡';
+          if (labelEl) labelEl.textContent = 'UNLEASH';
+          if (statusEl) statusEl.textContent = 'READY!';
+        } else {
+          if (iconEl) iconEl.textContent = '⚡';
+          if (labelEl) labelEl.textContent = 'JUNOON';
+          if (statusEl) statusEl.textContent = `${bounded}%`;
+        }
+      } else {
+        btnJunoon.style.display = 'none';
       }
-    } else {
-      feverEl.style.display = 'none';
+    }
+
+    if (fillEl) {
+      fillEl.style.width = `${bounded}%`;
+    }
+
+    if (feverEl) {
+      if (window.game?.isTempleRun && window.game.isGameStarted) {
+        feverEl.classList.toggle('is-fever-active', isActive);
+        feverEl.classList.toggle('is-fever-ready', readyState);
+        if (tagEl) {
+          if (isActive) tagEl.textContent = '🔥 RUSH!';
+          else if (readyState) tagEl.textContent = '⚡ UNLEASH!';
+          else tagEl.textContent = 'JUNOON';
+        }
+      }
     }
   }
 
   updateHoverboard(timer = 0, cooldown = 0) {
-    const pill = document.getElementById('hud-hoverboard-pill');
     const btn = document.getElementById('btn-deploy-hoverboard');
-    if (!pill || !btn) return;
+    const statusEl = document.getElementById('surf-btn-status');
+    const pill = document.getElementById('hud-hoverboard-pill');
+    if (!btn) return;
+
     if (window.game?.isTempleRun && window.game.isGameStarted) {
-      pill.style.display = 'flex';
+      btn.style.display = 'flex';
+      if (pill) pill.style.display = 'none';
+
       if (timer > 0) {
-        btn.textContent = `🛹 ${Math.ceil(timer)}s`;
+        // Active surfing state
         btn.classList.add('is-active');
+        btn.classList.remove('is-ready', 'is-cooling-down');
+        if (statusEl) statusEl.textContent = `${Math.ceil(timer)}s`;
       } else if (cooldown > 0) {
-        btn.textContent = `⏳ ${Math.ceil(cooldown)}s`;
-        btn.classList.remove('is-active');
+        // Discolored cooldown / reload state
+        btn.classList.add('is-cooling-down');
+        btn.classList.remove('is-active', 'is-ready');
+        if (statusEl) statusEl.textContent = `${Math.ceil(cooldown)}s`;
       } else {
-        btn.textContent = '🛹 SURF';
-        btn.classList.remove('is-active');
+        // Fully colored ready state
+        btn.classList.add('is-ready');
+        btn.classList.remove('is-active', 'is-cooling-down');
+        if (statusEl) statusEl.textContent = 'READY';
       }
     } else {
-      pill.style.display = 'none';
+      btn.style.display = 'none';
+      if (pill) pill.style.display = 'none';
     }
   }
 
