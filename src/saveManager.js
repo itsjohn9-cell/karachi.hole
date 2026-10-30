@@ -272,28 +272,47 @@ class SaveManager {
       this.data.player.reviveTokens = current + 1;
     } else if (itemKey === 'mystery_crate') {
       const roll = Math.random();
-      if (roll < 0.5) {
-        const bonusCoins = 400 + Math.floor(Math.random() * 5) * 100;
+      if (roll < 0.50) {
+        let bonusCoins = 400 + Math.floor(Math.random() * 5) * 100;
+        let isJackpot = false;
+        if (Math.random() < 0.12) {
+          bonusCoins = 2500;
+        } else if (Math.random() < 0.05) {
+          bonusCoins = 5000;
+          isJackpot = true;
+        }
         this.data.runnerStats.totalRupees = walletRupees - cost + bonusCoins;
         this.save();
-        return { success: true, itemKey, rewardType: 'coins', amount: bonusCoins, message: `🎁 Won ${bonusCoins.toLocaleString()} Bonus Rupees!` };
-      } else if (roll < 0.8) {
+        return {
+          success: true,
+          itemKey,
+          rewardType: 'coins',
+          amount: bonusCoins,
+          isJackpot,
+          message: isJackpot ? '🎰 MEGA JACKPOT! 5,000 Bonus Rupees!' : `🎁 Won ${bonusCoins.toLocaleString()} Bonus Rupees!`
+        };
+      } else if (roll < 0.75) {
         const current = Number(this.data.player?.reviveTokens) || 0;
         if (current < MAX_REVIVE_TOKENS) {
           this.data.player.reviveTokens = current + 1;
           this.data.runnerStats.totalRupees = walletRupees - cost;
           this.save();
-          return { success: true, itemKey, rewardType: 'token', message: '🎁 Won 1 Edhi Revive Token!' };
+          return { success: true, itemKey, rewardType: 'token', amount: 1, message: '💖 Won 1 Edhi Rescue Revive Token!' };
         } else {
-          const bonusCoins = 800;
+          const bonusCoins = 1000;
           this.data.runnerStats.totalRupees = walletRupees - cost + bonusCoins;
           this.save();
-          return { success: true, itemKey, rewardType: 'coins', amount: bonusCoins, message: `🎁 Won ${bonusCoins.toLocaleString()} Bonus Rupees!` };
+          return { success: true, itemKey, rewardType: 'coins', amount: bonusCoins, message: `🎁 Max Tokens! Won ${bonusCoins.toLocaleString()} Bonus Rupees!` };
         }
-      } else {
+      } else if (roll < 0.90) {
         this.data.runnerStats.totalRupees = walletRupees - cost;
         this.save();
-        return { success: true, itemKey, rewardType: 'fever', message: '🎁 Won Instant JUNOON Adrenaline Charge!' };
+        return { success: true, itemKey, rewardType: 'fever', message: '⚡ Won Instant JUNOON Adrenaline Charge!' };
+      } else {
+        this.data.runnerStats.totalRupees = walletRupees - cost;
+        this.unlockBadge?.('sandooq_sultan');
+        this.save();
+        return { success: true, itemKey, rewardType: 'badge', message: '🏅 Unlocked Rare "Sandooq Sultan" Title!' };
       }
     } else if (itemKey === 'headstart') {
       this.data.hasHeadstart = (this.data.hasHeadstart || 0) + 1;

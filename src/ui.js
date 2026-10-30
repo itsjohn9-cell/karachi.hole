@@ -210,6 +210,7 @@ export class UIManager {
     this.createRunnerProgressModal();
     this.createRunnerShopModal();
     this.createRunnerLeaderboardsModal();
+    this.createMysteryTrunkModal();
     this.createAdminLoginModal();
     this.createRunnerTutorialOverlay();
     this.createRunnerDeveloperUI();
@@ -294,7 +295,7 @@ export class UIManager {
             </div>
           </div>
 
-          <!-- Hero & Audio Settings Strip (Source of Truth: Pause Menu) -->
+          <!-- Hero & Audio Settings Strip -->
           <div class="menu-hero-card start-hero-card" id="start-hero-card">
             <div class="menu-hero-badge" id="start-avatar-icon">🏃</div>
             <div class="menu-hero-details">
@@ -307,7 +308,8 @@ export class UIManager {
                 <button class="setting-pill-toggle ui-interactive active" id="btn-home-toggle-sfx" type="button" title="Toggle Sound Effects">🔊 SFX: ON</button>
                 <button class="setting-pill-toggle ui-interactive active" id="btn-home-toggle-music" type="button" title="Toggle Background Music">🎵 MUSIC: ON</button>
                 <button class="setting-pill-toggle ui-interactive" id="btn-home-leaderboards" type="button" title="Global Leaderboards & Challenges" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">🏆 CHARTS</button>
-                <button class="setting-pill-toggle ui-interactive" id="btn-home-settings" type="button" title="Open Game Menu & Settings">⚙️ MENU</button>
+                <button class="setting-pill-toggle ui-interactive" id="btn-home-trunk" type="button" title="Open Karachi Mystery Trunk" style="border-color: rgba(0, 229, 255, 0.4); color: #00e5ff;">🧰 TRUNK</button>
+                <button class="setting-pill-toggle ui-interactive" id="btn-home-settings" type="button" title="Settings & Options">⚙️ SETTINGS</button>
               </div>
             </div>
           </div>
@@ -746,6 +748,9 @@ export class UIManager {
       if (status) status.textContent = res.message || `Purchased ${key.replace('_', ' ')}!`;
       this.refreshRunnerShop();
       this.refreshRunnerProgress();
+      if (key === 'mystery_crate') {
+        this.showMysteryTrunkModal(res);
+      }
     } else {
       audio.playWrongAnswer?.();
       if (status) status.textContent = res.reason;
@@ -1442,6 +1447,130 @@ export class UIManager {
         `;
         dailyLbContainer.appendChild(row);
       });
+    }
+  }
+
+  // Traditional Painted Karachi Mystery Trunk (Sindhi Sandooq Gacha)
+  createMysteryTrunkModal() {
+    this.mysteryTrunkModal = document.createElement('div');
+    this.mysteryTrunkModal.className = 'modal-backdrop mystery-trunk-backdrop';
+    this.mysteryTrunkModal.id = 'modal-mystery-trunk';
+    this.mysteryTrunkModal.style.display = 'none';
+    this.mysteryTrunkModal.innerHTML = `
+      <section class="modal-card runner-info-card mystery-trunk-card" role="dialog" aria-modal="true" aria-labelledby="trunk-title">
+        <header class="runner-info-header">
+          <div>
+            <h2 id="trunk-title">🧰 SINDHI PAINTED MYSTERY TRUNK</h2>
+            <p>Traditional Karachi Gacha Chest! Pop open for bonus Rupees, Revive Tokens &amp; JUNOON!</p>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-mystery-trunk" aria-label="Close mystery trunk">&times;</button>
+        </header>
+
+        <div class="runner-shop-balance-banner" style="margin-bottom: 12px;">
+          <span class="balance-label">CAREER WALLET:</span>
+          <span class="balance-value" id="trunk-wallet-balance">0 Rs</span>
+        </div>
+
+        <div class="trunk-stage">
+          <div class="trunk-chest-visual" id="trunk-chest-visual">
+            <div class="trunk-lid" id="trunk-lid">
+              <div class="trunk-lid-band"></div>
+            </div>
+            <div class="trunk-body">
+              <div class="trunk-ornaments">🌺 🌸 🌺</div>
+              <div class="trunk-latch" id="trunk-latch">🔒</div>
+            </div>
+          </div>
+          <div class="trunk-reward-container" id="trunk-reward-container" style="display: none;">
+            <div class="trunk-reward-icon" id="trunk-reward-icon">🎁</div>
+            <h3 class="trunk-reward-title" id="trunk-reward-title">Surprise Reward!</h3>
+            <div class="trunk-cheer-banner" id="trunk-cheer-banner">🎉 SHABAASH!</div>
+          </div>
+        </div>
+        <p class="runner-shop-status" id="trunk-status-msg" role="status">Open to unlock mystery prizes with your banked Rupees!</p>
+
+        <div class="trunk-action-row">
+          <button class="primary-btn ui-interactive trunk-action-btn" id="btn-trunk-open" type="button">
+            🔓 OPEN TRUNK (300 Rs)
+          </button>
+          <button class="primary-btn ui-interactive trunk-action-btn" id="btn-trunk-collect" type="button" style="display: none;">
+            ✨ COLLECT &amp; CONTINUE
+          </button>
+        </div>
+      </section>
+    `;
+    document.body.appendChild(this.mysteryTrunkModal);
+  }
+
+  showMysteryTrunkModal(initialReward = null) {
+    this.trunkReturnFocus = document.activeElement;
+    this.trunkShouldResume = !!window.game?.isGameStarted && !window.game.isPaused && !window.game.isGameOver;
+    if (this.trunkShouldResume) this.onPauseGame?.();
+
+    const wallet = saveManager.data.runnerStats?.totalRupees || 0;
+    const balanceElem = document.getElementById('trunk-wallet-balance');
+    if (balanceElem) balanceElem.textContent = `${wallet.toLocaleString()} Rs`;
+
+    const chestVisual = document.getElementById('trunk-chest-visual');
+    const lid = document.getElementById('trunk-lid');
+    const latch = document.getElementById('trunk-latch');
+    const rewardBox = document.getElementById('trunk-reward-container');
+    const openBtn = document.getElementById('btn-trunk-open');
+    const collectBtn = document.getElementById('btn-trunk-collect');
+    const statusMsg = document.getElementById('trunk-status-msg');
+
+    if (initialReward && initialReward.success) {
+      // Immediate reveal if purchased from shop
+      if (lid) lid.classList.add('is-open');
+      if (latch) latch.textContent = '✨';
+      if (chestVisual) chestVisual.style.display = 'none';
+      if (rewardBox) {
+        rewardBox.style.display = 'flex';
+        const iconEl = document.getElementById('trunk-reward-icon');
+        const titleEl = document.getElementById('trunk-reward-title');
+        const cheerEl = document.getElementById('trunk-cheer-banner');
+        if (iconEl) {
+          iconEl.textContent = initialReward.rewardType === 'coins' ? '🪙' : initialReward.rewardType === 'token' ? '💖' : initialReward.rewardType === 'fever' ? '⚡' : '🏅';
+        }
+        if (titleEl) titleEl.textContent = initialReward.message;
+        const cheers = ['🎉 SHABAASH!', '💥 LUCK LAG GAYI!', '🔥 ZABARDAST YAAR!', '✨ DIL KHUSH HO GAYA!'];
+        if (cheerEl) cheerEl.textContent = cheers[Math.floor(Math.random() * cheers.length)];
+      }
+      if (openBtn) openBtn.style.display = 'none';
+      if (collectBtn) {
+        collectBtn.style.display = 'inline-flex';
+        collectBtn.focus();
+      }
+      if (statusMsg) statusMsg.textContent = 'Prize collected and added to your career profile!';
+    } else {
+      // Reset for interactive opening
+      if (lid) lid.classList.remove('is-open');
+      if (latch) latch.textContent = '🔒';
+      if (chestVisual) chestVisual.style.display = 'flex';
+      if (rewardBox) rewardBox.style.display = 'none';
+      if (openBtn) {
+        openBtn.style.display = 'inline-flex';
+        openBtn.disabled = wallet < 300;
+        openBtn.textContent = wallet >= 300 ? '🔓 OPEN TRUNK (300 Rs)' : '🔒 NEED 300 Rs';
+        openBtn.focus();
+      }
+      if (collectBtn) collectBtn.style.display = 'none';
+      if (statusMsg) statusMsg.textContent = 'Open to unlock mystery prizes with your banked Rupees!';
+    }
+
+    if (this.mysteryTrunkModal) {
+      this.mysteryTrunkModal.style.display = 'flex';
+    }
+  }
+
+  hideMysteryTrunkModal() {
+    if (this.mysteryTrunkModal) {
+      this.mysteryTrunkModal.style.display = 'none';
+      this.trunkReturnFocus?.focus();
+      this.refreshRunnerShop();
+      this.refreshRunnerProgress();
+      if (this.trunkShouldResume) this.onResumeGame?.();
+      this.trunkShouldResume = false;
     }
   }
 
@@ -4033,6 +4162,51 @@ export class UIManager {
       });
     }
 
+    // Junoon Fever Rush Bar on-demand tap button
+    const btnFeverMeter = document.getElementById('hud-fever-meter');
+    if (btnFeverMeter) {
+      btnFeverMeter.addEventListener('click', () => {
+        if (this.onTriggerFever) this.onTriggerFever();
+      });
+    }
+
+    // Sindhi Painted Mystery Trunk triggers & actions
+    const btnHomeTrunk = document.getElementById('btn-home-trunk');
+    if (btnHomeTrunk) {
+      btnHomeTrunk.addEventListener('click', () => {
+        this.showMysteryTrunkModal();
+      });
+    }
+
+    const btnCloseTrunk = document.getElementById('btn-close-mystery-trunk');
+    if (btnCloseTrunk) {
+      btnCloseTrunk.addEventListener('click', () => {
+        this.hideMysteryTrunkModal();
+      });
+    }
+
+    const btnTrunkOpen = document.getElementById('btn-trunk-open');
+    if (btnTrunkOpen) {
+      btnTrunkOpen.addEventListener('click', () => {
+        const res = saveManager.buyConsumable('mystery_crate');
+        const statusMsg = document.getElementById('trunk-status-msg');
+        if (res.success) {
+          audio?.playPowerUp?.();
+          this.showMysteryTrunkModal(res);
+        } else {
+          audio?.playWrongAnswer?.();
+          if (statusMsg) statusMsg.textContent = res.reason || 'Insufficient Rupees!';
+        }
+      });
+    }
+
+    const btnTrunkCollect = document.getElementById('btn-trunk-collect');
+    if (btnTrunkCollect) {
+      btnTrunkCollect.addEventListener('click', () => {
+        this.hideMysteryTrunkModal();
+      });
+    }
+
     // Auto-Resume button on pause modal
     const btnAutoResume = document.getElementById('btn-auto-resume');
     if (btnAutoResume) {
@@ -4360,7 +4534,9 @@ export class UIManager {
     // Keyboard shortcut [Esc] for toggling Game Menu
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' || e.code === 'Escape') {
-        if (this.runnerShopModal && this.runnerShopModal.style.display !== 'none') {
+        if (this.mysteryTrunkModal && this.mysteryTrunkModal.style.display !== 'none') {
+          this.hideMysteryTrunkModal();
+        } else if (this.runnerShopModal && this.runnerShopModal.style.display !== 'none') {
           this.hideRunnerShop();
         } else if (this.runnerLeaderboardsModal && this.runnerLeaderboardsModal.style.display !== 'none') {
           this.hideRunnerLeaderboards();
@@ -4438,7 +4614,7 @@ export class UIManager {
         }
         const runnerControlKeys = [
           'KeyS', 'ArrowDown', 'KeyA', 'ArrowLeft', 'KeyD', 'ArrowRight',
-          'KeyW', 'ArrowUp', 'Space', 'KeyH', 'KeyB'
+          'KeyW', 'ArrowUp', 'Space', 'KeyH', 'KeyB', 'KeyF', 'KeyJ'
         ];
         if (!runnerControlKeys.includes(e.code)) return;
         e.preventDefault();
@@ -4446,6 +4622,13 @@ export class UIManager {
 
         if (e.code === 'KeyS' || e.code === 'ArrowDown') {
           this.hideRunnerTutorial();
+          const now = Date.now();
+          if (now - (this.lastDownPressTime || 0) < 320) {
+            this.lastDownPressTime = 0;
+            if (this.onDeployHoverboard) this.onDeployHoverboard();
+          } else {
+            this.lastDownPressTime = now;
+          }
           if (this.onSlide) this.onSlide();
         } else if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
           this.hideRunnerTutorial();
@@ -4455,6 +4638,15 @@ export class UIManager {
           if (this.onLaneRight) this.onLaneRight();
         } else if (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === 'Space') {
           this.hideRunnerTutorial();
+          if (e.code === 'Space') {
+            const now = Date.now();
+            if (now - (this.lastSpacePressTime || 0) < 320) {
+              this.lastSpacePressTime = 0;
+              if (this.onDeployHoverboard) this.onDeployHoverboard();
+            } else {
+              this.lastSpacePressTime = now;
+            }
+          }
           if (this.onJump) this.onJump();
         } else if (e.code === 'KeyH') {
           this.hideRunnerTutorial();
@@ -4462,6 +4654,9 @@ export class UIManager {
         } else if (e.code === 'KeyB') {
           this.hideRunnerTutorial();
           if (this.onDeployHoverboard) this.onDeployHoverboard();
+        } else if (e.code === 'KeyF' || e.code === 'KeyJ') {
+          this.hideRunnerTutorial();
+          if (this.onTriggerFever) this.onTriggerFever();
         }
       }
     });
@@ -5720,7 +5915,7 @@ export class UIManager {
     }
   }
 
-  updateFeverMeter(percent = 0, isActive = false) {
+  updateFeverMeter(percent = 0, isActive = false, isReady = false) {
     const feverEl = document.getElementById('hud-fever-meter');
     const fillEl = document.getElementById('hud-fever-fill');
     const tagEl = document.getElementById('hud-fever-tag');
@@ -5730,7 +5925,13 @@ export class UIManager {
       const bounded = Math.max(0, Math.min(100, Math.round(percent)));
       fillEl.style.width = `${bounded}%`;
       feverEl.classList.toggle('is-fever-active', isActive);
-      if (tagEl) tagEl.textContent = isActive ? '🔥 RUSH!' : 'JUNOON';
+      const readyState = isReady || (bounded >= 100 && !isActive);
+      feverEl.classList.toggle('is-fever-ready', readyState);
+      if (tagEl) {
+        if (isActive) tagEl.textContent = '🔥 RUSH!';
+        else if (readyState) tagEl.textContent = '⚡ UNLEASH!';
+        else tagEl.textContent = 'JUNOON';
+      }
     } else {
       feverEl.style.display = 'none';
     }

@@ -625,6 +625,9 @@ export class Game {
       onDoubleTap: () => {
         this.deployHoverboard();
       },
+      onTriggerFever: () => {
+        this.triggerJunoonFever();
+      },
       onQuickRevive: () => {
         return this.quickReviveWithChai();
       }
@@ -1079,18 +1082,28 @@ export class Game {
 
   addFeverCharge(amount) {
     if (this.isFeverActive) return;
-    this.feverCharge = Math.min(100, Math.max(0, (this.feverCharge || 0) + amount));
+    const oldCharge = this.feverCharge || 0;
+    this.feverCharge = Math.min(100, Math.max(0, oldCharge + amount));
+    const isReady = this.feverCharge >= 100;
     if (this.ui?.updateFeverMeter) {
-      this.ui.updateFeverMeter(this.feverCharge, false);
+      this.ui.updateFeverMeter(this.feverCharge, false, isReady);
     }
-    if (this.feverCharge >= 100) {
-      this.triggerJunoonFever();
+    if (isReady && oldCharge < 100) {
+      audio?.playPowerUp?.();
+      this.ui?.showAnnouncement?.('⚡ JUNOON FEVER READY! Tap Meter or Press [F] to Unleash! 🔥', '#ffd700');
+      this.ui?.showFloatingFeedback?.('⚡ FEVER READY [F]!', this.player.position, '#ffd700');
     }
   }
 
   triggerJunoonFever() {
+    if (!this.player || !this.isTempleRun || !this.isGameStarted || this.isGameOver || this.isPaused) return;
+    if (this.isFeverActive) return;
+    if ((this.feverCharge || 0) < 100 && (this.feverTimer || 0) <= 0) {
+      this.ui?.showAnnouncement?.('⚡ Collect coins & stunts to charge JUNOON Fever!', '#00e5ff');
+      return;
+    }
     this.isFeverActive = true;
-    this.feverTimer = 8.5;
+    this.feverTimer = 10.0;
     this.feverCharge = 100;
     audio?.playFeverRush?.();
     audio?.playMusicalHorn?.();
@@ -1099,7 +1112,7 @@ export class Game {
     this.ui?.showAnnouncement?.('🔥 JUNOON FEVER RUSH! UNSTOPPABLE HYPER SPEED & COIN VORTEX! ⚡', '#00e5ff');
     this.ui?.showFloatingFeedback?.('⚡ JUNOON FEVER!', this.player.position, '#00e5ff');
     if (this.ui?.updateFeverMeter) {
-      this.ui.updateFeverMeter(100, true);
+      this.ui.updateFeverMeter(100, true, false);
     }
   }
 

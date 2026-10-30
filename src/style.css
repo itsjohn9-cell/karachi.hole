@@ -570,9 +570,140 @@ body:not(.mode-runner) .hud-runner-extra-dock {
   animation: pulseFever 0.35s infinite alternate ease-in-out;
   box-shadow: 0 0 16px rgba(255, 215, 0, 0.7);
 }
+.fever-meter-pill.is-fever-ready {
+  cursor: pointer;
+  border-color: #ffd700;
+  color: #ffd700;
+  animation: pulseFeverReady 0.5s infinite alternate ease-in-out;
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.85), 0 0 32px rgba(255, 109, 0, 0.5);
+}
+@keyframes pulseFeverReady {
+  0% { transform: scale(1.0); filter: brightness(1); }
+  100% { transform: scale(1.08); filter: brightness(1.4); }
+}
 @keyframes pulseFever {
   0% { transform: scale(0.96); filter: brightness(1); }
   100% { transform: scale(1.08); filter: brightness(1.3); }
+}
+
+/* Sindhi Painted Mystery Trunk Gacha */
+.mystery-trunk-backdrop {
+  z-index: 10005;
+}
+.mystery-trunk-card {
+  max-width: 440px;
+  text-align: center;
+  background: linear-gradient(180deg, #111a2e 0%, #0a0f1d 100%);
+  border: 2px solid #00e5ff;
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.35);
+}
+.trunk-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 10px;
+  min-height: 160px;
+  position: relative;
+}
+.trunk-chest-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 140px;
+  transition: transform 0.3s ease;
+}
+.trunk-lid {
+  width: 140px;
+  height: 38px;
+  background: linear-gradient(135deg, #b71c1c, #880e4f);
+  border: 3px solid #ffd700;
+  border-radius: 12px 12px 0 0;
+  position: relative;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-origin: top center;
+  box-shadow: 0 -4px 12px rgba(255, 215, 0, 0.4);
+}
+.trunk-lid.is-open {
+  transform: rotateX(-55deg) translateY(-8px);
+}
+.trunk-lid-band {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 100%;
+  background: #ffd700;
+}
+.trunk-body {
+  width: 140px;
+  height: 65px;
+  background: linear-gradient(180deg, #b71c1c, #d32f2f);
+  border: 3px solid #ffd700;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+.trunk-ornaments {
+  font-size: 1.1rem;
+}
+.trunk-latch {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.3rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+.trunk-reward-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: popReward 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes popReward {
+  0% { transform: scale(0.3); opacity: 0; }
+  100% { transform: scale(1.0); opacity: 1; }
+}
+.trunk-reward-icon {
+  font-size: 3.2rem;
+  filter: drop-shadow(0 0 16px rgba(255, 215, 0, 0.8));
+  animation: bounceIcon 0.8s infinite alternate ease-in-out;
+}
+@keyframes bounceIcon {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-8px); }
+}
+.trunk-reward-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffd700;
+  margin: 0;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+.trunk-cheer-banner {
+  background: linear-gradient(90deg, #ff6d00, #ffd600);
+  color: #111;
+  font-weight: 900;
+  font-size: 0.95rem;
+  padding: 4px 16px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+}
+.trunk-action-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+.trunk-action-btn {
+  min-width: 170px;
 }
 
 /* Qingqi Hover-Surfer Deploy Button */
