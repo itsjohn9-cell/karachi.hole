@@ -309,7 +309,6 @@ export class UIManager {
                 <button class="setting-pill-toggle ui-interactive active" id="btn-home-toggle-music" type="button" title="Toggle Background Music">🎵 MUSIC: ON</button>
                 <button class="setting-pill-toggle ui-interactive" id="btn-home-leaderboards" type="button" title="Global Leaderboards & Challenges" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">🏆 CHARTS</button>
                 <button class="setting-pill-toggle ui-interactive" id="btn-home-trunk" type="button" title="Open Karachi Mystery Trunk" style="border-color: rgba(0, 229, 255, 0.4); color: #00e5ff;">🧰 TRUNK</button>
-                <button class="setting-pill-toggle ui-interactive" id="btn-home-settings" type="button" title="Settings & Options">⚙️ SETTINGS</button>
               </div>
             </div>
           </div>
@@ -3734,10 +3733,6 @@ export class UIManager {
       if (this.runnerProgressModal) this.runnerProgressModal.style.display = 'none';
     };
     document.getElementById('btn-home-help')?.addEventListener('click', openHelp);
-    document.getElementById('btn-home-settings')?.addEventListener('click', () => {
-      audio.playClick();
-      this.showGameMenuModal();
-    });
     document.getElementById('btn-home-toggle-sfx')?.addEventListener('click', () => {
       const enabled = audio.toggleSound();
       const homeSfx = document.getElementById('btn-home-toggle-sfx');
@@ -4586,7 +4581,7 @@ export class UIManager {
       if (this.startModal && this.startModal.style.display !== 'none' && !window.game?.isGameStarted) {
         if (e.code === 'Space' || e.code === 'Enter') {
           const activeEl = document.activeElement;
-          if (activeEl && (activeEl.id === 'btn-home-help' || activeEl.id === 'btn-home-progress' || activeEl.id === 'btn-home-shop' || activeEl.id === 'btn-home-leaderboards' || activeEl.id === 'btn-home-settings')) {
+          if (activeEl && (activeEl.id === 'btn-home-help' || activeEl.id === 'btn-home-progress' || activeEl.id === 'btn-home-shop' || activeEl.id === 'btn-home-leaderboards' || activeEl.id === 'btn-home-trunk')) {
             return;
           }
           e.preventDefault();
