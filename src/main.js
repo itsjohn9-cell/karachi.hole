@@ -8552,7 +8552,7 @@ export class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.25',
+            appVersion: '2.2.26',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };
