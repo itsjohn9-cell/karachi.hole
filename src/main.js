@@ -1033,6 +1033,24 @@ export class Game {
         this.disposeRunnerObject(this.hoverboardMesh);
         this.hoverboardMesh = null;
       }
+      if (this.playerChingchiMount && this.player?.group) {
+        this.player.group.remove(this.playerChingchiMount);
+        this.disposeRunnerObject(this.playerChingchiMount);
+        this.playerChingchiMount = null;
+        audio?.stopChingchiEngineSound?.();
+      }
+      if (this.companionMesh) {
+        this.disposeRunnerObject(this.companionMesh);
+        this.companionMesh = null;
+      }
+      if (this.ghostRunner) {
+        this.disposeRunnerObject(this.ghostRunner);
+        this.ghostRunner = null;
+      }
+      if (this.biryaniGates) {
+        this.biryaniGates.forEach(g => this.disposeRunnerObject(g));
+        this.biryaniGates = [];
+      }
       this.feverTimer = 0;
       this.isFeverActive = false;
       this.feverCharge = 0;
@@ -3023,11 +3041,57 @@ export class Game {
     if (weather !== this.runnerWeatherState) {
       this.runnerWeatherState = weather;
       if (weather === 'rain') {
-        this.ui?.showAnnouncement('🌧️ KARACHI MONSOON! Slow down and watch the road.', '#80deea');
+        this.ui?.showAnnouncement('🌧️ KARACHI MONSOON! Wet roads and stormy skies ahead.', '#80deea');
       } else if (weather === 'potholes') {
         this.ui?.showAnnouncement('🕳️ RAIN-SOFTENED ROAD! Puddled potholes ahead.', '#80deea');
       } else if (weather === 'clear') {
         this.ui?.showAnnouncement('☀️ RAIN CLEARED. Stay alert for road damage.', '#ffd700');
+      }
+    }
+
+    // Dynamic Weather Lighting Transitions (Afternoon ➔ Sunset ➔ Monsoon)
+    if (this.scene && this.dirLight) {
+      if (this.distanceMeters < 900) {
+        if (this.currentWeather !== 'afternoon') {
+          this.currentWeather = 'afternoon';
+          this.scene.background.setHex(0xd2c6b2);
+          if (this.scene.fog) this.scene.fog.color.setHex(0xd2c6b2);
+          this.dirLight.color.setHex(0xfffaed);
+          this.dirLight.intensity = 1.2;
+        }
+      } else if (this.distanceMeters < 2100) {
+        if (this.currentWeather !== 'sunset') {
+          this.currentWeather = 'sunset';
+          this.scene.background.setHex(0xc2410c);
+          if (this.scene.fog) this.scene.fog.color.setHex(0x7c2d12);
+          this.dirLight.color.setHex(0xff7043);
+          this.dirLight.intensity = 1.05;
+          this.ui?.showAnnouncement?.('🌅 CLIFTON SUNSET · Golden twilight over the Arabian Sea', '#ff9100');
+        }
+      } else {
+        if (this.currentWeather !== 'monsoon') {
+          this.currentWeather = 'monsoon';
+          this.scene.background.setHex(0x1e293b);
+          if (this.scene.fog) this.scene.fog.color.setHex(0x0f172a);
+          this.dirLight.color.setHex(0x94a3b8);
+          this.dirLight.intensity = 0.85;
+          this.ui?.showAnnouncement?.('🌧️ KARACHI MONSOON DOWNPOUR! Lightning & Thunder!', '#00e5ff');
+        }
+
+        // Procedural Lightning & Thunder in Monsoon
+        this.lightningTimer = (this.lightningTimer || 22.0) - dt;
+        if (this.lightningTimer <= 0) {
+          this.lightningTimer = 18.0 + Math.random() * 12.0;
+          this.dirLight.intensity = 3.6;
+          this.scene.background.setHex(0xa5f3fc);
+          audio?.playThunderRumble?.();
+          setTimeout(() => {
+            if (this.scene && this.dirLight) {
+              this.dirLight.intensity = 0.85;
+              this.scene.background.setHex(0x1e293b);
+            }
+          }, 90);
+        }
       }
     }
 
@@ -4172,6 +4236,166 @@ export class Game {
     if (this.chingchiTimer > 0) {
       this.chingchiTimer = Math.max(0, this.chingchiTimer - dt);
       this.particles.createDevourSparkles(this.player.position, 1, 0xffd600);
+
+      // Mount 3D Qingqi Rickshaw around player
+      if (!this.playerChingchiMount && typeof KarachiModels !== 'undefined') {
+        this.playerChingchiMount = KarachiModels.createChingchiVehicleMount();
+        this.player.group.add(this.playerChingchiMount);
+        audio.startChingchiEngineSound?.();
+        this.ui?.showFloatingFeedback?.('🛺 CHINGCHI JUGGERNAUT!', this.player.position, '#ffd600');
+      }
+      if (this.playerChingchiMount) {
+        this.playerChingchiMount.position.set(0, 0, 0);
+        const ud = this.playerChingchiMount.userData;
+        if (ud) {
+          if (ud.frontWheel) ud.frontWheel.rotation.x -= dt * 25.0;
+          if (ud.rearWheelL) ud.rearWheelL.rotation.x -= dt * 25.0;
+          if (ud.rearWheelR) ud.rearWheelR.rotation.x -= dt * 25.0;
+          if (ud.underglow) ud.underglow.material.opacity = 0.65 + Math.sin(performance.now() * 0.015) * 0.35;
+        }
+      }
+      // Auto-magnetize nearby coins across all 3 lanes (8.5m radius)
+      if (this.runnerCoins) {
+        for (let i = 0; i < this.runnerCoins.length; i++) {
+          const c = this.runnerCoins[i];
+          if (c && c.mesh && c.mesh.position.distanceTo(this.player.position) < 8.5) {
+            c.mesh.position.lerp(this.player.position, dt * 12.0);
+          }
+        }
+      }
+    } else if (this.playerChingchiMount) {
+      this.player.group.remove(this.playerChingchiMount);
+      this.disposeRunnerObject(this.playerChingchiMount);
+      this.playerChingchiMount = null;
+      audio.stopChingchiEngineSound?.();
+    }
+
+    // Update Gully Pet Companion
+    if (this.companionMesh && this.companionType && this.companionType !== 'none') {
+      const pPos = this.player.position;
+      const elapsedTime = performance.now() * 0.003;
+      if (this.companionType === 'cat') {
+        this.companionMesh.position.set(
+          pPos.x - 1.25,
+          groundY + Math.abs(Math.sin(elapsedTime * 6.0)) * 0.12,
+          pPos.z - 0.4
+        );
+        this.companionMesh.rotation.y = Math.PI;
+        if (this.runnerCoins) {
+          for (let i = 0; i < this.runnerCoins.length; i++) {
+            const c = this.runnerCoins[i];
+            if (c && c.mesh && c.mesh.position.distanceTo(pPos) < 5.5) {
+              c.mesh.position.lerp(pPos, dt * 9.5);
+            }
+          }
+        }
+      } else if (this.companionType === 'seagull') {
+        this.companionMesh.position.set(
+          pPos.x + 0.65,
+          groundY + 2.85 + Math.sin(elapsedTime * 2.5) * 0.3,
+          pPos.z - 0.9
+        );
+        this.companionMesh.rotation.y = Math.PI;
+        const ud = this.companionMesh.userData;
+        if (ud && ud.wingPivotL && ud.wingPivotR) {
+          const flap = Math.sin(elapsedTime * 9.0) * 0.55;
+          ud.wingPivotL.rotation.z = flap;
+          ud.wingPivotR.rotation.z = -flap;
+        }
+        if (this.runnerCoins) {
+          for (let i = 0; i < this.runnerCoins.length; i++) {
+            const c = this.runnerCoins[i];
+            if (c && c.mesh && c.mesh.position.y > 1.2 && c.mesh.position.distanceTo(pPos) < 7.5) {
+              c.mesh.position.lerp(pPos, dt * 14.0);
+            }
+          }
+        }
+      } else if (this.companionType === 'dog') {
+        this.companionMesh.position.set(
+          pPos.x + 1.25,
+          groundY + Math.abs(Math.sin(elapsedTime * 7.0)) * 0.14,
+          pPos.z - 0.35
+        );
+        this.companionMesh.rotation.y = Math.PI;
+        if (this.runnerTraffic && (!this.lastDogBarkTime || performance.now() - this.lastDogBarkTime > 4000)) {
+          const closeThreat = this.runnerTraffic.find(v => v && !v.isHit && v.mesh && (v.mesh.position.z - pPos.z) < -8 && (v.mesh.position.z - pPos.z) > -38);
+          if (closeThreat) {
+            this.lastDogBarkTime = performance.now();
+            audio?.playDogBark?.();
+            this.ui?.showFloatingFeedback?.('🐕 WOOF! WATCH OUT!', this.companionMesh.position, '#ffd700');
+          }
+        }
+      }
+    }
+
+    // Update Personal Best Ghost Runner
+    if (this.ghostRunner && !this.ghostOvertaken) {
+      const gSpeed = this.ghostSpeed || 15.0;
+      this.ghostRunner.position.z -= dt * gSpeed;
+      if (typeof AvatarBuilder !== 'undefined' && AvatarBuilder.updateAnimation) {
+        AvatarBuilder.updateAnimation(this.ghostRunner, true, dt, gSpeed / 14.0, false, false);
+      }
+      if (this.player.position.z <= this.ghostRunner.position.z) {
+        this.ghostOvertaken = true;
+        this.score += 1500;
+        this.awardRunnerXP(1500);
+        audio?.playScore?.();
+        this.particles?.createCelebrationConfetti?.(this.ghostRunner.position, 40);
+        this.ui?.showAnnouncement?.('👻 PERSONAL RECORD GHOST OVERTAKEN! +1,500 PTS!', '#00e5ff');
+        this.ui?.showFloatingFeedback?.('👻 RECORD BEATEN! +1500', this.player.position, '#00e5ff');
+        setTimeout(() => {
+          if (this.ghostRunner) {
+            this.scene.remove(this.ghostRunner);
+            this.disposeRunnerObject(this.ghostRunner);
+            this.ghostRunner = null;
+          }
+        }, 1500);
+      }
+    }
+
+    // Update Burns Road Biryani Express
+    if (this.gameMode === 'biryani_rush') {
+      this.biryaniTimer = Math.max(0, this.biryaniTimer - dt);
+      this.biryaniSteam = Math.max(0, this.biryaniSteam - dt * 1.5);
+      this.ui?.updateBiryaniRushHUD?.(this.biryaniTimer, this.biryaniSteam, this.biryaniDeliveries || 0);
+
+      // Spawn Dhaba Biryani checkpoint gate ahead
+      if (this.player.position.z < this.nextBiryaniGateZ + 40.0) {
+        const gate = KarachiModels.createBiryaniDeliveryGate(this.biryaniDeliveries + 1);
+        gate.position.set(0, groundY, this.nextBiryaniGateZ);
+        this.scene.add(gate);
+        this.biryaniGates.push(gate);
+        this.nextBiryaniGateZ -= (280 + Math.random() * 40);
+      }
+
+      // Check passing through Biryani gates
+      for (let i = this.biryaniGates.length - 1; i >= 0; i--) {
+        const gate = this.biryaniGates[i];
+        if (gate && !gate.userData.isPassed && this.player.position.z <= gate.position.z + 1.2) {
+          gate.userData.isPassed = true;
+          this.biryaniDeliveries = (this.biryaniDeliveries || 0) + 1;
+          this.biryaniTimer = Math.min(60.0, this.biryaniTimer + 18.0);
+          this.biryaniSteam = 100.0;
+          this.coins += 2500;
+          this.score += 2500;
+          this.awardRunnerXP(2500);
+          audio?.playBiryaniDeliveryFanfare?.();
+          this.particles?.createCelebrationConfetti?.(gate.position, 45);
+          this.ui?.showAnnouncement?.(`🍲 DEG #${this.biryaniDeliveries} DELIVERED! +18s TIME & +2,500 RS!`, '#76ff03');
+          this.ui?.showFloatingFeedback?.('🍲 DELIVERED! +18s', this.player.position, '#76ff03');
+        } else if (gate && gate.position.z > this.player.position.z + 28.0) {
+          this.scene.remove(gate);
+          this.disposeRunnerObject(gate);
+          this.biryaniGates.splice(i, 1);
+        }
+      }
+
+      // Timeout check
+      if (this.biryaniTimer <= 0) {
+        saveManager.recordBiryaniRushScore?.(this.biryaniDeliveries || 0);
+        this.handleRunnerCrash('biryani_timeout');
+        return;
+      }
     }
     if (this.nitroTimer > 0) {
       this.nitroTimer = Math.max(0, this.nitroTimer - dt);
@@ -5378,6 +5602,79 @@ export class Game {
     this.wordHuntCollected = [];
     this.nextSurfingBusDist = 60.0;
     if (this.ui?.updateWordHunt) this.ui.updateWordHunt([], this.cityTourCity); // safe coin-only warmup ahead
+
+    // 1. Game Mode & Biryani Rush Setup
+    this.gameMode = this.ui?.selectedGameMode || 'classic';
+    if (this.gameMode === 'biryani_rush') {
+      this.biryaniTimer = 45.0;
+      this.biryaniSteam = 100.0;
+      this.biryaniDeliveries = 0;
+      this.nextBiryaniGateZ = -280.0;
+      this.biryaniGates = [];
+      this.ui?.showAnnouncement?.('🍲 BURNS ROAD BIRYANI RUSH! Deliver hot degs before the steam runs out!', '#ffd700');
+      this.ui?.updateBiryaniRushHUD?.(this.biryaniTimer, this.biryaniSteam, 0);
+    } else {
+      this.ui?.updateBiryaniRushHUD?.(0, 0, 0);
+    }
+
+    // 2. Gully Companion Setup
+    this.companionType = saveManager.getEquippedCompanion?.() || 'none';
+    if (this.companionMesh) {
+      this.scene.remove(this.companionMesh);
+      this.disposeRunnerObject(this.companionMesh);
+      this.companionMesh = null;
+    }
+    if (this.companionType === 'cat') {
+      this.companionMesh = KarachiModels.createStreetCat();
+      this.scene.add(this.companionMesh);
+    } else if (this.companionType === 'seagull') {
+      this.companionMesh = KarachiModels.createKemariSeagull();
+      this.scene.add(this.companionMesh);
+    } else if (this.companionType === 'dog') {
+      this.companionMesh = KarachiModels.createStrayDog();
+      this.scene.add(this.companionMesh);
+    }
+
+    // 3. Ghost Rival / Personal Best Shadow Run
+    const bestDistance = Number(saveManager.get().runnerStats.bestDistance) || 0;
+    if (this.ghostRunner) {
+      this.scene.remove(this.ghostRunner);
+      this.disposeRunnerObject(this.ghostRunner);
+      this.ghostRunner = null;
+    }
+    if (bestDistance >= 120 && typeof AvatarBuilder !== 'undefined') {
+      try {
+        this.ghostRunner = AvatarBuilder.createRunnerAvatar('tariq');
+        this.ghostRunner.traverse(c => {
+          if (c.isMesh && c.material) {
+            c.material = new THREE.MeshStandardMaterial({
+              color: 0x00e5ff,
+              emissive: 0x00b0ff,
+              emissiveIntensity: 0.65,
+              transparent: true,
+              opacity: 0.35,
+              roughness: 0.2
+            });
+          }
+        });
+        this.ghostRunner.position.set(0, 0, 60.0);
+        this.scene.add(this.ghostRunner);
+        this.ghostSpeed = Math.min(22.0, (RUNNER_SPEEDS[this.runnerDifficulty] || 15.0) * 0.96);
+        this.ghostOvertaken = false;
+      } catch (e) {
+        console.warn('[GHOST] Could not initialize shadow runner:', e);
+      }
+    }
+
+    // 4. Dynamic Weather Reset
+    this.currentWeather = 'afternoon';
+    this.lightningTimer = 22.0;
+
+    // 5. Procedural Instrumental Radio Startup
+    const savedStation = saveManager.getRadioStation?.();
+    if (savedStation && savedStation !== 'none') {
+      audio?.startRadioStation?.(savedStation);
+    }
       if (this.camera) {
         this.camera.position.set(0, 2.85, 65.2);
         this.camera.lookAt(0, 1.25, 42.0);
@@ -8633,7 +8930,7 @@ export class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.28',
+            appVersion: '2.2.29',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };

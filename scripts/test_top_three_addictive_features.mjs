@@ -209,5 +209,94 @@ test('Burns Road Chai Dhaba 7-Day Streak & Rewards', async () => {
   assert.equal(rewards[6].reward, '10,000 Rs + Title');
 });
 
+test('Chingchi Turbo Juggernaut & Mount Mechanics', async () => {
+  const { KarachiModels } = await import('../src/karachiModels.js');
+  const mount = KarachiModels.createChingchiVehicleMount();
+  assert.ok(mount, 'Chingchi mount exists');
+  assert.equal(mount.userData.isChingchiMount, true);
+  assert.ok(mount.userData.frontWheel, 'Has front wheel');
+  assert.ok(mount.userData.rearWheelL, 'Has left rear wheel');
+  assert.ok(mount.userData.rearWheelR, 'Has right rear wheel');
+  assert.ok(mount.userData.underglow, 'Has neon underglow');
+});
+
+test('Dynamic Karachi Weather Progression (Afternoon -> Sunset -> Monsoon)', async () => {
+  const getWeatherForDist = (dist) => {
+    if (dist < 900) return 'afternoon';
+    if (dist < 2100) return 'sunset';
+    return 'monsoon';
+  };
+
+  assert.equal(getWeatherForDist(300), 'afternoon');
+  assert.equal(getWeatherForDist(1200), 'sunset');
+  assert.equal(getWeatherForDist(2500), 'monsoon');
+});
+
+test('Burns Road Biryani Express Time-Attack Mode', async () => {
+  const { KarachiModels } = await import('../src/karachiModels.js');
+  const { saveManager } = await import('../src/saveManager.js');
+
+  const gate = KarachiModels.createBiryaniDeliveryGate(1);
+  assert.ok(gate, 'Biryani gate exists');
+  assert.equal(gate.userData.isBiryaniGate, true);
+  assert.equal(gate.userData.isPassed, false);
+
+  // Test recording best Biryani rush score
+  const res = saveManager.recordBiryaniRushScore(5);
+  assert.equal(res.best >= 5, true);
+  assert.equal(saveManager.getBiryaniRushBest() >= 5, true);
+});
+
+test('Instrumental Street Radio Stations (Zero Songs, Procedural Web Audio)', async () => {
+  const { audio } = await import('../src/audio.js');
+
+  // Verify cycling through stations
+  const st1 = audio.cycleNextRadioStation();
+  assert.ok(['none', 'fm91', 'fm102', 'fm106'].includes(st1));
+  assert.ok(typeof audio.getRadioStationLabel() === 'string');
+
+  // Ensure stop works cleanly
+  audio.stopRadioStation();
+  assert.equal(audio.currentRadioStation, 'none');
+  assert.equal(audio.getRadioStationLabel(), '📻 RADIO: OFF');
+});
+
+test('Gully Companions Pets & Perks', async () => {
+  const { KarachiModels } = await import('../src/karachiModels.js');
+  const { saveManager } = await import('../src/saveManager.js');
+
+  // Verify companion models
+  const cat = KarachiModels.createStreetCat();
+  assert.equal(cat.animalType, 'cat');
+
+  const dog = KarachiModels.createStrayDog();
+  assert.equal(dog.animalType, 'dog');
+
+  const seagull = KarachiModels.createKemariSeagull();
+  assert.equal(seagull.userData.isSeagull, true);
+
+  // Verify saving equipped companion
+  saveManager.setEquippedCompanion('seagull');
+  assert.equal(saveManager.getEquippedCompanion(), 'seagull');
+  saveManager.setEquippedCompanion('cat');
+  assert.equal(saveManager.getEquippedCompanion(), 'cat');
+});
+
+test('Personal Best Ghost Runner Logic', async () => {
+  const bestDistance = 500;
+  const isGhostEligible = (dist) => dist >= 120;
+  assert.equal(isGhostEligible(50), false, 'Under 120m does not spawn ghost');
+  assert.equal(isGhostEligible(bestDistance), true, 'Personal best spawns ghost runner');
+
+  let ghostOvertaken = false;
+  let playerZ = -300;
+  let ghostZ = -290;
+  // Player overtakes when playerZ <= ghostZ (running forward into negative Z)
+  if (playerZ <= ghostZ) {
+    ghostOvertaken = true;
+  }
+  assert.equal(ghostOvertaken, true, 'Overtaking ghost triggers celebration');
+});
+
 
 

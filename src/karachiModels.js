@@ -6539,6 +6539,270 @@ export const KarachiModels = {
 
     group.userData = { isSlangBillboard: true, phrase: slang.en, urdu: slang.ur };
     return group;
+  },
+
+  // 🛺 Authentic Pakistani Qingqi / Chingchi Rickshaw Vehicle Mount (for Juggernaut power-up)
+  createChingchiVehicleMount() {
+    const group = new THREE.Group();
+    group.name = "Chingchi-Juggernaut-Mount";
+
+    // Front Motorbike Section
+    const bikeMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.9, roughness: 0.1 });
+    const greenMat = new THREE.MeshStandardMaterial({ color: 0x00c853, metalness: 0.6, roughness: 0.3 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd600, metalness: 0.8, roughness: 0.2 });
+    const rubberMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+
+    // Front Fork & Handlebars
+    const forkGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.2, 8);
+    const forkL = new THREE.Mesh(forkGeo, chromeMat);
+    forkL.position.set(-0.2, 0.6, -1.2);
+    forkL.rotation.x = -0.2;
+    group.add(forkL);
+
+    const forkR = forkL.clone();
+    forkR.position.x = 0.2;
+    group.add(forkR);
+
+    // Handlebar Bar
+    const handleBar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 8), chromeMat);
+    handleBar.rotation.z = Math.PI / 2;
+    handleBar.position.set(0, 1.15, -1.1);
+    group.add(handleBar);
+
+    // Front Motorcycle Wheel
+    const fWheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.16, 14);
+    fWheelGeo.rotateZ(Math.PI / 2);
+    const frontWheel = new THREE.Mesh(fWheelGeo, rubberMat);
+    frontWheel.position.set(0, 0.32, -1.35);
+    group.add(frontWheel);
+
+    // Motorcycle Gas Tank
+    const tank = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.32, 0.55), greenMat);
+    tank.position.set(0, 0.9, -0.75);
+    group.add(tank);
+
+    // Bright Headlight
+    const light = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.15, 12), chromeMat);
+    light.rotation.x = Math.PI / 2;
+    light.position.set(0, 0.95, -1.25);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    bulb.position.set(0, 0, -0.08);
+    light.add(bulb);
+    group.add(light);
+
+    // Rear Passenger Carriage Frame
+    const carriage = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.5, 1.8), greenMat);
+    carriage.position.set(0, 0.5, 0.2);
+    group.add(carriage);
+
+    // Passenger Bench Seats
+    const seatMat = new THREE.MeshLambertMaterial({ color: 0x78350f });
+    const seatFront = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.25, 0.4), seatMat);
+    seatFront.position.set(0, 0.72, -0.2);
+    group.add(seatFront);
+    const seatRear = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.25, 0.4), seatMat);
+    seatRear.position.set(0, 0.72, 0.7);
+    group.add(seatRear);
+
+    // Rear Dual Wheels
+    const rearWheelL = new THREE.Mesh(fWheelGeo, rubberMat);
+    rearWheelL.position.set(-0.88, 0.32, 0.25);
+    group.add(rearWheelL);
+    const rearWheelR = new THREE.Mesh(fWheelGeo, rubberMat);
+    rearWheelR.position.set(0.88, 0.32, 0.25);
+    group.add(rearWheelR);
+
+    // Canopy Support Pillars (Chrome)
+    const pillarGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.3, 8);
+    [[-0.75, -0.6], [0.75, -0.6], [-0.75, 1.0], [0.75, 1.0]].forEach(([px, pz]) => {
+      const p = new THREE.Mesh(pillarGeo, chromeMat);
+      p.position.set(px, 1.3, pz);
+      group.add(p);
+    });
+
+    // Decorative Truck-Art Curved Canopy Hood
+    const canopyHood = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.12, 2.05), goldMat);
+    canopyHood.position.set(0, 1.95, 0.2);
+    group.add(canopyHood);
+
+    // Canopy Fringe (Chamakpatti)
+    const fringe = new THREE.Mesh(
+      new THREE.BoxGeometry(1.78, 0.18, 2.08),
+      new THREE.MeshBasicMaterial({ color: 0xff0055 })
+    );
+    fringe.position.set(0, 1.88, 0.2);
+    group.add(fringe);
+
+    // Subwoofer Box in Rear
+    const subBox = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.4), new THREE.MeshLambertMaterial({ color: 0x0f172a }));
+    subBox.position.set(0, 0.95, 0.95);
+    const cone1 = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.05, 12), new THREE.MeshBasicMaterial({ color: 0x00e5ff }));
+    cone1.rotation.x = Math.PI / 2;
+    cone1.position.set(-0.25, 0, 0.2);
+    subBox.add(cone1);
+    const cone2 = cone1.clone();
+    cone2.position.x = 0.25;
+    subBox.add(cone2);
+    group.add(subBox);
+
+    // Neon Underglow Bar
+    const underglow = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 0.05, 1.8),
+      new THREE.MeshBasicMaterial({ color: 0x00e676, transparent: true, opacity: 0.85 })
+    );
+    underglow.position.set(0, 0.08, 0.1);
+    group.add(underglow);
+
+    group.userData = {
+      isChingchiMount: true,
+      frontWheel,
+      rearWheelL,
+      rearWheelR,
+      underglow
+    };
+    return group;
+  },
+
+  // 🕊️ Kemari Coastal Seagull Companion (Flaps overhead, picks up aerial coins/letters)
+  createKemariSeagull() {
+    const group = new THREE.Group();
+    group.name = "Kemari-Seagull";
+
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xf8fafc });
+    const wingMat = new THREE.MeshLambertMaterial({ color: 0x94a3b8 });
+    const beakMat = new THREE.MeshLambertMaterial({ color: 0xfbbf24 });
+
+    // Torso / Body
+    const body = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.55, 6), bodyMat);
+    body.rotation.x = Math.PI / 2;
+    group.add(body);
+
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), bodyMat);
+    head.position.set(0, 0.08, -0.3);
+    group.add(head);
+
+    // Beak
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.16, 4), beakMat);
+    beak.rotation.x = -Math.PI / 2;
+    beak.position.set(0, 0.06, -0.44);
+    group.add(beak);
+
+    // Left Wing (with pivot group for flapping)
+    const wingPivotL = new THREE.Group();
+    wingPivotL.position.set(-0.12, 0.06, -0.05);
+    const wingGeom = new THREE.BoxGeometry(0.55, 0.02, 0.18);
+    const wingL = new THREE.Mesh(wingGeom, wingMat);
+    wingL.position.set(-0.27, 0, 0);
+    wingPivotL.add(wingL);
+    group.add(wingPivotL);
+
+    // Right Wing
+    const wingPivotR = new THREE.Group();
+    wingPivotR.position.set(0.12, 0.06, -0.05);
+    const wingR = new THREE.Mesh(wingGeom, wingMat);
+    wingR.position.set(0.27, 0, 0);
+    wingPivotR.add(wingR);
+    group.add(wingPivotR);
+
+    // Tail
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.02, 0.22), wingMat);
+    tail.position.set(0, 0.04, 0.32);
+    group.add(tail);
+
+    group.userData = {
+      isSeagull: true,
+      wingPivotL,
+      wingPivotR,
+      flapTime: 0
+    };
+    return group;
+  },
+
+  // 🍲 Burns Road Biryani Express Dhaba Checkpoint Gate
+  createBiryaniDeliveryGate(gateNumber = 1) {
+    const group = new THREE.Group();
+    group.name = `Biryani-Checkpoint-Gate-${gateNumber}`;
+
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
+    const silverMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.9, roughness: 0.1 });
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.4 });
+
+    // Left & Right Pillars (spanning 8.4m road)
+    const pillarGeo = new THREE.BoxGeometry(0.65, 5.2, 0.65);
+    const pillarL = new THREE.Mesh(pillarGeo, goldMat);
+    pillarL.position.set(-4.2, 2.6, 0);
+    group.add(pillarL);
+
+    const pillarR = new THREE.Mesh(pillarGeo, goldMat);
+    pillarR.position.set(4.2, 2.6, 0);
+    group.add(pillarR);
+
+    // Overhead Bridge Gantry
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.75, 0.85), redMat);
+    lintel.position.set(0, 5.2, 0);
+    group.add(lintel);
+
+    // 2 Giant Steaming Biryani Daigs mounted on top of the pillars
+    const daigGeo = new THREE.CylinderGeometry(0.55, 0.45, 0.65, 12);
+    const daigL = new THREE.Mesh(daigGeo, silverMat);
+    daigL.position.set(-4.2, 5.85, 0);
+    group.add(daigL);
+
+    const daigR = new THREE.Mesh(daigGeo, silverMat);
+    daigR.position.set(4.2, 5.85, 0);
+    group.add(daigR);
+
+    // Glowing Sign Banner
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#b71c1c';
+        ctx.fillRect(0, 0, 512, 128);
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(6, 6, 500, 116);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 32px "Segoe UI", Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🍲 BURNS ROAD CHECKPOINT #${gateNumber}`, 256, 48);
+
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 26px "Segoe UI", Arial, sans-serif';
+        ctx.fillText('HOT BIRYANI DELIVERY · +18s TIME & STEAM!', 256, 95);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 1.8), new THREE.MeshBasicMaterial({ map: tex }));
+        sign.position.set(0, 5.2, 0.45);
+        group.add(sign);
+
+        const signBack = sign.clone();
+        signBack.rotation.y = Math.PI;
+        signBack.position.z = -0.45;
+        group.add(signBack);
+      }
+    } catch (e) {}
+
+    // Ground Checkpoint Ribbon
+    const ribbon = new THREE.Mesh(
+      new THREE.PlaneGeometry(8.0, 1.2),
+      new THREE.MeshBasicMaterial({ color: 0x76ff03, transparent: true, opacity: 0.85 })
+    );
+    ribbon.rotation.x = -Math.PI / 2;
+    ribbon.position.set(0, 0.08, 0);
+    group.add(ribbon);
+
+    group.userData = {
+      isBiryaniGate: true,
+      gateNumber,
+      isPassed: false
+    };
+    return group;
   }
 };
 

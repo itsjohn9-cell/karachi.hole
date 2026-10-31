@@ -312,6 +312,9 @@ export class UIManager {
                 <button class="setting-pill-toggle ui-interactive" id="btn-home-leaderboards" type="button" title="Global Leaderboards & Challenges" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">🏆 CHARTS</button>
                 <button class="setting-pill-toggle ui-interactive" id="btn-home-trunk" type="button" title="Open Karachi Mystery Trunk" style="border-color: rgba(0, 229, 255, 0.4); color: #00e5ff;">🧰 TRUNK</button>
                 <button class="setting-pill-toggle ui-interactive" id="btn-home-chai" type="button" title="Burns Road Chai Dhaba · 7-Day Login Streak" style="border-color: rgba(255, 145, 0, 0.4); color: #ff9100;">☕ CHAI</button>
+                <button class="setting-pill-toggle ui-interactive" id="btn-home-mode" type="button" title="Toggle Game Mode: Classic vs Burns Road Biryani Rush" style="border-color: rgba(255, 61, 0, 0.45); color: #ff3d00;">🍲 MODE: CLASSIC</button>
+                <button class="setting-pill-toggle ui-interactive" id="btn-home-companion" type="button" title="Select Gully Pet Companion" style="border-color: rgba(0, 230, 118, 0.45); color: #00e676;">🐾 PET: 🐈 BILLI</button>
+                <button class="setting-pill-toggle ui-interactive" id="btn-home-radio" type="button" title="Instrumental Street Radio (No Songs)" style="border-color: rgba(224, 64, 251, 0.45); color: #e040fb;">📻 RADIO: OFF</button>
               </div>
             </div>
           </div>
@@ -2231,6 +2234,7 @@ export class UIManager {
         </div>
 
         <div class="hud-top-controls">
+          <button class="menu-pill-btn ui-interactive" id="btn-hud-radio" title="Instrumental Street Radio (Zero Songs)" style="background: rgba(224, 64, 251, 0.18); border: 1.5px solid #e040fb; color: #e040fb; font-size: 0.72rem; padding: 4px 10px;">📻 RADIO: OFF</button>
           <button class="menu-pill-btn ui-interactive" id="btn-open-game-menu" title="Open Game Menu & Settings [Esc]">☰ MENU</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-sound" title="Toggle Sound">🔊</button>
           <button class="icon-btn ui-interactive" id="btn-toggle-music" title="Toggle Music">🎵</button>
@@ -2242,6 +2246,24 @@ export class UIManager {
             <span aria-hidden="true">⏸</span>
             <span class="pause-button-label">PAUSE</span>
           </button>
+        </div>
+      </div>
+
+      <div id="hud-traffic-ticker" style="display: none; position: absolute; top: 46px; left: 50%; transform: translateX(-50%); max-width: 90vw; background: rgba(15, 23, 42, 0.92); border: 1px solid #e040fb; border-radius: 999px; padding: 2px 14px; font-size: 0.68rem; color: #e040fb; font-weight: 800; white-space: nowrap; overflow: hidden; pointer-events: none; z-index: 100;">
+        📻 TRAFFIC BULLETIN: Clear lanes ahead on Shahrah-e-Faisal! Rain clouds building over Clifton!
+      </div>
+
+      <div id="hud-biryani-rush" style="display: none; position: absolute; top: 82px; left: 50%; transform: translateX(-50%); background: rgba(183, 28, 28, 0.92); border: 1.5px solid #ffd700; border-radius: 16px; padding: 4px 16px; align-items: center; gap: 12px; z-index: 100; box-shadow: 0 0 15px rgba(255, 61, 0, 0.45);">
+        <span style="font-size: 1.2rem;">🍲</span>
+        <div>
+          <div style="font-size: 0.65rem; color: #ffd700; font-weight: 900; letter-spacing: 0.08em;">BURNS ROAD EXPRESS</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="biryani-time-val" style="font-size: 0.95rem; font-weight: 900; color: #fff;">45s</span>
+            <div style="width: 70px; height: 6px; background: rgba(0,0,0,0.5); border-radius: 999px; overflow: hidden;">
+              <div id="biryani-steam-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #ff9100, #ff3d00);"></div>
+            </div>
+            <span id="biryani-degs-val" style="font-size: 0.72rem; font-weight: 800; color: #76ff03;">0 DEGS</span>
+          </div>
         </div>
       </div>
 
@@ -4151,6 +4173,8 @@ export class UIManager {
             playerName: this.playerName,
             ageTier: this.currentAgeTier,
             runnerDifficulty: this.runnerDifficulty,
+            gameMode: this.selectedGameMode || 'classic',
+            companion: saveManager.getEquippedCompanion() || 'cat',
             avatarId: this.selectedAvatar || 'tariq',
             districtLevel: this.selectedDistrictLevel || 1,
             versionId: 'v3'
@@ -4595,6 +4619,71 @@ export class UIManager {
 
     const btnResultsShare = document.getElementById('btn-results-share-whatsapp');
     if (btnResultsShare) attachInstantTouch(btnResultsShare, handleShareScore);
+
+    // Game Mode Toggle (Classic vs Burns Road Biryani Rush)
+    this.selectedGameMode = 'classic';
+    const btnHomeMode = document.getElementById('btn-home-mode');
+    if (btnHomeMode) {
+      attachInstantTouch(btnHomeMode, () => {
+        audio?.playClick?.();
+        this.selectedGameMode = this.selectedGameMode === 'classic' ? 'biryani_rush' : 'classic';
+        btnHomeMode.textContent = this.selectedGameMode === 'biryani_rush' ? '🍲 MODE: BIRYANI RUSH' : '🏃 MODE: CLASSIC';
+        btnHomeMode.style.borderColor = this.selectedGameMode === 'biryani_rush' ? '#ffd700' : 'rgba(255, 61, 0, 0.45)';
+        btnHomeMode.style.color = this.selectedGameMode === 'biryani_rush' ? '#ffd700' : '#ff3d00';
+      });
+    }
+
+    // Gully Companion Selector
+    const companionLabels = {
+      none: '🐾 PET: NONE',
+      cat: '🐾 PET: 🐈 BILLI',
+      seagull: '🐾 PET: 🕊️ SEAGULL',
+      dog: '🐾 PET: 🐕 PUPPY'
+    };
+    const companionCycle = ['cat', 'seagull', 'dog', 'none'];
+    const btnHomeCompanion = document.getElementById('btn-home-companion');
+    if (btnHomeCompanion) {
+      const curComp = saveManager.getEquippedCompanion();
+      btnHomeCompanion.textContent = companionLabels[curComp] || '🐾 PET: 🐈 BILLI';
+      attachInstantTouch(btnHomeCompanion, () => {
+        audio?.playClick?.();
+        const current = saveManager.getEquippedCompanion();
+        const next = companionCycle[(companionCycle.indexOf(current) + 1) % companionCycle.length];
+        saveManager.setEquippedCompanion(next);
+        btnHomeCompanion.textContent = companionLabels[next] || '🐾 PET: NONE';
+        if (next === 'cat') audio.playCatMeow?.();
+        else if (next === 'dog') audio.playDogBark?.();
+        else if (next === 'seagull') audio.playSeagullCry?.();
+      });
+    }
+
+    // Instrumental Street Radio (Zero Songs)
+    const syncRadioButtons = (station) => {
+      const label = audio.getRadioStationLabel();
+      const homeRadio = document.getElementById('btn-home-radio');
+      const hudRadio = document.getElementById('btn-hud-radio');
+      const ticker = document.getElementById('hud-traffic-ticker');
+      if (homeRadio) homeRadio.textContent = label;
+      if (hudRadio) hudRadio.textContent = label;
+      if (ticker) ticker.style.display = station === 'fm106' ? 'block' : 'none';
+      saveManager.setRadioStation(station);
+    };
+
+    const btnHomeRadio = document.getElementById('btn-home-radio');
+    if (btnHomeRadio) {
+      attachInstantTouch(btnHomeRadio, () => {
+        const next = audio.cycleNextRadioStation();
+        syncRadioButtons(next);
+      });
+    }
+
+    const btnHudRadio = document.getElementById('btn-hud-radio');
+    if (btnHudRadio) {
+      attachInstantTouch(btnHudRadio, () => {
+        const next = audio.cycleNextRadioStation();
+        syncRadioButtons(next);
+      });
+    }
 
     // Auto-Resume button on pause modal
     const btnAutoResume = document.getElementById('btn-auto-resume');
@@ -6322,6 +6411,29 @@ export class UIManager {
       }
     } else {
       huntEl.style.display = 'none';
+    }
+  }
+
+  updateBiryaniRushHUD(timeLeft = 0, steamPct = 100, degsDelivered = 0) {
+    const el = document.getElementById('hud-biryani-rush');
+    if (!el) return;
+    if (window.game?.gameMode === 'biryani_rush' && window.game?.isGameStarted && !window.game?.isGameOver) {
+      el.style.display = 'flex';
+      const timeVal = document.getElementById('biryani-time-val');
+      const steamBar = document.getElementById('biryani-steam-bar');
+      const degsVal = document.getElementById('biryani-degs-val');
+      if (timeVal) {
+        timeVal.textContent = `${Math.ceil(Math.max(0, timeLeft))}s`;
+        timeVal.style.color = timeLeft < 10 ? '#ff1744' : '#ffffff';
+      }
+      if (steamBar) {
+        steamBar.style.width = `${Math.max(0, Math.min(100, Math.round(steamPct)))}%`;
+      }
+      if (degsVal) {
+        degsVal.textContent = `${degsDelivered} DEG${degsDelivered === 1 ? '' : 'S'}`;
+      }
+    } else {
+      el.style.display = 'none';
     }
   }
 

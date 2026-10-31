@@ -32,6 +32,8 @@ export const DEFAULT_SAVE_DATA = {
   player: {
     name: 'Karachi Hero',
     avatarId: 'tariq',
+    companion: 'cat',
+    unlockedCompanions: ['cat'],
     level: 1,
     careerXP: 0,
     reviveTokens: 0,
@@ -43,6 +45,7 @@ export const DEFAULT_SAVE_DATA = {
   settings: {
     soundEnabled: true,
     musicEnabled: true,
+    radioStation: 'none',
     hapticsEnabled: true,
     graphicsQuality: 'high',
     cameraSensitivity: 1.0,
@@ -70,7 +73,8 @@ export const DEFAULT_SAVE_DATA = {
     completedCities: [],
     totalCityWords: 0,
     dailyStreak: 0,
-    lastDailyClaimDate: ''
+    lastDailyClaimDate: '',
+    biryaniRushBest: 0
   },
   powerUpUpgrades: {
     magnet: 1,
@@ -307,6 +311,58 @@ class SaveManager {
       totalCityWords: this.data.runnerStats.totalCityWords,
       cityTourIndex: this.data.runnerStats.cityTourIndex
     };
+  }
+
+  // --- Gully Companions ---
+  getEquippedCompanion() {
+    return this.data.player?.companion || 'none';
+  }
+
+  setEquippedCompanion(companionId = 'none') {
+    if (!this.data.player) this.data.player = { ...DEFAULT_SAVE_DATA.player };
+    this.data.player.companion = companionId;
+    this.save();
+    return companionId;
+  }
+
+  getUnlockedCompanions() {
+    const list = this.data.player?.unlockedCompanions;
+    return Array.isArray(list) ? list : ['cat'];
+  }
+
+  unlockCompanion(companionId) {
+    if (!this.data.player) this.data.player = { ...DEFAULT_SAVE_DATA.player };
+    const list = new Set(this.getUnlockedCompanions());
+    list.add(companionId);
+    this.data.player.unlockedCompanions = Array.from(list);
+    this.save();
+  }
+
+  // --- Burns Road Biryani Rush ---
+  getBiryaniRushBest() {
+    return Number(this.data.runnerStats?.biryaniRushBest) || 0;
+  }
+
+  recordBiryaniRushScore(degsDelivered) {
+    if (!this.data.runnerStats) this.data.runnerStats = { ...DEFAULT_SAVE_DATA.runnerStats };
+    const currentBest = Number(this.data.runnerStats.biryaniRushBest) || 0;
+    const isNew = degsDelivered > currentBest;
+    if (isNew) {
+      this.data.runnerStats.biryaniRushBest = degsDelivered;
+      this.save();
+    }
+    return { best: this.data.runnerStats.biryaniRushBest, isNewRecord: isNew };
+  }
+
+  // --- Instrumental Street Radio Preference ---
+  getRadioStation() {
+    return this.data.settings?.radioStation || 'none';
+  }
+
+  setRadioStation(stationId) {
+    if (!this.data.settings) this.data.settings = { ...DEFAULT_SAVE_DATA.settings };
+    this.data.settings.radioStation = stationId;
+    this.save();
   }
 
   _normalizePowerUpKey(type) {
