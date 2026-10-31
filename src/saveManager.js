@@ -65,7 +65,12 @@ export const DEFAULT_SAVE_DATA = {
     bestDistance: 0,
     bestScore: 0,
     totalRupees: 0,
-    completedRuns: 0
+    completedRuns: 0,
+    cityTourIndex: 0,
+    completedCities: [],
+    totalCityWords: 0,
+    dailyStreak: 0,
+    lastDailyClaimDate: ''
   },
   powerUpUpgrades: {
     magnet: 1,
@@ -112,10 +117,12 @@ class SaveManager {
       data.player.reviveTokens = Number.isSafeInteger(reviveTokens)
         ? Math.min(MAX_REVIVE_TOKENS, Math.max(0, reviveTokens))
         : 0;
-      Object.keys(DEFAULT_SAVE_DATA.runnerStats).forEach(key => {
+      const numericRunnerKeys = ['bestDistance', 'bestScore', 'totalRupees', 'completedRuns', 'cityTourIndex', 'totalCityWords', 'dailyStreak'];
+      numericRunnerKeys.forEach(key => {
         const value = Number(data.runnerStats[key]);
         data.runnerStats[key] = Number.isSafeInteger(value) ? Math.max(0, value) : 0;
       });
+      data.runnerStats.completedCities = Array.isArray(data.runnerStats.completedCities) ? data.runnerStats.completedCities : [];
       if (data.powerUpUpgrades) {
         ['magnet', 'shield', 'nitro', 'double_coins', 'jump', 'horn', 'cricket_bat', 'hoverboard'].forEach(key => {
           const lvl = Number(data.powerUpUpgrades[key]);
@@ -208,6 +215,98 @@ class SaveManager {
     if (this.save()) return true;
     this.data.runnerStats = previousStats;
     return false;
+  }
+
+  getCityTourIndex() {
+    return Math.max(0, Number(this.data?.runnerStats?.cityTourIndex) || 0);
+  }
+
+  getCompletedCities() {
+    return Array.isArray(this.data?.runnerStats?.completedCities) ? [...this.data.runnerStats.completedCities] : [];
+  }
+
+  getTotalCityWords() {
+    return Math.max(0, Number(this.data?.runnerStats?.totalCityWords) || 0);
+  }
+
+  // --- 7-Day Burns Road Chai Dhaba Daily Login Streak ---
+  getChaiDhabaRewards() {
+    return [
+      { day: 1, name: 'Doodh Patti Chai', reward: '500 Rs', icon: '☕', amount: 500, type: 'rupees' },
+      { day: 2, name: 'Paratha & Headstart', reward: '1,000 Rs + 1 Rocket', icon: '🚀', amount: 1000, type: 'headstart' },
+      { day: 3, name: 'Sindhi Sandooq Trunk', reward: '1,500 Rs Bonus', icon: '🧰', amount: 1500, type: 'trunk' },
+      { day: 4, name: 'Burns Road Bun Kabab', reward: '2,500 Rs', icon: '🍔', amount: 2500, type: 'rupees' },
+      { day: 5, name: 'Edhi Rescue Pack', reward: '2 Revive Tokens', icon: '💖', amount: 2, type: 'tokens' },
+      { day: 6, name: 'Karachi Biryani Daig', reward: '5,000 Rs Feast', icon: '🍛', amount: 5000, type: 'rupees' },
+      { day: 7, name: 'Shahi Qahwa Mega Pot', reward: '10,000 Rs + Title', icon: '👑', amount: 10000, type: 'jackpot' }
+    ];
+  }
+
+  getChaiDhabaStatus() {
+    const today = new Date().toISOString().slice(0, 10);
+    const lastClaim = this.data?.runnerStats?.lastDailyClaimDate || '';
+    const currentStreak = Number(this.data?.runnerStats?.dailyStreak) || 0;
+    const canClaim = lastClaim !== today;
+    return {
+      today,
+      lastClaim,
+      currentStreak: Math.max(1, Math.min(7, currentStreak === 0 ? 1 : currentStreak)),
+      claimedToday: !canClaim,
+      canClaim
+    };
+  }
+
+  claimChaiDhabaReward() {
+    const status = this.getChaiDhabaStatus();
+    if (!status.canClaim) {
+      return { success: false, reason: 'Already claimed today! Next cup tomorrow at midnight.' };
+    }
+    const today = status.today;
+    let nextStreak = (Number(this.data.runnerStats.dailyStreak) || 0) + 1;
+    if (nextStreak > 7) nextStreak = 1;
+
+    const reward = this.getChaiDhabaRewards()[nextStreak - 1];
+    if (reward.type === 'rupees' || reward.type === 'jackpot') {
+      this.data.runnerStats.totalRupees = (this.data.runnerStats.totalRupees || 0) + reward.amount;
+      if (reward.type === 'jackpot') this.unlockBadge?.('chai_connoisseur');
+    } else if (reward.type === 'headstart') {
+      this.data.runnerStats.totalRupees = (this.data.runnerStats.totalRupees || 0) + reward.amount;
+      this.data.hasHeadstart = (this.data.hasHeadstart || 0) + 1;
+    } else if (reward.type === 'tokens') {
+      this.data.player.reviveTokens = Math.min(MAX_REVIVE_TOKENS, (Number(this.data.player.reviveTokens) || 0) + reward.amount);
+    } else if (reward.type === 'trunk') {
+      this.data.runnerStats.totalRupees = (this.data.runnerStats.totalRupees || 0) + reward.amount;
+    }
+
+    this.data.runnerStats.dailyStreak = nextStreak;
+    this.data.runnerStats.lastDailyClaimDate = today;
+    this.save();
+
+    return {
+      success: true,
+      day: nextStreak,
+      nextStreak,
+      reward,
+      message: `☕ Day ${nextStreak} Claimed: ${reward.name} (${reward.reward})!`
+    };
+  }
+
+  recordCityWordCompleted(cityId) {
+    if (!this.data.runnerStats) this.data.runnerStats = { ...DEFAULT_SAVE_DATA.runnerStats };
+    const currentCompleted = Array.isArray(this.data.runnerStats.completedCities) ? this.data.runnerStats.completedCities : [];
+    const normId = String(cityId || '').toLowerCase();
+    if (normId && !currentCompleted.includes(normId)) {
+      currentCompleted.push(normId);
+    }
+    this.data.runnerStats.completedCities = currentCompleted;
+    this.data.runnerStats.totalCityWords = (Number(this.data.runnerStats.totalCityWords) || 0) + 1;
+    this.data.runnerStats.cityTourIndex = (Number(this.data.runnerStats.cityTourIndex) || 0) + 1;
+    this.save();
+    return {
+      completedCities: [...currentCompleted],
+      totalCityWords: this.data.runnerStats.totalCityWords,
+      cityTourIndex: this.data.runnerStats.cityTourIndex
+    };
   }
 
   _normalizePowerUpKey(type) {

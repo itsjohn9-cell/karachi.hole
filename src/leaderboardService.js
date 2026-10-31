@@ -350,6 +350,39 @@ export class LeaderboardService {
     };
   }
 
+  // --- Pakistan Cities Tour Leaderboard ---
+  getCitiesTourLeaderboard() {
+    const playerCityWords = this.saveManager?.getTotalCityWords?.() ?? 0;
+    const playerCompleted = this.saveManager?.getCompletedCities?.() ?? [];
+    const playerGamer = this.getGamerName();
+
+    const mockCityTourRivals = [
+      { gamerName: 'W11_SurferUstaad', citiesCompleted: 14, currentCity: 'GWADAR', badges: ['🌊', '🕌', '🏛️', '🏔️', '🍎', '🏺', '🚂', '⚓'] },
+      { gamerName: 'Nazimabad_Ninja', citiesCompleted: 11, currentCity: 'MULTAN', badges: ['🌊', '🕌', '🏛️', '🏔️', '🍎', '🏺'] },
+      { gamerName: 'Saddar_Speedster', citiesCompleted: 9, currentCity: 'QUETTA', badges: ['🌊', '🕌', '🏛️', '🏔️', '🍎'] },
+      { gamerName: 'Lyari_Striker', citiesCompleted: 7, currentCity: 'PESHAWAR', badges: ['🌊', '🕌', '🏛️', '🏔️'] },
+      { gamerName: 'Tariq_Road_Tornado', citiesCompleted: 5, currentCity: 'ISLAMABAD', badges: ['🌊', '🕌', '🏛️'] },
+      { gamerName: 'Defence_Dasher', citiesCompleted: 3, currentCity: 'LAHORE', badges: ['🌊', '🕌'] },
+      { gamerName: 'ChaiWala_Express', citiesCompleted: 2, currentCity: 'LAHORE', badges: ['🌊'] }
+    ];
+
+    const playerEntry = {
+      gamerName: playerGamer,
+      citiesCompleted: playerCityWords,
+      completedList: playerCompleted,
+      isCurrentPlayer: true
+    };
+
+    const all = [...mockCityTourRivals.filter(r => r.gamerName !== playerGamer), playerEntry]
+      .sort((a, b) => b.citiesCompleted - a.citiesCompleted);
+
+    return all.map((entry, idx) => ({
+      ...entry,
+      rank: idx + 1,
+      isCurrentPlayer: entry.gamerName === playerGamer
+    }));
+  }
+
   // =========================================================================
   // DAILY CHALLENGES SYSTEM
   // =========================================================================

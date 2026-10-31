@@ -1,6 +1,49 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+// Mock browser globals for Node test environment
+if (typeof globalThis.window === 'undefined') {
+  globalThis.window = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    location: { reload: () => {} },
+    innerWidth: 1280,
+    innerHeight: 720
+  };
+}
+if (typeof globalThis.document === 'undefined') {
+  globalThis.document = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    getElementById: () => null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: () => ({
+      style: {},
+      classList: { add: () => {}, remove: () => {}, contains: () => false },
+      addEventListener: () => {},
+      getContext: () => new Proxy({
+        createLinearGradient: () => ({ addColorStop: () => {} }),
+        createRadialGradient: () => ({ addColorStop: () => {} }),
+        measureText: () => ({ width: 10 })
+      }, {
+        get: (target, prop) => (prop in target ? target[prop] : () => {}),
+        set: () => true
+      })
+    }),
+    body: { appendChild: () => {}, removeChild: () => {} }
+  };
+}
+if (typeof globalThis.localStorage === 'undefined') {
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+    clear: () => store.clear()
+  };
+}
+
 test('Mystery Trunk Gacha Rewards & Wallet Deductions', async () => {
   const { saveManager, DEFAULT_SAVE_DATA } = await import('../src/saveManager.js');
 
@@ -86,5 +129,85 @@ test('On-Screen JUNOON & SURF Action Controls State Logic', () => {
   hoverboardCooldown = 15.0;
   assert.equal(hoverboardCooldown > 0, true, 'Hoverboard is discolored reload state during cooldown');
 });
+
+test('Pakistan Cities Tour Word Hunt & Progression', async () => {
+  const { saveManager, DEFAULT_SAVE_DATA } = await import('../src/saveManager.js');
+  const { PAKISTAN_CITIES_TOUR } = await import('../src/main.js');
+
+  // Verify tour sequence has all 8 Pakistani cities
+  assert.equal(PAKISTAN_CITIES_TOUR.length, 8);
+  assert.equal(PAKISTAN_CITIES_TOUR[0].name, 'KARACHI');
+  assert.equal(PAKISTAN_CITIES_TOUR[1].name, 'LAHORE');
+  assert.equal(PAKISTAN_CITIES_TOUR[2].name, 'ISLAMABAD');
+  assert.equal(PAKISTAN_CITIES_TOUR[3].name, 'PESHAWAR');
+  assert.equal(PAKISTAN_CITIES_TOUR[4].name, 'QUETTA');
+  assert.equal(PAKISTAN_CITIES_TOUR[5].name, 'MULTAN');
+  assert.equal(PAKISTAN_CITIES_TOUR[6].name, 'RAWALPINDI');
+  assert.equal(PAKISTAN_CITIES_TOUR[7].name, 'GWADAR');
+
+  // Verify city icons & theme colors
+  assert.equal(PAKISTAN_CITIES_TOUR[0].icon, '🌊');
+  assert.equal(PAKISTAN_CITIES_TOUR[1].icon, '🕌');
+
+  // Test progression recording
+  saveManager.data = JSON.parse(JSON.stringify(DEFAULT_SAVE_DATA));
+  const res1 = saveManager.recordCityWordCompleted('karachi');
+  assert.deepEqual(res1.completedCities, ['karachi']);
+  assert.equal(res1.cityTourIndex, 1);
+  assert.equal(res1.totalCityWords, 1);
+
+  const res2 = saveManager.recordCityWordCompleted('lahore');
+  assert.deepEqual(res2.completedCities, ['karachi', 'lahore']);
+  assert.equal(res2.cityTourIndex, 2);
+  assert.equal(res2.totalCityWords, 2);
+});
+
+test('Difficulty Pace Score Multipliers & Hurdle Mode Gate', async () => {
+  // Test score multipliers
+  const getMult = (diff) => {
+    if (diff === 'hard') return 2.5;
+    if (diff === 'cruiser') return 1.5;
+    return 1.0;
+  };
+
+  assert.equal(getMult('easy'), 1.0, 'Easy mode has 1.0x points');
+  assert.equal(getMult('cruiser'), 1.5, 'Cruiser mode has 1.5x points');
+  assert.equal(getMult('hard'), 2.5, 'Hard mode has 2.5x points');
+
+  // Test that roof hurdles only spawn in hard mode
+  const spawnHurdlesOnRoof = (diff) => diff === 'hard';
+  assert.equal(spawnHurdlesOnRoof('easy'), false, 'Easy roof surfing has NO overhead hurdles');
+  assert.equal(spawnHurdlesOnRoof('cruiser'), false, 'Cruiser roof surfing has NO overhead hurdles');
+  assert.equal(spawnHurdlesOnRoof('hard'), true, 'Hard mode spawns overhead hurdles');
+});
+
+test('Burns Road Chai Dhaba 7-Day Streak & Rewards', async () => {
+  const { saveManager, DEFAULT_SAVE_DATA } = await import('../src/saveManager.js');
+  saveManager.data = JSON.parse(JSON.stringify(DEFAULT_SAVE_DATA));
+  const initialRupees = saveManager.data.runnerStats.totalRupees || 0;
+
+  // Day 1 Claim
+  const status1 = saveManager.getChaiDhabaStatus();
+  assert.equal(status1.canClaim, true);
+  assert.equal(status1.currentStreak, 1);
+
+  const claim1 = saveManager.claimChaiDhabaReward();
+  assert.equal(claim1.success, true);
+  assert.equal(claim1.nextStreak, 1);
+  assert.equal(saveManager.data.runnerStats.totalRupees, initialRupees + 500);
+
+  // Cannot claim twice on same day
+  const statusDup = saveManager.getChaiDhabaStatus();
+  assert.equal(statusDup.canClaim, false);
+  const claimDup = saveManager.claimChaiDhabaReward();
+  assert.equal(claimDup.success, false);
+
+  // Rewards list contains 7 days
+  const rewards = saveManager.getChaiDhabaRewards();
+  assert.equal(rewards.length, 7);
+  assert.equal(rewards[0].reward, '500 Rs');
+  assert.equal(rewards[6].reward, '10,000 Rs + Title');
+});
+
 
 

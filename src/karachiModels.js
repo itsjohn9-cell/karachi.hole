@@ -6246,17 +6246,20 @@ export const KarachiModels = {
   },
 
   // ---------------------------------------------------------------------------
-  // 3D FLOATING KARACHI WORD HUNT LETTER
+  // 3D FLOATING PAKISTAN CITIES TOUR WORD HUNT LETTER
   // ---------------------------------------------------------------------------
-  createWordLetter(letter = 'K') {
+  createWordLetter(letter = 'K', cityData = null) {
     const group = new THREE.Group();
     group.name = `WordLetter_${letter}`;
 
-    // 1. Outer Rotating Crystal Gem
+    const themeColor = cityData?.color ? new THREE.Color(cityData.color) : new THREE.Color(0xffd700);
+    const haloColor = cityData?.color ? new THREE.Color(cityData.color) : new THREE.Color(0x00e5ff);
+
+    // 1. Outer Rotating Crystal Gem (Maintains iconic collectible silhouette)
     const gemGeo = new THREE.OctahedronGeometry(0.85, 0);
     const gemMat = new THREE.MeshStandardMaterial({
-      color: 0xffd700,
-      emissive: 0xffa000,
+      color: themeColor,
+      emissive: themeColor,
       emissiveIntensity: 0.35,
       metalness: 0.85,
       roughness: 0.2,
@@ -6267,7 +6270,7 @@ export const KarachiModels = {
     gem.scale.set(1.1, 1.3, 0.8);
     group.add(gem);
 
-    // 2. Letter Billboard Canvas Texture (High resolution bold letter)
+    // 2. Letter Billboard Canvas Texture (High resolution bold letter + city icon emblem)
     const canvas = document.createElement('canvas');
     canvas.width = 128;
     canvas.height = 128;
@@ -6275,15 +6278,23 @@ export const KarachiModels = {
     ctx.fillStyle = 'rgba(0,0,0,0)';
     ctx.clearRect(0, 0, 128, 128);
 
+    // City emblem badge stamp at top
+    if (cityData?.icon) {
+      ctx.font = '24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(cityData.icon, 64, 6);
+    }
+
     // Glowing border and letter
-    ctx.font = '900 86px Outfit, Impact, sans-serif';
+    ctx.font = '900 80px Outfit, Impact, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 14;
     ctx.strokeStyle = '#050b14';
-    ctx.strokeText(letter, 64, 64);
+    ctx.strokeText(letter, 64, cityData?.icon ? 74 : 64);
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(letter, 64, 64);
+    ctx.fillText(letter, 64, cityData?.icon ? 74 : 64);
 
     const texture = new THREE.CanvasTexture(canvas);
     const planeGeo = new THREE.PlaneGeometry(0.9, 0.9);
@@ -6303,12 +6314,12 @@ export const KarachiModels = {
 
     // Glowing halo ring around letter
     const ringGeo = new THREE.RingGeometry(0.72, 0.85, 24);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide });
+    const ringMat = new THREE.MeshBasicMaterial({ color: haloColor, side: THREE.DoubleSide });
     const halo = new THREE.Mesh(ringGeo, ringMat);
     halo.rotation.x = Math.PI / 2;
     group.add(halo);
 
-    group.userData = { isWordLetter: true, letter, gem, halo };
+    group.userData = { isWordLetter: true, letter, gem, halo, cityData };
     return group;
   },
 

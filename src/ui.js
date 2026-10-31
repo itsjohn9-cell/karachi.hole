@@ -211,6 +211,8 @@ export class UIManager {
     this.createRunnerShopModal();
     this.createRunnerLeaderboardsModal();
     this.createMysteryTrunkModal();
+    this.createChaiDhabaModal();
+    this.createCityPostcardModal();
     this.createAdminLoginModal();
     this.createRunnerTutorialOverlay();
     this.createRunnerDeveloperUI();
@@ -277,20 +279,20 @@ export class UIManager {
           <div class="form-group start-age-group">
             <label class="form-label menu-section-title" for="runner-difficulty-grid">🏃 CHOOSE YOUR PACE:</label>
             <div class="age-selection-grid" id="runner-difficulty-grid" aria-label="Runner pace">
-              <div class="age-card ui-interactive" role="button" tabindex="0" aria-pressed="false" aria-label="Easy pace. Scenic route with no turns." data-runner-difficulty="easy">
+              <div class="age-card ui-interactive" role="button" tabindex="0" aria-pressed="false" aria-label="Easy pace. Scenic route with 1.0x points." data-runner-difficulty="easy">
                 <span class="age-card-icon">🌱</span>
                 <span class="age-card-title">Easy</span>
-                <span class="age-card-sub">Scenic · no turns</span>
+                <span class="age-card-sub">Scenic · 1.0x PTS</span>
               </div>
-              <div class="age-card active ui-interactive" role="button" tabindex="0" aria-pressed="true" aria-label="Cruiser pace. Moderate street speed with gentle hazards." data-runner-difficulty="cruiser">
+              <div class="age-card active ui-interactive" role="button" tabindex="0" aria-pressed="true" aria-label="Cruiser pace. Moderate speed with 1.5x points." data-runner-difficulty="cruiser">
                 <span class="age-card-icon">⚡</span>
                 <span class="age-card-title">Cruiser</span>
-                <span class="age-card-sub">Moderate · turns</span>
+                <span class="age-card-sub">Moderate · 1.5x PTS</span>
               </div>
-              <div class="age-card ui-interactive" role="button" tabindex="0" aria-pressed="false" aria-label="Hard pace. Frequent turns." data-runner-difficulty="hard">
+              <div class="age-card ui-interactive" role="button" tabindex="0" aria-pressed="false" aria-label="Hard pace. Frequent turns with 2.5x points." data-runner-difficulty="hard">
                 <span class="age-card-icon">🔥</span>
                 <span class="age-card-title">Hard</span>
-                <span class="age-card-sub">Frequent turns</span>
+                <span class="age-card-sub">Frequent turns · 2.5x PTS</span>
               </div>
             </div>
           </div>
@@ -309,6 +311,7 @@ export class UIManager {
                 <button class="setting-pill-toggle ui-interactive active" id="btn-home-toggle-music" type="button" title="Toggle Background Music">🎵 MUSIC: ON</button>
                 <button class="setting-pill-toggle ui-interactive" id="btn-home-leaderboards" type="button" title="Global Leaderboards & Challenges" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">🏆 CHARTS</button>
                 <button class="setting-pill-toggle ui-interactive" id="btn-home-trunk" type="button" title="Open Karachi Mystery Trunk" style="border-color: rgba(0, 229, 255, 0.4); color: #00e5ff;">🧰 TRUNK</button>
+                <button class="setting-pill-toggle ui-interactive" id="btn-home-chai" type="button" title="Burns Road Chai Dhaba · 7-Day Login Streak" style="border-color: rgba(255, 145, 0, 0.4); color: #ff9100;">☕ CHAI</button>
               </div>
             </div>
           </div>
@@ -1098,6 +1101,7 @@ export class UIManager {
           <button class="lb-tab-btn ui-interactive" data-lb-tab="month" type="button">📆 MONTH</button>
           <button class="lb-tab-btn ui-interactive" data-lb-tab="year" type="button">🌟 YEAR</button>
           <button class="lb-tab-btn ui-interactive" data-lb-tab="all_time" type="button">👑 ALL-TIME</button>
+          <button class="lb-tab-btn ui-interactive" data-lb-tab="cities_tour" type="button">🇵🇰 CITIES TOUR</button>
           <button class="lb-tab-btn ui-interactive" data-lb-tab="challenges" type="button">🎯 DAILY QUESTS</button>
         </div>
 
@@ -1114,7 +1118,29 @@ export class UIManager {
           <div class="lb-player-pinned-footer" id="lb-player-pinned-footer" style="display: none;"></div>
         </div>
 
-        <!-- View 2: Daily Challenges & Daily Standings -->
+        <!-- View 2: Pakistan Cities Tour Collection & Leaderboard -->
+        <div id="lb-cities-tour-view" class="lb-view-container" style="display: none;">
+          <div class="daily-challenges-header-banner" style="background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(0, 230, 118, 0.12)); border: 1.5px solid rgba(0, 229, 255, 0.45);">
+            <div>
+              <h3 style="margin: 0; font-size: 0.95rem; color: #00e5ff;">🇵🇰 PAKISTAN CITIES EXPEDITION</h3>
+              <p style="margin: 2px 0 0; font-size: 0.68rem; color: #94a3b8;">Collect all city words in order · Current Tour Destination: <strong id="tour-destination-label" style="color: #ffd700;">KARACHI</strong></p>
+            </div>
+            <span class="daily-trophy-badge" id="tour-cities-completed-badge" style="background: linear-gradient(145deg, #00e5ff, #00b0ff); color: #042638;">0 CITIES</span>
+          </div>
+
+          <div class="cities-tour-grid" id="cities-tour-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0;"></div>
+
+          <h4 style="margin: 14px 0 6px; color: #ffd700; font-size: 0.85rem;">🏆 TOP CITIES WORD COLLECTORS (GLOBAL)</h4>
+          <div class="lb-table-header" style="grid-template-columns: 48px 1fr 100px 90px;">
+            <span class="col-rank">RANK</span>
+            <span class="col-runner">COLLECTOR</span>
+            <span class="col-route">DESTINATION</span>
+            <span class="col-score">WORDS</span>
+          </div>
+          <div class="lb-table-body" id="lb-cities-tour-rows"></div>
+        </div>
+
+        <!-- View 3: Daily Challenges & Daily Standings -->
         <div id="lb-challenges-view" class="lb-view-container" style="display: none;">
           <div class="daily-challenges-header-banner">
             <div>
@@ -1274,16 +1300,102 @@ export class UIManager {
 
     const tableView = document.getElementById('lb-table-view');
     const challengesView = document.getElementById('lb-challenges-view');
+    const citiesTourView = document.getElementById('lb-cities-tour-view');
 
     if (tab === 'challenges') {
       if (tableView) tableView.style.display = 'none';
+      if (citiesTourView) citiesTourView.style.display = 'none';
       if (challengesView) challengesView.style.display = 'block';
       this.renderDailyChallenges();
+    } else if (tab === 'cities_tour') {
+      if (tableView) tableView.style.display = 'none';
+      if (challengesView) challengesView.style.display = 'none';
+      if (citiesTourView) citiesTourView.style.display = 'block';
+      this.renderCitiesTourLeaderboard();
     } else {
       if (tableView) tableView.style.display = 'block';
       if (challengesView) challengesView.style.display = 'none';
+      if (citiesTourView) citiesTourView.style.display = 'none';
       this.renderLeaderboardTab(tab);
     }
+  }
+
+  renderCitiesTourLeaderboard() {
+    const grid = document.getElementById('cities-tour-grid');
+    const rows = document.getElementById('lb-cities-tour-rows');
+    const badge = document.getElementById('tour-cities-completed-badge');
+    const destLabel = document.getElementById('tour-destination-label');
+    if (!grid || !rows) return;
+
+    const completed = saveManager.getCompletedCities();
+    const currentCity = window.game?.getCurrentTourCity?.() || { name: 'KARACHI', icon: '🌊', color: '#00e5ff' };
+
+    if (badge) badge.textContent = `${completed.length}/8 CITIES`;
+    if (destLabel) {
+      destLabel.textContent = `${currentCity.icon} ${currentCity.name}`;
+      if (currentCity.color) destLabel.style.color = currentCity.color;
+    }
+
+    // Render 8 Pakistani cities grid
+    grid.innerHTML = '';
+    const tourList = [
+      { id: 'karachi', name: 'KARACHI', icon: '🌊', color: '#00e5ff' },
+      { id: 'lahore', name: 'LAHORE', icon: '🕌', color: '#ff9100' },
+      { id: 'islamabad', name: 'ISLAMABAD', icon: '🏛️', color: '#00e676' },
+      { id: 'peshawar', name: 'PESHAWAR', icon: '🏔️', color: '#ffd700' },
+      { id: 'quetta', name: 'QUETTA', icon: '🍎', color: '#ff1744' },
+      { id: 'multan', name: 'MULTAN', icon: '🏺', color: '#e040fb' },
+      { id: 'rawalpindi', name: 'RAWALPINDI', icon: '🚂', color: '#76ff03' },
+      { id: 'gwadar', name: 'GWADAR', icon: '⚓', color: '#18ffff' }
+    ];
+
+    tourList.forEach(city => {
+      const isDone = completed.includes(city.id);
+      const isCurrent = currentCity.name === city.name;
+      const card = document.createElement('div');
+      card.className = `city-tour-card ${isDone ? 'is-completed' : isCurrent ? 'is-current' : 'is-locked'}`;
+      card.style.cssText = `
+        padding: 6px 4px;
+        border-radius: 12px;
+        text-align: center;
+        background: ${isDone ? 'rgba(0, 230, 118, 0.16)' : isCurrent ? 'rgba(0, 229, 255, 0.2)' : 'rgba(15, 23, 42, 0.6)'};
+        border: 1.5px solid ${isDone ? '#00e676' : isCurrent ? '#00e5ff' : 'rgba(255, 255, 255, 0.12)'};
+        color: #fff;
+      `;
+      card.innerHTML = `
+        <div style="font-size: 1.3rem; line-height: 1.2;">${city.icon}</div>
+        <div style="font-size: 0.65rem; font-weight: 900; letter-spacing: 0.04em; margin-top: 2px; color: ${city.color};">${city.name}</div>
+        <div style="font-size: 0.55rem; font-weight: 800; margin-top: 2px; color: ${isDone ? '#00e676' : isCurrent ? '#ffd700' : '#64748b'};">
+          ${isDone ? '✅ DONE' : isCurrent ? '📍 HUNTING' : '🔒 NEXT'}
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    // Render Global Leaderboard Rows
+    rows.innerHTML = '';
+    const rivals = leaderboardService.getCitiesTourLeaderboard();
+    rivals.forEach(r => {
+      const row = document.createElement('div');
+      row.className = `lb-table-row ${r.isCurrentPlayer ? 'is-player-row' : ''}`;
+      row.style.cssText = 'grid-template-columns: 48px 1fr 100px 90px;';
+
+      let rankDisplay = `${r.rank}`;
+      if (r.rank === 1) rankDisplay = '🥇 1';
+      else if (r.rank === 2) rankDisplay = '🥈 2';
+      else if (r.rank === 3) rankDisplay = '🥉 3';
+
+      row.innerHTML = `
+        <span class="col-rank">${rankDisplay}</span>
+        <span class="col-runner">
+          <strong>${r.gamerName}</strong>
+          ${r.isCurrentPlayer ? '<span class="player-you-pill">YOU</span>' : ''}
+        </span>
+        <span class="col-route" style="color: #ffd700;">${r.currentCity || currentCity.name}</span>
+        <span class="col-score" style="color: #00e5ff; font-weight: 900;">${r.citiesCompleted || 0} Words</span>
+      `;
+      rows.appendChild(row);
+    });
   }
 
   refreshLeaderboardsView() {
@@ -1570,6 +1682,152 @@ export class UIManager {
       this.refreshRunnerProgress();
       if (this.trunkShouldResume) this.onResumeGame?.();
       this.trunkShouldResume = false;
+    }
+  }
+
+  // --- Burns Road Chai Dhaba 7-Day Daily Login Streak ---
+  createChaiDhabaModal() {
+    this.chaiDhabaModal = document.createElement('div');
+    this.chaiDhabaModal.className = 'modal-backdrop chai-dhaba-backdrop';
+    this.chaiDhabaModal.id = 'modal-chai-dhaba';
+    this.chaiDhabaModal.style.display = 'none';
+    this.chaiDhabaModal.innerHTML = `
+      <section class="modal-card runner-info-card chai-dhaba-card" role="dialog" aria-modal="true" aria-labelledby="chai-title" style="max-width: 520px;">
+        <header class="runner-info-header">
+          <div>
+            <h2 id="chai-title">☕ BURNS ROAD CHAI DHABA</h2>
+            <p>7-Day Daily Login Streak · Authentic Karachi Doodh Patti &amp; Rewards!</p>
+          </div>
+          <button class="close-btn ui-interactive" id="btn-close-chai-dhaba" aria-label="Close Chai Dhaba">&times;</button>
+        </header>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: rgba(255, 145, 0, 0.14); border: 1.5px solid rgba(255, 145, 0, 0.45); border-radius: 16px; margin: 8px 0 12px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 2.2rem; line-height: 1;">🔥</span>
+            <div>
+              <strong id="chai-streak-day-label" style="font-size: 1.05rem; color: #ffd700;">DAY 1 OF 7</strong>
+              <div id="chai-streak-status-desc" style="font-size: 0.7rem; color: #94a3b8;">Claim your hot cup of chai today!</div>
+            </div>
+          </div>
+          <button class="primary-btn ui-interactive" id="btn-claim-chai-streak" type="button" style="background: linear-gradient(145deg, #ff9100, #ff3d00); font-weight: 900; padding: 8px 18px; font-size: 0.88rem;">☕ CLAIM</button>
+        </div>
+
+        <div class="chai-days-grid" id="chai-days-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0;"></div>
+
+        <div id="chai-streak-msg" style="display: none; padding: 8px 12px; background: rgba(0, 230, 118, 0.15); border: 1px solid #00e676; border-radius: 12px; color: #00e676; font-size: 0.78rem; font-weight: 800; text-align: center; margin-top: 6px;"></div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+          <button class="secondary-btn ui-interactive" id="btn-close-chai-done" type="button">DONE</button>
+        </div>
+      </section>
+    `;
+    document.body.appendChild(this.chaiDhabaModal);
+  }
+
+  showChaiDhabaModal() {
+    if (!this.chaiDhabaModal) return;
+    this.chaiShouldResume = !!window.game?.isGameStarted && !window.game.isPaused && !window.game.isGameOver;
+    if (this.chaiShouldResume) this.onPauseGame?.();
+
+    const status = saveManager.getChaiDhabaStatus();
+    const rewards = saveManager.getChaiDhabaRewards();
+
+    const dayLabel = document.getElementById('chai-streak-day-label');
+    const statusDesc = document.getElementById('chai-streak-status-desc');
+    const claimBtn = document.getElementById('btn-claim-chai-streak');
+    const grid = document.getElementById('chai-days-grid');
+    const msgEl = document.getElementById('chai-streak-msg');
+
+    if (msgEl) msgEl.style.display = 'none';
+    if (dayLabel) dayLabel.textContent = `STREAK: DAY ${status.currentStreak} OF 7`;
+    if (statusDesc) {
+      statusDesc.textContent = status.canClaim
+        ? 'Your fresh Burns Road Doodh Patti is piping hot!'
+        : 'Already claimed today! Next cup unlocks tomorrow at midnight.';
+    }
+    if (claimBtn) {
+      claimBtn.disabled = !status.canClaim;
+      claimBtn.textContent = status.canClaim ? '☕ CLAIM' : '✅ CLAIMED';
+      claimBtn.style.opacity = status.canClaim ? '1' : '0.6';
+    }
+
+    if (grid) {
+      grid.innerHTML = '';
+      rewards.forEach((r) => {
+        const isPast = r.day < status.currentStreak || (!status.canClaim && r.day === status.currentStreak);
+        const isCurrent = r.day === status.currentStreak;
+        const card = document.createElement('div');
+        card.style.cssText = `
+          padding: 8px 4px;
+          border-radius: 12px;
+          text-align: center;
+          background: ${isCurrent ? 'rgba(255, 145, 0, 0.22)' : isPast ? 'rgba(0, 230, 118, 0.12)' : 'rgba(15, 23, 42, 0.6)'};
+          border: 1.5px solid ${isCurrent ? '#ff9100' : isPast ? '#00e676' : 'rgba(255, 255, 255, 0.1)'};
+          color: #fff;
+        `;
+        card.innerHTML = `
+          <div style="font-size: 0.6rem; font-weight: 800; color: ${isCurrent ? '#ffd700' : isPast ? '#00e676' : '#94a3b8'};">DAY ${r.day}</div>
+          <div style="font-size: 1.4rem; line-height: 1.2; margin: 2px 0;">${r.icon}</div>
+          <div style="font-size: 0.65rem; font-weight: 800; color: #fff;">${r.reward}</div>
+          <div style="font-size: 0.55rem; color: ${isPast ? '#00e676' : isCurrent ? '#ffd700' : '#64748b'}; font-weight: 800; margin-top: 2px;">
+            ${isPast ? '✅ CLAIMED' : isCurrent ? '🔥 TODAY' : '🔒 LOCKED'}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    this.chaiDhabaModal.style.display = 'flex';
+  }
+
+  hideChaiDhabaModal() {
+    if (this.chaiDhabaModal) {
+      this.chaiDhabaModal.style.display = 'none';
+      if (this.chaiShouldResume) this.onResumeGame?.();
+      this.chaiShouldResume = false;
+    }
+  }
+
+  // --- Pakistan Cities Expedition Postcard Modal ---
+  createCityPostcardModal() {
+    this.cityPostcardModal = document.createElement('div');
+    this.cityPostcardModal.className = 'modal-backdrop city-postcard-backdrop';
+    this.cityPostcardModal.id = 'modal-city-postcard';
+    this.cityPostcardModal.style.display = 'none';
+    this.cityPostcardModal.innerHTML = `
+      <div class="modal-card city-postcard-card" role="dialog" aria-modal="true" style="max-width: 420px; border-radius: 24px; border: 2px solid #ffd700; box-shadow: 0 0 35px rgba(255, 215, 0, 0.45); text-align: center; padding: 22px 18px; background: linear-gradient(165deg, #0d1a2d, #050b14); color: #fff;">
+        <div style="font-size: 0.72rem; letter-spacing: 0.16em; color: #ffd700; font-weight: 900; margin-bottom: 6px;">🇵🇰 PAKISTAN EXPEDITION STAMP</div>
+        <div id="postcard-city-icon" style="font-size: 4rem; line-height: 1.1; margin: 8px 0;">🕌</div>
+        <h2 id="postcard-city-title" style="margin: 0; font-size: 1.6rem; font-weight: 900; color: #00e5ff; letter-spacing: 0.06em;">WELCOME TO LAHORE!</h2>
+        <p id="postcard-city-tagline" style="margin: 6px 0 14px; font-size: 0.82rem; color: #e2e8f0; font-weight: 600;">The Heart of Punjab · Land of Badshahi &amp; Historic Gardens</p>
+        <div style="padding: 10px; background: rgba(0, 229, 255, 0.12); border-radius: 14px; border: 1px solid rgba(0, 229, 255, 0.35); margin-bottom: 16px;">
+          <div style="font-size: 0.7rem; color: #ffd700; font-weight: 800;">JACKPOT REWARD UNLEASHED:</div>
+          <div style="font-size: 1.15rem; font-weight: 900; color: #76ff03;">+5,000 RS &amp; JUNOON FEVER RUSH! 🎸</div>
+        </div>
+        <button class="primary-btn ui-interactive" id="btn-postcard-continue" type="button" style="width: 100%; min-height: 48px; font-size: 0.95rem; font-weight: 900; background: linear-gradient(145deg, #00e5ff, #0091ea);">CONTINUE TOUR 🚀</button>
+      </div>
+    `;
+    document.body.appendChild(this.cityPostcardModal);
+  }
+
+  showCityPostcardModal(completedCity, nextCity) {
+    if (!this.cityPostcardModal) return;
+    const iconEl = document.getElementById('postcard-city-icon');
+    const titleEl = document.getElementById('postcard-city-title');
+    const tagEl = document.getElementById('postcard-city-tagline');
+
+    const next = nextCity || { name: 'LAHORE', icon: '🕌', province: 'Punjab', emblem: 'Badshahi Minar' };
+    if (iconEl) iconEl.textContent = next.icon || '🇵🇰';
+    if (titleEl) titleEl.textContent = `WELCOME TO ${next.name}!`;
+    if (tagEl) tagEl.textContent = `${next.emblem || 'Land of Rich Heritage'} · ${next.province || 'Pakistan'}`;
+
+    this.cityPostcardModal.style.display = 'flex';
+    audio?.playCelebrationFanfare?.();
+  }
+
+  hideCityPostcardModal() {
+    if (this.cityPostcardModal) {
+      this.cityPostcardModal.style.display = 'none';
     }
   }
 
@@ -1998,10 +2256,10 @@ export class UIManager {
 
       <!-- Bottom-Left Dedicated Runner Dock (Word Hunt, Fever Bar, Hoverboard) -->
       <div class="hud-runner-extra-dock" id="hud-runner-extra-dock">
-        <!-- Karachi Word Hunt (K-A-R-A-C-H-I) -->
-        <div class="word-hunt-pill" id="hud-word-hunt" style="display: none;" title="Karachi Street Word Hunt">
-          <span class="wh-label">WORD</span>
-          <div class="wh-letters" id="hud-wh-letters">
+        <!-- Pakistan Cities Tour Word Hunt -->
+        <div class="word-hunt-pill" id="hud-word-hunt" style="display: none;" title="Pakistan Cities Tour Word Hunt">
+          <span class="wh-label" id="hud-wh-label">🌊 KARACHI</span>
+          <div class="wh-letters" id="hud-wh-letters" data-current-word="KARACHI">
             <span class="wh-char" data-char="K">K</span>
             <span class="wh-char" data-char="A">A</span>
             <span class="wh-char" data-char="R">R</span>
@@ -2984,6 +3242,9 @@ export class UIManager {
             <button class="btn-crash-retry ui-interactive" id="btn-crash-retry" title="Restart">
               RESTART
             </button>
+            <button class="ghost-btn ui-interactive" id="btn-crash-share-whatsapp" style="background: rgba(37, 211, 102, 0.2); border: 1.5px solid #25d366; color: #25d366; font-weight: 800;">
+              📲 SHARE SCORE
+            </button>
             <button class="ghost-btn ui-interactive" id="btn-crash-main-menu">
               🏠 HOME
             </button>
@@ -3022,6 +3283,9 @@ export class UIManager {
           </button>
           <button class="secondary-btn ui-interactive" id="btn-results-leaderboards">
             🏆 GLOBAL CHARTS
+          </button>
+          <button class="ghost-btn ui-interactive" id="btn-results-share-whatsapp" style="background: rgba(37, 211, 102, 0.2); border: 1.5px solid #25d366; color: #25d366; font-weight: 800;">
+            📲 SHARE SCORE
           </button>
           <button class="ghost-btn ui-interactive" id="btn-results-home" style="display: none;">
             🏠 HOME
@@ -4230,6 +4494,107 @@ export class UIManager {
         this.hideMysteryTrunkModal();
       }
     });
+
+    // Burns Road Chai Dhaba 7-Day Streak
+    const btnHomeChai = document.getElementById('btn-home-chai');
+    if (btnHomeChai) {
+      attachInstantTouch(btnHomeChai, () => {
+        audio?.playClick?.();
+        this.showChaiDhabaModal();
+      });
+    }
+
+    const btnCloseChai = document.getElementById('btn-close-chai-dhaba');
+    if (btnCloseChai) {
+      attachInstantTouch(btnCloseChai, () => {
+        audio?.playClick?.();
+        this.hideChaiDhabaModal();
+      });
+    }
+
+    const btnCloseChaiDone = document.getElementById('btn-close-chai-done');
+    if (btnCloseChaiDone) {
+      attachInstantTouch(btnCloseChaiDone, () => {
+        audio?.playClick?.();
+        this.hideChaiDhabaModal();
+      });
+    }
+
+    const btnClaimChai = document.getElementById('btn-claim-chai-streak');
+    if (btnClaimChai) {
+      attachInstantTouch(btnClaimChai, () => {
+        const res = saveManager.claimChaiDhabaReward();
+        const msgEl = document.getElementById('chai-streak-msg');
+        if (res.success) {
+          audio?.playPowerUp?.();
+          if (msgEl) {
+            msgEl.textContent = `☕ Sip enjoyed! You claimed: ${res.reward.reward}! Streak: Day ${res.nextStreak}/7 🔥`;
+            msgEl.style.display = 'block';
+            msgEl.style.borderColor = '#00e676';
+            msgEl.style.color = '#00e676';
+          }
+          this.refreshProgressionContent();
+          this.showChaiDhabaModal();
+          this.showAnnouncement?.(`☕ CHAI CLAIMED: ${res.reward.reward}! Day ${res.nextStreak}/7 🔥`, '#ffd700');
+        } else {
+          audio?.playWrongAnswer?.();
+          if (msgEl) {
+            msgEl.textContent = res.reason || 'Already claimed today!';
+            msgEl.style.display = 'block';
+            msgEl.style.borderColor = '#ff5252';
+            msgEl.style.color = '#ff5252';
+          }
+        }
+      });
+    }
+
+    this.chaiDhabaModal?.addEventListener('click', event => {
+      if (event.target === this.chaiDhabaModal) {
+        this.hideChaiDhabaModal();
+      }
+    });
+
+    // Pakistan Cities Tour Postcard Modal
+    const btnPostcardContinue = document.getElementById('btn-postcard-continue');
+    if (btnPostcardContinue) {
+      attachInstantTouch(btnPostcardContinue, () => {
+        audio?.playClick?.();
+        this.hideCityPostcardModal();
+      });
+    }
+
+    this.cityPostcardModal?.addEventListener('click', event => {
+      if (event.target === this.cityPostcardModal) {
+        this.hideCityPostcardModal();
+      }
+    });
+
+    // WhatsApp / Native Score Brag Share
+    const handleShareScore = () => {
+      audio?.playClick?.();
+      const score = document.getElementById('crash-stat-score')?.textContent || document.getElementById('stat-score')?.textContent || window.game?.score || 0;
+      const coins = document.getElementById('stat-coins')?.textContent || window.game?.coins || 0;
+      const currentCity = window.game?.cityTourCity?.name || 'KARACHI';
+      const shareText = `🏃‍♂️ I scored ${Number(score).toLocaleString()} pts & collected ${Number(coins).toLocaleString()} RS in ${currentCity} on Karachi Runner! 🇵🇰 Can you beat my high score? Play free: https://itsjohn9-cell.github.io/karachi.hole/ | Android APK: https://github.com/itsjohn9-cell/karachi.hole/releases/latest/download/karachi-runner-latest.apk`;
+
+      if (navigator.share) {
+        navigator.share({
+          title: 'Karachi Runner',
+          text: shareText,
+          url: 'https://itsjohn9-cell.github.io/karachi.hole/'
+        }).catch(() => {
+          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+        });
+      } else {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+      }
+    };
+
+    const btnCrashShare = document.getElementById('btn-crash-share-whatsapp');
+    if (btnCrashShare) attachInstantTouch(btnCrashShare, handleShareScore);
+
+    const btnResultsShare = document.getElementById('btn-results-share-whatsapp');
+    if (btnResultsShare) attachInstantTouch(btnResultsShare, handleShareScore);
 
     // Auto-Resume button on pause modal
     const btnAutoResume = document.getElementById('btn-auto-resume');
@@ -5924,16 +6289,37 @@ export class UIManager {
     flash.classList.add('active');
   }
 
-  updateWordHunt(lettersCollected = []) {
+  updateWordHunt(lettersCollected = [], cityData = null) {
     const huntEl = document.getElementById('hud-word-hunt');
     if (!huntEl) return;
     if (window.game?.isTempleRun && window.game.isGameStarted) {
       huntEl.style.display = 'flex';
-      const chars = huntEl.querySelectorAll('.wh-char');
-      chars.forEach((span, idx) => {
-        const isCollected = idx < lettersCollected.length;
-        span.classList.toggle('is-collected', isCollected);
-      });
+      const activeCity = cityData || window.game?.cityTourCity || { name: 'KARACHI', icon: '🌊', color: '#00e5ff' };
+      const labelEl = document.getElementById('hud-wh-label');
+      if (labelEl) {
+        labelEl.textContent = `${activeCity.icon || '🇵🇰'} ${activeCity.name || 'TOUR'}`;
+        if (activeCity.color) labelEl.style.color = activeCity.color;
+      }
+      const lettersContainer = document.getElementById('hud-wh-letters');
+      if (lettersContainer) {
+        const targetWord = (activeCity.name || 'KARACHI').toUpperCase();
+        if (lettersContainer.dataset.currentWord !== targetWord) {
+          lettersContainer.dataset.currentWord = targetWord;
+          lettersContainer.innerHTML = '';
+          for (let i = 0; i < targetWord.length; i++) {
+            const span = document.createElement('span');
+            span.className = 'wh-char';
+            span.dataset.char = targetWord[i];
+            span.textContent = targetWord[i];
+            lettersContainer.appendChild(span);
+          }
+        }
+        const chars = lettersContainer.querySelectorAll('.wh-char');
+        chars.forEach((span, idx) => {
+          const isCollected = idx < lettersCollected.length;
+          span.classList.toggle('is-collected', isCollected);
+        });
+      }
     } else {
       huntEl.style.display = 'none';
     }

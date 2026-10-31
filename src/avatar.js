@@ -743,7 +743,7 @@ export class AvatarBuilder {
   /**
    * Update character walk/run, idle, and stunt animations every frame
    */
-  static updateAnimation(group, isMoving, dt, speedMult = 1.0, isJumping = false) {
+  static updateAnimation(group, isMoving, dt, speedMult = 1.0, isJumping = false, isSurfing = false) {
     if (!group || !group.userData) return;
     const ud = group.userData;
 
@@ -811,6 +811,25 @@ export class AvatarBuilder {
       ud.armLGroup.rotation.x = THREE.MathUtils.lerp(ud.armLGroup.rotation.x, -0.65, dt * 10.0);
       ud.armRGroup.rotation.x = THREE.MathUtils.lerp(ud.armRGroup.rotation.x, -0.65, dt * 10.0);
       ud.torso.rotation.x = THREE.MathUtils.lerp(ud.torso.rotation.x, 0.15, dt * 8.0);
+      return;
+    }
+
+    if (isSurfing) {
+      // Dynamic Subway Surfers / Roof-Surfer athletic stance:
+      // Legs spread for balance, knees bent, arms outstretched, body angled
+      const surfBob = Math.sin(Date.now() * 0.008) * 0.04;
+      ud.torso.rotation.x = THREE.MathUtils.lerp(ud.torso.rotation.x, 0.12, dt * 10.0);
+      ud.torso.rotation.y = THREE.MathUtils.lerp(ud.torso.rotation.y, 0.35, dt * 10.0);
+      ud.torso.rotation.z = THREE.MathUtils.lerp(ud.torso.rotation.z, -0.08 + surfBob, dt * 10.0);
+      ud.legLGroup.rotation.x = THREE.MathUtils.lerp(ud.legLGroup.rotation.x, -0.28, dt * 10.0);
+      ud.legRGroup.rotation.x = THREE.MathUtils.lerp(ud.legRGroup.rotation.x, 0.28, dt * 10.0);
+      ud.armLGroup.rotation.x = THREE.MathUtils.lerp(ud.armLGroup.rotation.x, -0.4, dt * 10.0);
+      ud.armLGroup.rotation.z = THREE.MathUtils.lerp(ud.armLGroup.rotation.z, -0.75, dt * 10.0);
+      ud.armRGroup.rotation.x = THREE.MathUtils.lerp(ud.armRGroup.rotation.x, 0.25, dt * 10.0);
+      ud.armRGroup.rotation.z = THREE.MathUtils.lerp(ud.armRGroup.rotation.z, 0.85, dt * 10.0);
+      if (ud.damanBack) {
+        ud.damanBack.rotation.x = -0.32 + Math.sin(Date.now() * 0.015) * 0.08;
+      }
       return;
     }
 

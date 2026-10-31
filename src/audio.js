@@ -2157,6 +2157,122 @@ class AudioManager {
     this.vibrate([50, 30, 80, 40, 100]);
   }
 
+  // Authentic Karachi Street Voice Callout & Whistle Chants
+  playStreetCallout(type = 'wah_ustaad') {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    if (type === 'havaldar_whistle') {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const lfo = this.ctx.createOscillator();
+      const lfoGain = this.ctx.createGain();
+
+      lfo.frequency.setValueAtTime(28, t);
+      lfoGain.gain.setValueAtTime(140, t);
+      lfo.connect(osc.frequency);
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(2600, t);
+
+      gain.gain.setValueAtTime(0.01, t);
+      gain.gain.linearRampToValueAtTime(0.24, t + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.38);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain || this.ctx.destination);
+
+      lfo.start(t);
+      lfo.stop(t + 0.4);
+      osc.start(t);
+      osc.stop(t + 0.4);
+      this.vibrate([20, 20, 40]);
+      return;
+    }
+
+    if (type === 'bach_gaya') {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(420, t);
+      osc.frequency.exponentialRampToValueAtTime(840, t + 0.12);
+      osc.frequency.exponentialRampToValueAtTime(620, t + 0.28);
+      gain.gain.setValueAtTime(0.25, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+      osc.connect(gain);
+      gain.connect(this.masterGain || this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.3);
+      this.vibrate(20);
+      return;
+    }
+
+    [0, 0.08, 0.18].forEach((delay, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const freq = type === 'oye_hoye' ? [360, 540, 720][idx] : [440, 660, 880][idx];
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t + delay);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.35, t + delay + 0.14);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1400, t + delay);
+      filter.Q.setValueAtTime(3.5, t + delay);
+
+      gain.gain.setValueAtTime(0.22, t + delay);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + delay + 0.16);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain || this.ctx.destination);
+
+      osc.start(t + delay);
+      osc.stop(t + delay + 0.18);
+    });
+    this.vibrate([30, 20, 50]);
+  }
+
+  // Rock Guitar Power Chord Riff for Junoon Fever Rush
+  playJunoonGuitarRiff() {
+    if (!this.soundEnabled || this.isPaused) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const chords = [
+      { f: 164.8, start: 0, dur: 0.16 },
+      { f: 196.0, start: 0.16, dur: 0.14 },
+      { f: 220.0, start: 0.30, dur: 0.35 }
+    ];
+
+    chords.forEach(chord => {
+      [1.0, 1.5, 2.0].forEach(harmonic => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(chord.f * harmonic, t + chord.start);
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2800, t + chord.start);
+
+        gain.gain.setValueAtTime(0.18, t + chord.start);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + chord.start + chord.dur);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain || this.ctx.destination);
+
+        osc.start(t + chord.start);
+        osc.stop(t + chord.start + chord.dur + 0.02);
+      });
+    });
+    this.vibrate([40, 20, 60, 20, 90]);
+  }
+
   // Futuristic Qingqi Hover-Surfer Ignition
   playHoverboardDeploy() {
     if (!this.soundEnabled || this.isPaused) return;
