@@ -134,16 +134,16 @@ test('Pakistan Cities Tour Word Hunt & Progression', async () => {
   const { saveManager, DEFAULT_SAVE_DATA } = await import('../src/saveManager.js');
   const { PAKISTAN_CITIES_TOUR } = await import('../src/main.js');
 
-  // Verify tour sequence has all 8 Pakistani cities
-  assert.equal(PAKISTAN_CITIES_TOUR.length, 8);
+  // Verify tour sequence has 100 top Pakistani cities
+  assert.equal(PAKISTAN_CITIES_TOUR.length >= 100, true);
   assert.equal(PAKISTAN_CITIES_TOUR[0].name, 'KARACHI');
   assert.equal(PAKISTAN_CITIES_TOUR[1].name, 'LAHORE');
   assert.equal(PAKISTAN_CITIES_TOUR[2].name, 'ISLAMABAD');
-  assert.equal(PAKISTAN_CITIES_TOUR[3].name, 'PESHAWAR');
-  assert.equal(PAKISTAN_CITIES_TOUR[4].name, 'QUETTA');
+  assert.equal(PAKISTAN_CITIES_TOUR[3].name, 'RAWALPINDI');
+  assert.equal(PAKISTAN_CITIES_TOUR[4].name, 'FAISALABAD');
   assert.equal(PAKISTAN_CITIES_TOUR[5].name, 'MULTAN');
-  assert.equal(PAKISTAN_CITIES_TOUR[6].name, 'RAWALPINDI');
-  assert.equal(PAKISTAN_CITIES_TOUR[7].name, 'GWADAR');
+  assert.equal(PAKISTAN_CITIES_TOUR[6].name, 'PESHAWAR');
+  assert.equal(PAKISTAN_CITIES_TOUR[7].name, 'QUETTA');
 
   // Verify city icons & theme colors
   assert.equal(PAKISTAN_CITIES_TOUR[0].icon, '🌊');

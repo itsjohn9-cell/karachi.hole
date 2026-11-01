@@ -14,6 +14,7 @@ import { leaderboardService } from './leaderboardService.js';
 import { AvatarBuilder } from './avatar.js';
 import { getNextSafeRenderScale, PortableGameOpsEngine } from './game-ops-engine.js';
 import { getKarachiNeighborhoodName } from './karachi-neighborhoods.js';
+import { PAKISTAN_100_CITIES } from './pakistanCities.js';
 
 const RUNNER_POTHOLE_RIM_GEOMETRY = new THREE.RingGeometry(0.66, 1.0, 24);
 const RUNNER_POTHOLE_RIM_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x202a31 });
@@ -82,16 +83,7 @@ const RUNNER_TURN_INPUT_METERS = 45;
 const RUNNER_TURN_ENTRY_METERS = 14;
 const RUNNER_TURN_LAST_INPUT_METERS = 6.5;
 
-export const PAKISTAN_CITIES_TOUR = [
-  { id: 'karachi', name: 'KARACHI', icon: '🌊', province: 'Sindh', color: '#00e5ff', emblem: 'Arabian Sea Pearl' },
-  { id: 'lahore', name: 'LAHORE', icon: '🕌', province: 'Punjab', color: '#ff9100', emblem: 'Badshahi Minar' },
-  { id: 'islamabad', name: 'ISLAMABAD', icon: '🏛️', province: 'Capital', color: '#00e676', emblem: 'Faisal Mosque' },
-  { id: 'peshawar', name: 'PESHAWAR', icon: '🏔️', province: 'KPK', color: '#ffd700', emblem: 'Khyber Pass' },
-  { id: 'quetta', name: 'QUETTA', icon: '🍎', province: 'Balochistan', color: '#ff1744', emblem: 'Chaman Crown' },
-  { id: 'multan', name: 'MULTAN', icon: '🏺', province: 'Seraiki', color: '#e040fb', emblem: 'Blue Pottery & Sufi Shrine' },
-  { id: 'rawalpindi', name: 'RAWALPINDI', icon: '🚂', province: 'Potohar', color: '#76ff03', emblem: 'Heritage Junction' },
-  { id: 'gwadar', name: 'GWADAR', icon: '⚓', province: 'Coast', color: '#18ffff', emblem: 'Deep Sea Port' }
-];
+export const PAKISTAN_CITIES_TOUR = PAKISTAN_100_CITIES;
 
 function runnerSegmentDistanceSquared(x, z, start, end) {
   const dx = end.x - start.x;
