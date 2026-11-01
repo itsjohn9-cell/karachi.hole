@@ -1,6 +1,6 @@
 {
   "name": "karachi-runner",
-  "version": "2.2.29",
+  "version": "2.2.30",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,8 @@
     "build:android": "npm run build && cap sync android",
     "build:android:aab": "npm run build:android && cd android && ./gradlew :app:bundleRelease",
     "preview": "vite preview",
-    "test": "npm run test:analytics && npm run test:ops && node scripts/test_runner.js",
+    "test": "npm run test:features && npm run test:analytics && npm run test:ops && node scripts/test_runner.js",
+    "test:features": "node --test scripts/test_top_three_addictive_features.mjs",
     "test:analytics": "node --test scripts/test_analytics_command_center.mjs",
     "test:ops": "node --test scripts/test_game_ops_engine.mjs",
     "test:5173": "node scripts/test_runner.js --port=5173",

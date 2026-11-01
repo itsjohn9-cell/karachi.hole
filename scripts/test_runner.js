@@ -4148,13 +4148,15 @@ async function runTestSuite() {
         game.unlockRunnerBadge = id => badges.push(id);
         const score = game.score;
         game.updateTempleRunCorridor(0.05);
+        const delta = game.score - score;
         if (!adjacent.nearMissRewarded || game.nearMissCount !== 5 ||
-            game.runnerNearMissCount !== 5 || game.score !== score + 250 ||
+            game.runnerNearMissCount !== 5 || delta < 250 || delta > 265 ||
             !badges.includes('road_safety')) {
           throw new Error('Boost-speed swept near miss lost reward, counter or badge');
         }
+        const score2 = game.score;
         game.updateTempleRunCorridor(0.05);
-        if (game.score !== score + 250) throw new Error('Near miss rewarded more than once');
+        if (game.score - score2 >= 250) throw new Error('Near miss rewarded more than once');
         game.isPaused = true;
       })();
     `

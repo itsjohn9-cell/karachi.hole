@@ -1341,6 +1341,12 @@ export class Game {
       this.particles.createImpactDust(this.player.position, 12);
       this.ui.showFloatingFeedback(`⚠️ ${hint} · 2s GRACE`, this.player.position, '#ff1744');
 
+      if (this.gameMode === 'biryani_rush') {
+        this.biryaniTimer = Math.max(0, this.biryaniTimer - 6.0);
+        this.biryaniSteam = Math.max(0, this.biryaniSteam - 25.0);
+        this.ui?.showAnnouncement?.('🍲 BIRYANI SPILLED! -6 SECONDS & STEAM LOST!', '#ff1744');
+      }
+
       // Trigger Stumble: reduce currentSpeed to baseSpeed * 0.75 for 1.5 seconds
       const origSpeed = this.player.currentSpeed;
       this.player.currentSpeed = this.player.baseSpeed * 0.75;
@@ -1439,8 +1445,15 @@ export class Game {
   triggerTempleRunGameOver(reason, obstacle = null) {
     this.isGameOver = true;
     this.isPaused = true;
-    if (typeof audio !== 'undefined' && audio.resetMusicPitch) {
-      audio.resetMusicPitch(); // Requirement 4: reset pitch on death
+    if (typeof audio !== 'undefined') {
+      audio.resetMusicPitch?.();
+      audio.stopRadioStation?.();
+      audio.stopChingchiEngineSound?.();
+    }
+    if (this.playerChingchiMount && this.player?.group) {
+      this.player.group.remove(this.playerChingchiMount);
+      this.disposeRunnerObject(this.playerChingchiMount);
+      this.playerChingchiMount = null;
     }
 
     const deathType = this.getDeathResolutionType(reason, obstacle);
@@ -1641,6 +1654,10 @@ export class Game {
     this.hearts = 2; // Revive with 2 hearts
     this.nitroTimer = 4.0; // 4 seconds CNG Turbo Invulnerable Blast
     this.runnerInvulnerableTimer = 4.0;
+    if (this.gameMode === 'biryani_rush') {
+      this.biryaniTimer = Math.max(20.0, (this.biryaniTimer || 0) + 20.0);
+      this.biryaniSteam = 100.0;
+    }
 
     // Reset player position cleanly to center lane
     this.currentLane = 0;
@@ -4393,7 +4410,7 @@ export class Game {
       // Timeout check
       if (this.biryaniTimer <= 0) {
         saveManager.recordBiryaniRushScore?.(this.biryaniDeliveries || 0);
-        this.handleRunnerCrash('biryani_timeout');
+        this.triggerTempleRunGameOver('biryani_timeout');
         return;
       }
     }
@@ -5645,17 +5662,16 @@ export class Game {
     if (bestDistance >= 120 && typeof AvatarBuilder !== 'undefined') {
       try {
         this.ghostRunner = AvatarBuilder.createRunnerAvatar('tariq');
+        const ghostMat = new THREE.MeshStandardMaterial({
+          color: 0x00e5ff,
+          emissive: 0x00b0ff,
+          emissiveIntensity: 0.65,
+          transparent: true,
+          opacity: 0.35,
+          roughness: 0.2
+        });
         this.ghostRunner.traverse(c => {
-          if (c.isMesh && c.material) {
-            c.material = new THREE.MeshStandardMaterial({
-              color: 0x00e5ff,
-              emissive: 0x00b0ff,
-              emissiveIntensity: 0.65,
-              transparent: true,
-              opacity: 0.35,
-              roughness: 0.2
-            });
-          }
+          if (c.isMesh) c.material = ghostMat;
         });
         this.ghostRunner.position.set(0, 0, 60.0);
         this.scene.add(this.ghostRunner);
@@ -8930,7 +8946,7 @@ export class Game {
             deviceMemoryGb: (typeof navigator !== 'undefined' && navigator.deviceMemory) || null,
             hardwareConcurrency: (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null,
             consentStatus: consentChoice,
-            appVersion: '2.2.29',
+            appVersion: '2.2.30',
             appBundleId: isCapacitor ? 'pk.karachi.runner' : 'karachi-runner-web'
           };
         };

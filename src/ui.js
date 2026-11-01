@@ -104,6 +104,13 @@ function getRunnerCrashAdvice(reason = '') {
       hint: 'Move one lane left or right before reaching the minibus.'
     };
   }
+  if (normalizedReason.includes('biryani')) {
+    return {
+      icon: '🍲',
+      title: 'Burns Road Biryani Timeout',
+      hint: 'Sprint through Burns Road checkpoints to replenish time & steam!'
+    };
+  }
   if (normalizedReason.includes('sewage')) {
     return {
       icon: '🌊',
@@ -279,10 +286,10 @@ export class UIManager {
           <div class="form-group start-age-group">
             <label class="form-label menu-section-title" for="runner-difficulty-grid">🏃 CHOOSE YOUR PACE:</label>
             <div class="age-selection-grid" id="runner-difficulty-grid" aria-label="Runner pace">
-              <div class="age-card ui-interactive" role="button" tabindex="0" aria-pressed="false" aria-label="Easy pace. Scenic route with 1.0x points." data-runner-difficulty="easy">
+              <div class="age-card ui-interactive" role="button" tabindex="0" aria-pressed="false" aria-label="Easy pace. Scenic route with no turns." data-runner-difficulty="easy">
                 <span class="age-card-icon">🌱</span>
                 <span class="age-card-title">Easy</span>
-                <span class="age-card-sub">Scenic · 1.0x PTS</span>
+                <span class="age-card-sub">No turns · 1.0x PTS</span>
               </div>
               <div class="age-card active ui-interactive" role="button" tabindex="0" aria-pressed="true" aria-label="Cruiser pace. Moderate speed with 1.5x points." data-runner-difficulty="cruiser">
                 <span class="age-card-icon">⚡</span>

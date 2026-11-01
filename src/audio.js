@@ -1304,6 +1304,14 @@ class AudioManager {
       clearInterval(this.musicInterval);
       this.musicInterval = null;
     }
+    if (this.radioInterval) {
+      clearInterval(this.radioInterval);
+      this.radioInterval = null;
+    }
+    if (this.chingchiEngineInterval) {
+      clearInterval(this.chingchiEngineInterval);
+      this.chingchiEngineInterval = null;
+    }
     if (this.masterGain && this.ctx) {
       try {
         this.masterGain.gain.setValueAtTime(0, this.ctx.currentTime);
@@ -1332,10 +1340,15 @@ class AudioManager {
     if (this.musicEnabled && !this.isPlayingMusic) {
       this.startMusic();
     }
+    if (this.currentRadioStation && this.currentRadioStation !== 'none' && !this.radioInterval) {
+      this.startRadioStation(this.currentRadioStation);
+    }
   }
 
   // Game Over Sad Defeat Jingle
   playGameOver() {
+    this.stopRadioStation();
+    this.stopChingchiEngineSound();
     if (!this.soundEnabled || this.isPaused) return;
     this.initContext();
     if (!this.ctx) return;
@@ -1894,9 +1907,14 @@ class AudioManager {
       localStorage.setItem('hole_karachi_music', this.musicEnabled);
     } catch (e) {}
     if (this.musicEnabled) {
-      this.startMusic();
+      if (this.currentRadioStation && this.currentRadioStation !== 'none') {
+        this.startRadioStation(this.currentRadioStation);
+      } else {
+        this.startMusic();
+      }
     } else {
       this.stopMusic();
+      this.stopRadioStation();
     }
     return this.musicEnabled;
   }

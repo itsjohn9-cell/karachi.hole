@@ -10856,3 +10856,25 @@ body.mode-runner .hud-controls-bottom-right .secondary-actions .horn-btn {
   }
 }
 
+/* Procedural Street Radio Ticker Marquee */
+#hud-traffic-ticker {
+  animation: pulseTickerGlow 3s infinite ease-in-out;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 12px rgba(224, 64, 251, 0.35);
+}
+
+@keyframes pulseTickerGlow {
+  0%, 100% { border-color: rgba(224, 64, 251, 0.45); }
+  50% { border-color: rgba(224, 64, 251, 0.95); }
+}
+
+/* Burns Road Biryani Express HUD */
+#hud-biryani-rush {
+  animation: biryaniSteamGlow 2.5s infinite alternate ease-in-out;
+}
+
+@keyframes biryaniSteamGlow {
+  from { box-shadow: 0 0 10px rgba(255, 61, 0, 0.3); }
+  to { box-shadow: 0 0 22px rgba(255, 215, 0, 0.6); }
+}
+
