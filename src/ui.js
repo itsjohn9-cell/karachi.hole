@@ -4601,12 +4601,22 @@ export class UIManager {
     });
 
     // WhatsApp / Native Score Brag Share
+    const parseStatNumber = (raw, fallback = 0) => {
+      if (typeof raw === 'number' && !Number.isNaN(raw)) return raw;
+      if (!raw) return fallback;
+      const cleaned = String(raw).replace(/[^\d.-]/g, '');
+      const num = Number(cleaned);
+      return (!Number.isNaN(num) && cleaned.length > 0) ? num : fallback;
+    };
+
     const handleShareScore = () => {
       audio?.playClick?.();
-      const score = document.getElementById('crash-stat-score')?.textContent || document.getElementById('stat-score')?.textContent || window.game?.score || 0;
-      const coins = document.getElementById('stat-coins')?.textContent || window.game?.coins || 0;
+      const rawScore = document.getElementById('crash-stat-score')?.textContent || document.getElementById('stat-score')?.textContent;
+      const rawCoins = document.getElementById('crash-stat-coins')?.textContent || document.getElementById('stat-coins')?.textContent;
+      const score = parseStatNumber(rawScore, window.game?.score || 0);
+      const coins = parseStatNumber(rawCoins, window.game?.coins || 0);
       const currentCity = window.game?.cityTourCity?.name || 'KARACHI';
-      const shareText = `🏃‍♂️ I scored ${Number(score).toLocaleString()} pts & collected ${Number(coins).toLocaleString()} RS in ${currentCity} on Karachi Runner! 🇵🇰 Can you beat my high score? Play free: https://itsjohn9-cell.github.io/karachi.hole/ | Android APK: https://github.com/itsjohn9-cell/karachi.hole/releases/latest/download/karachi-runner-latest.apk`;
+      const shareText = `🏃‍♂️ I scored ${Math.round(score).toLocaleString()} pts & collected ${Math.round(coins).toLocaleString()} RS in ${currentCity} on Karachi Runner! 🇵🇰 Can you beat my high score? Play free: https://itsjohn9-cell.github.io/karachi.hole/ | Android APK: https://github.com/itsjohn9-cell/karachi.hole/releases/latest/download/karachi-runner-latest.apk`;
 
       if (navigator.share) {
         navigator.share({
